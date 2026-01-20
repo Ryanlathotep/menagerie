@@ -4,7 +4,11 @@ import { Card } from '@/components/ui/card';
 import { SPECIES_DATA, SpeciesType, ClassType, ElementType } from '@/game/types';
 import { createMonster } from '@/game/utils';
 import { generateDungeon, movePlayer, removeEnemy } from '@/game/dungeon';
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
+import { MonsterSprite } from '@/game/sprites';
+import { DungeonRenderer } from '@/game/DungeonRenderer';
+import { CharacterSheet, createFullMonster, FullMonster } from '@/game/CharacterSheet';
+import { InventoryUI, QuickItemBar, createStarterInventory, Inventory, removeItemFromInventory, applyItemEffect, ITEMS } from '@/game/Inventory';
 
 // Main Menu Component
 function MainMenu() {
@@ -62,8 +66,8 @@ function CharacterSelect() {
               onClick={() => startRun(species)}
             >
               <div className="text-center">
-                <div className="text-3xl mb-2">
-                  {getSpeciesEmoji(species)}
+                <div className="flex justify-center mb-2">
+                  <MonsterSprite species={species} element="fire" classType="kinetic" size={48} animated={false} />
                 </div>
                 <h3 className="font-semibold">{SPECIES_DATA[species].name}</h3>
                 <p className="text-xs text-muted-foreground">{SPECIES_DATA[species].passiveAbility}</p>
@@ -126,47 +130,46 @@ function DungeonView() {
 
   return (
     <div className="game-container">
-      <div className="space-y-4">
-        <div className="flex justify-between items-center text-sm">
-          <span>Floor {dungeon.floor}</span>
-          <span className={`element-badge element-${state.run?.currentMonster.element}`}>
-            {state.run?.currentMonster.name}
-          </span>
-          <span>Gold: {state.run?.gold}</span>
-        </div>
-
-        <div className="bg-card rounded-lg p-2 inline-block">
-          {dungeon.tiles.map((row, y) => (
-            <div key={y} className="flex">
-              {row.map((tile, x) => (
-                <div 
-                  key={x} 
-                  className={`dungeon-tile ${
-                    !tile.explored ? 'bg-tile-wall' :
-                    tile.visible ? 'bg-tile-visible' : 'bg-tile-explored'
-                  }`}
-                >
-                  {tile.visible && getTileContent(tile.type)}
-                </div>
-              ))}
+      <div className="flex gap-4 items-start">
+        {/* Dungeon grid */}
+        <DungeonRenderer 
+          dungeon={dungeon} 
+          playerElement={state.run?.currentMonster.element || 'fire'} 
+        />
+        
+        {/* Side panel */}
+        <div className="space-y-3 w-64">
+          <Card className="p-3">
+            <div className="flex items-center gap-2">
+              <MonsterSprite 
+                species={state.run?.currentMonster.species || 'slime'}
+                element={state.run?.currentMonster.element || 'fire'}
+                classType={state.run?.currentMonster.class || 'kinetic'}
+                size={40}
+                animated={false}
+              />
+              <div className="flex-1">
+                <p className="text-sm font-semibold truncate">{state.run?.currentMonster.name}</p>
+                <p className="text-xs text-muted-foreground">Lv.{state.run?.currentMonster.level}</p>
+              </div>
             </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-3 gap-2 w-32 mx-auto sm:hidden">
-          <div />
-          <Button size="sm" onClick={() => handleMove('up')}>↑</Button>
-          <div />
-          <Button size="sm" onClick={() => handleMove('left')}>←</Button>
-          <div />
-          <Button size="sm" onClick={() => handleMove('right')}>→</Button>
-          <div />
-          <Button size="sm" onClick={() => handleMove('down')}>↓</Button>
-          <div />
-        </div>
-
-        <p className="text-muted-foreground text-sm hidden sm:block">Use WASD or Arrow keys to move</p>
+            <div className="mt-2 text-xs text-primary font-mono">💰 {state.run?.gold}</div>
+          </Card>
       </div>
+
+      <div className="grid grid-cols-3 gap-2 w-32 mx-auto sm:hidden mt-4">
+        <div />
+        <Button size="sm" onClick={() => handleMove('up')}>↑</Button>
+        <div />
+        <Button size="sm" onClick={() => handleMove('left')}>←</Button>
+        <div />
+        <Button size="sm" onClick={() => handleMove('right')}>→</Button>
+        <div />
+        <Button size="sm" onClick={() => handleMove('down')}>↓</Button>
+        <div />
+      </div>
+
+      <p className="text-muted-foreground text-sm hidden sm:block mt-4">Use WASD or Arrow keys to move</p>
     </div>
   );
 }

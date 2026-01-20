@@ -1,0 +1,298 @@
+// Core game types for the monster battler roguelike
+
+// ============= ELEMENT SYSTEM =============
+export type ElementType = 'fire' | 'water' | 'earth' | 'air' | 'void';
+
+// Star-shaped weakness pattern: each element beats 2 and loses to 2
+export const ELEMENT_ADVANTAGES: Record<ElementType, ElementType[]> = {
+  fire: ['air', 'earth'],    // Fire scorches air and earth
+  water: ['fire', 'void'],   // Water douses fire and fills void
+  earth: ['water', 'air'],   // Earth absorbs water and grounds air
+  air: ['void', 'water'],    // Air disperses void and evaporates water
+  void: ['fire', 'earth'],   // Void consumes fire and swallows earth
+};
+
+export const ELEMENT_COLORS: Record<ElementType, { primary: string; secondary: string; accent: string }> = {
+  fire: { primary: '15 90% 55%', secondary: '30 95% 60%', accent: '0 85% 50%' },
+  water: { primary: '200 85% 50%', secondary: '190 80% 60%', accent: '210 90% 45%' },
+  earth: { primary: '35 70% 40%', secondary: '25 60% 50%', accent: '45 80% 35%' },
+  air: { primary: '180 40% 70%', secondary: '200 50% 80%', accent: '160 45% 65%' },
+  void: { primary: '270 60% 30%', secondary: '280 50% 40%', accent: '260 70% 25%' },
+};
+
+// ============= CLASS SYSTEM =============
+export type ClassType = 'kinetic' | 'energy' | 'biological' | 'chemical' | 'political';
+
+// Star-shaped class advantage pattern
+// Note: Using corrected version below instead
+
+// Corrected class advantages
+export const CLASS_ADVANTAGES_CORRECTED: Record<ClassType, ClassType[]> = {
+  kinetic: ['energy', 'biological'],
+  energy: ['biological', 'chemical'],
+  biological: ['chemical', 'political'],
+  chemical: ['political', 'kinetic'],
+  political: ['kinetic', 'energy'],
+};
+
+export const CLASS_STATS: Record<ClassType, { hp: number; attack: number; defense: number; speed: number; special: number }> = {
+  kinetic: { hp: 20, attack: 15, defense: 10, speed: 10, special: 5 },
+  energy: { hp: 10, attack: 10, defense: 5, speed: 15, special: 20 },
+  biological: { hp: 25, attack: 8, defense: 12, speed: 8, special: 7 },
+  chemical: { hp: 15, attack: 12, defense: 8, speed: 12, special: 13 },
+  political: { hp: 18, attack: 5, defense: 15, speed: 5, special: 17 },
+};
+
+// ============= SPECIES SYSTEM =============
+export type SpeciesType = 
+  // Fantasy
+  | 'slime' | 'skeleton' | 'goblin' | 'mushroom' | 'ghost' 
+  | 'imp' | 'golem' | 'wisp' | 'chimera' | 'dragon'
+  // Real-ish
+  | 'rat' | 'spider' | 'bat' | 'snake' | 'wolf'
+  | 'beetle' | 'crow' | 'shark' | 'frog' | 'jellyfish';
+
+export interface SpeciesData {
+  name: string;
+  category: 'fantasy' | 'real';
+  baseStats: { hp: number; attack: number; defense: number; speed: number; special: number };
+  passiveAbility: string;
+  passiveDescription: string;
+}
+
+export const SPECIES_DATA: Record<SpeciesType, SpeciesData> = {
+  // Fantasy creatures
+  slime: {
+    name: 'Slime',
+    category: 'fantasy',
+    baseStats: { hp: 30, attack: 5, defense: 15, speed: 3, special: 7 },
+    passiveAbility: 'Amorphous',
+    passiveDescription: 'Takes 20% less physical damage',
+  },
+  skeleton: {
+    name: 'Skeleton',
+    category: 'fantasy',
+    baseStats: { hp: 20, attack: 12, defense: 8, speed: 10, special: 10 },
+    passiveAbility: 'Undead',
+    passiveDescription: 'Immune to poison, weak to healing',
+  },
+  goblin: {
+    name: 'Goblin',
+    category: 'fantasy',
+    baseStats: { hp: 18, attack: 10, defense: 6, speed: 14, special: 12 },
+    passiveAbility: 'Cunning',
+    passiveDescription: '+25% critical hit chance',
+  },
+  mushroom: {
+    name: 'Mushroom',
+    category: 'fantasy',
+    baseStats: { hp: 25, attack: 6, defense: 12, speed: 4, special: 13 },
+    passiveAbility: 'Spore Cloud',
+    passiveDescription: 'Chance to inflict poison when hit',
+  },
+  ghost: {
+    name: 'Ghost',
+    category: 'fantasy',
+    baseStats: { hp: 15, attack: 8, defense: 5, speed: 12, special: 20 },
+    passiveAbility: 'Ethereal',
+    passiveDescription: '30% chance to phase through attacks',
+  },
+  imp: {
+    name: 'Imp',
+    category: 'fantasy',
+    baseStats: { hp: 16, attack: 11, defense: 5, speed: 16, special: 12 },
+    passiveAbility: 'Mischievous',
+    passiveDescription: 'Steals small buffs from enemies',
+  },
+  golem: {
+    name: 'Golem',
+    category: 'fantasy',
+    baseStats: { hp: 40, attack: 14, defense: 18, speed: 2, special: 6 },
+    passiveAbility: 'Stone Body',
+    passiveDescription: 'Cannot be knocked back or stunned',
+  },
+  wisp: {
+    name: 'Wisp',
+    category: 'fantasy',
+    baseStats: { hp: 12, attack: 4, defense: 4, speed: 18, special: 22 },
+    passiveAbility: 'Luminous',
+    passiveDescription: 'Allies gain +10% accuracy',
+  },
+  chimera: {
+    name: 'Chimera',
+    category: 'fantasy',
+    baseStats: { hp: 28, attack: 13, defense: 10, speed: 9, special: 10 },
+    passiveAbility: 'Hybrid Nature',
+    passiveDescription: 'Can use one extra ability from another species',
+  },
+  dragon: {
+    name: 'Dragon',
+    category: 'fantasy',
+    baseStats: { hp: 35, attack: 16, defense: 14, speed: 8, special: 17 },
+    passiveAbility: 'Draconic Pride',
+    passiveDescription: 'Damage increases as HP decreases',
+  },
+  // Real-ish creatures
+  rat: {
+    name: 'Rat',
+    category: 'real',
+    baseStats: { hp: 14, attack: 8, defense: 4, speed: 18, special: 6 },
+    passiveAbility: 'Scavenger',
+    passiveDescription: 'Finds extra items after battle',
+  },
+  spider: {
+    name: 'Spider',
+    category: 'real',
+    baseStats: { hp: 16, attack: 10, defense: 6, speed: 14, special: 14 },
+    passiveAbility: 'Web Spinner',
+    passiveDescription: 'Attacks have chance to slow enemies',
+  },
+  bat: {
+    name: 'Bat',
+    category: 'real',
+    baseStats: { hp: 14, attack: 9, defense: 5, speed: 17, special: 15 },
+    passiveAbility: 'Echolocation',
+    passiveDescription: 'Cannot miss attacks in darkness',
+  },
+  snake: {
+    name: 'Snake',
+    category: 'real',
+    baseStats: { hp: 18, attack: 12, defense: 7, speed: 13, special: 10 },
+    passiveAbility: 'Venomous',
+    passiveDescription: 'Basic attacks may poison',
+  },
+  wolf: {
+    name: 'Wolf',
+    category: 'real',
+    baseStats: { hp: 22, attack: 14, defense: 8, speed: 12, special: 4 },
+    passiveAbility: 'Pack Hunter',
+    passiveDescription: '+15% damage for each ally in battle',
+  },
+  beetle: {
+    name: 'Beetle',
+    category: 'real',
+    baseStats: { hp: 24, attack: 10, defense: 16, speed: 6, special: 4 },
+    passiveAbility: 'Carapace',
+    passiveDescription: 'First hit each turn deals reduced damage',
+  },
+  crow: {
+    name: 'Crow',
+    category: 'real',
+    baseStats: { hp: 15, attack: 9, defense: 5, speed: 16, special: 15 },
+    passiveAbility: 'Keen Eye',
+    passiveDescription: 'Can see enemy stats and weaknesses',
+  },
+  shark: {
+    name: 'Shark',
+    category: 'real',
+    baseStats: { hp: 28, attack: 18, defense: 10, speed: 10, special: 4 },
+    passiveAbility: 'Blood Frenzy',
+    passiveDescription: '+30% damage against wounded enemies',
+  },
+  frog: {
+    name: 'Frog',
+    category: 'real',
+    baseStats: { hp: 16, attack: 7, defense: 6, speed: 15, special: 16 },
+    passiveAbility: 'Amphibious',
+    passiveDescription: 'Immune to water hazards, +20% water damage',
+  },
+  jellyfish: {
+    name: 'Jellyfish',
+    category: 'real',
+    baseStats: { hp: 12, attack: 6, defense: 3, speed: 8, special: 21 },
+    passiveAbility: 'Stinging Tendrils',
+    passiveDescription: 'Attackers take damage when hitting',
+  },
+};
+
+// ============= MONSTER (COMBINED) =============
+export interface MonsterStats {
+  maxHp: number;
+  currentHp: number;
+  attack: number;
+  defense: number;
+  speed: number;
+  special: number;
+}
+
+export interface Monster {
+  id: string;
+  species: SpeciesType;
+  class: ClassType;
+  element: ElementType;
+  level: number;
+  stats: MonsterStats;
+  name: string;
+}
+
+// ============= MOVES/ABILITIES =============
+export type MoveCategory = 'physical' | 'special' | 'status';
+
+export interface Move {
+  id: string;
+  name: string;
+  description: string;
+  category: MoveCategory;
+  power: number;
+  accuracy: number;
+  cost: number; // Energy/MP cost
+  source: 'species' | 'class' | 'element';
+  sourceId: string;
+}
+
+// ============= DUNGEON =============
+export type TileType = 'floor' | 'wall' | 'door' | 'stairs' | 'trap' | 'treasure' | 'enemy' | 'player';
+
+export interface DungeonTile {
+  type: TileType;
+  explored: boolean;
+  visible: boolean;
+  enemyId?: string;
+}
+
+export interface Position {
+  x: number;
+  y: number;
+}
+
+// ============= GAME STATE =============
+export type GamePhase = 'main_menu' | 'character_select' | 'dungeon' | 'battle' | 'victory' | 'defeat' | 'run_summary';
+
+export interface BattleState {
+  playerMonster: Monster;
+  enemyMonster: Monster;
+  turn: 'player' | 'enemy';
+  turnNumber: number;
+  log: string[];
+}
+
+export interface DungeonState {
+  floor: number;
+  tiles: DungeonTile[][];
+  playerPosition: Position;
+  enemies: Monster[];
+  width: number;
+  height: number;
+}
+
+export interface RunState {
+  currentMonster: Monster;
+  dungeon: DungeonState | null;
+  battle: BattleState | null;
+  gold: number;
+  itemsCollected: string[];
+  enemiesDefeated: number;
+}
+
+export interface SaveData {
+  unlockedSpecies: SpeciesType[];
+  highestFloor: number;
+  totalRuns: number;
+  totalEnemiesDefeated: number;
+}
+
+export interface GameState {
+  phase: GamePhase;
+  run: RunState | null;
+  saveData: SaveData;
+}

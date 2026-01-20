@@ -57,6 +57,37 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Element colors
+        element: {
+          fire: "hsl(var(--element-fire))",
+          water: "hsl(var(--element-water))",
+          earth: "hsl(var(--element-earth))",
+          air: "hsl(var(--element-air))",
+          void: "hsl(var(--element-void))",
+        },
+        // Class colors
+        class: {
+          kinetic: "hsl(var(--class-kinetic))",
+          energy: "hsl(var(--class-energy))",
+          biological: "hsl(var(--class-biological))",
+          chemical: "hsl(var(--class-chemical))",
+          political: "hsl(var(--class-political))",
+        },
+        // Stat colors
+        stat: {
+          hp: "hsl(var(--stat-hp))",
+          attack: "hsl(var(--stat-attack))",
+          defense: "hsl(var(--stat-defense))",
+          speed: "hsl(var(--stat-speed))",
+          special: "hsl(var(--stat-special))",
+        },
+        // Dungeon tile colors
+        tile: {
+          floor: "hsl(var(--tile-floor))",
+          wall: "hsl(var(--tile-wall))",
+          explored: "hsl(var(--tile-explored))",
+          visible: "hsl(var(--tile-visible))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -80,10 +111,27 @@ export default {
             height: "0",
           },
         },
+        "pulse-glow": {
+          "0%, 100%": {
+            opacity: "1",
+            transform: "scale(1)",
+          },
+          "50%": {
+            opacity: "0.8",
+            transform: "scale(1.05)",
+          },
+        },
+        "shake": {
+          "0%, 100%": { transform: "translateX(0)" },
+          "25%": { transform: "translateX(-5px)" },
+          "75%": { transform: "translateX(5px)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
+        "shake": "shake 0.3s ease-in-out",
       },
     },
   },

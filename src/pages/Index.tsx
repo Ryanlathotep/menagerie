@@ -4,11 +4,9 @@ import { Card } from '@/components/ui/card';
 import { SPECIES_DATA, SpeciesType, ClassType, ElementType } from '@/game/types';
 import { createMonster } from '@/game/utils';
 import { generateDungeon, movePlayer, removeEnemy } from '@/game/dungeon';
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback } from 'react';
 import { MonsterSprite } from '@/game/sprites';
 import { DungeonRenderer } from '@/game/DungeonRenderer';
-import { CharacterSheet, createFullMonster, FullMonster } from '@/game/CharacterSheet';
-import { InventoryUI, QuickItemBar, createStarterInventory, Inventory, removeItemFromInventory, applyItemEffect, ITEMS } from '@/game/Inventory';
 
 // Main Menu Component
 function MainMenu() {
@@ -130,7 +128,7 @@ function DungeonView() {
 
   return (
     <div className="game-container">
-      <div className="flex gap-4 items-start">
+      <div className="flex flex-col lg:flex-row gap-4 items-start">
         {/* Dungeon grid */}
         <DungeonRenderer 
           dungeon={dungeon} 
@@ -138,7 +136,7 @@ function DungeonView() {
         />
         
         {/* Side panel */}
-        <div className="space-y-3 w-64">
+        <div className="space-y-3 w-full lg:w-64">
           <Card className="p-3">
             <div className="flex items-center gap-2">
               <MonsterSprite 
@@ -155,8 +153,10 @@ function DungeonView() {
             </div>
             <div className="mt-2 text-xs text-primary font-mono">💰 {state.run?.gold}</div>
           </Card>
+        </div>
       </div>
 
+      {/* Mobile controls */}
       <div className="grid grid-cols-3 gap-2 w-32 mx-auto sm:hidden mt-4">
         <div />
         <Button size="sm" onClick={() => handleMove('up')}>↑</Button>
@@ -223,7 +223,15 @@ function BattleView() {
         {/* Enemy */}
         <Card className="p-4">
           <div className="flex justify-between items-center mb-2">
-            <span className="font-semibold">{battle.enemyMonster.name}</span>
+            <div className="flex items-center gap-2">
+              <MonsterSprite 
+                species={battle.enemyMonster.species}
+                element={battle.enemyMonster.element}
+                classType={battle.enemyMonster.class}
+                size={48}
+              />
+              <span className="font-semibold">{battle.enemyMonster.name}</span>
+            </div>
             <span className={`element-badge element-${battle.enemyMonster.element}`}>
               {battle.enemyMonster.element}
             </span>
@@ -240,7 +248,15 @@ function BattleView() {
         {/* Player */}
         <Card className="p-4 border-primary">
           <div className="flex justify-between items-center mb-2">
-            <span className="font-semibold">{battle.playerMonster.name}</span>
+            <div className="flex items-center gap-2">
+              <MonsterSprite 
+                species={battle.playerMonster.species}
+                element={battle.playerMonster.element}
+                classType={battle.playerMonster.class}
+                size={48}
+              />
+              <span className="font-semibold">{battle.playerMonster.name}</span>
+            </div>
             <span className={`element-badge element-${battle.playerMonster.element}`}>
               {battle.playerMonster.element}
             </span>
@@ -281,25 +297,6 @@ function RunSummary() {
       </Card>
     </div>
   );
-}
-
-// Helper functions
-function getSpeciesEmoji(species: SpeciesType): string {
-  const emojis: Record<SpeciesType, string> = {
-    slime: '🟢', skeleton: '💀', goblin: '👺', mushroom: '🍄', ghost: '👻',
-    imp: '😈', golem: '🗿', wisp: '✨', chimera: '🦁', dragon: '🐉',
-    rat: '🐀', spider: '🕷️', bat: '🦇', snake: '🐍', wolf: '🐺',
-    beetle: '🪲', crow: '🐦‍⬛', shark: '🦈', frog: '🐸', jellyfish: '🪼',
-  };
-  return emojis[species];
-}
-
-function getTileContent(type: string): string {
-  const tiles: Record<string, string> = {
-    player: '👤', enemy: '👾', wall: '', floor: '·',
-    stairs: '🚪', treasure: '💎', door: '🚪', trap: '⚠️',
-  };
-  return tiles[type] || '';
 }
 
 // Game Component

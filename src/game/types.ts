@@ -241,13 +241,17 @@ export interface Move {
 }
 
 // ============= DUNGEON =============
-export type TileType = 'floor' | 'wall' | 'door' | 'stairs' | 'trap' | 'treasure' | 'enemy' | 'player';
+export type TileType = 'floor' | 'wall' | 'door' | 'stairs' | 'trap' | 'treasure' | 'enemy' | 'player' | 'shop';
+export type TrapType = 'spike' | 'poison' | 'alarm';
 
 export interface DungeonTile {
   type: TileType;
   explored: boolean;
   visible: boolean;
   enemyId?: string;
+  lootId?: string;
+  trapType?: TrapType;
+  triggered?: boolean; // For traps that have been triggered
 }
 
 export interface Position {

@@ -14,11 +14,12 @@ const TILE_VISUALS: Record<TileType, { bg: string; content: string; glow?: strin
   floor: { bg: 'bg-tile-floor', content: '' },
   wall: { bg: 'bg-tile-wall', content: '' },
   door: { bg: 'bg-tile-floor', content: '🚪' },
-  stairs: { bg: 'bg-gradient-to-br from-amber-200 to-yellow-300', content: '✨', glow: 'shadow-lg shadow-amber-300/50' },
-  trap: { bg: 'bg-red-100', content: '⚠️' },
+  stairs: { bg: 'bg-gradient-to-br from-amber-200 to-yellow-300', content: '⬇️', glow: 'shadow-lg shadow-amber-300/50' },
+  trap: { bg: 'bg-red-200/80', content: '⚠️' },
   treasure: { bg: 'bg-gradient-to-br from-yellow-100 to-amber-200', content: '💎', glow: 'shadow-lg shadow-yellow-300/50' },
   enemy: { bg: 'bg-tile-visible', content: '' },
   player: { bg: 'bg-gradient-to-br from-pink-200 to-primary/30', content: '' },
+  shop: { bg: 'bg-gradient-to-br from-green-200 to-emerald-300', content: '🏪', glow: 'shadow-lg shadow-green-300/50' },
 };
 
 // Wall texture patterns - softer anime style

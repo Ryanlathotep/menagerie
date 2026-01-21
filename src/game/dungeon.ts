@@ -1,10 +1,29 @@
 // Dungeon generation and management
 
-import { DungeonState, DungeonTile, Position, Monster, SpeciesType } from './types';
+import { DungeonState, DungeonTile, Position, Monster, SpeciesType, TrapType } from './types';
 import { generateRandomMonster } from './utils';
 
-const DUNGEON_WIDTH = 20;
-const DUNGEON_HEIGHT = 15;
+// Larger dungeons with scrolling viewport
+const DUNGEON_WIDTH = 30;
+const DUNGEON_HEIGHT = 25;
+
+// Item types for loot
+export interface LootItem {
+  id: string;
+  name: string;
+  type: 'potion' | 'equipment' | 'gold';
+  value: number;
+  effect?: string;
+}
+
+export const LOOT_TABLE: LootItem[] = [
+  { id: 'health_potion', name: 'Health Potion', type: 'potion', value: 20, effect: 'heal_30' },
+  { id: 'stamina_potion', name: 'Stamina Potion', type: 'potion', value: 15, effect: 'stamina_20' },
+  { id: 'antidote', name: 'Antidote', type: 'potion', value: 10, effect: 'cure_poison' },
+  { id: 'power_berry', name: 'Power Berry', type: 'potion', value: 25, effect: 'boost_attack' },
+  { id: 'gold_coin', name: 'Gold Coins', type: 'gold', value: 15 },
+  { id: 'gold_pile', name: 'Gold Pile', type: 'gold', value: 30 },
+];
 
 // Simple room-based dungeon generation
 export function generateDungeon(floor: number): DungeonState {
@@ -125,7 +144,7 @@ export function generateDungeon(floor: number): DungeonState {
   }
 
   // Place some treasure
-  const numTreasure = 1 + Math.floor(Math.random() * 3);
+  const numTreasure = 2 + Math.floor(Math.random() * 3) + Math.floor(floor / 2);
   for (let i = 0; i < numTreasure; i++) {
     let placed = false;
     let attempts = 0;
@@ -137,9 +156,41 @@ export function generateDungeon(floor: number): DungeonState {
 
       if (tiles[ty][tx].type === 'floor') {
         tiles[ty][tx].type = 'treasure';
+        // Assign random loot
+        tiles[ty][tx].lootId = LOOT_TABLE[Math.floor(Math.random() * LOOT_TABLE.length)].id;
         placed = true;
       }
       attempts++;
+    }
+  }
+
+  // Place traps (more on higher floors)
+  const numTraps = Math.floor(floor / 2) + Math.floor(Math.random() * 2);
+  for (let i = 0; i < numTraps; i++) {
+    let placed = false;
+    let attempts = 0;
+    
+    while (!placed && attempts < 50) {
+      // Place traps in corridors preferably
+      const rx = 1 + Math.floor(Math.random() * (DUNGEON_WIDTH - 2));
+      const ry = 1 + Math.floor(Math.random() * (DUNGEON_HEIGHT - 2));
+
+      if (tiles[ry][rx].type === 'floor') {
+        tiles[ry][rx].type = 'trap';
+        tiles[ry][rx].trapType = ['spike', 'poison', 'alarm'][Math.floor(Math.random() * 3)] as 'spike' | 'poison' | 'alarm';
+        placed = true;
+      }
+      attempts++;
+    }
+  }
+
+  // Place a shop room every 3 floors
+  if (floor % 3 === 0 && rooms.length > 2) {
+    const shopRoom = rooms[Math.floor(rooms.length / 2)]; // Middle room
+    const shopX = shopRoom.x + Math.floor(shopRoom.width / 2);
+    const shopY = shopRoom.y + Math.floor(shopRoom.height / 2);
+    if (tiles[shopY][shopX].type === 'floor') {
+      tiles[shopY][shopX].type = 'shop';
     }
   }
 
@@ -195,11 +246,22 @@ export function updateVisibility(tiles: DungeonTile[][], position: Position, ran
   }
 }
 
+// Move result with all possible events
+export interface MoveResult {
+  dungeon: DungeonState;
+  encounter: Monster | null;
+  treasure: boolean;
+  stairs: boolean;
+  trap: { type: TrapType; damage?: number } | null;
+  shop: boolean;
+  loot: LootItem | null;
+}
+
 // Move player in dungeon
 export function movePlayer(
   dungeon: DungeonState, 
   direction: 'up' | 'down' | 'left' | 'right'
-): { dungeon: DungeonState; encounter: Monster | null; treasure: boolean; stairs: boolean } {
+): MoveResult {
   const { playerPosition, tiles, enemies } = dungeon;
   
   const dx = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
@@ -210,14 +272,14 @@ export function movePlayer(
 
   // Check bounds
   if (newX < 0 || newX >= dungeon.width || newY < 0 || newY >= dungeon.height) {
-    return { dungeon, encounter: null, treasure: false, stairs: false };
+    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, shop: false, loot: null };
   }
 
   const targetTile = tiles[newY][newX];
   
   // Can't move into walls
   if (targetTile.type === 'wall') {
-    return { dungeon, encounter: null, treasure: false, stairs: false };
+    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, shop: false, loot: null };
   }
 
   // Create new tiles array
@@ -229,14 +291,27 @@ export function movePlayer(
   let encounter: Monster | null = null;
   let treasure = false;
   let stairs = false;
+  let trap: { type: TrapType; damage?: number } | null = null;
+  let shop = false;
+  let loot: LootItem | null = null;
 
   // Handle different tile types
   if (targetTile.type === 'enemy' && targetTile.enemyId) {
     encounter = enemies.find(e => e.id === targetTile.enemyId) || null;
   } else if (targetTile.type === 'treasure') {
     treasure = true;
+    if (targetTile.lootId) {
+      loot = LOOT_TABLE.find(l => l.id === targetTile.lootId) || null;
+    }
   } else if (targetTile.type === 'stairs') {
     stairs = true;
+  } else if (targetTile.type === 'trap' && !targetTile.triggered) {
+    const trapType = targetTile.trapType || 'spike';
+    const damage = trapType === 'spike' ? 10 + Math.floor(dungeon.floor * 2) : 0;
+    trap = { type: trapType, damage };
+    newTiles[newY][newX].triggered = true;
+  } else if (targetTile.type === 'shop') {
+    shop = true;
   }
 
   // Set new position
@@ -254,6 +329,9 @@ export function movePlayer(
     encounter,
     treasure,
     stairs,
+    trap,
+    shop,
+    loot,
   };
 }
 

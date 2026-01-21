@@ -1,11 +1,11 @@
 // Game Sidebar - Always visible menu with panels
 
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { User, Backpack, Map, DoorOpen, Swords, Heart, Zap, Shield, Wind, Target, Footprints } from 'lucide-react';
+import { User, Backpack, Map, DoorOpen, Swords, Shield, Wind, Target, Footprints } from 'lucide-react';
 import { Monster, SPECIES_DATA } from './types';
 import { MonsterSprite } from './sprites';
 import { getMonsterMoves, getAspectBadges, Move } from './moves';
@@ -22,7 +22,7 @@ interface GameSidebarProps {
   expandedStats?: ExpandedStats;
 }
 
-export function GameSidebar({ 
+export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({ 
   monster, 
   gold, 
   floor, 
@@ -31,7 +31,7 @@ export function GameSidebar({
   experience = 0,
   experienceToNext = 100,
   expandedStats,
-}: GameSidebarProps) {
+}, ref) => {
   const [activePanel, setActivePanel] = useState<'character' | 'inventory' | 'moves' | null>(null);
   
   if (!monster) return null;
@@ -52,7 +52,7 @@ export function GameSidebar({
   return (
     <>
       {/* Always visible mini sidebar */}
-      <div className="fixed left-0 top-0 h-full w-16 bg-card border-r-2 border-primary/20 flex flex-col items-center py-4 gap-3 z-50 shadow-lg">
+      <div ref={ref} className="fixed left-0 top-0 h-full w-16 bg-card border-r-2 border-primary/20 flex flex-col items-center py-4 gap-3 z-50 shadow-lg">
         {/* Monster portrait */}
         <div className="relative">
           <MonsterSprite 
@@ -299,7 +299,9 @@ export function GameSidebar({
       )}
     </>
   );
-}
+});
+
+GameSidebar.displayName = 'GameSidebar';
 
 function StatRow({ 
   icon, 

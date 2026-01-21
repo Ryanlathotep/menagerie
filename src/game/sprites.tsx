@@ -1,6 +1,7 @@
 // Layered Monster Sprite System
 // Species = base shape/outline, Element = color palette, Class = equipment overlay
 
+import React, { forwardRef } from 'react';
 import { SpeciesType, ElementType, ClassType, ELEMENT_COLORS } from './types';
 
 // SVG path data for each species (simplified silhouettes)
@@ -126,14 +127,14 @@ interface MonsterSpriteProps {
   animated?: boolean;
 }
 
-export function MonsterSprite({ 
+export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({ 
   species, 
   element, 
   classType, 
   size = 64,
   className = '',
   animated = true,
-}: MonsterSpriteProps) {
+}, ref) => {
   const colors = ELEMENT_COLORS[element];
   const paths = SPECIES_PATHS[species];
   const overlay = CLASS_OVERLAYS[classType];
@@ -146,6 +147,7 @@ export function MonsterSprite({
 
   return (
     <svg 
+      ref={ref}
       width={size} 
       height={size} 
       viewBox="0 0 100 100" 
@@ -218,7 +220,9 @@ export function MonsterSprite({
       )}
     </svg>
   );
-}
+});
+
+MonsterSprite.displayName = 'MonsterSprite';
 
 // Compact sprite for dungeon tiles
 export function MonsterSpriteSmall({ 

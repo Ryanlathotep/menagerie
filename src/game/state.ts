@@ -9,13 +9,24 @@ import {
   DungeonState,
   BattleState,
   SpeciesType,
+  UnlockedMonster,
   getComboId 
 } from './types';
 
+// Starting monster - Biological Water Slime
+const STARTER_MONSTER = {
+  comboId: 'slime_water_biological',
+  species: 'slime' as SpeciesType,
+  element: 'water' as const,
+  classType: 'biological' as const,
+  level: 1,
+};
+
 // Initial save data (stored in localStorage)
 const DEFAULT_SAVE_DATA: SaveData = {
-  unlockedSpecies: ['slime'], // Start with slime unlocked
-  unlockedCombos: [],         // Start with no specific combos
+  unlockedSpecies: ['slime'], // Keep for backwards compat
+  unlockedCombos: ['slime_water_biological'], // Legacy
+  unlockedMonsters: [STARTER_MONSTER], // Start with biological water slime
   highestFloor: 0,
   totalRuns: 0,
   totalEnemiesDefeated: 0,
@@ -40,6 +51,7 @@ type GameAction =
   | { type: 'END_BATTLE'; victory: boolean }
   | { type: 'UNLOCK_SPECIES'; species: SpeciesType }
   | { type: 'UNLOCK_COMBO'; comboId: string }
+  | { type: 'UNLOCK_MONSTER'; monster: UnlockedMonster }
   | { type: 'UPDATE_PLAYER_MONSTER'; monster: Monster }
   | { type: 'ADD_GOLD'; amount: number }
   | { type: 'ADD_XP'; amount: number }
@@ -161,6 +173,34 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         saveData: {
           ...state.saveData,
           unlockedCombos: [...state.saveData.unlockedCombos, action.comboId],
+        },
+      };
+    
+    case 'UNLOCK_MONSTER':
+      // Check if already unlocked at same or higher level
+      const existingIndex = state.saveData.unlockedMonsters.findIndex(
+        m => m.comboId === action.monster.comboId
+      );
+      if (existingIndex !== -1) {
+        // Update level if new level is higher
+        if (action.monster.level > state.saveData.unlockedMonsters[existingIndex].level) {
+          const updatedMonsters = [...state.saveData.unlockedMonsters];
+          updatedMonsters[existingIndex] = action.monster;
+          return {
+            ...state,
+            saveData: {
+              ...state.saveData,
+              unlockedMonsters: updatedMonsters,
+            },
+          };
+        }
+        return state;
+      }
+      return {
+        ...state,
+        saveData: {
+          ...state.saveData,
+          unlockedMonsters: [...state.saveData.unlockedMonsters, action.monster],
         },
       };
       

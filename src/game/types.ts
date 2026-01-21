@@ -299,9 +299,18 @@ export function getComboId(combo: MonsterCombo): string {
   return `${combo.species}_${combo.element}_${combo.classType}`;
 }
 
+export interface UnlockedMonster {
+  comboId: string;
+  species: SpeciesType;
+  element: ElementType;
+  classType: ClassType;
+  level: number; // Level when defeated
+}
+
 export interface SaveData {
   unlockedSpecies: SpeciesType[]; // Keep for backwards compat - starts with slime
-  unlockedCombos: string[];       // NEW: specific combos unlocked (e.g. "slime_fire_kinetic")
+  unlockedCombos: string[];       // Legacy - specific combos unlocked (e.g. "slime_fire_kinetic")
+  unlockedMonsters: UnlockedMonster[]; // NEW: full unlock data with levels
   highestFloor: number;
   totalRuns: number;
   totalEnemiesDefeated: number;

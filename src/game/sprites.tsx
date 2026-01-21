@@ -4,118 +4,146 @@
 import React, { forwardRef } from 'react';
 import { SpeciesType, ElementType, ClassType, ELEMENT_COLORS } from './types';
 
-// SVG path data for each species (simplified silhouettes)
-const SPECIES_PATHS: Record<SpeciesType, { body: string; detail?: string }> = {
+// SVG path data for each species - now more recognizable
+const SPECIES_PATHS: Record<SpeciesType, { body: string; detail?: string; outline?: string }> = {
   // Fantasy creatures
   slime: {
-    body: 'M50,80 C20,80 10,60 15,45 C20,25 35,15 50,15 C65,15 80,25 85,45 C90,60 80,80 50,80',
-    detail: 'M35,40 A4,4 0 1,1 35.01,40 M55,40 A4,4 0 1,1 55.01,40',
+    body: 'M50,85 C15,85 5,60 10,40 C15,20 30,10 50,10 C70,10 85,20 90,40 C95,60 85,85 50,85',
+    detail: 'M32,38 A6,6 0 1,1 32.01,38 M58,38 A6,6 0 1,1 58.01,38 M40,55 Q50,65 60,55',
   },
   skeleton: {
-    body: 'M50,10 A10,10 0 1,1 50,30 A10,10 0 1,1 50,10 M45,30 L45,55 M55,30 L55,55 M40,35 L30,50 M60,35 L70,50 M45,55 L45,80 M55,55 L55,80 M45,80 L40,90 M55,80 L60,90',
+    // Skull and ribcage visible
+    body: 'M50,8 A14,14 0 1,1 50,36 A14,14 0 1,1 50,8',
+    detail: 'M42,20 A3,3 0 1,1 42,21 M58,20 A3,3 0 1,1 58,21 M50,28 L50,32 M44,30 L56,30 M40,40 L40,65 L42,65 L42,45 L48,45 L48,65 L52,65 L52,45 L58,45 L58,65 L60,65 L60,40 M40,55 L60,55 M40,65 L35,85 M60,65 L65,85 M45,65 L45,85 M55,65 L55,85',
+    outline: 'M35,36 L35,70 L65,70 L65,36',
   },
   goblin: {
-    body: 'M50,15 Q65,10 60,25 L55,30 L55,45 L65,60 L55,75 L45,75 L35,60 L45,45 L45,30 L40,25 Q35,10 50,15',
-    detail: 'M42,35 L38,30 M58,35 L62,30',
+    // Pointy ears, big nose
+    body: 'M50,25 Q65,25 65,45 L65,70 L55,85 L45,85 L35,70 L35,45 Q35,25 50,25',
+    detail: 'M25,20 L35,35 L30,40 M75,20 L65,35 L70,40 M42,42 A4,4 0 1,1 42,43 M58,42 A4,4 0 1,1 58,43 M50,50 L50,58 L45,62 M40,70 L60,70',
   },
   mushroom: {
-    body: 'M50,20 Q70,20 75,35 Q80,50 60,55 L60,80 L40,80 L40,55 Q20,50 25,35 Q30,20 50,20',
-    detail: 'M35,30 A3,3 0 1,1 35,31 M55,28 A4,4 0 1,1 55,29 M62,38 A2,2 0 1,1 62,39',
+    // Clear mushroom cap
+    body: 'M50,10 Q85,10 85,35 Q85,50 50,55 Q15,50 15,35 Q15,10 50,10',
+    detail: 'M35,25 A5,5 0 1,1 35,26 M55,20 A7,7 0 1,1 55,21 M68,30 A4,4 0 1,1 68,31 M42,55 L42,85 L58,85 L58,55',
+    outline: 'M42,55 L42,85 L58,85 L58,55',
   },
   ghost: {
-    body: 'M50,15 Q75,15 75,40 L75,70 Q70,65 65,70 Q60,75 55,70 Q50,75 45,70 Q40,75 35,70 Q30,65 25,70 L25,40 Q25,15 50,15',
-    detail: 'M40,35 A4,4 0 1,1 40.01,35 M60,35 A4,4 0 1,1 60.01,35',
+    // Classic ghost shape with wavy bottom
+    body: 'M50,10 Q80,10 80,40 L80,70 Q75,65 70,70 Q65,75 60,70 Q55,75 50,70 Q45,75 40,70 Q35,75 30,70 Q25,65 20,70 L20,40 Q20,10 50,10',
+    detail: 'M35,35 A8,8 0 1,1 35.01,35 M55,35 A8,8 0 1,1 55.01,35 M38,35 A3,3 0 1,1 38,36 M58,35 A3,3 0 1,1 58,36',
   },
   imp: {
-    body: 'M50,10 L60,5 L55,15 L50,20 L45,15 L40,5 L50,10 M50,20 Q60,25 55,40 L55,55 L60,70 L55,85 L50,70 L45,85 L40,70 L45,55 L45,40 Q40,25 50,20',
-    detail: 'M35,35 L30,25 M65,35 L70,25',
+    // Wings and horns
+    body: 'M50,30 Q60,30 60,45 L60,65 L55,80 L45,80 L40,65 L40,45 Q40,30 50,30',
+    detail: 'M40,15 L45,30 L50,20 L55,30 L60,15 M25,40 Q15,30 20,50 Q15,60 30,55 L40,45 M75,40 Q85,30 80,50 Q85,60 70,55 L60,45 M45,42 A3,3 0 1,1 45,43 M55,42 A3,3 0 1,1 55,43 M45,55 L55,55',
   },
   golem: {
-    body: 'M35,15 L65,15 L70,25 L70,50 L75,55 L75,85 L60,85 L60,60 L55,55 L55,85 L45,85 L45,55 L40,60 L40,85 L25,85 L25,55 L30,50 L30,25 L35,15',
+    // Blocky rock creature
+    body: 'M30,15 L70,15 L75,30 L75,55 L70,60 L70,85 L55,85 L55,60 L45,60 L45,85 L30,85 L30,60 L25,55 L25,30 L30,15',
+    detail: 'M38,30 A5,5 0 1,1 38,31 M62,30 A5,5 0 1,1 62,31 M35,45 L45,45 M55,45 L65,45 M40,55 L60,55',
   },
   wisp: {
-    body: 'M50,30 A15,15 0 1,1 50.01,30 M50,45 Q60,55 55,70 Q50,85 45,70 Q40,55 50,45',
-    detail: 'M40,25 L35,15 M60,25 L65,15 M45,30 A2,2 0 1,1 45,31 M55,30 A2,2 0 1,1 55,31',
+    // Glowing orb with trailing flames
+    body: 'M50,25 A18,18 0 1,1 50.01,25',
+    detail: 'M50,43 Q60,55 55,70 Q50,85 45,70 Q40,55 50,43 M35,35 Q25,25 30,40 M65,35 Q75,25 70,40 M42,28 A4,4 0 1,1 42,29 M58,28 A4,4 0 1,1 58,29',
   },
   chimera: {
-    body: 'M30,20 Q25,10 35,15 L40,25 M70,20 Q75,10 65,15 L60,25 M50,20 Q55,10 50,5 Q45,10 50,20 M40,25 L40,45 L30,55 L30,80 M60,25 L60,45 L70,55 L70,80 M45,45 L45,80 L55,80 L55,45',
-    detail: 'M35,30 A2,2 0 1,1 35,31 M65,30 A2,2 0 1,1 65,31 M50,25 A2,2 0 1,1 50,26',
+    // Multiple heads hint
+    body: 'M50,30 Q60,25 60,40 L60,55 L65,65 L65,85 L55,85 L55,60 L45,60 L45,85 L35,85 L35,65 L40,55 L40,40 Q40,25 50,30',
+    detail: 'M30,20 Q20,10 25,25 L35,35 M70,20 Q80,10 75,25 L65,35 M50,15 Q55,5 50,10 Q45,5 50,15 M42,38 A3,3 0 1,1 42,39 M58,38 A3,3 0 1,1 58,39 M35,25 A3,3 0 1,1 35,26 M65,25 A3,3 0 1,1 65,26',
   },
   dragon: {
-    body: 'M50,10 Q70,10 70,30 L75,40 L70,45 L70,60 L80,80 L65,75 L55,85 L50,80 L45,85 L35,75 L20,80 L30,60 L30,45 L25,40 L30,30 Q30,10 50,10',
-    detail: 'M35,25 Q30,20 30,30 M65,25 Q70,20 70,30 M40,30 A2,2 0 1,1 40,31 M55,30 A2,2 0 1,1 55,31',
+    // Wings and snout
+    body: 'M50,15 Q70,15 70,35 L68,45 L70,55 L70,70 L55,85 L45,85 L30,70 L30,55 L32,45 L30,35 Q30,15 50,15',
+    detail: 'M15,30 Q10,20 20,40 Q10,60 30,50 M85,30 Q90,20 80,40 Q90,60 70,50 M40,30 A4,4 0 1,1 40,31 M55,30 A4,4 0 1,1 55,31 M50,40 L50,48 M45,55 L55,55 M48,55 L45,62 M52,55 L55,62 M30,15 L25,5 M70,15 L75,5',
   },
-  // Real creatures
+  // Real creatures  
   rat: {
-    body: 'M50,20 Q65,15 70,25 L65,35 L65,50 L75,60 L75,75 L60,70 L50,75 L40,70 L25,75 L25,60 L35,50 L35,35 L30,25 Q35,15 50,20',
-    detail: 'M20,25 Q15,20 25,25 M80,25 Q85,20 75,25 M40,30 A2,2 0 1,1 40,31 M55,30 A2,2 0 1,1 55,31',
+    // Long tail, big ears
+    body: 'M45,30 Q60,25 65,40 L65,55 L60,70 L45,75 L30,70 L25,55 L25,40 Q30,25 45,30',
+    detail: 'M20,25 Q10,15 15,35 L25,40 M55,25 Q60,15 58,35 L55,40 M35,45 A3,3 0 1,1 35,46 M50,45 A3,3 0 1,1 50,46 M42,55 L45,60 M70,50 Q80,55 90,50 Q95,55 90,60',
   },
   spider: {
-    body: 'M50,35 A15,12 0 1,1 50.01,35 M50,50 A10,8 0 1,1 50.01,50',
-    detail: 'M35,35 L20,20 M30,40 L10,45 M30,50 L15,65 M35,55 L25,75 M65,35 L80,20 M70,40 L90,45 M70,50 L85,65 M65,55 L75,75',
+    // Eight legs clearly visible
+    body: 'M50,35 A15,12 0 1,1 50.01,35',
+    detail: 'M50,47 A12,10 0 1,1 50.01,47 M35,35 L15,15 M30,40 L5,40 M30,50 L10,65 M35,55 L20,80 M65,35 L85,15 M70,40 L95,40 M70,50 L90,65 M65,55 L80,80 M45,33 A2,2 0 1,1 45,34 M55,33 A2,2 0 1,1 55,34',
   },
   bat: {
-    body: 'M50,30 A8,8 0 1,1 50.01,30 M50,45 L50,70 M50,45 L30,25 L20,35 L25,55 L40,50 M50,45 L70,25 L80,35 L75,55 L60,50',
-    detail: 'M45,28 A2,2 0 1,1 45,29 M55,28 A2,2 0 1,1 55,29',
+    // Large wing span
+    body: 'M50,25 A10,10 0 1,1 50.01,25',
+    detail: 'M50,35 L50,60 M15,20 L25,35 L20,50 L35,55 L45,40 L50,35 M85,20 L75,35 L80,50 L65,55 L55,40 L50,35 M15,20 L10,15 M85,20 L90,15 M25,35 L20,30 M75,35 L80,30 M46,22 A3,3 0 1,1 46,23 M54,22 A3,3 0 1,1 54,23 M47,30 L50,35 L53,30',
   },
   snake: {
-    body: 'M50,15 Q70,15 70,30 Q70,45 50,50 Q30,55 30,70 Q30,85 50,85 Q60,85 60,80',
-    detail: 'M45,22 A2,2 0 1,1 45,23 M55,22 A2,2 0 1,1 55,23 M52,28 L58,35 M48,28 L52,35',
+    // Coiled serpent
+    body: 'M50,15 Q75,15 75,30 Q75,45 55,50 Q35,55 35,70 Q35,85 55,85 Q65,85 65,78',
+    detail: 'M42,22 A3,3 0 1,1 42,23 M58,22 A3,3 0 1,1 58,23 M48,28 L44,35 M52,28 L56,35 M50,30 L50,35',
   },
   wolf: {
-    body: 'M50,15 Q60,10 65,15 L60,25 L60,35 L65,45 L70,65 L60,80 L50,75 L40,80 L30,65 L35,45 L40,35 L40,25 L35,15 Q40,10 50,15',
-    detail: 'M35,15 L30,5 M65,15 L70,5 M42,28 A2,2 0 1,1 42,29 M58,28 A2,2 0 1,1 58,29',
+    // Pointed ears, snout
+    body: 'M50,25 Q68,20 70,40 L70,55 L65,75 L55,85 L45,85 L35,75 L30,55 L30,40 Q32,20 50,25',
+    detail: 'M28,15 L35,30 L40,25 M72,15 L65,30 L60,25 M40,40 A4,4 0 1,1 40,41 M60,40 A4,4 0 1,1 60,41 M50,50 L50,58 L45,62 L55,62 L50,58 M42,70 L58,70',
   },
   beetle: {
-    body: 'M50,15 Q70,15 75,35 L75,60 Q75,80 50,80 Q25,80 25,60 L25,35 Q30,15 50,15',
-    detail: 'M50,15 L50,80 M35,25 L30,15 M65,25 L70,15 M40,35 A3,3 0 1,1 40,36 M60,35 A3,3 0 1,1 60,36',
+    // Hard shell, antennae
+    body: 'M50,20 Q75,20 80,45 L80,65 Q80,85 50,85 Q20,85 20,65 L20,45 Q25,20 50,20',
+    detail: 'M50,20 L50,85 M35,20 L28,8 L25,12 M65,20 L72,8 L75,12 M38,40 A5,5 0 1,1 38,41 M62,40 A5,5 0 1,1 62,41',
   },
   crow: {
-    body: 'M50,20 Q60,15 60,25 L55,35 L55,50 L65,60 L60,75 L50,80 L40,75 L35,60 L45,50 L45,35 L40,25 Q40,15 50,20',
-    detail: 'M40,25 L30,20 L35,30 M60,25 L70,20 L65,30 M50,30 L50,45',
+    // Beak, wing hints
+    body: 'M50,25 Q65,20 65,40 L65,60 L55,80 L45,80 L35,60 L35,40 Q35,20 50,25',
+    detail: 'M35,35 L20,30 L25,40 L35,42 M65,35 L80,30 L75,40 L65,42 M50,35 L50,50 L40,55 M42,30 A3,3 0 1,1 42,31 M58,30 A3,3 0 1,1 58,31',
   },
   shark: {
-    body: 'M20,50 Q30,35 50,35 Q70,35 85,50 Q80,55 70,55 L60,70 L50,55 L40,55 L30,55 Q20,55 20,50',
-    detail: 'M50,25 L50,35 M35,45 A2,2 0 1,1 35,46 M25,50 L20,55 L30,52 L25,57 L35,50',
+    // Dorsal fin, streamlined
+    body: 'M15,50 Q25,35 50,35 Q75,35 90,50 Q85,58 75,58 L65,55 L50,58 L35,55 L25,58 Q15,58 15,50',
+    detail: 'M50,20 L55,35 L45,35 Z M30,48 A3,3 0 1,1 30,49 M20,52 L15,48 L25,50 L20,55 L28,52',
   },
   frog: {
-    body: 'M50,25 Q75,25 75,45 Q75,65 50,75 Q25,65 25,45 Q25,25 50,25',
-    detail: 'M35,30 A6,6 0 1,1 35,31 M65,30 A6,6 0 1,1 65,31 M20,50 L10,65 L25,60 M80,50 L90,65 L75,60',
+    // Big eyes, webbed feet
+    body: 'M50,30 Q80,30 80,55 Q80,80 50,80 Q20,80 20,55 Q20,30 50,30',
+    detail: 'M30,25 A10,10 0 1,1 30.01,25 M70,25 A10,10 0 1,1 70.01,25 M33,25 A4,4 0 1,1 33,26 M67,25 A4,4 0 1,1 67,26 M10,60 L5,75 L15,70 L10,80 L20,72 L18,60 M90,60 L95,75 L85,70 L90,80 L80,72 L82,60',
   },
   jellyfish: {
-    body: 'M50,15 Q80,15 80,40 Q80,50 50,50 Q20,50 20,40 Q20,15 50,15',
-    detail: 'M30,50 Q25,70 30,85 M40,50 Q45,75 40,90 M50,50 Q50,70 50,85 M60,50 Q55,75 60,90 M70,50 Q75,70 70,85',
+    // Dome top, trailing tentacles
+    body: 'M50,10 Q85,10 85,40 Q85,55 50,55 Q15,55 15,40 Q15,10 50,10',
+    detail: 'M25,55 Q20,70 25,90 M35,55 Q40,75 35,95 M45,55 Q45,70 45,90 M55,55 Q55,75 55,95 M65,55 Q60,75 65,90 M75,55 Q80,70 75,85 M40,30 A4,4 0 1,1 40,31 M60,30 A4,4 0 1,1 60,31',
   },
 };
 
-// Class equipment overlays
-const CLASS_OVERLAYS: Record<ClassType, { weapon?: string; armor?: string; accessory?: string }> = {
+// Class equipment overlays - now more visible with thicker strokes and fills
+const CLASS_OVERLAYS: Record<ClassType, { weapon?: string; armor?: string; accessory?: string; color: string }> = {
   kinetic: {
-    weapon: 'M75,40 L90,25 L88,27 L92,23', // Sword
-    armor: 'M40,45 L60,45 L58,55 L42,55 Z', // Chest plate
+    weapon: 'M78,25 L92,10 L95,13 L82,28 L85,31 L78,31 L78,25', // Sword
+    armor: 'M35,42 L50,38 L65,42 L62,55 L50,58 L38,55 Z', // Chest plate
+    color: '45 90% 48%', // Orange-ish for physical
   },
   energy: {
-    weapon: 'M80,35 A8,8 0 1,1 80,36', // Energy orb
-    accessory: 'M30,20 L25,10 M70,20 L75,10', // Antenna
+    weapon: 'M82,30 A10,10 0 1,1 82,31', // Energy orb
+    accessory: 'M30,15 L25,5 M35,12 L32,3 M70,15 L75,5 M65,12 L68,3', // Energy antenna
+    color: '280 80% 60%', // Purple for magical
   },
   biological: {
-    armor: 'M35,40 Q30,50 35,60 Q40,55 45,60 M65,40 Q70,50 65,60 Q60,55 55,60', // Vines
-    accessory: 'M50,10 L50,5 Q55,0 50,0 Q45,0 50,5', // Sprout
+    armor: 'M30,35 Q25,45 28,55 Q32,52 35,58 Q38,52 42,55 M70,35 Q75,45 72,55 Q68,52 65,58 Q62,52 58,55', // Vines/tentacles
+    accessory: 'M50,5 L50,0 Q58,0 55,8 Q52,5 50,10 Q48,5 45,8 Q42,0 50,0', // Flower/sprout
+    color: '120 70% 45%', // Green for biological
   },
   chemical: {
-    weapon: 'M80,50 L85,45 L90,50 L85,55 Z', // Flask shape
-    accessory: 'M25,35 Q20,30 25,25 M30,30 Q25,25 30,20', // Bubbles
+    weapon: 'M80,42 L88,35 L95,42 L88,49 Z M88,35 L88,25 A5,5 0 1,1 88,26', // Flask with bubbles
+    accessory: 'M22,30 A4,4 0 1,1 22,31 M28,22 A3,3 0 1,1 28,23 M18,40 A2,2 0 1,1 18,41', // Bubbles
+    color: '50 90% 50%', // Yellow/toxic
   },
   political: {
-    accessory: 'M50,5 L45,15 L55,15 Z', // Crown point
-    armor: 'M35,50 L30,55 L35,60 M65,50 L70,55 L65,60', // Medals
+    accessory: 'M40,3 L50,0 L60,3 L58,12 L50,8 L42,12 Z', // Crown
+    armor: 'M32,48 L28,52 L32,56 L28,60 M68,48 L72,52 L68,56 L72,60', // Medals/sash
+    color: '320 70% 55%', // Royal purple/pink
   },
 };
 
 // Element glow filter
 function getElementGlow(element: ElementType): string {
   const colors = ELEMENT_COLORS[element];
-  return `drop-shadow(0 0 4px hsl(${colors.secondary}))`;
+  return `drop-shadow(0 0 6px hsl(${colors.secondary})) drop-shadow(0 0 2px hsl(${colors.primary}))`;
 }
 
 interface MonsterSpriteProps {
@@ -141,7 +169,7 @@ export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({
   
   const fillColor = `hsl(${colors.primary})`;
   const strokeColor = `hsl(${colors.accent})`;
-  const secondaryColor = `hsl(${colors.secondary})`;
+  const classColor = `hsl(${overlay.color})`;
   
   const animationClass = animated ? 'animate-pulse-glow' : '';
 
@@ -167,10 +195,21 @@ export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({
         d={paths.body}
         fill={fillColor}
         stroke={strokeColor}
-        strokeWidth="2"
+        strokeWidth="2.5"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+      
+      {/* Species outline (if exists) */}
+      {paths.outline && (
+        <path
+          d={paths.outline}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      )}
       
       {/* Species detail (eyes, features) */}
       {paths.detail && (
@@ -183,27 +222,28 @@ export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({
         />
       )}
       
-      {/* Class weapon overlay */}
-      {overlay.weapon && (
-        <path
-          d={overlay.weapon}
-          fill="none"
-          stroke={secondaryColor}
-          strokeWidth="3"
-          strokeLinecap="round"
-          opacity="0.9"
-        />
-      )}
-      
+      {/* Class equipment - now more visible with fills and thicker strokes */}
       {/* Class armor overlay */}
       {overlay.armor && (
         <path
           d={overlay.armor}
-          fill={`hsl(${colors.secondary} / 0.4)`}
-          stroke={secondaryColor}
-          strokeWidth="1.5"
+          fill={`${classColor.replace(')', ' / 0.6)')}`}
+          stroke={classColor}
+          strokeWidth="2.5"
           strokeLinecap="round"
-          opacity="0.8"
+          strokeLinejoin="round"
+        />
+      )}
+      
+      {/* Class weapon overlay */}
+      {overlay.weapon && (
+        <path
+          d={overlay.weapon}
+          fill={`${classColor.replace(')', ' / 0.8)')}`}
+          stroke={classColor}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         />
       )}
       
@@ -211,11 +251,11 @@ export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({
       {overlay.accessory && (
         <path
           d={overlay.accessory}
-          fill="none"
-          stroke={secondaryColor}
+          fill={`${classColor.replace(')', ' / 0.7)')}`}
+          stroke={classColor}
           strokeWidth="2"
           strokeLinecap="round"
-          opacity="0.9"
+          strokeLinejoin="round"
         />
       )}
     </svg>

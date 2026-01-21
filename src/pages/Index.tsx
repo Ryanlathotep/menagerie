@@ -2,7 +2,7 @@ import { GameProvider, useGame } from '@/game/state';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SPECIES_DATA, SpeciesType, ClassType, ElementType, getComboId } from '@/game/types';
+import { SPECIES_DATA, SpeciesType, ClassType, ElementType, getComboId, UnlockedMonster } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
 import { generateDungeon, movePlayer, removeEnemy, LootItem } from '@/game/dungeon';
 import { useEffect, useCallback, useState, useRef } from 'react';
@@ -44,7 +44,7 @@ function MainMenu() {
         </div>
 
         <div className="text-sm text-muted-foreground mt-8 space-y-1">
-          <p>🔓 Unlocked: {state.saveData.unlockedCombos.length} / 500 monsters</p>
+          <p>🔓 Unlocked: {state.saveData.unlockedMonsters?.length || 1} / 500 monsters</p>
           <p>🏔️ Highest Floor: {state.saveData.highestFloor}</p>
           <p>🎮 Total Runs: {state.saveData.totalRuns}</p>
         </div>
@@ -53,19 +53,26 @@ function MainMenu() {
   );
 }
 
-// Character Select Component
+// Character Select Component - Now uses unlocked monster combos
 function CharacterSelect() {
   const { state, dispatch } = useGame();
-  const classes: ClassType[] = ['kinetic', 'energy', 'biological', 'chemical', 'political'];
-  const elements: ElementType[] = ['fire', 'water', 'earth', 'air', 'void'];
   
-  const [selectedSpecies, setSelectedSpecies] = useState<SpeciesType | null>(null);
-  const [selectedElement, setSelectedElement] = useState<ElementType>('fire');
-  const [selectedClass, setSelectedClass] = useState<ClassType>('kinetic');
+  // Get all unlocked monsters (specific combos with levels)
+  const unlockedMonsters = state.saveData.unlockedMonsters || [];
+  
+  const [selectedMonster, setSelectedMonster] = useState<typeof unlockedMonsters[0] | null>(
+    unlockedMonsters.length > 0 ? unlockedMonsters[0] : null
+  );
 
   const startRun = () => {
-    if (!selectedSpecies) return;
-    const monster = createMonster(selectedSpecies, selectedClass, selectedElement, 1);
+    if (!selectedMonster) return;
+    // Create monster at the level it was unlocked at
+    const monster = createMonster(
+      selectedMonster.species, 
+      selectedMonster.classType, 
+      selectedMonster.element, 
+      selectedMonster.level
+    );
     dispatch({ type: 'START_RUN', monster });
   };
 
@@ -76,74 +83,90 @@ function CharacterSelect() {
           Choose Your Monster
         </h2>
         
-        {/* Species selection */}
+        <p className="text-center text-muted-foreground text-sm">
+          Defeat enemies to unlock them! Monsters are available at the level they were defeated.
+        </p>
+        
+        {/* Unlocked monster selection */}
         <div>
-          <h3 className="text-sm font-semibold text-muted-foreground mb-2">Species</h3>
-          <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
-            {state.saveData.unlockedSpecies.map((species) => (
-              <Card 
-                key={species}
-                className={`p-3 cursor-pointer transition-all ${selectedSpecies === species ? 'ring-2 ring-primary bg-primary/10' : 'hover:border-primary/50'}`}
-                onClick={() => setSelectedSpecies(species)}
-              >
-                <div className="text-center">
-                  <div className="flex justify-center mb-1">
-                    <MonsterSprite species={species} element={selectedElement} classType={selectedClass} size={40} animated={false} />
+          <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+            Unlocked Monsters ({unlockedMonsters.length})
+          </h3>
+          <ScrollArea className="h-48">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+              {unlockedMonsters.map((monster) => (
+                <Card 
+                  key={monster.comboId}
+                  className={`p-3 cursor-pointer transition-all ${
+                    selectedMonster?.comboId === monster.comboId 
+                      ? 'ring-2 ring-primary bg-primary/10' 
+                      : 'hover:border-primary/50'
+                  }`}
+                  onClick={() => setSelectedMonster(monster)}
+                >
+                  <div className="text-center">
+                    <div className="flex justify-center mb-1">
+                      <MonsterSprite 
+                        species={monster.species} 
+                        element={monster.element} 
+                        classType={monster.classType} 
+                        size={48} 
+                        animated={false} 
+                      />
+                    </div>
+                    <p className="text-xs font-medium capitalize">{monster.species}</p>
+                    <div className="flex gap-1 justify-center mt-1 flex-wrap">
+                      <span className={`element-badge element-${monster.element} text-[10px] px-1 py-0`}>
+                        {monster.element}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Lv.{monster.level} • {monster.classType}
+                    </p>
                   </div>
-                  <p className="text-xs font-medium">{SPECIES_DATA[species].name}</p>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-        
-        {/* Element selection */}
-        <div>
-          <h3 className="text-sm font-semibold text-muted-foreground mb-2">Element</h3>
-          <div className="flex gap-2 flex-wrap">
-            {elements.map((element) => (
-              <button
-                key={element}
-                className={`element-badge element-${element} ${selectedElement === element ? 'ring-2 ring-offset-2 ring-offset-background ring-foreground' : 'opacity-70 hover:opacity-100'}`}
-                onClick={() => setSelectedElement(element)}
-              >
-                {element}
-              </button>
-            ))}
-          </div>
-        </div>
-        
-        {/* Class selection */}
-        <div>
-          <h3 className="text-sm font-semibold text-muted-foreground mb-2">Class</h3>
-          <div className="flex gap-2 flex-wrap">
-            {classes.map((c) => (
-              <button
-                key={c}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                  selectedClass === c 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'bg-muted hover:bg-muted/80'
-                }`}
-                onClick={() => setSelectedClass(c)}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
+                </Card>
+              ))}
+            </div>
+          </ScrollArea>
         </div>
         
         {/* Preview */}
-        {selectedSpecies && (
+        {selectedMonster && (
           <Card className="p-4">
             <div className="flex items-center gap-4">
-              <MonsterSprite species={selectedSpecies} element={selectedElement} classType={selectedClass} size={80} />
-              <div>
-                <h3 className="font-bold text-lg">{SPECIES_DATA[selectedSpecies].name}</h3>
-                <p className="text-sm text-muted-foreground mb-2">{SPECIES_DATA[selectedSpecies].passiveDescription}</p>
-                <div className="flex gap-2">
-                  <span className={`element-badge element-${selectedElement} text-xs`}>{selectedElement}</span>
-                  <span className="px-2 py-0.5 rounded-full bg-muted text-xs">{selectedClass}</span>
+              <MonsterSprite 
+                species={selectedMonster.species} 
+                element={selectedMonster.element} 
+                classType={selectedMonster.classType} 
+                size={80} 
+              />
+              <div className="flex-1">
+                <h3 className="font-bold text-lg capitalize">
+                  {selectedMonster.species}
+                </h3>
+                <p className="text-sm text-muted-foreground mb-2">
+                  {SPECIES_DATA[selectedMonster.species].passiveDescription}
+                </p>
+                <div className="flex gap-2 flex-wrap items-center">
+                  <span className={`element-badge element-${selectedMonster.element} text-xs`}>
+                    {selectedMonster.element}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-muted text-xs font-medium">
+                    {selectedMonster.classType}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Level {selectedMonster.level}
+                  </span>
+                </div>
+                
+                {/* Class type info tooltip */}
+                <div className="mt-2 text-xs text-muted-foreground">
+                  <span className="font-medium">Class Bonus: </span>
+                  {selectedMonster.classType === 'kinetic' && 'Strong vs Energy & Biological'}
+                  {selectedMonster.classType === 'energy' && 'Strong vs Biological & Chemical'}
+                  {selectedMonster.classType === 'biological' && 'Strong vs Chemical & Political'}
+                  {selectedMonster.classType === 'chemical' && 'Strong vs Political & Kinetic'}
+                  {selectedMonster.classType === 'political' && 'Strong vs Kinetic & Energy'}
                 </div>
               </div>
             </div>
@@ -159,7 +182,7 @@ function CharacterSelect() {
           </Button>
           <Button 
             className="flex-1 bg-gradient-to-r from-primary to-secondary"
-            disabled={!selectedSpecies}
+            disabled={!selectedMonster}
             onClick={startRun}
           >
             Start Adventure! ✨
@@ -366,14 +389,26 @@ function BattleView() {
     const newEnemyHp = Math.max(0, battle.enemyMonster.stats.currentHp - result.damage);
     
     if (newEnemyHp <= 0) {
-      // Victory - unlock this specific monster combo
+      // Victory - unlock this specific monster combo with its level
       const comboId = getComboId({
         species: battle.enemyMonster.species,
         element: battle.enemyMonster.element,
         classType: battle.enemyMonster.class,
       });
+      
+      // Unlock the full monster data with level
+      const unlockedMonster: UnlockedMonster = {
+        comboId,
+        species: battle.enemyMonster.species,
+        element: battle.enemyMonster.element,
+        classType: battle.enemyMonster.class,
+        level: battle.enemyMonster.level,
+      };
+      dispatch({ type: 'UNLOCK_MONSTER', monster: unlockedMonster });
       dispatch({ type: 'UNLOCK_COMBO', comboId });
       dispatch({ type: 'UNLOCK_SPECIES', species: battle.enemyMonster.species });
+      
+      toast.success(`Unlocked ${battle.enemyMonster.species} (Lv.${battle.enemyMonster.level})!`);
       
       // Award XP
       const xpGained = calculateXpReward(battle.enemyMonster.level, battle.playerMonster.level);

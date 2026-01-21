@@ -36,12 +36,13 @@ export function getClassMultiplier(attackerClass: ClassType, defenderClass: Clas
 }
 
 // Calculate actual hit chance after dodge
+// Calculate actual hit chance after dodge (uses DODGE stat, not speed)
 export function calculateHitChance(move: Move, attacker: Monster, defender: Monster): number {
   const baseAccuracy = move.accuracy;
-  const defenderDodge = Math.floor(defender.stats.speed * 0.5); // Dodge = speed * 0.5
+  const defenderDodge = defender.stats.dodge; // Use dodge stat directly
   
-  // Each point of dodge reduces hit chance by 1%, max 50% reduction
-  const dodgeReduction = Math.min(50, defenderDodge);
+  // Each point of dodge reduces hit chance by 0.5%, max 40% reduction
+  const dodgeReduction = Math.min(40, Math.floor(defenderDodge * 0.5));
   const actualHitChance = Math.max(5, baseAccuracy - dodgeReduction); // Min 5% hit chance
   
   return actualHitChance;

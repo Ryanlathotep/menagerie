@@ -113,6 +113,10 @@ const SPECIES_PATHS: Record<SpeciesType, { body: string; detail?: string; outlin
 
 // Class equipment overlays - now more visible with thicker strokes and fills
 const CLASS_OVERLAYS: Record<ClassType, { weapon?: string; armor?: string; accessory?: string; color: string }> = {
+  normal: {
+    // No equipment for normal class - plain appearance
+    color: '0 0% 70%', // Gray for normal
+  },
   kinetic: {
     weapon: 'M78,25 L92,10 L95,13 L82,28 L85,31 L78,31 L78,25', // Sword
     armor: 'M35,42 L50,38 L65,42 L62,55 L50,58 L38,55 Z', // Chest plate
@@ -303,6 +307,7 @@ export function generateMonsterName(
   classType: ClassType
 ): string {
   const elementPrefixes: Record<ElementType, string[]> = {
+    normal: ['Common', 'Plain', 'Basic', 'Simple', 'Pure'],
     fire: ['Pyro', 'Blaze', 'Ember', 'Scorch', 'Inferno'],
     water: ['Aqua', 'Tide', 'Torrent', 'Deluge', 'Surge'],
     earth: ['Terra', 'Stone', 'Bedrock', 'Granite', 'Seismic'],
@@ -311,6 +316,7 @@ export function generateMonsterName(
   };
   
   const classSuffixes: Record<ClassType, string[]> = {
+    normal: ['Beast', 'Creature', 'Being', 'Entity', 'Form'],
     kinetic: ['Striker', 'Brawler', 'Warrior', 'Fighter', 'Champion'],
     energy: ['Caster', 'Channeler', 'Weaver', 'Adept', 'Mage'],
     biological: ['Symbiote', 'Growth', 'Bloom', 'Organism', 'Hybrid'],

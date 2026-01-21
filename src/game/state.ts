@@ -251,6 +251,11 @@ export function GameProvider({ children }: GameProviderProps) {
     if (saved) {
       try {
         const saveData = JSON.parse(saved) as SaveData;
+        // Ensure unlockedMonsters exists (migration from old saves)
+        if (!saveData.unlockedMonsters || saveData.unlockedMonsters.length === 0) {
+          // Add starter monster for old saves
+          saveData.unlockedMonsters = [STARTER_MONSTER];
+        }
         dispatch({ type: 'LOAD_SAVE', saveData });
       } catch (e) {
         console.error('Failed to load save data:', e);

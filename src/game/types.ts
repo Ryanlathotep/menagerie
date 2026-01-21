@@ -284,8 +284,20 @@ export interface RunState {
   enemiesDefeated: number;
 }
 
+// Monster combo identifier (for unlock tracking)
+export interface MonsterCombo {
+  species: SpeciesType;
+  element: ElementType;
+  classType: ClassType;
+}
+
+export function getComboId(combo: MonsterCombo): string {
+  return `${combo.species}_${combo.element}_${combo.classType}`;
+}
+
 export interface SaveData {
-  unlockedSpecies: SpeciesType[];
+  unlockedSpecies: SpeciesType[]; // Keep for backwards compat - starts with slime
+  unlockedCombos: string[];       // NEW: specific combos unlocked (e.g. "slime_fire_kinetic")
   highestFloor: number;
   totalRuns: number;
   totalEnemiesDefeated: number;

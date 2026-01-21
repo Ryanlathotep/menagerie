@@ -1,12 +1,14 @@
 import { GameProvider, useGame } from '@/game/state';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { SPECIES_DATA, SpeciesType, ClassType, ElementType } from '@/game/types';
+import { SPECIES_DATA, SpeciesType, ClassType, ElementType, getComboId } from '@/game/types';
 import { createMonster } from '@/game/utils';
 import { generateDungeon, movePlayer, removeEnemy } from '@/game/dungeon';
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { MonsterSprite } from '@/game/sprites';
 import { DungeonRenderer } from '@/game/DungeonRenderer';
+import { GameSidebar } from '@/game/GameSidebar';
+import { getMonsterMoves, Move } from '@/game/moves';
 
 // Main Menu Component
 function MainMenu() {
@@ -15,23 +17,25 @@ function MainMenu() {
   return (
     <div className="game-container">
       <div className="text-center space-y-8">
-        <h1 className="text-5xl font-bold text-primary">Monster Roguelike</h1>
+        <h1 className="text-5xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+          Monster Roguelike
+        </h1>
         <p className="text-muted-foreground text-lg">Play as the monsters. Unlock them all.</p>
         
         <div className="space-y-4">
           <Button 
             size="lg" 
-            className="w-64"
+            className="w-64 bg-gradient-to-r from-primary to-secondary hover:opacity-90"
             onClick={() => dispatch({ type: 'SET_PHASE', phase: 'character_select' })}
           >
-            Start Run
+            ✨ Start Run
           </Button>
         </div>
 
-        <div className="text-sm text-muted-foreground mt-8">
-          <p>Unlocked: {state.saveData.unlockedSpecies.length} / 20 species</p>
-          <p>Highest Floor: {state.saveData.highestFloor}</p>
-          <p>Total Runs: {state.saveData.totalRuns}</p>
+        <div className="text-sm text-muted-foreground mt-8 space-y-1">
+          <p>🔓 Unlocked: {state.saveData.unlockedCombos.length} / 500 monsters</p>
+          <p>🏔️ Highest Floor: {state.saveData.highestFloor}</p>
+          <p>🎮 Total Runs: {state.saveData.totalRuns}</p>
         </div>
       </div>
     </div>
@@ -43,43 +47,113 @@ function CharacterSelect() {
   const { state, dispatch } = useGame();
   const classes: ClassType[] = ['kinetic', 'energy', 'biological', 'chemical', 'political'];
   const elements: ElementType[] = ['fire', 'water', 'earth', 'air', 'void'];
+  
+  const [selectedSpecies, setSelectedSpecies] = useState<SpeciesType | null>(null);
+  const [selectedElement, setSelectedElement] = useState<ElementType>('fire');
+  const [selectedClass, setSelectedClass] = useState<ClassType>('kinetic');
 
-  const startRun = (species: SpeciesType) => {
-    const classType = classes[Math.floor(Math.random() * classes.length)];
-    const element = elements[Math.floor(Math.random() * elements.length)];
-    const monster = createMonster(species, classType, element, 1);
+  const startRun = () => {
+    if (!selectedSpecies) return;
+    const monster = createMonster(selectedSpecies, selectedClass, selectedElement, 1);
     dispatch({ type: 'START_RUN', monster });
   };
 
   return (
     <div className="game-container">
       <div className="space-y-6 max-w-4xl">
-        <h2 className="text-3xl font-bold text-center text-primary">Choose Your Monster</h2>
+        <h2 className="text-3xl font-bold text-center bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+          Choose Your Monster
+        </h2>
         
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {state.saveData.unlockedSpecies.map((species) => (
-            <Card 
-              key={species}
-              className="p-4 cursor-pointer hover:border-primary transition-colors"
-              onClick={() => startRun(species)}
-            >
-              <div className="text-center">
-                <div className="flex justify-center mb-2">
-                  <MonsterSprite species={species} element="fire" classType="kinetic" size={48} animated={false} />
+        {/* Species selection */}
+        <div>
+          <h3 className="text-sm font-semibold text-muted-foreground mb-2">Species</h3>
+          <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
+            {state.saveData.unlockedSpecies.map((species) => (
+              <Card 
+                key={species}
+                className={`p-3 cursor-pointer transition-all ${selectedSpecies === species ? 'ring-2 ring-primary bg-primary/10' : 'hover:border-primary/50'}`}
+                onClick={() => setSelectedSpecies(species)}
+              >
+                <div className="text-center">
+                  <div className="flex justify-center mb-1">
+                    <MonsterSprite species={species} element={selectedElement} classType={selectedClass} size={40} animated={false} />
+                  </div>
+                  <p className="text-xs font-medium">{SPECIES_DATA[species].name}</p>
                 </div>
-                <h3 className="font-semibold">{SPECIES_DATA[species].name}</h3>
-                <p className="text-xs text-muted-foreground">{SPECIES_DATA[species].passiveAbility}</p>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            ))}
+          </div>
         </div>
+        
+        {/* Element selection */}
+        <div>
+          <h3 className="text-sm font-semibold text-muted-foreground mb-2">Element</h3>
+          <div className="flex gap-2 flex-wrap">
+            {elements.map((element) => (
+              <button
+                key={element}
+                className={`element-badge element-${element} ${selectedElement === element ? 'ring-2 ring-offset-2 ring-offset-background ring-foreground' : 'opacity-70 hover:opacity-100'}`}
+                onClick={() => setSelectedElement(element)}
+              >
+                {element}
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        {/* Class selection */}
+        <div>
+          <h3 className="text-sm font-semibold text-muted-foreground mb-2">Class</h3>
+          <div className="flex gap-2 flex-wrap">
+            {classes.map((c) => (
+              <button
+                key={c}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                  selectedClass === c 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'bg-muted hover:bg-muted/80'
+                }`}
+                onClick={() => setSelectedClass(c)}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        {/* Preview */}
+        {selectedSpecies && (
+          <Card className="p-4">
+            <div className="flex items-center gap-4">
+              <MonsterSprite species={selectedSpecies} element={selectedElement} classType={selectedClass} size={80} />
+              <div>
+                <h3 className="font-bold text-lg">{SPECIES_DATA[selectedSpecies].name}</h3>
+                <p className="text-sm text-muted-foreground mb-2">{SPECIES_DATA[selectedSpecies].passiveDescription}</p>
+                <div className="flex gap-2">
+                  <span className={`element-badge element-${selectedElement} text-xs`}>{selectedElement}</span>
+                  <span className="px-2 py-0.5 rounded-full bg-muted text-xs">{selectedClass}</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
 
-        <Button 
-          variant="outline" 
-          onClick={() => dispatch({ type: 'SET_PHASE', phase: 'main_menu' })}
-        >
-          Back
-        </Button>
+        <div className="flex gap-3">
+          <Button 
+            variant="outline" 
+            onClick={() => dispatch({ type: 'SET_PHASE', phase: 'main_menu' })}
+          >
+            Back
+          </Button>
+          <Button 
+            className="flex-1 bg-gradient-to-r from-primary to-secondary"
+            disabled={!selectedSpecies}
+            onClick={startRun}
+          >
+            Start Adventure! ✨
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -89,6 +163,8 @@ function CharacterSelect() {
 function DungeonView() {
   const { state, dispatch } = useGame();
   const dungeon = state.run?.dungeon;
+  const [experience, setExperience] = useState(0);
+  const experienceToNext = 100 * (state.run?.currentMonster.level || 1);
 
   useEffect(() => {
     if (!dungeon) {
@@ -124,54 +200,49 @@ function DungeonView() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleMove]);
 
+  const handleFlee = () => {
+    dispatch({ type: 'END_RUN', victory: false });
+    dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
+  };
+
   if (!dungeon) return <div className="game-container">Loading...</div>;
 
   return (
-    <div className="game-container">
-      <div className="flex flex-col lg:flex-row gap-4 items-start">
-        {/* Dungeon grid */}
-        <DungeonRenderer 
-          dungeon={dungeon} 
-          playerElement={state.run?.currentMonster.element || 'fire'}
-          playerSpecies={state.run?.currentMonster.species}
-        />
-        
-        {/* Side panel */}
-        <div className="space-y-3 w-full lg:w-64">
-          <Card className="p-3">
-            <div className="flex items-center gap-2">
-              <MonsterSprite 
-                species={state.run?.currentMonster.species || 'slime'}
-                element={state.run?.currentMonster.element || 'fire'}
-                classType={state.run?.currentMonster.class || 'kinetic'}
-                size={40}
-                animated={false}
-              />
-              <div className="flex-1">
-                <p className="text-sm font-semibold truncate">{state.run?.currentMonster.name}</p>
-                <p className="text-xs text-muted-foreground">Lv.{state.run?.currentMonster.level}</p>
-              </div>
-            </div>
-            <div className="mt-2 text-xs text-primary font-mono">💰 {state.run?.gold}</div>
-          </Card>
+    <>
+      <GameSidebar 
+        monster={state.run?.currentMonster || null}
+        gold={state.run?.gold || 0}
+        floor={dungeon.floor}
+        onFlee={handleFlee}
+        experience={experience}
+        experienceToNext={experienceToNext}
+      />
+      
+      <div className="game-container pl-20">
+        <div className="flex flex-col items-center gap-4">
+          <DungeonRenderer 
+            dungeon={dungeon} 
+            playerElement={state.run?.currentMonster.element || 'fire'}
+            playerSpecies={state.run?.currentMonster.species}
+          />
+
+          {/* Mobile controls */}
+          <div className="grid grid-cols-3 gap-2 w-32 sm:hidden">
+            <div />
+            <Button size="sm" onClick={() => handleMove('up')}>↑</Button>
+            <div />
+            <Button size="sm" onClick={() => handleMove('left')}>←</Button>
+            <div />
+            <Button size="sm" onClick={() => handleMove('right')}>→</Button>
+            <div />
+            <Button size="sm" onClick={() => handleMove('down')}>↓</Button>
+            <div />
+          </div>
+
+          <p className="text-muted-foreground text-sm hidden sm:block">Use WASD or Arrow keys to move</p>
         </div>
       </div>
-
-      {/* Mobile controls */}
-      <div className="grid grid-cols-3 gap-2 w-32 mx-auto sm:hidden mt-4">
-        <div />
-        <Button size="sm" onClick={() => handleMove('up')}>↑</Button>
-        <div />
-        <Button size="sm" onClick={() => handleMove('left')}>←</Button>
-        <div />
-        <Button size="sm" onClick={() => handleMove('right')}>→</Button>
-        <div />
-        <Button size="sm" onClick={() => handleMove('down')}>↓</Button>
-        <div />
-      </div>
-
-      <p className="text-muted-foreground text-sm hidden sm:block mt-4">Use WASD or Arrow keys to move</p>
-    </div>
+    </>
   );
 }
 
@@ -179,16 +250,47 @@ function DungeonView() {
 function BattleView() {
   const { state, dispatch } = useGame();
   const battle = state.run?.battle;
+  const [selectedMove, setSelectedMove] = useState<Move | null>(null);
 
   if (!battle) return null;
 
-  const attack = () => {
-    const damage = Math.floor(10 + Math.random() * 10);
+  const playerMoves = getMonsterMoves(
+    battle.playerMonster.species,
+    battle.playerMonster.element,
+    battle.playerMonster.class
+  );
+
+  const executeMove = (move: Move) => {
+    // Calculate damage based on move type
+    let damage = move.power;
+    if (move.type === 'melee') {
+      damage = Math.floor(move.power * (battle.playerMonster.stats.attack / 20));
+    } else if (move.type === 'ranged') {
+      damage = Math.floor(move.power * (battle.playerMonster.stats.special / 20));
+    }
+    
+    // Apply accuracy check
+    const hitRoll = Math.random() * 100;
+    if (hitRoll > move.accuracy) {
+      dispatch({ 
+        type: 'UPDATE_BATTLE', 
+        battle: { log: [...battle.log, `${move.name} missed!`] }
+      });
+      return;
+    }
+    
     const newEnemyHp = Math.max(0, battle.enemyMonster.stats.currentHp - damage);
     
     if (newEnemyHp <= 0) {
-      // Victory - unlock species
+      // Victory - unlock this specific monster combo
+      const comboId = getComboId({
+        species: battle.enemyMonster.species,
+        element: battle.enemyMonster.element,
+        classType: battle.enemyMonster.class,
+      });
+      dispatch({ type: 'UNLOCK_COMBO', comboId });
       dispatch({ type: 'UNLOCK_SPECIES', species: battle.enemyMonster.species });
+      
       if (state.run?.dungeon) {
         const updatedDungeon = removeEnemy(state.run.dungeon, battle.enemyMonster.id);
         dispatch({ type: 'SET_DUNGEON', dungeon: updatedDungeon });
@@ -209,75 +311,109 @@ function BattleView() {
           battle: {
             enemyMonster: { ...battle.enemyMonster, stats: { ...battle.enemyMonster.stats, currentHp: newEnemyHp }},
             playerMonster: { ...battle.playerMonster, stats: { ...battle.playerMonster.stats, currentHp: newPlayerHp }},
-            log: [...battle.log, `You dealt ${damage} damage!`, `Enemy dealt ${enemyDamage} damage!`],
+            log: [...battle.log, `${move.name} dealt ${damage} damage!`, `Enemy dealt ${enemyDamage} damage!`],
           }
         });
       }
     }
+    setSelectedMove(null);
   };
 
   return (
-    <div className="game-container">
-      <div className="space-y-6 max-w-lg w-full">
-        <h2 className="text-2xl font-bold text-center">Battle!</h2>
-        
-        {/* Enemy */}
-        <Card className="p-4">
-          <div className="flex justify-between items-center mb-2">
-            <div className="flex items-center gap-2">
+    <>
+      <GameSidebar 
+        monster={state.run?.currentMonster || null}
+        gold={state.run?.gold || 0}
+        floor={state.run?.dungeon?.floor || 1}
+        inBattle={true}
+      />
+      
+      <div className="game-container pl-20">
+        <div className="space-y-4 max-w-2xl w-full">
+          <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-primary to-destructive bg-clip-text text-transparent">
+            ⚔️ Battle!
+          </h2>
+          
+          {/* Enemy */}
+          <Card className="p-4">
+            <div className="flex items-center gap-4 mb-2">
               <MonsterSprite 
                 species={battle.enemyMonster.species}
                 element={battle.enemyMonster.element}
                 classType={battle.enemyMonster.class}
-                size={48}
+                size={64}
               />
-              <span className="font-semibold">{battle.enemyMonster.name}</span>
+              <div className="flex-1">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="font-semibold">{battle.enemyMonster.name}</span>
+                  <span className={`element-badge element-${battle.enemyMonster.element} text-xs`}>
+                    {battle.enemyMonster.element}
+                  </span>
+                </div>
+                <div className="health-bar">
+                  <div 
+                    className="health-bar-fill" 
+                    style={{ width: `${(battle.enemyMonster.stats.currentHp / battle.enemyMonster.stats.maxHp) * 100}%` }}
+                  />
+                </div>
+                <p className="text-xs mt-1">{battle.enemyMonster.stats.currentHp} / {battle.enemyMonster.stats.maxHp}</p>
+              </div>
             </div>
-            <span className={`element-badge element-${battle.enemyMonster.element}`}>
-              {battle.enemyMonster.element}
-            </span>
-          </div>
-          <div className="health-bar">
-            <div 
-              className="health-bar-fill" 
-              style={{ width: `${(battle.enemyMonster.stats.currentHp / battle.enemyMonster.stats.maxHp) * 100}%` }}
-            />
-          </div>
-          <p className="text-xs mt-1">{battle.enemyMonster.stats.currentHp} / {battle.enemyMonster.stats.maxHp}</p>
-        </Card>
+          </Card>
 
-        {/* Player */}
-        <Card className="p-4 border-primary">
-          <div className="flex justify-between items-center mb-2">
-            <div className="flex items-center gap-2">
+          {/* Player */}
+          <Card className="p-4 border-2 border-primary/50">
+            <div className="flex items-center gap-4 mb-2">
               <MonsterSprite 
                 species={battle.playerMonster.species}
                 element={battle.playerMonster.element}
                 classType={battle.playerMonster.class}
-                size={48}
+                size={64}
               />
-              <span className="font-semibold">{battle.playerMonster.name}</span>
+              <div className="flex-1">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="font-semibold">{battle.playerMonster.name}</span>
+                  <span className={`element-badge element-${battle.playerMonster.element} text-xs`}>
+                    {battle.playerMonster.element}
+                  </span>
+                </div>
+                <div className="health-bar">
+                  <div 
+                    className="health-bar-fill" 
+                    style={{ width: `${(battle.playerMonster.stats.currentHp / battle.playerMonster.stats.maxHp) * 100}%` }}
+                  />
+                </div>
+                <p className="text-xs mt-1">{battle.playerMonster.stats.currentHp} / {battle.playerMonster.stats.maxHp}</p>
+              </div>
             </div>
-            <span className={`element-badge element-${battle.playerMonster.element}`}>
-              {battle.playerMonster.element}
-            </span>
-          </div>
-          <div className="health-bar">
-            <div 
-              className="health-bar-fill" 
-              style={{ width: `${(battle.playerMonster.stats.currentHp / battle.playerMonster.stats.maxHp) * 100}%` }}
-            />
-          </div>
-          <p className="text-xs mt-1">{battle.playerMonster.stats.currentHp} / {battle.playerMonster.stats.maxHp}</p>
-        </Card>
+          </Card>
 
-        <Button className="w-full" onClick={attack}>Attack</Button>
+          {/* Move selection */}
+          <div className="grid grid-cols-2 gap-2">
+            {playerMoves.slice(0, 6).map((move) => (
+              <Button 
+                key={move.id}
+                variant={selectedMove?.id === move.id ? 'default' : 'outline'}
+                className="h-auto py-2 px-3 text-left justify-start"
+                onClick={() => executeMove(move)}
+              >
+                <div>
+                  <p className="font-semibold text-sm">{move.name}</p>
+                  <p className="text-[10px] opacity-70">
+                    {move.power > 0 ? `⚔️${move.power} ` : ''} 🎯{move.accuracy}%
+                  </p>
+                </div>
+              </Button>
+            ))}
+          </div>
 
-        <div className="bg-muted rounded p-2 text-xs max-h-24 overflow-y-auto">
-          {battle.log.slice(-4).map((msg, i) => <p key={i}>{msg}</p>)}
+          {/* Battle log */}
+          <div className="bg-muted rounded-lg p-3 text-xs max-h-24 overflow-y-auto">
+            {battle.log.slice(-4).map((msg, i) => <p key={i}>{msg}</p>)}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -287,12 +423,20 @@ function RunSummary() {
 
   return (
     <div className="game-container">
-      <Card className="p-8 text-center space-y-4">
-        <h2 className="text-3xl font-bold text-destructive">Run Over</h2>
-        <p>Enemies Defeated: {state.run?.enemiesDefeated}</p>
-        <p>Floor Reached: {state.run?.dungeon?.floor || 1}</p>
-        <p>Gold Collected: {state.run?.gold}</p>
-        <Button onClick={() => dispatch({ type: 'SET_PHASE', phase: 'main_menu' })}>
+      <Card className="p-8 text-center space-y-4 max-w-md">
+        <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-destructive bg-clip-text text-transparent">
+          Run Over
+        </h2>
+        <div className="space-y-2 text-muted-foreground">
+          <p>⚔️ Enemies Defeated: {state.run?.enemiesDefeated}</p>
+          <p>🏔️ Floor Reached: {state.run?.dungeon?.floor || 1}</p>
+          <p>💰 Gold Collected: {state.run?.gold}</p>
+          <p>🔓 Monsters Unlocked: {state.saveData.unlockedCombos.length}</p>
+        </div>
+        <Button 
+          className="w-full bg-gradient-to-r from-primary to-secondary"
+          onClick={() => dispatch({ type: 'SET_PHASE', phase: 'main_menu' })}
+        >
           Return to Menu
         </Button>
       </Card>

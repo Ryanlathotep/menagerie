@@ -8,12 +8,14 @@ import {
   Monster,
   DungeonState,
   BattleState,
-  SpeciesType 
+  SpeciesType,
+  getComboId 
 } from './types';
 
 // Initial save data (stored in localStorage)
 const DEFAULT_SAVE_DATA: SaveData = {
   unlockedSpecies: ['slime'], // Start with slime unlocked
+  unlockedCombos: [],         // Start with no specific combos
   highestFloor: 0,
   totalRuns: 0,
   totalEnemiesDefeated: 0,
@@ -37,8 +39,10 @@ type GameAction =
   | { type: 'UPDATE_BATTLE'; battle: Partial<BattleState> }
   | { type: 'END_BATTLE'; victory: boolean }
   | { type: 'UNLOCK_SPECIES'; species: SpeciesType }
+  | { type: 'UNLOCK_COMBO'; comboId: string }
   | { type: 'UPDATE_PLAYER_MONSTER'; monster: Monster }
   | { type: 'ADD_GOLD'; amount: number }
+  | { type: 'ADD_XP'; amount: number }
   | { type: 'LOAD_SAVE'; saveData: SaveData };
 
 // Reducer
@@ -145,6 +149,18 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         saveData: {
           ...state.saveData,
           unlockedSpecies: [...state.saveData.unlockedSpecies, action.species],
+        },
+      };
+    
+    case 'UNLOCK_COMBO':
+      if (state.saveData.unlockedCombos.includes(action.comboId)) {
+        return state;
+      }
+      return {
+        ...state,
+        saveData: {
+          ...state.saveData,
+          unlockedCombos: [...state.saveData.unlockedCombos, action.comboId],
         },
       };
       

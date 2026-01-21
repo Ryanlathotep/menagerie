@@ -1,20 +1,26 @@
-// Character Sheet Component with expanded stats and equipment
+// Character Sheet Component with corrected stats system
 
 import { Monster, SPECIES_DATA, ElementType, ClassType } from './types';
 import { MonsterSprite, generateMonsterName } from './sprites';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 
-// Expanded stat interface
+// Corrected stat interface based on gameplay mechanics:
+// - Stamina: consumed by attacks (based on power + accuracy)
+// - Defense: mitigates damage (never entirely)
+// - Dodge: chance to avoid being hit
+// - Speed: determines turn order (attacks have speed modifiers too)
+// - Melee: power for melee-type attacks
+// - Ranged: power for ranged-type attacks
 export interface ExpandedStats {
   maxHp: number;
   currentHp: number;
-  melee: number;      // Physical attack power
-  ranged: number;     // Ranged attack power
-  defense: number;    // Damage reduction
-  dexterity: number;  // Accuracy and evasion
-  speed: number;      // Turn order and action points
-  stamina: number;    // Ability cost pool
+  melee: number;       // Melee attack power
+  ranged: number;      // Ranged attack power
+  defense: number;     // Damage mitigation (reduces damage taken)
+  dodge: number;       // Evasion chance (0-100 scale, affects hit chance)
+  speed: number;       // Turn order priority
+  stamina: number;     // Max stamina pool
   currentStamina: number;
 }
 
@@ -25,7 +31,7 @@ export interface EquipmentItem {
   id: string;
   name: string;
   slot: EquipmentSlot;
-  handedness: 1 | 2; // For weapons: 1 = one-handed, 2 = two-handed
+  handedness: 1 | 2;
   stats: Partial<ExpandedStats>;
   element?: ElementType;
   rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
@@ -46,25 +52,20 @@ export interface FullMonster extends Omit<Monster, 'stats'> {
   experienceToNext: number;
 }
 
-// Stat colors for display
-const STAT_COLORS: Record<keyof Omit<ExpandedStats, 'currentHp' | 'currentStamina'>, string> = {
-  maxHp: 'bg-stat-hp',
-  melee: 'bg-orange-500',
-  ranged: 'bg-yellow-500',
-  defense: 'bg-stat-defense',
-  dexterity: 'bg-emerald-500',
-  speed: 'bg-stat-speed',
-  stamina: 'bg-stat-special',
-};
-
-const STAT_LABELS: Record<keyof Omit<ExpandedStats, 'currentHp' | 'currentStamina'>, { name: string; abbr: string }> = {
-  maxHp: { name: 'Health', abbr: 'HP' },
-  melee: { name: 'Melee Attack', abbr: 'MEL' },
-  ranged: { name: 'Ranged Attack', abbr: 'RNG' },
-  defense: { name: 'Defense', abbr: 'DEF' },
-  dexterity: { name: 'Dexterity', abbr: 'DEX' },
-  speed: { name: 'Speed', abbr: 'SPD' },
-  stamina: { name: 'Stamina', abbr: 'STA' },
+// Stat colors and labels
+const STAT_INFO: Record<keyof Omit<ExpandedStats, 'currentHp' | 'currentStamina'>, { 
+  name: string; 
+  abbr: string; 
+  color: string;
+  description: string;
+}> = {
+  maxHp: { name: 'Health', abbr: 'HP', color: 'bg-stat-hp', description: 'Total health points' },
+  melee: { name: 'Melee', abbr: 'MEL', color: 'bg-orange-500', description: 'Power for melee attacks' },
+  ranged: { name: 'Ranged', abbr: 'RNG', color: 'bg-yellow-500', description: 'Power for ranged attacks' },
+  defense: { name: 'Defense', abbr: 'DEF', color: 'bg-stat-defense', description: 'Reduces damage taken' },
+  dodge: { name: 'Dodge', abbr: 'DDG', color: 'bg-emerald-500', description: 'Chance to avoid attacks' },
+  speed: { name: 'Speed', abbr: 'SPD', color: 'bg-stat-speed', description: 'Turn order priority' },
+  stamina: { name: 'Stamina', abbr: 'STA', color: 'bg-stat-special', description: 'Resource for abilities' },
 };
 
 interface StatBarProps {
@@ -75,17 +76,16 @@ interface StatBarProps {
 }
 
 function StatBar({ stat, value, maxValue = 100, showBar = true }: StatBarProps) {
-  const label = STAT_LABELS[stat];
-  const color = STAT_COLORS[stat];
+  const info = STAT_INFO[stat];
   const percentage = Math.min((value / maxValue) * 100, 100);
   
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-muted-foreground w-8">{label.abbr}</span>
+    <div className="flex items-center gap-2" title={info.description}>
+      <span className="text-xs text-muted-foreground w-8">{info.abbr}</span>
       {showBar ? (
         <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
           <div 
-            className={`h-full ${color} transition-all`}
+            className={`h-full ${info.color} transition-all`}
             style={{ width: `${percentage}%` }}
           />
         </div>
@@ -231,15 +231,35 @@ export function CharacterSheet({ monster, compact = false }: CharacterSheetProps
         </div>
       </div>
       
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-        <StatBar stat="maxHp" value={monster.stats.maxHp} />
-        <StatBar stat="stamina" value={monster.stats.stamina} />
-        <StatBar stat="melee" value={monster.stats.melee} />
-        <StatBar stat="ranged" value={monster.stats.ranged} />
-        <StatBar stat="defense" value={monster.stats.defense} />
-        <StatBar stat="dexterity" value={monster.stats.dexterity} />
-        <StatBar stat="speed" value={monster.stats.speed} />
+      {/* Stats grid - organized by function */}
+      <div className="space-y-3">
+        {/* Combat Stats */}
+        <div>
+          <h4 className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">Combat</h4>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+            <StatBar stat="melee" value={monster.stats.melee} />
+            <StatBar stat="ranged" value={monster.stats.ranged} />
+          </div>
+        </div>
+        
+        {/* Defensive Stats */}
+        <div>
+          <h4 className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">Defense</h4>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+            <StatBar stat="defense" value={monster.stats.defense} />
+            <StatBar stat="dodge" value={monster.stats.dodge} />
+          </div>
+        </div>
+        
+        {/* Resource Stats */}
+        <div>
+          <h4 className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">Resources</h4>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+            <StatBar stat="maxHp" value={monster.stats.maxHp} />
+            <StatBar stat="stamina" value={monster.stats.stamina} />
+            <StatBar stat="speed" value={monster.stats.speed} />
+          </div>
+        </div>
       </div>
       
       {/* Passive ability */}
@@ -262,7 +282,7 @@ export function CharacterSheet({ monster, compact = false }: CharacterSheetProps
   );
 }
 
-// Factory function to create a full monster from basic monster
+// Factory function to create a full monster with corrected stats
 export function createFullMonster(
   species: Monster['species'],
   classType: ClassType,
@@ -271,13 +291,13 @@ export function createFullMonster(
 ): FullMonster {
   const speciesData = SPECIES_DATA[species];
   
-  // Class stat modifiers
+  // Class stat modifiers - now including dodge
   const classModifiers: Record<ClassType, Partial<ExpandedStats>> = {
-    kinetic: { melee: 8, ranged: 2, defense: 5, dexterity: 3, speed: 4, stamina: 5 },
-    energy: { melee: 2, ranged: 8, defense: 2, dexterity: 5, speed: 6, stamina: 8 },
-    biological: { melee: 4, ranged: 4, defense: 6, dexterity: 4, speed: 3, stamina: 10 },
-    chemical: { melee: 3, ranged: 6, defense: 3, dexterity: 6, speed: 5, stamina: 8 },
-    political: { melee: 2, ranged: 3, defense: 7, dexterity: 5, speed: 4, stamina: 10 },
+    kinetic: { melee: 10, ranged: 2, defense: 6, dodge: 2, speed: 4, stamina: 6 },
+    energy: { melee: 2, ranged: 10, defense: 2, dodge: 4, speed: 6, stamina: 8 },
+    biological: { melee: 5, ranged: 5, defense: 8, dodge: 3, speed: 3, stamina: 12 },
+    chemical: { melee: 4, ranged: 8, defense: 3, dodge: 5, speed: 5, stamina: 10 },
+    political: { melee: 2, ranged: 5, defense: 10, dodge: 6, speed: 4, stamina: 8 },
   };
   
   const classMod = classModifiers[classType];
@@ -290,15 +310,15 @@ export function createFullMonster(
   const baseSpecial = speciesData.baseStats.special;
   
   const maxHp = Math.floor((baseHp + 20) * levelMult);
-  const stamina = Math.floor((baseSpecial + (classMod.stamina || 5)) * levelMult);
+  const stamina = Math.floor((baseSpecial + (classMod.stamina || 6)) * levelMult);
   
   const stats: ExpandedStats = {
     maxHp,
     currentHp: maxHp,
     melee: Math.floor((baseAttack + (classMod.melee || 5)) * levelMult),
-    ranged: Math.floor((baseSpecial * 0.5 + (classMod.ranged || 5)) * levelMult),
+    ranged: Math.floor((baseSpecial * 0.6 + (classMod.ranged || 5)) * levelMult),
     defense: Math.floor((baseDefense + (classMod.defense || 5)) * levelMult),
-    dexterity: Math.floor((baseSpeed * 0.6 + (classMod.dexterity || 5)) * levelMult),
+    dodge: Math.floor((baseSpeed * 0.4 + (classMod.dodge || 4)) * levelMult),  // New dodge stat
     speed: Math.floor((baseSpeed + (classMod.speed || 5)) * levelMult),
     stamina,
     currentStamina: stamina,

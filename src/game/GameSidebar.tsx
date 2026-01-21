@@ -1,27 +1,15 @@
 // Game Sidebar - Always visible menu with panels
 
 import { useState } from 'react';
-import { 
-  Sidebar, 
-  SidebarContent, 
-  SidebarGroup, 
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarProvider,
-  SidebarTrigger,
-} from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { User, Backpack, Map, DoorOpen, Swords, Heart, Zap, Shield, Wind } from 'lucide-react';
+import { User, Backpack, Map, DoorOpen, Swords, Heart, Zap, Shield, Wind, Target, Footprints } from 'lucide-react';
 import { Monster, SPECIES_DATA } from './types';
 import { MonsterSprite } from './sprites';
-import { getMonsterMoves, Move } from './moves';
+import { getMonsterMoves, getAspectBadges, Move } from './moves';
+import { ExpandedStats } from './CharacterSheet';
 
 interface GameSidebarProps {
   monster: Monster | null;
@@ -31,6 +19,7 @@ interface GameSidebarProps {
   inBattle?: boolean;
   experience?: number;
   experienceToNext?: number;
+  expandedStats?: ExpandedStats;
 }
 
 export function GameSidebar({ 
@@ -41,6 +30,7 @@ export function GameSidebar({
   inBattle = false,
   experience = 0,
   experienceToNext = 100,
+  expandedStats,
 }: GameSidebarProps) {
   const [activePanel, setActivePanel] = useState<'character' | 'inventory' | 'moves' | null>(null);
   
@@ -49,7 +39,14 @@ export function GameSidebar({
   const moves = getMonsterMoves(monster.species, monster.element, monster.class);
   const speciesData = SPECIES_DATA[monster.species];
   
-  const hpPercent = (monster.stats.currentHp / monster.stats.maxHp) * 100;
+  // Use expanded stats if provided, otherwise fall back to basic stats
+  const currentHp = expandedStats?.currentHp ?? monster.stats.currentHp;
+  const maxHp = expandedStats?.maxHp ?? monster.stats.maxHp;
+  const currentStamina = expandedStats?.currentStamina ?? monster.stats.special;
+  const maxStamina = expandedStats?.stamina ?? monster.stats.special;
+  
+  const hpPercent = (currentHp / maxHp) * 100;
+  const staminaPercent = (currentStamina / maxStamina) * 100;
   const xpPercent = (experience / experienceToNext) * 100;
   
   return (
@@ -81,6 +78,14 @@ export function GameSidebar({
           Lv.{monster.level}
         </div>
         
+        {/* Stamina bar mini */}
+        <div className="w-10 h-1.5 bg-muted rounded-full overflow-hidden" title={`Stamina: ${currentStamina}/${maxStamina}`}>
+          <div 
+            className="h-full bg-stat-special transition-all"
+            style={{ width: `${staminaPercent}%` }}
+          />
+        </div>
+        
         {/* Menu buttons */}
         <div className="flex flex-col gap-2 mt-2">
           <Button 
@@ -88,6 +93,7 @@ export function GameSidebar({
             size="icon"
             className="w-10 h-10"
             onClick={() => setActivePanel(activePanel === 'character' ? null : 'character')}
+            title="Character Sheet"
           >
             <User className="w-5 h-5" />
           </Button>
@@ -97,6 +103,7 @@ export function GameSidebar({
             size="icon"
             className="w-10 h-10"
             onClick={() => setActivePanel(activePanel === 'moves' ? null : 'moves')}
+            title="Moves"
           >
             <Swords className="w-5 h-5" />
           </Button>
@@ -106,6 +113,7 @@ export function GameSidebar({
             size="icon"
             className="w-10 h-10"
             onClick={() => setActivePanel(activePanel === 'inventory' ? null : 'inventory')}
+            title="Inventory"
           >
             <Backpack className="w-5 h-5" />
           </Button>
@@ -175,6 +183,24 @@ export function GameSidebar({
                       </div>
                     </div>
                     
+                    {/* HP & Stamina Bars */}
+                    <div className="space-y-2 mb-3">
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-muted-foreground">HP</span>
+                          <span className="font-mono">{currentHp}/{maxHp}</span>
+                        </div>
+                        <Progress value={hpPercent} className="h-2" />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-muted-foreground">Stamina</span>
+                          <span className="font-mono">{currentStamina}/{maxStamina}</span>
+                        </div>
+                        <Progress value={staminaPercent} className="h-2 [&>div]:bg-stat-special" />
+                      </div>
+                    </div>
+                    
                     {/* XP Bar */}
                     <div className="mb-3">
                       <div className="flex justify-between text-xs mb-1">
@@ -191,14 +217,54 @@ export function GameSidebar({
                     </div>
                   </Card>
                   
-                  {/* Stats */}
-                  <Card className="p-4 space-y-2">
-                    <h4 className="font-semibold text-sm mb-2">Stats</h4>
-                    <StatRow icon={<Heart className="w-4 h-4 text-stat-hp" />} label="HP" value={`${monster.stats.currentHp}/${monster.stats.maxHp}`} />
-                    <StatRow icon={<Swords className="w-4 h-4 text-orange-500" />} label="Attack" value={monster.stats.attack} />
-                    <StatRow icon={<Shield className="w-4 h-4 text-stat-defense" />} label="Defense" value={monster.stats.defense} />
-                    <StatRow icon={<Wind className="w-4 h-4 text-stat-speed" />} label="Speed" value={monster.stats.speed} />
-                    <StatRow icon={<Zap className="w-4 h-4 text-stat-special" />} label="Special" value={monster.stats.special} />
+                  {/* Stats - Corrected Layout */}
+                  <Card className="p-4 space-y-3">
+                    <h4 className="font-semibold text-sm mb-2">Combat Stats</h4>
+                    
+                    {/* Attack Stats */}
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-muted-foreground uppercase">Attack Power</p>
+                      <StatRow 
+                        icon={<Swords className="w-4 h-4 text-orange-500" />} 
+                        label="Melee" 
+                        value={expandedStats?.melee ?? monster.stats.attack} 
+                        description="Power for melee-type attacks"
+                      />
+                      <StatRow 
+                        icon={<Target className="w-4 h-4 text-yellow-500" />} 
+                        label="Ranged" 
+                        value={expandedStats?.ranged ?? monster.stats.special} 
+                        description="Power for ranged-type attacks"
+                      />
+                    </div>
+                    
+                    {/* Defense Stats */}
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-muted-foreground uppercase">Defense</p>
+                      <StatRow 
+                        icon={<Shield className="w-4 h-4 text-stat-defense" />} 
+                        label="Defense" 
+                        value={expandedStats?.defense ?? monster.stats.defense}
+                        description="Reduces incoming damage"
+                      />
+                      <StatRow 
+                        icon={<Footprints className="w-4 h-4 text-emerald-500" />} 
+                        label="Dodge" 
+                        value={expandedStats?.dodge ?? Math.floor(monster.stats.speed * 0.5)}
+                        description="Chance to evade attacks"
+                      />
+                    </div>
+                    
+                    {/* Speed */}
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-muted-foreground uppercase">Turn Order</p>
+                      <StatRow 
+                        icon={<Wind className="w-4 h-4 text-stat-speed" />} 
+                        label="Speed" 
+                        value={expandedStats?.speed ?? monster.stats.speed}
+                        description="Determines who attacks first"
+                      />
+                    </div>
                   </Card>
                 </div>
               )}
@@ -207,10 +273,10 @@ export function GameSidebar({
               {activePanel === 'moves' && (
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground mb-3">
-                    Your moves from Species, Element, and Class
+                    Attacks use 1-3 of your aspects (Species, Element, Class)
                   </p>
                   {moves.map((move) => (
-                    <MoveCard key={move.id} move={move} />
+                    <MoveCard key={move.id} move={move} monster={monster} expandedStats={expandedStats} />
                   ))}
                 </div>
               )}
@@ -235,9 +301,19 @@ export function GameSidebar({
   );
 }
 
-function StatRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) {
+function StatRow({ 
+  icon, 
+  label, 
+  value, 
+  description 
+}: { 
+  icon: React.ReactNode; 
+  label: string; 
+  value: string | number;
+  description?: string;
+}) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between" title={description}>
       <div className="flex items-center gap-2">
         {icon}
         <span className="text-sm">{label}</span>
@@ -247,13 +323,32 @@ function StatRow({ icon, label, value }: { icon: React.ReactNode; label: string;
   );
 }
 
-function MoveCard({ move }: { move: Move }) {
+interface MoveCardProps {
+  move: Move;
+  monster: Monster;
+  expandedStats?: ExpandedStats;
+}
+
+function MoveCard({ move, monster, expandedStats }: MoveCardProps) {
   const typeColors: Record<Move['type'], string> = {
     melee: 'bg-orange-500/20 text-orange-600',
     ranged: 'bg-blue-500/20 text-blue-600',
     status: 'bg-purple-500/20 text-purple-600',
     heal: 'bg-green-500/20 text-green-600',
   };
+  
+  const aspectBadges = getAspectBadges(move);
+  
+  // Calculate effective power based on attack type and stats
+  const attackStat = move.type === 'melee' 
+    ? (expandedStats?.melee ?? monster.stats.attack)
+    : move.type === 'ranged'
+    ? (expandedStats?.ranged ?? monster.stats.special)
+    : 0;
+  
+  // Speed modifier display
+  const speedDisplay = move.speedMod === 0 ? null : 
+    move.speedMod > 0 ? `+${move.speedMod} priority` : `${move.speedMod} priority`;
   
   return (
     <Card className="p-3">
@@ -263,13 +358,44 @@ function MoveCard({ move }: { move: Move }) {
           {move.type}
         </span>
       </div>
-      <p className="text-xs text-muted-foreground mb-2">{move.description}</p>
-      <div className="flex gap-3 text-[10px]">
-        {move.power > 0 && <span>⚔️ {move.power}</span>}
-        <span>🎯 {move.accuracy}%</span>
-        <span>⚡ {move.staminaCost}</span>
-        {move.element && <span className={`element-badge element-${move.element} px-1`}>{move.element}</span>}
+      
+      {/* Aspect badges */}
+      <div className="flex gap-1 mb-2">
+        {aspectBadges.map((badge, i) => (
+          <span key={i} className={`text-[9px] px-1.5 py-0.5 rounded ${badge.colorClass}`}>
+            {badge.label}
+          </span>
+        ))}
+        {move.element && (
+          <span className={`element-badge element-${move.element} text-[9px] px-1.5 py-0.5`}>
+            {move.element}
+          </span>
+        )}
+        {move.classBonus && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-600">
+            {move.classBonus}
+          </span>
+        )}
       </div>
+      
+      <p className="text-xs text-muted-foreground mb-2">{move.description}</p>
+      
+      <div className="flex flex-wrap gap-2 text-[10px]">
+        {move.power > 0 && (
+          <span title={`Base power + ${move.type === 'melee' ? 'Melee' : 'Ranged'} stat`}>
+            ⚔️ {move.power} {attackStat > 0 && <span className="text-muted-foreground">(+{Math.floor(attackStat / 2)})</span>}
+          </span>
+        )}
+        <span title="Base accuracy">🎯 {move.accuracy}%</span>
+        <span title="Stamina cost">⚡ {move.staminaCost}</span>
+        {speedDisplay && <span title="Turn order modifier" className="text-stat-speed">🏃 {speedDisplay}</span>}
+      </div>
+      
+      {move.effect && (
+        <div className="mt-1 text-[10px] text-accent">
+          ✨ {move.effect.replace(/_/g, ' ')}
+        </div>
+      )}
     </Card>
   );
 }

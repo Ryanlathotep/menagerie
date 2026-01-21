@@ -1,27 +1,27 @@
-// Enhanced Dungeon Renderer with visual tiles
+// Enhanced Dungeon Renderer with visual tiles - Bright Anime Style
 
-import { DungeonState, DungeonTile, TileType, ElementType, Monster } from './types';
+import { DungeonState, DungeonTile, TileType, ElementType, Monster, SpeciesType } from './types';
 import { MonsterSpriteSmall } from './sprites';
 
 interface DungeonRendererProps {
   dungeon: DungeonState;
   playerElement: ElementType;
-  playerSpecies?: string;
+  playerSpecies?: SpeciesType;
 }
 
-// Tile visual configurations
+// Tile visual configurations - Bright anime colors
 const TILE_VISUALS: Record<TileType, { bg: string; content: string; glow?: string }> = {
   floor: { bg: 'bg-tile-floor', content: '' },
   wall: { bg: 'bg-tile-wall', content: '' },
   door: { bg: 'bg-tile-floor', content: '🚪' },
-  stairs: { bg: 'bg-tile-floor', content: '⬇️', glow: 'shadow-[0_0_8px_hsl(45_80%_55%)]' },
-  trap: { bg: 'bg-destructive/30', content: '⚠️' },
-  treasure: { bg: 'bg-tile-floor', content: '💎', glow: 'shadow-[0_0_6px_hsl(45_80%_55%)]' },
+  stairs: { bg: 'bg-gradient-to-br from-amber-200 to-yellow-300', content: '✨', glow: 'shadow-lg shadow-amber-300/50' },
+  trap: { bg: 'bg-red-100', content: '⚠️' },
+  treasure: { bg: 'bg-gradient-to-br from-yellow-100 to-amber-200', content: '💎', glow: 'shadow-lg shadow-yellow-300/50' },
   enemy: { bg: 'bg-tile-visible', content: '' },
-  player: { bg: 'bg-primary/30', content: '' },
+  player: { bg: 'bg-gradient-to-br from-pink-200 to-primary/30', content: '' },
 };
 
-// Wall texture patterns based on position
+// Wall texture patterns - softer anime style
 function getWallVariant(x: number, y: number, tiles: DungeonTile[][]): string {
   const hash = (x * 7 + y * 13) % 4;
   const baseClasses = 'bg-tile-wall';
@@ -70,9 +70,10 @@ interface TileProps {
   enemies: Monster[];
   isPlayer: boolean;
   playerElement?: ElementType;
+  playerSpecies?: SpeciesType;
 }
 
-function Tile({ tile, x, y, tiles, enemies, isPlayer, playerElement }: TileProps) {
+function Tile({ tile, x, y, tiles, enemies, isPlayer, playerElement, playerSpecies }: TileProps) {
   if (!tile.explored) {
     return <div className="dungeon-tile bg-background" />;
   }
@@ -88,27 +89,29 @@ function Tile({ tile, x, y, tiles, enemies, isPlayer, playerElement }: TileProps
     );
   }
   
-  // Player tile
-  if (isPlayer && playerElement) {
+  // Player tile - show player's monster sprite
+  if (isPlayer && playerElement && playerSpecies) {
     return (
-      <div className={`dungeon-tile bg-primary/20 ${tile.visible ? 'ring-2 ring-primary' : ''}`}>
-        <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
-          ◆
-        </div>
+      <div className={`dungeon-tile bg-gradient-to-br from-pink-100 to-primary/20 ${tile.visible ? 'ring-2 ring-primary shadow-lg shadow-primary/30' : ''}`}>
+        <MonsterSpriteSmall 
+          species={playerSpecies} 
+          element={playerElement} 
+          size={22}
+        />
       </div>
     );
   }
   
-  // Enemy tiles
+  // Enemy tiles - show monster sprite
   if (tile.type === 'enemy' && tile.enemyId && tile.visible) {
     const enemy = enemies.find(e => e.id === tile.enemyId);
     if (enemy) {
       return (
-        <div className={`dungeon-tile ${getFloorVariant(x, y, true)} relative`}>
+        <div className={`dungeon-tile ${getFloorVariant(x, y, true)} relative hover:scale-110 transition-transform`}>
           <MonsterSpriteSmall 
             species={enemy.species} 
             element={enemy.element} 
-            size={20}
+            size={22}
           />
         </div>
       );
@@ -131,26 +134,31 @@ function Tile({ tile, x, y, tiles, enemies, isPlayer, playerElement }: TileProps
   );
 }
 
-export function DungeonRenderer({ dungeon, playerElement }: DungeonRendererProps) {
+export function DungeonRenderer({ dungeon, playerElement, playerSpecies }: DungeonRendererProps) {
   return (
-    <div className="bg-card rounded-lg p-3 border border-border shadow-xl">
-      {/* Floor header */}
-      <div className="flex items-center justify-between mb-2 px-1">
-        <span className="text-xs text-muted-foreground">
-          Floor {dungeon.floor}
-        </span>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+    <div className="bg-card rounded-2xl p-4 border-2 border-primary/20 shadow-xl shadow-primary/10">
+      {/* Floor header - anime style */}
+      <div className="flex items-center justify-between mb-3 px-1">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            Floor {dungeon.floor}
+          </span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-secondary/20 text-secondary-foreground">
+            ⭐ Adventure!
+          </span>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-primary" /> You
+            <span className="w-3 h-3 rounded-full bg-gradient-to-br from-pink-400 to-primary" /> You
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-destructive" /> Enemy
+            <span className="w-3 h-3 rounded-full bg-gradient-to-br from-red-400 to-orange-400" /> Enemy
           </span>
         </div>
       </div>
       
-      {/* Dungeon grid */}
-      <div className="inline-block rounded overflow-hidden border border-border/50">
+      {/* Dungeon grid - softer borders */}
+      <div className="inline-block rounded-xl overflow-hidden border-2 border-border/30 bg-tile-floor/50">
         {dungeon.tiles.map((row, y) => (
           <div key={y} className="flex">
             {row.map((tile, x) => (
@@ -163,6 +171,7 @@ export function DungeonRenderer({ dungeon, playerElement }: DungeonRendererProps
                 enemies={dungeon.enemies}
                 isPlayer={dungeon.playerPosition.x === x && dungeon.playerPosition.y === y}
                 playerElement={playerElement}
+                playerSpecies={playerSpecies}
               />
             ))}
           </div>

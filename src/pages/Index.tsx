@@ -132,7 +132,8 @@ function DungeonView() {
         {/* Dungeon grid */}
         <DungeonRenderer 
           dungeon={dungeon} 
-          playerElement={state.run?.currentMonster.element || 'fire'} 
+          playerElement={state.run?.currentMonster.element || 'fire'}
+          playerSpecies={state.run?.currentMonster.species}
         />
         
         {/* Side panel */}

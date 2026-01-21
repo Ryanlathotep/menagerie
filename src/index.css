@@ -2,120 +2,119 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Monster Roguelike Design System - Dark Fantasy Theme */
+/* Monster Roguelike Design System - Bright Anime Theme */
 
 @layer base {
   :root {
-    --background: 220 20% 10%;
-    --foreground: 45 30% 90%;
+    --background: 210 40% 98%;
+    --foreground: 222 47% 20%;
 
-    --card: 220 25% 14%;
-    --card-foreground: 45 30% 90%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 20%;
 
-    --popover: 220 25% 12%;
-    --popover-foreground: 45 30% 90%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 20%;
 
-    --primary: 45 80% 55%;
-    --primary-foreground: 220 20% 10%;
+    --primary: 330 85% 60%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 20% 20%;
-    --secondary-foreground: 45 30% 85%;
+    --secondary: 200 95% 65%;
+    --secondary-foreground: 222 47% 15%;
 
-    --muted: 220 15% 18%;
-    --muted-foreground: 220 10% 55%;
+    --muted: 210 30% 92%;
+    --muted-foreground: 220 15% 45%;
 
-    --accent: 280 60% 50%;
-    --accent-foreground: 45 30% 95%;
+    --accent: 45 95% 60%;
+    --accent-foreground: 222 47% 15%;
 
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 45 30% 95%;
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 220 20% 22%;
-    --input: 220 20% 18%;
-    --ring: 45 80% 55%;
+    --border: 220 20% 85%;
+    --input: 220 20% 90%;
+    --ring: 330 85% 60%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    /* Element Colors */
-    --element-fire: 15 90% 55%;
-    --element-fire-glow: 30 95% 60%;
-    --element-water: 200 85% 50%;
-    --element-water-glow: 190 80% 60%;
-    --element-earth: 35 70% 40%;
-    --element-earth-glow: 25 60% 50%;
-    --element-air: 180 40% 70%;
-    --element-air-glow: 200 50% 80%;
-    --element-void: 270 60% 30%;
-    --element-void-glow: 280 50% 40%;
+    /* Element Colors - Bright and saturated */
+    --element-fire: 15 95% 55%;
+    --element-fire-glow: 25 100% 65%;
+    --element-water: 200 90% 55%;
+    --element-water-glow: 190 95% 65%;
+    --element-earth: 35 80% 45%;
+    --element-earth-glow: 30 85% 55%;
+    --element-air: 175 70% 60%;
+    --element-air-glow: 180 80% 70%;
+    --element-void: 270 70% 55%;
+    --element-void-glow: 280 75% 65%;
 
-    /* Class Colors */
-    --class-kinetic: 0 0% 70%;
-    --class-energy: 60 80% 50%;
-    --class-biological: 120 60% 40%;
-    --class-chemical: 300 70% 50%;
-    --class-political: 210 70% 50%;
+    /* Class Colors - Vibrant */
+    --class-kinetic: 0 0% 55%;
+    --class-energy: 55 90% 55%;
+    --class-biological: 140 70% 45%;
+    --class-chemical: 290 75% 55%;
+    --class-political: 210 80% 55%;
 
-    /* Stats Colors */
-    --stat-hp: 0 70% 50%;
-    --stat-attack: 30 80% 50%;
-    --stat-defense: 210 60% 50%;
-    --stat-speed: 160 70% 45%;
-    --stat-special: 280 60% 55%;
+    /* Stats Colors - Cheerful */
+    --stat-hp: 350 85% 55%;
+    --stat-attack: 25 90% 55%;
+    --stat-defense: 210 75% 55%;
+    --stat-speed: 160 80% 45%;
+    --stat-special: 280 70% 60%;
 
-    /* Dungeon Colors */
-    --tile-floor: 220 15% 20%;
-    --tile-wall: 220 20% 12%;
-    --tile-explored: 220 15% 16%;
-    --tile-visible: 220 15% 25%;
+    /* Dungeon Colors - Light and airy */
+    --tile-floor: 45 30% 92%;
+    --tile-wall: 220 25% 75%;
+    --tile-explored: 45 20% 88%;
+    --tile-visible: 45 40% 95%;
 
-    --sidebar-background: 220 25% 12%;
-    --sidebar-foreground: 45 30% 85%;
-    --sidebar-primary: 45 80% 55%;
-    --sidebar-primary-foreground: 220 20% 10%;
-    --sidebar-accent: 220 20% 18%;
-    --sidebar-accent-foreground: 45 30% 85%;
-    --sidebar-border: 220 20% 22%;
-    --sidebar-ring: 45 80% 55%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 25%;
+    --sidebar-primary: 330 85% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 200 95% 92%;
+    --sidebar-accent-foreground: 222 47% 20%;
+    --sidebar-border: 220 20% 88%;
+    --sidebar-ring: 330 85% 60%;
   }
 
-  /* Keep dark mode the same for this game */
   .dark {
-    --background: 220 20% 10%;
-    --foreground: 45 30% 90%;
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
 
-    --card: 220 25% 14%;
-    --card-foreground: 45 30% 90%;
+    --card: 222 47% 15%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 220 25% 12%;
-    --popover-foreground: 45 30% 90%;
+    --popover: 222 47% 13%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 45 80% 55%;
-    --primary-foreground: 220 20% 10%;
+    --primary: 330 85% 60%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 20% 20%;
-    --secondary-foreground: 45 30% 85%;
+    --secondary: 200 95% 55%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 220 15% 18%;
-    --muted-foreground: 220 10% 55%;
+    --muted: 220 25% 20%;
+    --muted-foreground: 220 15% 55%;
 
-    --accent: 280 60% 50%;
-    --accent-foreground: 45 30% 95%;
+    --accent: 45 95% 55%;
+    --accent-foreground: 222 47% 15%;
 
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 45 30% 95%;
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 220 20% 22%;
-    --input: 220 20% 18%;
-    --ring: 45 80% 55%;
+    --border: 220 20% 25%;
+    --input: 220 20% 20%;
+    --ring: 330 85% 60%;
     
-    --sidebar-background: 220 25% 12%;
-    --sidebar-foreground: 45 30% 85%;
-    --sidebar-primary: 45 80% 55%;
-    --sidebar-primary-foreground: 220 20% 10%;
-    --sidebar-accent: 220 20% 18%;
-    --sidebar-accent-foreground: 45 30% 85%;
-    --sidebar-border: 220 20% 22%;
-    --sidebar-ring: 45 80% 55%;
+    --sidebar-background: 222 47% 13%;
+    --sidebar-foreground: 210 40% 90%;
+    --sidebar-primary: 330 85% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 25% 20%;
+    --sidebar-accent-foreground: 210 40% 90%;
+    --sidebar-border: 220 20% 25%;
+    --sidebar-ring: 330 85% 60%;
   }
 }
 
@@ -157,36 +156,36 @@
   }
 }
 
-/* Element-specific styles */
+/* Element-specific styles - Anime style with gradients */
 .element-fire { 
-  background: hsl(var(--element-fire)); 
+  background: linear-gradient(135deg, hsl(var(--element-fire)), hsl(var(--element-fire-glow))); 
   color: white;
-  box-shadow: 0 0 10px hsl(var(--element-fire-glow) / 0.5);
+  box-shadow: 0 2px 8px hsl(var(--element-fire) / 0.4);
 }
 .element-water { 
-  background: hsl(var(--element-water)); 
+  background: linear-gradient(135deg, hsl(var(--element-water)), hsl(var(--element-water-glow))); 
   color: white;
-  box-shadow: 0 0 10px hsl(var(--element-water-glow) / 0.5);
+  box-shadow: 0 2px 8px hsl(var(--element-water) / 0.4);
 }
 .element-earth { 
-  background: hsl(var(--element-earth)); 
+  background: linear-gradient(135deg, hsl(var(--element-earth)), hsl(var(--element-earth-glow))); 
   color: white;
-  box-shadow: 0 0 10px hsl(var(--element-earth-glow) / 0.5);
+  box-shadow: 0 2px 8px hsl(var(--element-earth) / 0.4);
 }
 .element-air { 
-  background: hsl(var(--element-air)); 
-  color: hsl(220 20% 15%);
-  box-shadow: 0 0 10px hsl(var(--element-air-glow) / 0.5);
+  background: linear-gradient(135deg, hsl(var(--element-air)), hsl(var(--element-air-glow))); 
+  color: hsl(222 47% 20%);
+  box-shadow: 0 2px 8px hsl(var(--element-air) / 0.4);
 }
 .element-void { 
-  background: hsl(var(--element-void)); 
+  background: linear-gradient(135deg, hsl(var(--element-void)), hsl(var(--element-void-glow))); 
   color: white;
-  box-shadow: 0 0 10px hsl(var(--element-void-glow) / 0.5);
+  box-shadow: 0 2px 8px hsl(var(--element-void) / 0.4);
 }
 
 /* Class-specific styles */
-.class-kinetic { background: hsl(var(--class-kinetic)); }
-.class-energy { background: hsl(var(--class-energy)); color: hsl(220 20% 15%); }
-.class-biological { background: hsl(var(--class-biological)); }
-.class-chemical { background: hsl(var(--class-chemical)); }
-.class-political { background: hsl(var(--class-political)); }
+.class-kinetic { background: linear-gradient(135deg, hsl(var(--class-kinetic)), hsl(0 0% 65%)); }
+.class-energy { background: linear-gradient(135deg, hsl(var(--class-energy)), hsl(50 95% 65%)); color: hsl(222 47% 20%); }
+.class-biological { background: linear-gradient(135deg, hsl(var(--class-biological)), hsl(135 75% 55%)); }
+.class-chemical { background: linear-gradient(135deg, hsl(var(--class-chemical)), hsl(285 80% 65%)); }
+.class-political { background: linear-gradient(135deg, hsl(var(--class-political)), hsl(205 85% 65%)); }

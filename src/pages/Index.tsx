@@ -44,7 +44,7 @@ function MainMenu() {
         </div>
 
         <div className="text-sm text-muted-foreground mt-8 space-y-1">
-          <p>🔓 Unlocked: {state.saveData.unlockedMonsters?.length || 1} / 500 monsters</p>
+          <p>🔓 Unlocked: {state.saveData.unlockedMonsters?.length || 1} / 720 monsters</p>
           <p>🏔️ Highest Floor: {state.saveData.highestFloor}</p>
           <p>🎮 Total Runs: {state.saveData.totalRuns}</p>
         </div>
@@ -382,9 +382,21 @@ function BattleView() {
   const executeMove = (move: Move) => {
     if (!state.run) return;
     
+    // Check if player has enough stamina
+    const staminaCost = move.staminaCost || 0;
+    const currentStamina = battle.playerMonster.stats.currentStamina || battle.playerMonster.stats.stamina || 50;
+    
+    if (currentStamina < staminaCost) {
+      toast.error('Not enough stamina!');
+      return;
+    }
+    
+    // Consume stamina
+    const newPlayerStamina = currentStamina - staminaCost;
+    
     // Execute combat with proper calculations
     const result = executeCombat(move, battle.playerMonster, battle.enemyMonster);
-    const newLog = [...battle.log, result.message];
+    const newLog = [...battle.log, result.message, `Used ${staminaCost} stamina`];
     
     const newEnemyHp = Math.max(0, battle.enemyMonster.stats.currentHp - result.damage);
     
@@ -466,11 +478,24 @@ function BattleView() {
         dispatch({ type: 'END_BATTLE', victory: false });
         dispatch({ type: 'END_RUN', victory: false });
       } else {
+        // Regenerate a bit of stamina each turn (2 stamina recovery)
+        const recoveredStamina = Math.min(
+          battle.playerMonster.stats.stamina || 50,
+          newPlayerStamina + 2
+        );
+        
         dispatch({ 
           type: 'UPDATE_BATTLE', 
           battle: {
             enemyMonster: { ...battle.enemyMonster, stats: { ...battle.enemyMonster.stats, currentHp: newEnemyHp }},
-            playerMonster: { ...battle.playerMonster, stats: { ...battle.playerMonster.stats, currentHp: newPlayerHp }},
+            playerMonster: { 
+              ...battle.playerMonster, 
+              stats: { 
+                ...battle.playerMonster.stats, 
+                currentHp: newPlayerHp,
+                currentStamina: recoveredStamina,
+              }
+            },
             log: newLog,
           }
         });

@@ -108,6 +108,10 @@ export const SPECIES_MOVES: Record<SpeciesType, Move[]> = {
 
 // ============= ELEMENT-ONLY MOVES (1 aspect) =============
 export const ELEMENT_MOVES: Record<ElementType, Move[]> = {
+  normal: [
+    { id: 'tackle', name: 'Tackle', description: 'Basic physical attack', type: 'melee', power: 25, accuracy: 95, staminaCost: 4, speedMod: 0, aspects: ['element'], element: 'normal' },
+    { id: 'focus', name: 'Focus', description: 'Concentrate energy', type: 'status', power: 0, accuracy: 100, staminaCost: 5, speedMod: 0, aspects: ['element'], element: 'normal', effect: 'raise_accuracy' },
+  ],
   fire: [
     { id: 'fireball', name: 'Fireball', description: 'Launch a blazing orb', type: 'ranged', power: 35, accuracy: 90, staminaCost: 8, speedMod: 0, aspects: ['element'], element: 'fire' },
     { id: 'flame_burst', name: 'Flame Burst', description: 'Explosive fire', type: 'ranged', power: 25, accuracy: 95, staminaCost: 6, speedMod: 1, aspects: ['element'], element: 'fire', effect: 'burn' },
@@ -132,6 +136,10 @@ export const ELEMENT_MOVES: Record<ElementType, Move[]> = {
 
 // ============= CLASS-ONLY MOVES (1 aspect) =============
 export const CLASS_MOVES: Record<ClassType, Move[]> = {
+  normal: [
+    { id: 'basic_attack', name: 'Basic Attack', description: 'Simple attack', type: 'melee', power: 25, accuracy: 100, staminaCost: 3, speedMod: 0, aspects: ['class'], classBonus: 'normal' },
+    { id: 'rest', name: 'Rest', description: 'Recover stamina', type: 'status', power: 0, accuracy: 100, staminaCost: 0, speedMod: -2, aspects: ['class'], classBonus: 'normal', effect: 'restore_stamina' },
+  ],
   kinetic: [
     { id: 'power_strike', name: 'Power Strike', description: 'Raw physical force', type: 'melee', power: 40, accuracy: 90, staminaCost: 8, speedMod: 0, aspects: ['class'], classBonus: 'kinetic' },
     { id: 'momentum', name: 'Momentum', description: 'Build up power', type: 'status', power: 0, accuracy: 100, staminaCost: 5, speedMod: 0, aspects: ['class'], classBonus: 'kinetic', effect: 'charge_next' },

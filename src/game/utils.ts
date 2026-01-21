@@ -25,6 +25,7 @@ export function calculateStats(species: SpeciesType, classType: ClassType, level
   const levelMultiplier = 1 + (level - 1) * 0.1;
   
   const baseHp = Math.floor((speciesStats.hp + classStats.hp) * levelMultiplier);
+  const baseStamina = Math.floor((speciesStats.special + 20) * levelMultiplier);
   
   return {
     maxHp: baseHp,
@@ -32,7 +33,10 @@ export function calculateStats(species: SpeciesType, classType: ClassType, level
     attack: Math.floor((speciesStats.attack + classStats.attack) * levelMultiplier),
     defense: Math.floor((speciesStats.defense + classStats.defense) * levelMultiplier),
     speed: Math.floor((speciesStats.speed + classStats.speed) * levelMultiplier),
+    dodge: Math.floor((speciesStats.speed * 0.5 + classStats.dodge) * levelMultiplier),
     special: Math.floor((speciesStats.special + classStats.special) * levelMultiplier),
+    stamina: baseStamina,
+    currentStamina: baseStamina,
   };
 }
 
@@ -109,11 +113,13 @@ export function generateRandomMonster(
   level: number
 ): Monster {
   const species = allowedSpecies[Math.floor(Math.random() * allowedSpecies.length)];
-  const classes: ClassType[] = ['kinetic', 'energy', 'biological', 'chemical', 'political'];
-  const elements: ElementType[] = ['fire', 'water', 'earth', 'air', 'void'];
+  // Include normal type with low probability
+  const classes: ClassType[] = ['normal', 'kinetic', 'energy', 'biological', 'chemical', 'political'];
+  const elements: ElementType[] = ['normal', 'fire', 'water', 'earth', 'air', 'void'];
   
-  const classType = classes[Math.floor(Math.random() * classes.length)];
-  const element = elements[Math.floor(Math.random() * elements.length)];
+  // Weighted random - normal is less common (10% chance)
+  const classType = Math.random() < 0.1 ? 'normal' : classes[1 + Math.floor(Math.random() * 5)] as ClassType;
+  const element = Math.random() < 0.1 ? 'normal' : elements[1 + Math.floor(Math.random() * 5)] as ElementType;
   
   return createMonster(species, classType, element, level);
 }
@@ -122,6 +128,7 @@ export function generateRandomMonster(
 export function getMonsterFullName(monster: Monster): string {
   const speciesData = SPECIES_DATA[monster.species];
   const classNames: Record<ClassType, string> = {
+    normal: 'Normal',
     kinetic: 'Kinetic',
     energy: 'Energy',
     biological: 'Biological',

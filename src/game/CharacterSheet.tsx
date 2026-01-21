@@ -293,6 +293,7 @@ export function createFullMonster(
   
   // Class stat modifiers - now including dodge
   const classModifiers: Record<ClassType, Partial<ExpandedStats>> = {
+    normal: { melee: 5, ranged: 5, defense: 5, dodge: 5, speed: 5, stamina: 8 },
     kinetic: { melee: 10, ranged: 2, defense: 6, dodge: 2, speed: 4, stamina: 6 },
     energy: { melee: 2, ranged: 10, defense: 2, dodge: 4, speed: 6, stamina: 8 },
     biological: { melee: 5, ranged: 5, defense: 8, dodge: 3, speed: 3, stamina: 12 },

@@ -1,18 +1,22 @@
 // Core game types for the monster battler roguelike
 
 // ============= ELEMENT SYSTEM =============
-export type ElementType = 'fire' | 'water' | 'earth' | 'air' | 'void';
+// 'normal' has no weaknesses or resistances
+export type ElementType = 'normal' | 'fire' | 'water' | 'earth' | 'air' | 'void';
 
 // Star-shaped weakness pattern: each element beats 2 and loses to 2
+// Normal has no advantages or disadvantages
 export const ELEMENT_ADVANTAGES: Record<ElementType, ElementType[]> = {
-  fire: ['air', 'earth'],    // Fire scorches air and earth
-  water: ['fire', 'void'],   // Water douses fire and fills void
-  earth: ['water', 'air'],   // Earth absorbs water and grounds air
-  air: ['void', 'water'],    // Air disperses void and evaporates water
-  void: ['fire', 'earth'],   // Void consumes fire and swallows earth
+  normal: [],               // Normal has no advantages
+  fire: ['air', 'earth'],   // Fire scorches air and earth
+  water: ['fire', 'void'],  // Water douses fire and fills void
+  earth: ['water', 'air'],  // Earth absorbs water and grounds air
+  air: ['void', 'water'],   // Air disperses void and evaporates water
+  void: ['fire', 'earth'],  // Void consumes fire and swallows earth
 };
 
 export const ELEMENT_COLORS: Record<ElementType, { primary: string; secondary: string; accent: string }> = {
+  normal: { primary: '0 0% 60%', secondary: '0 0% 70%', accent: '0 0% 50%' },
   fire: { primary: '15 90% 55%', secondary: '30 95% 60%', accent: '0 85% 50%' },
   water: { primary: '200 85% 50%', secondary: '190 80% 60%', accent: '210 90% 45%' },
   earth: { primary: '35 70% 40%', secondary: '25 60% 50%', accent: '45 80% 35%' },
@@ -21,13 +25,13 @@ export const ELEMENT_COLORS: Record<ElementType, { primary: string; secondary: s
 };
 
 // ============= CLASS SYSTEM =============
-export type ClassType = 'kinetic' | 'energy' | 'biological' | 'chemical' | 'political';
+// 'normal' has no weaknesses or resistances
+export type ClassType = 'normal' | 'kinetic' | 'energy' | 'biological' | 'chemical' | 'political';
 
 // Star-shaped class advantage pattern
-// Note: Using corrected version below instead
-
-// Corrected class advantages
+// Normal has no advantages or disadvantages
 export const CLASS_ADVANTAGES_CORRECTED: Record<ClassType, ClassType[]> = {
+  normal: [],                       // Normal has no advantages
   kinetic: ['energy', 'biological'],
   energy: ['biological', 'chemical'],
   biological: ['chemical', 'political'],
@@ -35,12 +39,13 @@ export const CLASS_ADVANTAGES_CORRECTED: Record<ClassType, ClassType[]> = {
   political: ['kinetic', 'energy'],
 };
 
-export const CLASS_STATS: Record<ClassType, { hp: number; attack: number; defense: number; speed: number; special: number }> = {
-  kinetic: { hp: 20, attack: 15, defense: 10, speed: 10, special: 5 },
-  energy: { hp: 10, attack: 10, defense: 5, speed: 15, special: 20 },
-  biological: { hp: 25, attack: 8, defense: 12, speed: 8, special: 7 },
-  chemical: { hp: 15, attack: 12, defense: 8, speed: 12, special: 13 },
-  political: { hp: 18, attack: 5, defense: 15, speed: 5, special: 17 },
+export const CLASS_STATS: Record<ClassType, { hp: number; attack: number; defense: number; speed: number; special: number; dodge: number }> = {
+  normal: { hp: 18, attack: 10, defense: 10, speed: 10, special: 10, dodge: 10 },
+  kinetic: { hp: 20, attack: 15, defense: 10, speed: 10, special: 5, dodge: 8 },
+  energy: { hp: 10, attack: 10, defense: 5, speed: 15, special: 20, dodge: 12 },
+  biological: { hp: 25, attack: 8, defense: 12, speed: 8, special: 7, dodge: 6 },
+  chemical: { hp: 15, attack: 12, defense: 8, speed: 12, special: 13, dodge: 10 },
+  political: { hp: 18, attack: 5, defense: 15, speed: 5, special: 17, dodge: 14 },
 };
 
 // ============= SPECIES SYSTEM =============
@@ -211,8 +216,11 @@ export interface MonsterStats {
   currentHp: number;
   attack: number;
   defense: number;
-  speed: number;
+  speed: number;      // Turn order only
+  dodge: number;      // Evasion chance (reduces enemy hit chance)
   special: number;
+  stamina: number;    // Max stamina
+  currentStamina: number;
 }
 
 export interface Monster {

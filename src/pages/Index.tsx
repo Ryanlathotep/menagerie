@@ -1,14 +1,25 @@
 import { GameProvider, useGame } from '@/game/state';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { SPECIES_DATA, SpeciesType, ClassType, ElementType, getComboId } from '@/game/types';
-import { createMonster } from '@/game/utils';
-import { generateDungeon, movePlayer, removeEnemy } from '@/game/dungeon';
-import { useEffect, useCallback, useState } from 'react';
+import { createMonster, calculateStats } from '@/game/utils';
+import { generateDungeon, movePlayer, removeEnemy, LootItem } from '@/game/dungeon';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { MonsterSprite } from '@/game/sprites';
 import { DungeonRenderer } from '@/game/DungeonRenderer';
 import { GameSidebar } from '@/game/GameSidebar';
 import { getMonsterMoves, Move } from '@/game/moves';
+import { MoveTooltip } from '@/game/BattleTooltip';
+import { ShopView } from '@/game/ShopView';
+import { 
+  executeCombat, 
+  calculateXpReward, 
+  xpToNextLevel, 
+  checkLevelUp,
+  getEffectiveness 
+} from '@/game/combat';
+import { toast } from 'sonner';
 
 // Main Menu Component
 function MainMenu() {
@@ -159,12 +170,15 @@ function CharacterSelect() {
   );
 }
 
-// Dungeon View Component
+// Dungeon View Component with scrolling viewport
 function DungeonView() {
   const { state, dispatch } = useGame();
   const dungeon = state.run?.dungeon;
   const [experience, setExperience] = useState(0);
-  const experienceToNext = 100 * (state.run?.currentMonster.level || 1);
+  const [showShop, setShowShop] = useState(false);
+  const [inventory, setInventory] = useState<LootItem[]>([]);
+  const experienceToNext = xpToNextLevel(state.run?.currentMonster.level || 1);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!dungeon) {
@@ -173,24 +187,73 @@ function DungeonView() {
     }
   }, [dungeon, dispatch]);
 
+  // Scroll dungeon view to center on player
+  useEffect(() => {
+    if (dungeon && containerRef.current) {
+      const tileSize = 28; // Match CSS
+      const containerWidth = containerRef.current.clientWidth;
+      const containerHeight = containerRef.current.clientHeight;
+      
+      const scrollX = (dungeon.playerPosition.x * tileSize) - (containerWidth / 2) + (tileSize / 2);
+      const scrollY = (dungeon.playerPosition.y * tileSize) - (containerHeight / 2) + (tileSize / 2);
+      
+      containerRef.current.scrollTo({
+        left: Math.max(0, scrollX),
+        top: Math.max(0, scrollY),
+        behavior: 'smooth',
+      });
+    }
+  }, [dungeon?.playerPosition]);
+
   const handleMove = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
-    if (!dungeon) return;
+    if (!dungeon || !state.run) return;
     
     const result = movePlayer(dungeon, direction);
     dispatch({ type: 'SET_DUNGEON', dungeon: result.dungeon });
 
     if (result.encounter) {
       dispatch({ type: 'START_BATTLE', enemy: result.encounter });
-    } else if (result.treasure) {
-      dispatch({ type: 'ADD_GOLD', amount: 10 + Math.floor(Math.random() * 20) });
+    } else if (result.treasure && result.loot) {
+      if (result.loot.type === 'gold') {
+        dispatch({ type: 'ADD_GOLD', amount: result.loot.value });
+        toast.success(`Found ${result.loot.value} gold!`);
+      } else {
+        setInventory(prev => [...prev, result.loot!]);
+        toast.success(`Found ${result.loot.name}!`);
+      }
     } else if (result.stairs) {
       const newDungeon = generateDungeon(dungeon.floor + 1);
       dispatch({ type: 'SET_DUNGEON', dungeon: newDungeon });
+      toast.success(`Descended to Floor ${dungeon.floor + 1}!`);
+    } else if (result.trap) {
+      if (result.trap.type === 'spike' && result.trap.damage) {
+        const newHp = Math.max(0, state.run.currentMonster.stats.currentHp - result.trap.damage);
+        const updatedMonster = {
+          ...state.run.currentMonster,
+          stats: { ...state.run.currentMonster.stats, currentHp: newHp },
+        };
+        dispatch({ type: 'UPDATE_PLAYER_MONSTER', monster: updatedMonster });
+        toast.error(`Stepped on a spike trap! Took ${result.trap.damage} damage!`);
+        
+        if (newHp <= 0) {
+          dispatch({ type: 'END_RUN', victory: false });
+          dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
+        }
+      } else if (result.trap.type === 'poison') {
+        toast.error('Poisoned by a trap!');
+        // Could add poison status effect here
+      } else if (result.trap.type === 'alarm') {
+        toast.error('Alarm trap! Enemies alerted!');
+        // Could spawn additional enemies
+      }
+    } else if (result.shop) {
+      setShowShop(true);
     }
-  }, [dungeon, dispatch]);
+  }, [dungeon, dispatch, state.run]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (showShop) return;
       if (e.key === 'ArrowUp' || e.key === 'w') handleMove('up');
       if (e.key === 'ArrowDown' || e.key === 's') handleMove('down');
       if (e.key === 'ArrowLeft' || e.key === 'a') handleMove('left');
@@ -198,11 +261,20 @@ function DungeonView() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleMove]);
+  }, [handleMove, showShop]);
 
   const handleFlee = () => {
     dispatch({ type: 'END_RUN', victory: false });
     dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
+  };
+
+  const handleBuyItem = (item: LootItem) => {
+    const price = item.value * 1.5; // Shop markup
+    if (state.run && state.run.gold >= price) {
+      dispatch({ type: 'ADD_GOLD', amount: -Math.floor(price) });
+      setInventory(prev => [...prev, item]);
+      toast.success(`Bought ${item.name}!`);
+    }
   };
 
   if (!dungeon) return <div className="game-container">Loading...</div>;
@@ -218,13 +290,27 @@ function DungeonView() {
         experienceToNext={experienceToNext}
       />
       
+      {showShop && (
+        <ShopView 
+          gold={state.run?.gold || 0}
+          onBuy={handleBuyItem}
+          onClose={() => setShowShop(false)}
+        />
+      )}
+      
       <div className="game-container pl-20">
         <div className="flex flex-col items-center gap-4">
-          <DungeonRenderer 
-            dungeon={dungeon} 
-            playerElement={state.run?.currentMonster.element || 'fire'}
-            playerSpecies={state.run?.currentMonster.species}
-          />
+          {/* Scrollable dungeon viewport */}
+          <div 
+            ref={containerRef}
+            className="w-full max-w-[600px] h-[400px] overflow-auto bg-card rounded-2xl p-4 border-2 border-primary/20 shadow-xl"
+          >
+            <DungeonRenderer 
+              dungeon={dungeon} 
+              playerElement={state.run?.currentMonster.element || 'fire'}
+              playerSpecies={state.run?.currentMonster.species}
+            />
+          </div>
 
           {/* Mobile controls */}
           <div className="grid grid-cols-3 gap-2 w-32 sm:hidden">
@@ -240,19 +326,27 @@ function DungeonView() {
           </div>
 
           <p className="text-muted-foreground text-sm hidden sm:block">Use WASD or Arrow keys to move</p>
+          
+          {/* Legend */}
+          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground justify-center">
+            <span>💎 Treasure</span>
+            <span>⬇️ Stairs</span>
+            <span>⚠️ Trap</span>
+            <span>🏪 Shop</span>
+          </div>
         </div>
       </div>
     </>
   );
 }
 
-// Battle View Component
+// Battle View Component with proper combat calculations
 function BattleView() {
   const { state, dispatch } = useGame();
   const battle = state.run?.battle;
-  const [selectedMove, setSelectedMove] = useState<Move | null>(null);
+  const [experience, setExperience] = useState(0);
 
-  if (!battle) return null;
+  if (!battle || !state.run) return null;
 
   const playerMoves = getMonsterMoves(
     battle.playerMonster.species,
@@ -260,26 +354,16 @@ function BattleView() {
     battle.playerMonster.class
   );
 
+  const experienceToNext = xpToNextLevel(battle.playerMonster.level);
+
   const executeMove = (move: Move) => {
-    // Calculate damage based on move type
-    let damage = move.power;
-    if (move.type === 'melee') {
-      damage = Math.floor(move.power * (battle.playerMonster.stats.attack / 20));
-    } else if (move.type === 'ranged') {
-      damage = Math.floor(move.power * (battle.playerMonster.stats.special / 20));
-    }
+    if (!state.run) return;
     
-    // Apply accuracy check
-    const hitRoll = Math.random() * 100;
-    if (hitRoll > move.accuracy) {
-      dispatch({ 
-        type: 'UPDATE_BATTLE', 
-        battle: { log: [...battle.log, `${move.name} missed!`] }
-      });
-      return;
-    }
+    // Execute combat with proper calculations
+    const result = executeCombat(move, battle.playerMonster, battle.enemyMonster);
+    const newLog = [...battle.log, result.message];
     
-    const newEnemyHp = Math.max(0, battle.enemyMonster.stats.currentHp - damage);
+    const newEnemyHp = Math.max(0, battle.enemyMonster.stats.currentHp - result.damage);
     
     if (newEnemyHp <= 0) {
       // Victory - unlock this specific monster combo
@@ -291,6 +375,34 @@ function BattleView() {
       dispatch({ type: 'UNLOCK_COMBO', comboId });
       dispatch({ type: 'UNLOCK_SPECIES', species: battle.enemyMonster.species });
       
+      // Award XP
+      const xpGained = calculateXpReward(battle.enemyMonster.level, battle.playerMonster.level);
+      const newXp = experience + xpGained;
+      
+      // Check for level up
+      const levelUpResult = checkLevelUp(battle.playerMonster, newXp);
+      
+      if (levelUpResult.leveled) {
+        // Level up!
+        const newStats = calculateStats(
+          battle.playerMonster.species,
+          battle.playerMonster.class,
+          levelUpResult.newLevel
+        );
+        const leveledMonster = {
+          ...battle.playerMonster,
+          level: levelUpResult.newLevel,
+          stats: { ...newStats, currentHp: battle.playerMonster.stats.currentHp },
+        };
+        dispatch({ type: 'UPDATE_PLAYER_MONSTER', monster: leveledMonster });
+        setExperience(levelUpResult.xpRemaining);
+        toast.success(`🎉 Level Up! Now level ${levelUpResult.newLevel}!`);
+      } else {
+        setExperience(newXp);
+      }
+      
+      toast.success(`+${xpGained} XP!`);
+      
       if (state.run?.dungeon) {
         const updatedDungeon = removeEnemy(state.run.dungeon, battle.enemyMonster.id);
         dispatch({ type: 'SET_DUNGEON', dungeon: updatedDungeon });
@@ -298,9 +410,22 @@ function BattleView() {
       dispatch({ type: 'END_BATTLE', victory: true });
       dispatch({ type: 'ADD_GOLD', amount: 5 + battle.enemyMonster.level * 3 });
     } else {
-      // Enemy turn
-      const enemyDamage = Math.floor(5 + Math.random() * 8);
-      const newPlayerHp = Math.max(0, battle.playerMonster.stats.currentHp - enemyDamage);
+      // Enemy turn - use random enemy move
+      const enemyMoves = getMonsterMoves(
+        battle.enemyMonster.species,
+        battle.enemyMonster.element,
+        battle.enemyMonster.class
+      );
+      const enemyMove = enemyMoves[Math.floor(Math.random() * Math.min(3, enemyMoves.length))];
+      
+      const enemyResult = executeCombat(
+        enemyMove,
+        { ...battle.enemyMonster, stats: { ...battle.enemyMonster.stats, currentHp: newEnemyHp } },
+        battle.playerMonster
+      );
+      
+      const newPlayerHp = Math.max(0, battle.playerMonster.stats.currentHp - enemyResult.damage);
+      newLog.push(enemyResult.message);
       
       if (newPlayerHp <= 0) {
         dispatch({ type: 'END_BATTLE', victory: false });
@@ -311,12 +436,19 @@ function BattleView() {
           battle: {
             enemyMonster: { ...battle.enemyMonster, stats: { ...battle.enemyMonster.stats, currentHp: newEnemyHp }},
             playerMonster: { ...battle.playerMonster, stats: { ...battle.playerMonster.stats, currentHp: newPlayerHp }},
-            log: [...battle.log, `${move.name} dealt ${damage} damage!`, `Enemy dealt ${enemyDamage} damage!`],
+            log: newLog,
           }
         });
       }
     }
-    setSelectedMove(null);
+  };
+
+  // Get effectiveness indicator for each move
+  const getMoveEffectivenessIndicator = (move: Move) => {
+    const eff = getEffectiveness(move, battle.playerMonster, battle.enemyMonster);
+    if (eff.overall === 'super') return '🔥';
+    if (eff.overall === 'weak') return '⬇️';
+    return '';
   };
 
   return (
@@ -326,6 +458,8 @@ function BattleView() {
         gold={state.run?.gold || 0}
         floor={state.run?.dungeon?.floor || 1}
         inBattle={true}
+        experience={experience}
+        experienceToNext={experienceToNext}
       />
       
       <div className="game-container pl-20">
@@ -346,9 +480,14 @@ function BattleView() {
               <div className="flex-1">
                 <div className="flex justify-between items-center mb-1">
                   <span className="font-semibold">{battle.enemyMonster.name}</span>
-                  <span className={`element-badge element-${battle.enemyMonster.element} text-xs`}>
-                    {battle.enemyMonster.element}
-                  </span>
+                  <div className="flex gap-1">
+                    <span className={`element-badge element-${battle.enemyMonster.element} text-xs`}>
+                      {battle.enemyMonster.element}
+                    </span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-muted">
+                      {battle.enemyMonster.class}
+                    </span>
+                  </div>
                 </div>
                 <div className="health-bar">
                   <div 
@@ -388,24 +527,35 @@ function BattleView() {
             </div>
           </Card>
 
-          {/* Move selection */}
-          <div className="grid grid-cols-2 gap-2">
-            {playerMoves.slice(0, 6).map((move) => (
-              <Button 
-                key={move.id}
-                variant={selectedMove?.id === move.id ? 'default' : 'outline'}
-                className="h-auto py-2 px-3 text-left justify-start"
-                onClick={() => executeMove(move)}
-              >
-                <div>
-                  <p className="font-semibold text-sm">{move.name}</p>
-                  <p className="text-[10px] opacity-70">
-                    {move.power > 0 ? `⚔️${move.power} ` : ''} 🎯{move.accuracy}%
-                  </p>
-                </div>
-              </Button>
-            ))}
-          </div>
+          {/* Move selection - ALL moves with tooltips */}
+          <ScrollArea className="h-48">
+            <div className="grid grid-cols-2 gap-2 pr-4">
+              {playerMoves.map((move) => (
+                <MoveTooltip 
+                  key={move.id} 
+                  move={move} 
+                  attacker={battle.playerMonster} 
+                  defender={battle.enemyMonster}
+                >
+                  <Button 
+                    variant="outline"
+                    className="h-auto py-2 px-3 text-left justify-start hover:bg-primary/10"
+                    onClick={() => executeMove(move)}
+                  >
+                    <div className="w-full">
+                      <div className="flex justify-between items-center">
+                        <p className="font-semibold text-sm">{move.name}</p>
+                        <span>{getMoveEffectivenessIndicator(move)}</span>
+                      </div>
+                      <p className="text-[10px] opacity-70">
+                        {move.power > 0 ? `⚔️${move.power} ` : ''} 🎯{move.accuracy}% ⚡{move.staminaCost}
+                      </p>
+                    </div>
+                  </Button>
+                </MoveTooltip>
+              ))}
+            </div>
+          </ScrollArea>
 
           {/* Battle log */}
           <div className="bg-muted rounded-lg p-3 text-xs max-h-24 overflow-y-auto">

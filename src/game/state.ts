@@ -13,12 +13,12 @@ import {
   getComboId 
 } from './types';
 
-// Starting monster - Biological Water Slime
+// Starting monster - Normal Normal Slime
 const STARTER_MONSTER = {
-  comboId: 'slime_water_biological',
+  comboId: 'slime_normal_normal',
   species: 'slime' as SpeciesType,
-  element: 'water' as const,
-  classType: 'biological' as const,
+  element: 'normal' as const,
+  classType: 'normal' as const,
   level: 1,
 };
 

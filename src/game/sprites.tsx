@@ -112,8 +112,8 @@ const SPECIES_PATHS: Record<SpeciesType, { body: string; detail: string; face: s
 };
 
 // Class equipment overlays - improved with requested designs
-// Kinetic: Boxing gloves, Biological: Scale texture, Energy: Eye lasers, Chemical: Bubbles, Political: Crown
-const CLASS_OVERLAYS: Record<ClassType, { weapon?: string; armor?: string; accessory?: string; color: string; secondaryColor?: string }> = {
+// Kinetic: Boxing gloves, Biological: Camo pattern (clipped), Energy: Eye lasers, Chemical: Bubbles, Political: Crown
+const CLASS_OVERLAYS: Record<ClassType, { weapon?: string; armor?: string; accessory?: string; camoPattern?: boolean; color: string; secondaryColor?: string }> = {
   normal: {
     color: '0 0% 70%',
   },
@@ -128,30 +128,28 @@ const CLASS_OVERLAYS: Record<ClassType, { weapon?: string; armor?: string; acces
   energy: {
     // Eye laser beams shooting outward
     weapon: 'M35,32 L8,25 L10,30 L35,35 M65,32 L92,25 L90,30 L65,35 M8,25 L5,22 M92,25 L95,22',
-    // Glowing aura around head
-    accessory: 'M50,5 A20,8 0 1,1 50.01,5',
+    // Glowing aura around head - larger and more visible
+    accessory: 'M50,2 A22,10 0 1,1 50.01,2',
     color: '280 85% 60%', // Purple energy
     secondaryColor: '300 90% 70%',
   },
   biological: {
-    // Scale/plate pattern on torso
-    armor: 'M35,35 L50,32 L65,35 L68,50 L65,65 L50,68 L35,65 L32,50 Z M40,40 L50,38 L60,40 M42,50 L50,48 L58,50 M40,60 L50,58 L60,60 M38,45 L45,48 M62,45 L55,48 M38,55 L45,52 M62,55 L55,52',
-    // Small antennae
-    accessory: 'M42,10 Q38,2 40,0 M58,10 Q62,2 60,0',
-    color: '120 70% 42%', // Green bio
-    secondaryColor: '100 65% 35%',
+    // Camo pattern rendered inside body via clip path
+    camoPattern: true,
+    color: '120 55% 35%', // Dark green base
+    secondaryColor: '90 45% 45%', // Olive
   },
   chemical: {
-    // Bubbles floating around
-    accessory: 'M18,28 A5,5 0 1,1 18.01,28 M10,42 A4,4 0 1,1 10.01,42 M22,52 A3,3 0 1,1 22.01,52 M82,28 A5,5 0 1,1 82.01,28 M90,42 A4,4 0 1,1 90.01,42 M78,52 A3,3 0 1,1 78.01,52 M15,60 A2,2 0 1,1 15.01,60 M85,60 A2,2 0 1,1 85.01,60',
+    // Bubbles floating around - more prominent
+    accessory: 'M16,25 A6,6 0 1,1 16.01,25 M8,40 A5,5 0 1,1 8.01,40 M20,55 A4,4 0 1,1 20.01,55 M84,25 A6,6 0 1,1 84.01,25 M92,40 A5,5 0 1,1 92.01,40 M80,55 A4,4 0 1,1 80.01,55 M12,62 A3,3 0 1,1 12.01,62 M88,62 A3,3 0 1,1 88.01,62',
     color: '60 95% 50%', // Yellow-green toxic
     secondaryColor: '90 90% 55%',
   },
   political: {
-    // Prominent golden crown
-    accessory: 'M28,8 L32,0 L38,10 L44,2 L50,-2 L56,2 L62,10 L68,0 L72,8 L70,18 L30,18 Z',
+    // Prominent golden crown - larger
+    accessory: 'M25,10 L30,0 L37,12 L44,2 L50,-4 L56,2 L63,12 L70,0 L75,10 L72,22 L28,22 Z',
     // Royal cape/mantle sides
-    armor: 'M22,35 Q18,52 22,72 L32,68 L32,42 Z M78,35 Q82,52 78,72 L68,68 L68,42 Z',
+    armor: 'M20,38 Q15,55 20,75 L32,70 L32,45 Z M80,38 Q85,55 80,75 L68,70 L68,45 Z',
     color: '45 95% 55%', // Gold
     secondaryColor: '38 90% 45%',
   },
@@ -186,6 +184,7 @@ export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({
   const classColor = overlay.color;
   
   const animationClass = animated ? 'animate-pulse-glow' : '';
+  const uniqueId = `sprite-${species}-${element}-${classType}-${Math.random().toString(36).substr(2, 9)}`;
 
   return (
     <svg 
@@ -198,9 +197,20 @@ export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({
     >
       {/* Define clip path from species body for contained fill */}
       <defs>
-        <clipPath id={`body-clip-${species}-${element}-${classType}`}>
+        <clipPath id={`body-clip-${uniqueId}`}>
           <path d={paths.body} />
         </clipPath>
+        {/* Camo pattern for biological class */}
+        {overlay.camoPattern && (
+          <pattern id={`camo-${uniqueId}`} patternUnits="userSpaceOnUse" width="20" height="20">
+            <rect width="20" height="20" fill={`hsl(${overlay.color})`} />
+            <ellipse cx="5" cy="5" rx="6" ry="4" fill={`hsl(${overlay.secondaryColor})`} />
+            <ellipse cx="15" cy="12" rx="5" ry="3" fill={`hsl(80 40% 30%)`} />
+            <ellipse cx="10" cy="18" rx="4" ry="3" fill={`hsl(${overlay.secondaryColor})`} />
+            <ellipse cx="2" cy="14" rx="3" ry="2" fill={`hsl(100 35% 28%)`} />
+            <ellipse cx="18" cy="4" rx="3" ry="2" fill={`hsl(80 40% 30%)`} />
+          </pattern>
+        )}
       </defs>
       
       {/* Subtle background circle - not element colored */}
@@ -211,33 +221,46 @@ export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({
         fill="hsl(var(--muted) / 0.1)"
       />
       
-      {/* Species body - element color with transparency */}
+      {/* Species body - element color with transparency, clipped to body shape */}
+      <g clipPath={`url(#body-clip-${uniqueId})`}>
+        {/* Base element fill - contained within body */}
+        <rect x="0" y="0" width="100" height="100" fill={`hsl(${colors.primary} / 0.6)`} />
+        
+        {/* Biological camo overlay - only rendered for biological class */}
+        {overlay.camoPattern && (
+          <rect x="0" y="0" width="100" height="100" fill={`url(#camo-${uniqueId})`} opacity="0.7" />
+        )}
+      </g>
+      
+      {/* Species body outline - dark and opaque */}
       <path
         d={paths.body}
-        fill={`hsl(${colors.primary} / 0.7)`}
-        stroke={`hsl(${colors.accent})`}
-        strokeWidth="3"
+        fill="none"
+        stroke="hsl(0 0% 10%)"
+        strokeWidth="3.5"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       
-      {/* Species detail (body details like ribs, wings, etc) */}
+      {/* Species detail (body details like ribs, wings, etc) - clipped */}
       {paths.detail && (
-        <path
-          d={paths.detail}
-          fill="none"
-          stroke={`hsl(${colors.accent})`}
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
+        <g clipPath={`url(#body-clip-${uniqueId})`}>
+          <path
+            d={paths.detail}
+            fill="none"
+            stroke="hsl(0 0% 15%)"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        </g>
       )}
       
-      {/* Face features - darker, more opaque for visibility */}
+      {/* Face features - dark and very opaque for visibility */}
       {paths.face && (
         <path
           d={paths.face}
-          fill={`hsl(${colors.accent} / 0.9)`}
-          stroke={`hsl(${colors.accent})`}
+          fill="hsl(0 0% 8%)"
+          stroke="hsl(0 0% 5%)"
           strokeWidth="2.5"
           strokeLinecap="round"
         />
@@ -248,7 +271,7 @@ export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({
       {overlay.armor && (
         <path
           d={overlay.armor}
-          fill={`hsl(${classColor} / 0.7)`}
+          fill={`hsl(${classColor} / 0.8)`}
           stroke={`hsl(${classColor})`}
           strokeWidth="2"
           strokeLinecap="round"
@@ -272,9 +295,9 @@ export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({
       {overlay.accessory && (
         <path
           d={overlay.accessory}
-          fill={`hsl(${overlay.secondaryColor || classColor} / 0.85)`}
+          fill={`hsl(${overlay.secondaryColor || classColor} / 0.9)`}
           stroke={`hsl(${classColor})`}
-          strokeWidth="2"
+          strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
@@ -299,6 +322,7 @@ export function MonsterSpriteSmall({
 }) {
   const colors = ELEMENT_COLORS[element];
   const paths = SPECIES_PATHS[species];
+  const uniqueId = `small-${species}-${element}-${Math.random().toString(36).substr(2, 9)}`;
   
   return (
     <svg 
@@ -307,17 +331,31 @@ export function MonsterSpriteSmall({
       viewBox="0 0 100 100" 
       className={className}
     >
+      <defs>
+        <clipPath id={`body-clip-${uniqueId}`}>
+          <path d={paths.body} />
+        </clipPath>
+      </defs>
+      
+      {/* Clipped element fill */}
+      <g clipPath={`url(#body-clip-${uniqueId})`}>
+        <rect x="0" y="0" width="100" height="100" fill={`hsl(${colors.primary} / 0.6)`} />
+      </g>
+      
+      {/* Dark outline */}
       <path
         d={paths.body}
-        fill={`hsl(${colors.primary} / 0.7)`}
-        stroke={`hsl(${colors.accent})`}
+        fill="none"
+        stroke="hsl(0 0% 10%)"
         strokeWidth="4"
       />
+      
+      {/* Dark face */}
       {paths.face && (
         <path
           d={paths.face}
-          fill={`hsl(${colors.accent})`}
-          stroke={`hsl(${colors.accent})`}
+          fill="hsl(0 0% 8%)"
+          stroke="hsl(0 0% 5%)"
           strokeWidth="2"
         />
       )}

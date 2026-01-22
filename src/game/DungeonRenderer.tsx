@@ -1,8 +1,14 @@
 // Enhanced Dungeon Renderer with visual tiles - Bright Anime Style
 
 import { forwardRef, useEffect, useRef, useImperativeHandle } from 'react';
-import { DungeonState, DungeonTile, TileType, ElementType, Monster, SpeciesType } from './types';
+import { DungeonState, DungeonTile, TileType, ElementType, Monster, SpeciesType, SPECIES_DATA } from './types';
 import { MonsterSpriteSmall } from './sprites';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface DungeonRendererProps {
   dungeon: DungeonState;
@@ -149,19 +155,63 @@ function Tile({
       </div>;
   }
 
-  // Enemy tiles - show monster sprite
+  // Enemy tiles - show monster sprite with tooltip
   if (tile.type === 'enemy' && tile.enemyId && tile.visible) {
     const enemy = enemies.find(e => e.id === tile.enemyId);
     if (enemy) {
-      return <div className={`flex items-center justify-center ${getFloorVariant(x, y, true)} relative hover:scale-110 transition-transform`} style={tileStyle}>
-          <MonsterSpriteSmall species={enemy.species} element={enemy.element} size={spriteSize} />
-        </div>;
+      const speciesData = SPECIES_DATA[enemy.species];
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className={`flex items-center justify-center ${getFloorVariant(x, y, true)} relative hover:scale-110 transition-transform cursor-pointer`} style={tileStyle}>
+              <MonsterSpriteSmall species={enemy.species} element={enemy.element} size={spriteSize} />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-[200px] p-2">
+            <div className="space-y-1">
+              <p className="font-bold text-sm">{enemy.name}</p>
+              <p className="text-xs text-muted-foreground capitalize">
+                Lv.{enemy.level} {enemy.element} {speciesData.name}
+              </p>
+              <p className="text-xs">HP: {enemy.stats.currentHp}/{enemy.stats.maxHp}</p>
+              <p className="text-[10px] text-muted-foreground italic">{speciesData.passiveDescription}</p>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      );
     }
   }
 
-  // Special tiles
+  // Special tiles with tooltips
   const visual = TILE_VISUALS[tile.type];
   const floorClass = getFloorVariant(x, y, tile.visible);
+  
+  // Tiles that should have tooltips
+  const tileTooltips: Partial<Record<TileType, { title: string; description: string }>> = {
+    treasure: { title: '💎 Treasure', description: 'Walk over to collect loot!' },
+    stairs: { title: '⬇️ Stairs', description: 'Descend to the next floor' },
+    trap: { title: '⚠️ Trap', description: tile.triggered ? 'Already triggered' : 'Watch your step!' },
+    shop: { title: '🏪 Shop', description: 'Buy items and equipment' },
+  };
+  
+  const tooltipInfo = tile.visible ? tileTooltips[tile.type] : null;
+  
+  if (tooltipInfo) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className={`flex items-center justify-center ${tile.type === 'floor' ? floorClass : visual.bg} ${visual.glow || ''} cursor-pointer`} style={tileStyle}>
+            {visual.content && <span style={{ fontSize: `${Math.max(10, tileSize * 0.5)}px` }}>{visual.content}</span>}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="p-2">
+          <p className="font-bold text-sm">{tooltipInfo.title}</p>
+          <p className="text-xs text-muted-foreground">{tooltipInfo.description}</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+  
   return <div className={`flex items-center justify-center ${tile.type === 'floor' ? floorClass : visual.bg} ${visual.glow || ''}`} style={tileStyle}>
       {tile.visible && visual.content && <span style={{ fontSize: `${Math.max(10, tileSize * 0.5)}px` }}>{visual.content}</span>}
       {tile.visible && tile.type === 'floor' && <span className="text-muted-foreground/20" style={{ fontSize: `${Math.max(4, tileSize * 0.2)}px` }}>·</span>}
@@ -223,6 +273,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   }, [dungeon.playerPosition.x, dungeon.playerPosition.y, tileSize]);
   
   return (
+    <TooltipProvider delayDuration={200}>
     <div className="w-full h-full flex flex-col">
       {/* Floor header - anime style */}
       <div className="flex items-center justify-between mb-3 px-1">
@@ -276,6 +327,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
         <span>⚠️ Trap</span>
       </div>
     </div>
+    </TooltipProvider>
   );
 });
 

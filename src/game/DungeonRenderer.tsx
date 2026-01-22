@@ -1,7 +1,7 @@
 // Enhanced Dungeon Renderer with visual tiles - Bright Anime Style
 
-import { forwardRef, useEffect, useRef, useImperativeHandle, useState } from 'react';
-import { DungeonState, DungeonTile, TileType, ElementType, Monster, SpeciesType, SPECIES_DATA, TrapType } from './types';
+import { forwardRef, useEffect, useRef, useImperativeHandle } from 'react';
+import { DungeonState, DungeonTile, TileType, ElementType, ClassType, Monster, SpeciesType, SPECIES_DATA, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED, TrapType } from './types';
 import { MonsterSpriteSmall } from './sprites';
 import {
   Tooltip,
@@ -10,9 +10,42 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
+// Calculate matchup between player and enemy
+function getMatchupInfo(
+  playerElement: ElementType,
+  playerClass: ClassType,
+  enemyElement: ElementType,
+  enemyClass: ClassType
+): {
+  elementAdvantage: 'player' | 'enemy' | 'neutral';
+  classAdvantage: 'player' | 'enemy' | 'neutral';
+  playerWeakToElement: boolean;
+  playerWeakToClass: boolean;
+  playerStrongVsElement: boolean;
+  playerStrongVsClass: boolean;
+} {
+  // Element matchup
+  const playerBeatsEnemyElement = ELEMENT_ADVANTAGES[playerElement]?.includes(enemyElement) || false;
+  const enemyBeatsPlayerElement = ELEMENT_ADVANTAGES[enemyElement]?.includes(playerElement) || false;
+  
+  // Class matchup
+  const playerBeatsEnemyClass = CLASS_ADVANTAGES_CORRECTED[playerClass]?.includes(enemyClass) || false;
+  const enemyBeatsPlayerClass = CLASS_ADVANTAGES_CORRECTED[enemyClass]?.includes(playerClass) || false;
+  
+  return {
+    elementAdvantage: playerBeatsEnemyElement ? 'player' : enemyBeatsPlayerElement ? 'enemy' : 'neutral',
+    classAdvantage: playerBeatsEnemyClass ? 'player' : enemyBeatsPlayerClass ? 'enemy' : 'neutral',
+    playerWeakToElement: enemyBeatsPlayerElement,
+    playerWeakToClass: enemyBeatsPlayerClass,
+    playerStrongVsElement: playerBeatsEnemyElement,
+    playerStrongVsClass: playerBeatsEnemyClass,
+  };
+}
+
 interface DungeonRendererProps {
   dungeon: DungeonState;
   playerElement: ElementType;
+  playerClass?: ClassType;
   playerSpecies?: SpeciesType;
   playerDexterity?: number; // For disarm calculations
   zoom?: number; // 50-200, 100 = default
@@ -143,6 +176,7 @@ interface TileProps {
   enemies: Monster[];
   isPlayer: boolean;
   playerElement?: ElementType;
+  playerClass?: ClassType;
   playerSpecies?: SpeciesType;
   playerDexterity?: number;
   tileSize: number;
@@ -157,6 +191,7 @@ function Tile({
   enemies,
   isPlayer,
   playerElement,
+  playerClass,
   playerSpecies,
   playerDexterity = 10,
   tileSize,
@@ -188,11 +223,18 @@ function Tile({
       </div>;
   }
 
-  // Enemy tiles - show monster sprite with tooltip
+  // Enemy tiles - show monster sprite with enhanced tooltip
   if (tile.type === 'enemy' && tile.enemyId && tile.visible) {
     const enemy = enemies.find(e => e.id === tile.enemyId);
     if (enemy) {
       const speciesData = SPECIES_DATA[enemy.species];
+      const matchup = playerElement && playerClass 
+        ? getMatchupInfo(playerElement, playerClass, enemy.element, enemy.class)
+        : null;
+      
+      const hasWeakness = matchup && (matchup.playerWeakToElement || matchup.playerWeakToClass);
+      const hasStrength = matchup && (matchup.playerStrongVsElement || matchup.playerStrongVsClass);
+      
       return (
         <Tooltip>
           <TooltipTrigger asChild>
@@ -200,14 +242,105 @@ function Tile({
               <MonsterSpriteSmall species={enemy.species} element={enemy.element} size={spriteSize} />
             </div>
           </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-[200px] p-2">
-            <div className="space-y-1">
-              <p className="font-bold text-sm">{enemy.name}</p>
-              <p className="text-xs text-muted-foreground capitalize">
-                Lv.{enemy.level} {enemy.element} {speciesData.name}
-              </p>
-              <p className="text-xs">HP: {enemy.stats.currentHp}/{enemy.stats.maxHp}</p>
-              <p className="text-[10px] text-muted-foreground italic">{speciesData.passiveDescription}</p>
+          <TooltipContent side="top" className="max-w-[260px] p-3">
+            <div className="space-y-2">
+              {/* Header with name and level */}
+              <div>
+                <p className="font-bold text-sm">{enemy.name}</p>
+                <p className="text-xs text-muted-foreground">Lv.{enemy.level}</p>
+              </div>
+              
+              {/* Type badges */}
+              <div className="flex flex-wrap gap-1">
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary capitalize">
+                  {enemy.element}
+                </span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary capitalize">
+                  {enemy.class}
+                </span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary">
+                  {speciesData.name}
+                </span>
+              </div>
+              
+              {/* HP bar */}
+              <div className="space-y-0.5">
+                <div className="flex justify-between text-xs">
+                  <span>HP</span>
+                  <span className="font-mono">{enemy.stats.currentHp}/{enemy.stats.maxHp}</span>
+                </div>
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-destructive transition-all" 
+                    style={{ width: `${(enemy.stats.currentHp / enemy.stats.maxHp) * 100}%` }}
+                  />
+                </div>
+              </div>
+              
+              {/* Stats row */}
+              <div className="flex gap-2 text-[10px] text-muted-foreground">
+                <span>⚔️{enemy.stats.attack}</span>
+                <span>🛡️{enemy.stats.defense}</span>
+                <span>💨{enemy.stats.speed}</span>
+              </div>
+              
+              {/* Matchup section */}
+              {matchup && (
+                <div className="border-t border-border pt-2 space-y-1">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase">Matchup</p>
+                  
+                  {/* Danger warning */}
+                  {hasWeakness && (
+                    <div className="bg-destructive/20 border border-destructive/40 rounded p-1.5 space-y-0.5">
+                      <p className="text-xs font-bold text-destructive flex items-center gap-1">
+                        ⚠️ You're weak!
+                      </p>
+                      {matchup.playerWeakToElement && (
+                        <p className="text-[10px] text-destructive/90">
+                          • {enemy.element.charAt(0).toUpperCase() + enemy.element.slice(1)} beats your element (1.5x dmg)
+                        </p>
+                      )}
+                      {matchup.playerWeakToClass && (
+                        <p className="text-[10px] text-destructive/90">
+                          • {enemy.class.charAt(0).toUpperCase() + enemy.class.slice(1)} beats your class (1.3x dmg)
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Strength indicator */}
+                  {hasStrength && (
+                    <div className="bg-green-500/20 border border-green-500/40 rounded p-1.5 space-y-0.5">
+                      <p className="text-xs font-bold text-green-600 dark:text-green-400 flex items-center gap-1">
+                        ✨ You have advantage!
+                      </p>
+                      {matchup.playerStrongVsElement && (
+                        <p className="text-[10px] text-green-600 dark:text-green-400">
+                          • Your element beats {enemy.element} (1.5x dmg)
+                        </p>
+                      )}
+                      {matchup.playerStrongVsClass && (
+                        <p className="text-[10px] text-green-600 dark:text-green-400">
+                          • Your class beats {enemy.class} (1.3x dmg)
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Neutral matchup */}
+                  {!hasWeakness && !hasStrength && (
+                    <p className="text-[10px] text-muted-foreground">
+                      ⚖️ Neutral matchup
+                    </p>
+                  )}
+                </div>
+              )}
+              
+              {/* Passive ability */}
+              <div className="border-t border-border pt-2">
+                <p className="text-[10px] font-semibold text-primary">{speciesData.passiveAbility}</p>
+                <p className="text-[10px] text-muted-foreground italic">{speciesData.passiveDescription}</p>
+              </div>
             </div>
           </TooltipContent>
         </Tooltip>
@@ -303,6 +436,7 @@ function Tile({
 export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRendererProps>(({
   dungeon,
   playerElement,
+  playerClass,
   playerSpecies,
   playerDexterity = 10,
   zoom = 100,
@@ -395,6 +529,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                   enemies={dungeon.enemies} 
                   isPlayer={dungeon.playerPosition.x === x && dungeon.playerPosition.y === y} 
                   playerElement={playerElement} 
+                  playerClass={playerClass}
                   playerSpecies={playerSpecies}
                   playerDexterity={playerDexterity}
                   tileSize={tileSize}

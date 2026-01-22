@@ -111,36 +111,52 @@ const SPECIES_PATHS: Record<SpeciesType, { body: string; detail?: string; outlin
   },
 };
 
-// Class equipment overlays - now more visible with thicker strokes and fills
-const CLASS_OVERLAYS: Record<ClassType, { weapon?: string; armor?: string; accessory?: string; color: string }> = {
+// Class equipment overlays - positioned at consistent anchor points
+// Crown/headgear at top (y: -5 to 15), weapons at right side (x: 70-95), armor on body (centered)
+const CLASS_OVERLAYS: Record<ClassType, { weapon?: string; armor?: string; accessory?: string; color: string; secondaryColor?: string }> = {
   normal: {
     // No equipment for normal class - plain appearance
     color: '0 0% 70%', // Gray for normal
   },
   kinetic: {
-    weapon: 'M78,25 L92,10 L95,13 L82,28 L85,31 L78,31 L78,25', // Sword
-    armor: 'M35,42 L50,38 L65,42 L62,55 L50,58 L38,55 Z', // Chest plate
-    color: '45 90% 48%', // Orange-ish for physical
+    // Sword on right side, positioned outside body
+    weapon: 'M75,15 L92,2 L95,5 L80,22 L83,25 L76,25 L75,18 Z',
+    // Belt/armor accent on body center
+    armor: 'M40,50 L60,50 L62,55 L58,58 L42,58 L38,55 Z',
+    color: '45 90% 48%', // Orange for kinetic
+    secondaryColor: '35 85% 40%',
   },
   energy: {
-    weapon: 'M82,30 A10,10 0 1,1 82,31', // Energy orb
-    accessory: 'M30,15 L25,5 M35,12 L32,3 M70,15 L75,5 M65,12 L68,3', // Energy antenna
-    color: '280 80% 60%', // Purple for magical
+    // Glowing orb floating to the right
+    weapon: 'M82,25 A8,8 0 1,1 82.01,25',
+    // Energy aura/halo around head area
+    accessory: 'M50,5 A25,10 0 1,1 50.01,5',
+    color: '280 80% 60%', // Purple for energy
+    secondaryColor: '270 90% 70%',
   },
   biological: {
-    armor: 'M30,35 Q25,45 28,55 Q32,52 35,58 Q38,52 42,55 M70,35 Q75,45 72,55 Q68,52 65,58 Q62,52 58,55', // Vines/tentacles
-    accessory: 'M50,5 L50,0 Q58,0 55,8 Q52,5 50,10 Q48,5 45,8 Q42,0 50,0', // Flower/sprout
+    // Scale pattern armor on chest (like reptile/insect plates)
+    armor: 'M35,40 Q40,35 50,35 Q60,35 65,40 L65,55 Q60,60 50,60 Q40,60 35,55 Z M40,42 L45,45 L40,48 M50,40 L55,45 L50,50 M60,42 L55,47 L60,52',
+    // Small antennae/feelers on top
+    accessory: 'M40,8 Q35,2 38,0 M60,8 Q65,2 62,0',
     color: '120 70% 45%', // Green for biological
+    secondaryColor: '110 60% 35%',
   },
   chemical: {
-    weapon: 'M80,42 L88,35 L95,42 L88,49 Z M88,35 L88,25 A5,5 0 1,1 88,26', // Flask with bubbles
-    accessory: 'M22,30 A4,4 0 1,1 22,31 M28,22 A3,3 0 1,1 28,23 M18,40 A2,2 0 1,1 18,41', // Bubbles
+    // Flask/vial on right side
+    weapon: 'M78,35 L82,25 A6,6 0 1,1 88,25 L92,35 L90,40 L80,40 Z M83,42 A3,3 0 1,1 83,43 M88,44 A2,2 0 1,1 88,45',
+    // Bubbles floating around
+    accessory: 'M18,25 A4,4 0 1,1 18.01,25 M12,35 A3,3 0 1,1 12.01,35 M20,42 A2,2 0 1,1 20.01,42',
     color: '50 90% 50%', // Yellow/toxic
+    secondaryColor: '80 85% 45%',
   },
   political: {
-    accessory: 'M40,3 L50,0 L60,3 L58,12 L50,8 L42,12 Z', // Crown
-    armor: 'M32,48 L28,52 L32,56 L28,60 M68,48 L72,52 L68,56 L72,60', // Medals/sash
-    color: '320 70% 55%', // Royal purple/pink
+    // Prominent crown on top
+    accessory: 'M30,5 L35,0 L40,8 L45,2 L50,-2 L55,2 L60,8 L65,0 L70,5 L68,15 L32,15 Z',
+    // Regal cape/mantle
+    armor: 'M25,35 Q20,50 25,70 L35,65 L35,40 Z M75,35 Q80,50 75,70 L65,65 L65,40 Z',
+    color: '45 90% 55%', // Gold for political
+    secondaryColor: '320 70% 45%',
   },
 };
 
@@ -186,15 +202,22 @@ export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({
       className={`${className} ${animationClass}`}
       style={{ filter: getElementGlow(element) }}
     >
-      {/* Background glow */}
+      {/* Define clip path from species body for contained fill */}
+      <defs>
+        <clipPath id={`body-clip-${species}-${element}-${classType}`}>
+          <path d={paths.body} />
+        </clipPath>
+      </defs>
+      
+      {/* Subtle background circle - not element colored */}
       <circle 
         cx="50" 
         cy="50" 
         r="45" 
-        fill={`hsl(${colors.primary} / 0.15)`}
+        fill="hsl(var(--muted) / 0.1)"
       />
       
-      {/* Species body */}
+      {/* Species body - element color contained within body shape */}
       <path
         d={paths.body}
         fill={fillColor}
@@ -215,7 +238,7 @@ export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({
         />
       )}
       
-      {/* Species detail (eyes, features) */}
+      {/* Species detail (eyes, features) - rendered above body */}
       {paths.detail && (
         <path
           d={paths.detail}
@@ -226,37 +249,37 @@ export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({
         />
       )}
       
-      {/* Class equipment - now more visible with fills and thicker strokes */}
-      {/* Class armor overlay */}
+      {/* Class equipment rendered on top of everything */}
+      {/* Class armor overlay - rendered first so it's behind other equipment */}
       {overlay.armor && (
         <path
           d={overlay.armor}
-          fill={`${classColor.replace(')', ' / 0.6)')}`}
-          stroke={classColor}
-          strokeWidth="2.5"
+          fill={`hsl(${classColor} / 0.7)`}
+          stroke={`hsl(${classColor})`}
+          strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
       )}
       
-      {/* Class weapon overlay */}
+      {/* Class weapon overlay - positioned to the side */}
       {overlay.weapon && (
         <path
           d={overlay.weapon}
-          fill={`${classColor.replace(')', ' / 0.8)')}`}
-          stroke={classColor}
-          strokeWidth="2.5"
+          fill={`hsl(${classColor} / 0.9)`}
+          stroke={`hsl(${classColor})`}
+          strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
       )}
       
-      {/* Class accessory overlay */}
+      {/* Class accessory overlay - crown/aura/etc */}
       {overlay.accessory && (
         <path
           d={overlay.accessory}
-          fill={`${classColor.replace(')', ' / 0.7)')}`}
-          stroke={classColor}
+          fill={`hsl(${overlay.secondaryColor || classColor} / 0.85)`}
+          stroke={`hsl(${classColor})`}
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"

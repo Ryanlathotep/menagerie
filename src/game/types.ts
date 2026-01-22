@@ -337,6 +337,7 @@ export interface RunState {
   inventory: InventoryItem[];
   equipmentInventory: import('./equipment').EquipmentItem[];  // Equipment items found
   equipment: import('./equipment').MonsterEquipment;          // Currently equipped items
+  runMaterials: MaterialInventory;                            // Materials found this run (kept on flee)
   enemiesDefeated: number;
   moveOrder: string[];      // Order of move IDs
   hiddenMoves: string[];    // IDs of hidden moves

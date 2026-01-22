@@ -49,6 +49,7 @@ type GameAction =
   | { type: 'SET_PHASE'; phase: GamePhase }
   | { type: 'START_RUN'; monster: Monster }
   | { type: 'END_RUN'; victory: boolean }
+  | { type: 'FLEE_DUNGEON' }  // Flee safely - keeps materials and equipment
   | { type: 'SET_DUNGEON'; dungeon: DungeonState }
   | { type: 'UPDATE_DUNGEON'; dungeon: Partial<DungeonState> }
   | { type: 'DISARM_TRAP'; x: number; y: number; success: boolean }
@@ -100,6 +101,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           ],
           equipmentInventory: [],
           equipment: createEmptyEquipment(),
+          runMaterials: {},
           enemiesDefeated: 0,
           moveOrder: [],
           hiddenMoves: [],
@@ -110,7 +112,19 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         },
       };
       
-    case 'END_RUN':
+    case 'END_RUN': {
+      // On death (victory=false), return equipped items to town storage
+      const equipmentToStore: EquipmentItem[] = [];
+      if (!action.victory && state.run?.equipment) {
+        const slots: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory'];
+        for (const slot of slots) {
+          const item = state.run.equipment[slot];
+          if (item) {
+            equipmentToStore.push(item);
+          }
+        }
+      }
+      
       return {
         ...state,
         phase: 'run_summary',
@@ -120,8 +134,46 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             ? Math.max(state.saveData.highestFloor, state.run.dungeon.floor)
             : state.saveData.highestFloor,
           totalEnemiesDefeated: state.saveData.totalEnemiesDefeated + (state.run?.enemiesDefeated || 0),
+          // Return equipped items to storage on death
+          storedEquipment: [...state.saveData.storedEquipment, ...equipmentToStore],
         },
       };
+    }
+    
+    case 'FLEE_DUNGEON': {
+      // Flee safely - keep materials and equipment by storing them
+      if (!state.run) return state;
+      
+      // Collect all equipment to store (equipped + inventory)
+      const equipmentToStore: EquipmentItem[] = [...state.run.equipmentInventory];
+      const slots: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory'];
+      for (const slot of slots) {
+        const item = state.run.equipment[slot];
+        if (item) {
+          equipmentToStore.push(item);
+        }
+      }
+      
+      // Merge run materials with saved materials
+      const mergedMaterials = { ...state.saveData.materials };
+      for (const [materialId, quantity] of Object.entries(state.run.runMaterials)) {
+        mergedMaterials[materialId] = (mergedMaterials[materialId] || 0) + quantity;
+      }
+      
+      return {
+        ...state,
+        phase: 'run_summary',
+        saveData: {
+          ...state.saveData,
+          highestFloor: state.run.dungeon 
+            ? Math.max(state.saveData.highestFloor, state.run.dungeon.floor)
+            : state.saveData.highestFloor,
+          totalEnemiesDefeated: state.saveData.totalEnemiesDefeated + state.run.enemiesDefeated,
+          storedEquipment: [...state.saveData.storedEquipment, ...equipmentToStore],
+          materials: mergedMaterials,
+        },
+      };
+    }
       
     case 'SET_DUNGEON':
       if (!state.run) return state;
@@ -424,15 +476,16 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         },
       };
     
-    // Material management (persisted in save data)
+    // Material management - add to run inventory (kept when fleeing, lost on death)
     case 'ADD_MATERIAL':
+      if (!state.run) return state;
       return {
         ...state,
-        saveData: {
-          ...state.saveData,
-          materials: {
-            ...state.saveData.materials,
-            [action.materialId]: (state.saveData.materials[action.materialId] || 0) + action.quantity,
+        run: {
+          ...state.run,
+          runMaterials: {
+            ...state.run.runMaterials,
+            [action.materialId]: (state.run.runMaterials[action.materialId] || 0) + action.quantity,
           },
         },
       };

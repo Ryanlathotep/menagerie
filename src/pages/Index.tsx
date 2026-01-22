@@ -774,12 +774,20 @@ function BattleView() {
     }
   };
 
-  // Get effectiveness indicator for each move
-  const getMoveEffectivenessIndicator = (move: Move) => {
+  // Get effectiveness indicator and aura class for each move
+  const getMoveEffectiveness = (move: Move) => {
     const eff = getEffectiveness(move, battle.playerMonster, battle.enemyMonster);
-    if (eff.overall === 'super-effective') return '🔥';
-    if (eff.overall === 'weak') return '⬇️';
-    return '';
+    return {
+      indicator: eff.overall === 'super-effective' ? '🔥' : eff.overall === 'effective' ? '✨' : eff.overall === 'weak' ? '⬇️' : '',
+      auraClass: eff.overall === 'super-effective' 
+        ? 'ring-2 ring-orange-500 shadow-[0_0_12px_rgba(249,115,22,0.6)] animate-pulse' 
+        : eff.overall === 'effective'
+        ? 'ring-2 ring-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.5)]'
+        : eff.overall === 'weak'
+        ? 'opacity-60 border-muted'
+        : '',
+      overall: eff.overall
+    };
   };
 
   // Check if any move is affordable
@@ -906,12 +914,15 @@ function BattleView() {
             <div className="flex gap-2 overflow-x-auto pb-1">
               {availableMoves.map(move => {
               const canAfford = (move.staminaCost || 0) <= currentStamina;
+              const effectiveness = getMoveEffectiveness(move);
               return <MoveTooltip key={move.id} move={move} attacker={battle.playerMonster} defender={battle.enemyMonster}>
-                    <Button variant={canAfford ? "outline" : "ghost"} className={`h-auto py-2 px-3 text-left flex-shrink-0 ${!canAfford && move.id !== 'struggle' ? 'opacity-50' : ''} ${move.id === 'struggle' ? 'border-destructive text-destructive' : ''}`} onClick={() => executeMove(move)} disabled={!canAfford && move.id !== 'struggle'}>
+                    <Button variant={canAfford ? "outline" : "ghost"} className={`h-auto py-2 px-3 text-left flex-shrink-0 transition-all ${!canAfford && move.id !== 'struggle' ? 'opacity-50' : ''} ${move.id === 'struggle' ? 'border-destructive text-destructive' : ''} ${canAfford ? effectiveness.auraClass : ''}`} onClick={() => executeMove(move)} disabled={!canAfford && move.id !== 'struggle'}>
                       <div>
-                        <p className="font-semibold text-xs">{move.name}</p>
+                        <p className="font-semibold text-xs">
+                          {effectiveness.indicator && <span className="mr-1">{effectiveness.indicator}</span>}
+                          {move.name}
+                        </p>
                         <p className="text-[9px] opacity-70">
-                          {getMoveEffectivenessIndicator(move)}
                           {move.power > 0 ? `⚔️${move.power} ` : ''} 
                           🎯{move.accuracy}% 
                           ⚡{move.staminaCost}

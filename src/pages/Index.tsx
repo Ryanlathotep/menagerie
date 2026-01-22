@@ -793,7 +793,7 @@ function BattleView() {
       {/* Bottom action bar - fixed at bottom, full width like GameSidebar */}
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t-2 border-primary/20 shadow-lg z-50">
         {/* Battle log - above menu items */}
-        <div className="bg-muted/50 border-b border-primary/10 p-2 text-sm max-h-20 overflow-y-auto my-[8px]">
+        <div className="bg-muted/50 border-b border-primary/10 p-2 text-sm max-h-20 overflow-y-auto my-0">
           <p className="text-xs text-muted-foreground mb-1 font-semibold">Battle Log</p>
           {battle.log.slice(-3).map((msg, i) => <p key={i} className="py-0.5 text-xs">{msg}</p>)}
         </div>

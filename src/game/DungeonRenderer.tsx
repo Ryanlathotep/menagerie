@@ -166,29 +166,39 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   useImperativeHandle(ref, () => ({
     scrollToPlayer: () => {
       if (scrollRef.current) {
-        const tileSize = 28; // Match CSS
-        const containerWidth = scrollRef.current.clientWidth;
-        const containerHeight = scrollRef.current.clientHeight;
-        const scrollX = dungeon.playerPosition.x * tileSize - containerWidth / 2 + tileSize / 2;
-        const scrollY = dungeon.playerPosition.y * tileSize - containerHeight / 2 + tileSize / 2;
-        scrollRef.current.scrollTo({
+        const tileSize = 28;
+        const scrollContainer = scrollRef.current;
+        const playerPixelX = dungeon.playerPosition.x * tileSize + tileSize / 2;
+        const playerPixelY = dungeon.playerPosition.y * tileSize + tileSize / 2;
+        const scrollX = playerPixelX - scrollContainer.clientWidth / 2;
+        const scrollY = playerPixelY - scrollContainer.clientHeight / 2;
+        scrollContainer.scrollTo({
           left: Math.max(0, scrollX),
           top: Math.max(0, scrollY),
           behavior: 'smooth'
         });
       }
     }
-  }), [dungeon.playerPosition]);
+  }), [dungeon.playerPosition.x, dungeon.playerPosition.y]);
   
   // Auto-scroll when player moves
   useEffect(() => {
     if (scrollRef.current) {
       const tileSize = 28;
-      const containerWidth = scrollRef.current.clientWidth;
-      const containerHeight = scrollRef.current.clientHeight;
-      const scrollX = dungeon.playerPosition.x * tileSize - containerWidth / 2 + tileSize / 2;
-      const scrollY = dungeon.playerPosition.y * tileSize - containerHeight / 2 + tileSize / 2;
-      scrollRef.current.scrollTo({
+      const scrollContainer = scrollRef.current;
+      const scrollContent = scrollContainer.firstElementChild as HTMLElement;
+      
+      if (!scrollContent) return;
+      
+      // Calculate player position in pixels
+      const playerPixelX = dungeon.playerPosition.x * tileSize + tileSize / 2;
+      const playerPixelY = dungeon.playerPosition.y * tileSize + tileSize / 2;
+      
+      // Calculate scroll position to center player
+      const scrollX = playerPixelX - scrollContainer.clientWidth / 2;
+      const scrollY = playerPixelY - scrollContainer.clientHeight / 2;
+      
+      scrollContainer.scrollTo({
         left: Math.max(0, scrollX),
         top: Math.max(0, scrollY),
         behavior: 'smooth'
@@ -219,8 +229,8 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
       </div>
       
       {/* Dungeon grid - fills available space */}
-      <div ref={scrollRef} className="flex-1 w-full overflow-auto flex items-center justify-center">
-        <div className="inline-block">
+      <div ref={scrollRef} className="flex-1 w-full overflow-auto">
+        <div className="inline-block min-w-full min-h-full">
           {dungeon.tiles.map((row, y) => (
             <div key={y} className="flex">
               {row.map((tile, x) => (

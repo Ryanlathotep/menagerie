@@ -7,7 +7,7 @@ export interface CombatResult {
   damage: number;
   hit: boolean;
   critical: boolean;
-  effectiveness: 'super' | 'normal' | 'weak';
+  effectiveness: 'super-effective' | 'effective' | 'normal' | 'weak';
   elementMultiplier: number;
   classMultiplier: number;
   message: string;
@@ -70,14 +70,17 @@ export function calculateExpectedDamage(move: Move, attacker: Monster, defender:
 }
 
 // Get effectiveness rating for display
+// Effective = ONE bonus (element OR class), no weakness from the other
+// Super Effective = BOTH bonuses (element AND class)
+// Normal = no bonuses OR one bonus + one weakness (they cancel out)
+// Weak = at least one weakness, no bonuses to compensate
 export function getEffectiveness(move: Move, attacker: Monster, defender: Monster): {
   element: 'super' | 'normal' | 'weak';
   class: 'super' | 'normal' | 'weak';
-  overall: 'super' | 'normal' | 'weak';
+  overall: 'super-effective' | 'effective' | 'normal' | 'weak';
 } {
   const elementMult = move.element ? getElementMultiplier(move.element, defender.element) : 1.0;
   const classMult = move.classBonus ? getClassMultiplier(move.classBonus, defender.class) : 1.0;
-  const totalMult = elementMult * classMult;
 
   const getLevel = (mult: number): 'super' | 'normal' | 'weak' => {
     if (mult > 1.1) return 'super';
@@ -85,10 +88,38 @@ export function getEffectiveness(move: Move, attacker: Monster, defender: Monste
     return 'normal';
   };
 
+  const elementLevel = getLevel(elementMult);
+  const classLevel = getLevel(classMult);
+
+  // Determine overall effectiveness based on combination
+  let overall: 'super-effective' | 'effective' | 'normal' | 'weak';
+  
+  const hasElementBonus = elementLevel === 'super';
+  const hasClassBonus = classLevel === 'super';
+  const hasElementWeakness = elementLevel === 'weak';
+  const hasClassWeakness = classLevel === 'weak';
+
+  if (hasElementBonus && hasClassBonus) {
+    // Both bonuses = Super Effective
+    overall = 'super-effective';
+  } else if ((hasElementBonus && hasClassWeakness) || (hasClassBonus && hasElementWeakness)) {
+    // One bonus + one weakness = Normal (they cancel out)
+    overall = 'normal';
+  } else if (hasElementBonus || hasClassBonus) {
+    // One bonus, no weakness = Effective
+    overall = 'effective';
+  } else if (hasElementWeakness || hasClassWeakness) {
+    // At least one weakness, no bonus = Weak
+    overall = 'weak';
+  } else {
+    // No bonuses, no weaknesses = Normal
+    overall = 'normal';
+  }
+
   return {
-    element: getLevel(elementMult),
-    class: getLevel(classMult),
-    overall: getLevel(totalMult),
+    element: elementLevel,
+    class: classLevel,
+    overall,
   };
 }
 
@@ -124,7 +155,8 @@ export function executeCombat(move: Move, attacker: Monster, defender: Monster):
   // Build message
   let message = `${move.name} dealt ${finalDamage} damage!`;
   if (critical) message += ' Critical hit!';
-  if (effectiveness.overall === 'super') message += ' Super effective!';
+  if (effectiveness.overall === 'super-effective') message += ' Super effective!';
+  if (effectiveness.overall === 'effective') message += ' Effective!';
   if (effectiveness.overall === 'weak') message += ' Not very effective...';
   
   return {

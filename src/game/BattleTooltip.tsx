@@ -23,6 +23,13 @@ export function MoveTooltip({ move, attacker, defender, children }: MoveTooltipP
     weak: 'text-red-500',
   };
   
+  const overallEffectivenessColors = {
+    'super-effective': 'text-green-400',
+    'effective': 'text-green-500',
+    'normal': 'text-muted-foreground',
+    'weak': 'text-red-500',
+  };
+  
   const effectivenessLabels = {
     super: 'Super Effective!',
     normal: 'Normal',
@@ -87,8 +94,9 @@ export function MoveTooltip({ move, attacker, defender, children }: MoveTooltipP
         )}
         
         {/* Overall effectiveness */}
-        <div className={`text-center font-bold ${effectivenessColors[effectiveness.overall]}`}>
-          {effectiveness.overall === 'super' && '✨ SUPER EFFECTIVE! ✨'}
+        <div className={`text-center font-bold ${overallEffectivenessColors[effectiveness.overall]}`}>
+          {effectiveness.overall === 'super-effective' && '✨ SUPER EFFECTIVE! ✨'}
+          {effectiveness.overall === 'effective' && '🔥 Effective!'}
           {effectiveness.overall === 'weak' && '⚠️ Not Very Effective...'}
         </div>
         

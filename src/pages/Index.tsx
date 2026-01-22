@@ -724,10 +724,19 @@ function BattleView() {
   };
 
   // Get effectiveness indicator for each move
+  const getMoveEffectivenessClass = (move: Move) => {
+    const eff = getEffectiveness(move, battle.playerMonster, battle.enemyMonster);
+    if (eff.overall === 'super-effective') return 'ring-2 ring-green-400 bg-green-500/10';
+    if (eff.overall === 'effective') return 'ring-2 ring-green-500/70 bg-green-500/5';
+    if (eff.overall === 'weak') return 'ring-2 ring-red-500/50 bg-red-500/5 opacity-70';
+    return '';
+  };
+
   const getMoveEffectivenessIndicator = (move: Move) => {
     const eff = getEffectiveness(move, battle.playerMonster, battle.enemyMonster);
-    if (eff.overall === 'super') return '🔥';
-    if (eff.overall === 'weak') return '⬇️';
+    if (eff.overall === 'super-effective') return '✨ ';
+    if (eff.overall === 'effective') return '🔥 ';
+    if (eff.overall === 'weak') return '⬇️ ';
     return '';
   };
 
@@ -853,12 +862,12 @@ function BattleView() {
             <div className="flex gap-2 overflow-x-auto pb-1">
               {availableMoves.map(move => {
               const canAfford = (move.staminaCost || 0) <= currentStamina;
+              const effectivenessClass = getMoveEffectivenessClass(move);
               return <MoveTooltip key={move.id} move={move} attacker={battle.playerMonster} defender={battle.enemyMonster}>
-                    <Button variant={canAfford ? "outline" : "ghost"} className={`h-auto py-2 px-3 text-left flex-shrink-0 ${!canAfford && move.id !== 'struggle' ? 'opacity-50' : ''} ${move.id === 'struggle' ? 'border-destructive text-destructive' : ''}`} onClick={() => executeMove(move)} disabled={!canAfford && move.id !== 'struggle'}>
+                    <Button variant={canAfford ? "outline" : "ghost"} className={`h-auto py-2 px-3 text-left flex-shrink-0 ${!canAfford && move.id !== 'struggle' ? 'opacity-50' : ''} ${move.id === 'struggle' ? 'border-destructive text-destructive' : ''} ${effectivenessClass}`} onClick={() => executeMove(move)} disabled={!canAfford && move.id !== 'struggle'}>
                       <div>
-                        <p className="font-semibold text-xs">{move.name}</p>
+                        <p className="font-semibold text-xs">{getMoveEffectivenessIndicator(move)}{move.name}</p>
                         <p className="text-[9px] opacity-70">
-                          {getMoveEffectivenessIndicator(move)}
                           {move.power > 0 ? `⚔️${move.power} ` : ''} 
                           🎯{move.accuracy}% 
                           ⚡{move.staminaCost}

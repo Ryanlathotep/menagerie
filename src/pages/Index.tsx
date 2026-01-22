@@ -436,7 +436,42 @@ function DungeonView() {
         <div className="h-full flex flex-col">
           {/* Scrollable dungeon viewport - fills available space */}
           <div className="flex-1 overflow-hidden bg-card border-b-2 border-primary/20">
-            <DungeonRenderer dungeon={dungeon} playerElement={state.run?.currentMonster.element || 'fire'} playerSpecies={state.run?.currentMonster.species} zoom={settings.dungeonZoom} />
+            <DungeonRenderer 
+              dungeon={dungeon} 
+              playerElement={state.run?.currentMonster.element || 'fire'} 
+              playerSpecies={state.run?.currentMonster.species}
+              playerDexterity={state.run?.currentMonster.stats.dodge || 10}
+              zoom={settings.dungeonZoom}
+              onDisarmTrap={(x, y, success) => {
+                dispatch({ type: 'DISARM_TRAP', x, y, success });
+                if (success) {
+                  toast.success('Trap disarmed!');
+                } else {
+                  // Failed disarm triggers the trap
+                  const tile = dungeon.tiles[y]?.[x];
+                  if (tile?.trapType === 'spike') {
+                    const damage = 10 + Math.floor(dungeon.floor * 2);
+                    const newHp = Math.max(0, state.run!.currentMonster.stats.currentHp - damage);
+                    dispatch({
+                      type: 'UPDATE_PLAYER_MONSTER',
+                      monster: {
+                        ...state.run!.currentMonster,
+                        stats: { ...state.run!.currentMonster.stats, currentHp: newHp }
+                      }
+                    });
+                    toast.error(`Disarm failed! Triggered spike trap for ${damage} damage!`);
+                    if (newHp <= 0) {
+                      dispatch({ type: 'END_RUN', victory: false });
+                      dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
+                    }
+                  } else if (tile?.trapType === 'poison') {
+                    toast.error('Disarm failed! You got poisoned!');
+                  } else if (tile?.trapType === 'alarm') {
+                    toast.error('Disarm failed! Alarm triggered!');
+                  }
+                }
+              }}
+            />
           </div>
 
           {/* Bottom bar with controls and legend */}

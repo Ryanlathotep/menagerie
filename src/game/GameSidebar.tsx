@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-import { User, Backpack, Map, DoorOpen, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, ScrollText } from 'lucide-react';
+import { User, Backpack, Map, DoorOpen, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, ScrollText, Shirt } from 'lucide-react';
 import { Monster, InventoryItem } from './types';
 import { MonsterSprite } from './sprites';
 import { getMonsterMoves, Move } from './moves';
@@ -14,6 +14,7 @@ import { ExpandedStats } from './CharacterSheet';
 import { ITEMS } from './Inventory';
 import { MovePanel } from './MovePanel';
 import { SettingsPanel } from './Settings';
+import { MonsterEquipment, EquipmentItem, SLOT_INFO, RARITY_COLORS, calculateEquipmentBonuses } from './equipment';
 
 // Helper functions to get item info when not in ITEMS database
 function getItemDescription(item: InventoryItem): string {
@@ -42,12 +43,15 @@ interface GameSidebarProps {
   gold: number;
   floor: number;
   inventory?: InventoryItem[];
+  equipmentInventory?: EquipmentItem[];
+  equipment?: MonsterEquipment;
   moveOrder?: string[];
   hiddenMoves?: string[];
   onFlee?: () => void;
   onDropItem?: (itemId: string) => void;
   onReorderMoves?: (newOrder: string[]) => void;
   onToggleHideMove?: (moveId: string) => void;
+  onOpenEquipment?: () => void;
   inBattle?: boolean;
   experience?: number;
   experienceToNext?: number;
@@ -64,12 +68,15 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   gold,
   floor,
   inventory = [],
+  equipmentInventory = [],
+  equipment,
   moveOrder = [],
   hiddenMoves = [],
   onFlee,
   onDropItem,
   onReorderMoves,
   onToggleHideMove,
+  onOpenEquipment,
   inBattle = false,
   experience = 0,
   experienceToNext = 100,
@@ -115,7 +122,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
         <div className="flex items-center gap-3 flex-shrink-0">
           {/* Monster portrait */}
           <div className="relative flex-shrink-0">
-            <MonsterSprite species={monster.species} element={monster.element} classType={monster.class} size={64} animated={false} />
+            <MonsterSprite species={monster.species} element={monster.element} classType={monster.class} size={64} animated={false} equipment={equipment} />
             <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
               {monster.level}
             </div>
@@ -188,6 +195,24 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
           <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className="w-8 h-8" onClick={() => handlePanelChange('inventory')} title="Inventory">
             <Backpack className="w-4 h-4" />
           </Button>
+          
+          {/* Equipment button - shows equipped item count */}
+          {onOpenEquipment && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="w-8 h-8 relative" 
+              onClick={onOpenEquipment}
+              title="Equipment"
+            >
+              <Shirt className="w-4 h-4" />
+              {equipmentInventory.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  {equipmentInventory.length}
+                </span>
+              )}
+            </Button>
+          )}
           
           {/* Battle log button - only in battle, with indicator for new entries */}
           {inBattle && (

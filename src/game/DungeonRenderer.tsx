@@ -2,7 +2,7 @@
 
 import { forwardRef, useEffect, useRef, useImperativeHandle } from 'react';
 import { DungeonState, DungeonTile, TileType, ElementType, ClassType, Monster, SpeciesType, SPECIES_DATA, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED, TrapType } from './types';
-import { MonsterSpriteSmall } from './sprites';
+import { MonsterSprite } from './sprites';
 import {
   Tooltip,
   TooltipContent,
@@ -48,7 +48,7 @@ interface DungeonRendererProps {
   playerClass?: ClassType;
   playerSpecies?: SpeciesType;
   playerDexterity?: number; // For disarm calculations
-  zoom?: number; // 50-200, 100 = default
+  zoom?: number; // 50-400, 100 = default
   onDisarmTrap?: (x: number, y: number, success: boolean) => void;
 }
 
@@ -219,7 +219,7 @@ function Tile({
   // Player tile - show player's monster sprite
   if (isPlayer && playerElement && playerSpecies) {
     return <div className={`flex items-center justify-center bg-gradient-to-br from-pink-100 to-primary/20 ${tile.visible ? 'ring-2 ring-primary shadow-lg shadow-primary/30' : ''}`} style={tileStyle}>
-        <MonsterSpriteSmall species={playerSpecies} element={playerElement} size={spriteSize} />
+        <MonsterSprite species={playerSpecies} element={playerElement} classType={playerClass || 'normal'} size={spriteSize} />
       </div>;
   }
 
@@ -239,7 +239,7 @@ function Tile({
         <Tooltip>
           <TooltipTrigger asChild>
             <div className={`flex items-center justify-center ${getFloorVariant(x, y, true)} relative hover:scale-110 transition-transform cursor-pointer`} style={tileStyle}>
-              <MonsterSpriteSmall species={enemy.species} element={enemy.element} size={spriteSize} />
+              <MonsterSprite species={enemy.species} element={enemy.element} classType={enemy.class} size={spriteSize} />
             </div>
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-[260px] p-3">

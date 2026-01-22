@@ -465,6 +465,14 @@ function DungeonView() {
         stats: { ...monster.stats, currentHp: newHp }
       };
       message = `Restored ${healed} HP!`;
+    } else if (item.effect === 'heal_full') {
+      const hpBefore = monster.stats.currentHp;
+      if (hpBefore >= monster.stats.maxHp) return toast.info('Already at full HP!');
+      updatedMonster = {
+        ...monster,
+        stats: { ...monster.stats, currentHp: monster.stats.maxHp }
+      };
+      message = `Fully restored HP! (+${monster.stats.maxHp - hpBefore})`;
     } else if (item.effect === 'heal_stamina') {
       // Stamina restores outside combat - just inform user it will apply next battle
       message = `${item.name} will restore stamina in battle!`;
@@ -640,18 +648,24 @@ function BattleView() {
     let newStats = {
       ...battle.playerMonster.stats
     };
-    if (item.effect === 'heal_hp' || item.effect === 'heal_30') {
+    if (item.effect === 'heal_hp') {
       const healAmount = item.value || 30;
       const actualHeal = Math.min(healAmount, newStats.maxHp - newStats.currentHp);
       newStats.currentHp = Math.min(newStats.maxHp, newStats.currentHp + healAmount);
       message = `Restored ${actualHeal} HP!`;
-    } else if (item.effect === 'heal_stamina' || item.effect === 'stamina_20') {
+    } else if (item.effect === 'heal_full') {
+      const actualHeal = newStats.maxHp - newStats.currentHp;
+      newStats.currentHp = newStats.maxHp;
+      message = `Fully restored HP! (+${actualHeal})`;
+    } else if (item.effect === 'heal_stamina') {
       const healAmount = item.value || 20;
       const actualHeal = Math.min(healAmount, (newStats.stamina || 50) - (newStats.currentStamina || 0));
       newStats.currentStamina = Math.min(newStats.stamina || 50, (newStats.currentStamina || 0) + healAmount);
       message = `Restored ${actualHeal} Stamina!`;
     } else if (item.effect === 'cure_poison') {
       message = 'Cured poison!';
+    } else if (item.effect === 'boost_attack' || item.effect === 'boost_defense' || item.effect === 'boost_speed') {
+      message = `${item.name} activated! Buff ready for next battle.`;
     } else {
       message = `Used ${item.name}!`;
     }

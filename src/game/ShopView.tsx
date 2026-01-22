@@ -11,11 +11,11 @@ interface ShopViewProps {
 }
 
 const SHOP_ITEMS: { item: LootItem; price: number }[] = [
-  { item: { id: 'health_potion', name: 'Health Potion', type: 'potion', value: 20, effect: 'heal_30' }, price: 25 },
-  { item: { id: 'stamina_potion', name: 'Stamina Potion', type: 'potion', value: 15, effect: 'stamina_20' }, price: 20 },
+  { item: { id: 'health_potion', name: 'Health Potion', type: 'potion', value: 30, effect: 'heal_hp' }, price: 25 },
+  { item: { id: 'stamina_potion', name: 'Stamina Potion', type: 'potion', value: 20, effect: 'heal_stamina' }, price: 20 },
   { item: { id: 'antidote', name: 'Antidote', type: 'potion', value: 10, effect: 'cure_poison' }, price: 15 },
   { item: { id: 'power_berry', name: 'Power Berry', type: 'potion', value: 25, effect: 'boost_attack' }, price: 30 },
-  { item: { id: 'full_heal', name: 'Full Heal', type: 'potion', value: 50, effect: 'heal_full' }, price: 50 },
+  { item: { id: 'full_heal', name: 'Full Heal', type: 'potion', value: 999, effect: 'heal_full' }, price: 50 },
 ];
 
 export function ShopView({ gold, onBuy, onClose }: ShopViewProps) {

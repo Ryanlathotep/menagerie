@@ -243,6 +243,34 @@ function DungeonView() {
   const handleMove = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
     if (!dungeon || !state.run) return;
     const result = movePlayer(dungeon, direction);
+    
+    // If not blocked, apply minor HP and Stamina regeneration
+    if (!result.blocked) {
+      const monster = state.run.currentMonster;
+      const maxHp = monster.stats.maxHp;
+      const maxStamina = monster.stats.stamina ?? 50;
+      const currentHp = monster.stats.currentHp;
+      const currentStamina = monster.stats.currentStamina ?? maxStamina;
+      
+      // Regenerate 1 HP and 1 Stamina per step (if not at max)
+      const regenHp = Math.min(1, maxHp - currentHp);
+      const regenStamina = Math.min(1, maxStamina - currentStamina);
+      
+      if (regenHp > 0 || regenStamina > 0) {
+        dispatch({
+          type: 'UPDATE_PLAYER_MONSTER',
+          monster: {
+            ...monster,
+            stats: {
+              ...monster.stats,
+              currentHp: currentHp + regenHp,
+              currentStamina: currentStamina + regenStamina,
+            }
+          }
+        });
+      }
+    }
+    
     dispatch({
       type: 'SET_DUNGEON',
       dungeon: result.dungeon
@@ -491,10 +519,16 @@ function DungeonView() {
       };
       message = `Fully restored HP! (+${monster.stats.maxHp - hpBefore})`;
     } else if (item.effect === 'heal_stamina') {
-      // Stamina restores outside combat - just inform user it will apply next battle
-      message = `${item.name} will restore stamina in battle!`;
-      toast.info(message);
-      return; // Don't consume outside combat
+      const maxStamina = monster.stats.stamina ?? 50;
+      const staminaBefore = monster.stats.currentStamina ?? maxStamina;
+      const newStamina = Math.min(maxStamina, staminaBefore + (item.value || 0));
+      const restored = newStamina - staminaBefore;
+      if (restored <= 0) return toast.info('Already at full stamina!');
+      updatedMonster = {
+        ...monster,
+        stats: { ...monster.stats, currentStamina: newStamina }
+      };
+      message = `Restored ${restored} Stamina!`;
     } else if (item.effect === 'cure_poison' || item.effect === 'cure_burn' || item.effect === 'cure_freeze' || item.effect === 'cure_all') {
       message = `Used ${item.name}!`;
     } else if (item.effect === 'boost_attack' || item.effect === 'boost_defense' || item.effect === 'boost_speed') {
@@ -510,13 +544,33 @@ function DungeonView() {
   };
 
   return <>
-      <GameSidebar monster={state.run?.currentMonster || null} gold={state.run?.gold || 0} floor={dungeon.floor} inventory={state.run?.inventory || []} moveOrder={state.run?.moveOrder || []} hiddenMoves={state.run?.hiddenMoves || []} experience={state.run?.experience || 0} experienceToNext={xpToNextLevel(state.run?.currentMonster?.level || 1)} onFlee={handleFlee} onDropItem={handleDropItem} onUseItem={handleUseItemOutOfCombat} onReorderMoves={order => dispatch({
-      type: 'SET_MOVE_ORDER',
-      order
-    })} onToggleHideMove={moveId => dispatch({
-      type: 'TOGGLE_HIDE_MOVE',
-      moveId
-    })} onPanelChange={setMenuOpen} />
+      <GameSidebar 
+        monster={state.run?.currentMonster || null} 
+        gold={state.run?.gold || 0} 
+        floor={dungeon.floor} 
+        inventory={state.run?.inventory || []} 
+        moveOrder={state.run?.moveOrder || []} 
+        hiddenMoves={state.run?.hiddenMoves || []} 
+        experience={state.run?.experience || 0} 
+        experienceToNext={xpToNextLevel(state.run?.currentMonster?.level || 1)} 
+        onFlee={handleFlee} 
+        onDropItem={handleDropItem} 
+        onUseItem={handleUseItemOutOfCombat} 
+        onReorderMoves={order => dispatch({ type: 'SET_MOVE_ORDER', order })} 
+        onToggleHideMove={moveId => dispatch({ type: 'TOGGLE_HIDE_MOVE', moveId })} 
+        onPanelChange={setMenuOpen}
+        expandedStats={state.run?.currentMonster ? {
+          currentHp: state.run.currentMonster.stats.currentHp,
+          maxHp: state.run.currentMonster.stats.maxHp,
+          currentStamina: state.run.currentMonster.stats.currentStamina ?? state.run.currentMonster.stats.stamina ?? 50,
+          stamina: state.run.currentMonster.stats.stamina ?? 50,
+          melee: state.run.currentMonster.stats.attack,
+          ranged: state.run.currentMonster.stats.special,
+          defense: state.run.currentMonster.stats.defense,
+          speed: state.run.currentMonster.stats.speed,
+          dodge: state.run.currentMonster.stats.dodge ?? Math.floor(state.run.currentMonster.stats.speed * 0.5),
+        } : undefined}
+      />
       
       {showShop && <ShopView gold={state.run?.gold || 0} onBuy={handleBuyItem} onClose={() => setShowShop(false)} />}
       
@@ -1026,15 +1080,32 @@ function BattleView() {
     } else {
       // Enemy turn - use random enemy move
       const enemyMoves = getMonsterMoves(updatedEnemyMonster.species, updatedEnemyMonster.element, updatedEnemyMonster.class);
-      const enemyMove = enemyMoves[Math.floor(Math.random() * Math.min(3, enemyMoves.length))];
       
-      // Use the updated enemy monster with potentially modified speed
+      // Enemy also has stamina - pick moves they can afford
+      const enemyCurrentStamina = updatedEnemyMonster.stats.currentStamina ?? updatedEnemyMonster.stats.stamina ?? 50;
+      const enemyMaxStamina = updatedEnemyMonster.stats.stamina ?? 50;
+      const affordableMoves = enemyMoves.filter(m => (m.staminaCost || 0) <= enemyCurrentStamina);
+      
+      // Pick a random affordable move, or use STRUGGLE_MOVE if out of stamina
+      const enemyMove = affordableMoves.length > 0 
+        ? affordableMoves[Math.floor(Math.random() * Math.min(3, affordableMoves.length))]
+        : STRUGGLE_MOVE;
+      
+      // Consume enemy stamina
+      const enemyStaminaCost = enemyMove.staminaCost || 0;
+      let newEnemyStamina = Math.max(0, enemyCurrentStamina - enemyStaminaCost);
+      
+      // Enemy also regenerates a bit of stamina each turn
+      newEnemyStamina = Math.min(enemyMaxStamina, newEnemyStamina + 2);
+      
+      // Use the updated enemy monster with potentially modified speed and stamina
       const attackingEnemy = {
         ...updatedEnemyMonster,
         stats: {
           ...updatedEnemyMonster.stats,
           currentHp: newEnemyHp,
           speed: newEnemySpeed,
+          currentStamina: newEnemyStamina,
         }
       };
       
@@ -1122,6 +1193,7 @@ function BattleView() {
                 ...updatedEnemyMonster.stats,
                 currentHp: newEnemyHp,
                 speed: newEnemySpeed,
+                currentStamina: attackingEnemy.stats.currentStamina,
               },
               temporaryResistances: updatedEnemyMonster.temporaryResistances,
             },

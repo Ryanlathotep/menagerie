@@ -16,12 +16,12 @@ export const ELEMENT_ADVANTAGES: Record<ElementType, ElementType[]> = {
 };
 
 export const ELEMENT_COLORS: Record<ElementType, { primary: string; secondary: string; accent: string }> = {
-  normal: { primary: '0 0% 60%', secondary: '0 0% 70%', accent: '0 0% 50%' },
-  fire: { primary: '15 90% 55%', secondary: '30 95% 60%', accent: '0 85% 50%' },
-  water: { primary: '200 85% 50%', secondary: '190 80% 60%', accent: '210 90% 45%' },
-  earth: { primary: '35 70% 40%', secondary: '25 60% 50%', accent: '45 80% 35%' },
-  air: { primary: '180 40% 70%', secondary: '200 50% 80%', accent: '160 45% 65%' },
-  void: { primary: '270 60% 30%', secondary: '280 50% 40%', accent: '260 70% 25%' },
+  normal: { primary: '0 0% 60%', secondary: '0 0% 70%', accent: '0 0% 20%' },
+  fire: { primary: '15 90% 55%', secondary: '30 95% 60%', accent: '0 0% 15%' },
+  water: { primary: '200 85% 50%', secondary: '190 80% 60%', accent: '0 0% 15%' },
+  earth: { primary: '35 70% 45%', secondary: '25 60% 55%', accent: '0 0% 10%' },
+  air: { primary: '180 50% 65%', secondary: '200 55% 75%', accent: '0 0% 15%' },
+  void: { primary: '270 50% 45%', secondary: '280 45% 55%', accent: '0 0% 10%' },
 };
 
 // ============= CLASS SYSTEM =============

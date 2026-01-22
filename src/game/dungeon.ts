@@ -17,8 +17,8 @@ export interface LootItem {
 }
 
 export const LOOT_TABLE: LootItem[] = [
-  { id: 'health_potion', name: 'Health Potion', type: 'potion', value: 20, effect: 'heal_30' },
-  { id: 'stamina_potion', name: 'Stamina Potion', type: 'potion', value: 15, effect: 'stamina_20' },
+  { id: 'health_potion', name: 'Health Potion', type: 'potion', value: 30, effect: 'heal_hp' },
+  { id: 'stamina_potion', name: 'Stamina Potion', type: 'potion', value: 20, effect: 'heal_stamina' },
   { id: 'antidote', name: 'Antidote', type: 'potion', value: 10, effect: 'cure_poison' },
   { id: 'power_berry', name: 'Power Berry', type: 'potion', value: 25, effect: 'boost_attack' },
   { id: 'gold_coin', name: 'Gold Coins', type: 'gold', value: 15 },

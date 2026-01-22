@@ -109,8 +109,8 @@ export function calculateDamage(
 
 // Items that enemies can carry
 const ENEMY_ITEM_TABLE = [
-  { id: 'health_potion', name: 'Health Potion', type: 'potion' as const, value: 20, effect: 'heal_30' },
-  { id: 'stamina_potion', name: 'Stamina Potion', type: 'potion' as const, value: 15, effect: 'stamina_20' },
+  { id: 'health_potion', name: 'Health Potion', type: 'potion' as const, value: 30, effect: 'heal_hp' },
+  { id: 'stamina_potion', name: 'Stamina Potion', type: 'potion' as const, value: 20, effect: 'heal_stamina' },
   { id: 'power_berry', name: 'Power Berry', type: 'potion' as const, value: 25, effect: 'boost_attack' },
   { id: 'gold_coin', name: 'Gold Coins', type: 'gold' as const, value: 15 },
   { id: 'gold_pile', name: 'Gold Pile', type: 'gold' as const, value: 30 },

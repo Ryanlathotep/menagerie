@@ -18,11 +18,15 @@ import { SettingsPanel } from './Settings';
 // Helper functions to get item info when not in ITEMS database
 function getItemDescription(item: InventoryItem): string {
   if (item.effect === 'heal_hp') return `Restores ${item.value} HP`;
+  if (item.effect === 'heal_full') return 'Fully restores HP';
   if (item.effect === 'heal_stamina') return `Restores ${item.value} Stamina`;
   if (item.effect === 'cure_poison') return 'Cures poison';
   if (item.effect === 'cure_burn') return 'Cures burn';
   if (item.effect === 'cure_freeze') return 'Cures freeze';
   if (item.effect === 'cure_all') return 'Cures all status effects';
+  if (item.effect === 'boost_attack') return 'Boosts attack for next battle';
+  if (item.effect === 'boost_defense') return 'Boosts defense for next battle';
+  if (item.effect === 'boost_speed') return 'Boosts speed for next battle';
   return item.name;
 }
 

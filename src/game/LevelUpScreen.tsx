@@ -49,9 +49,9 @@ export function LevelUpScreen({
     { stat: 'attack', label: 'Attack', before: previousStats.attack, after: monster.stats.attack, color: 'text-orange-400' },
     { stat: 'defense', label: 'Defense', before: previousStats.defense, after: monster.stats.defense, color: 'text-blue-400' },
     { stat: 'speed', label: 'Speed', before: previousStats.speed, after: monster.stats.speed, color: 'text-yellow-400' },
-    { stat: 'dodge', label: 'Dodge', before: previousStats.dodge, after: monster.stats.dodge, color: 'text-emerald-400' },
+    { stat: 'dodge', label: 'Dodge', before: previousStats.dodge ?? 0, after: monster.stats.dodge ?? 0, color: 'text-emerald-400' },
     { stat: 'special', label: 'Special', before: previousStats.special, after: monster.stats.special, color: 'text-purple-400' },
-    { stat: 'stamina', label: 'Stamina', before: previousStats.stamina, after: monster.stats.stamina, color: 'text-cyan-400' },
+    { stat: 'stamina', label: 'Stamina', before: previousStats.stamina ?? 50, after: monster.stats.stamina ?? 50, color: 'text-cyan-400' },
   ];
 
   return (

@@ -2,6 +2,7 @@ import { GameProvider, useGame } from '@/game/state';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { SPECIES_DATA, getComboId, UnlockedMonster, InventoryItem } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
 import { generateDungeon, movePlayer, removeEnemy, LootItem } from '@/game/dungeon';
@@ -559,9 +560,15 @@ function BattleView() {
     // Apply heal if it's a heal move
     let newPlayerHp = battle.playerMonster.stats.currentHp;
     if (healAmount > 0 && move.type === 'heal') {
+      const hpBeforeHeal = newPlayerHp;
       const actualHeal = Math.min(healAmount, battle.playerMonster.stats.maxHp - newPlayerHp);
       newPlayerHp = Math.min(battle.playerMonster.stats.maxHp, newPlayerHp + healAmount);
-      newLog.push(`Healed ${actualHeal} HP!`);
+      console.log(`[HEAL] Before: ${hpBeforeHeal}, Heal Amount: ${healAmount}, Actual: ${actualHeal}, After: ${newPlayerHp}`);
+      if (actualHeal > 0) {
+        newLog.push(`Healed ${actualHeal} HP!`);
+      } else {
+        newLog.push(`Already at full HP!`);
+      }
     }
 
     // Apply stamina recovery
@@ -816,9 +823,26 @@ function BattleView() {
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowInventory(false)}>✕</Button>
             </div>
             {inventory.length === 0 ? <p className="text-xs text-muted-foreground">No items in inventory</p> : <div className="flex gap-2 flex-wrap">
-                {inventory.map((item, i) => <Button key={i} variant="outline" size="sm" className="text-xs" onClick={() => handleUseItem(item)}>
-                    {item.name} x{item.quantity}
-                  </Button>)}
+                {inventory.map((item, i) => {
+                  const itemDescription = item.effect === 'heal_hp' ? `Restores ${item.value} HP` 
+                    : item.effect === 'heal_stamina' ? `Restores ${item.value} Stamina`
+                    : item.effect === 'cure_poison' ? 'Cures poison'
+                    : item.name;
+                  return (
+                    <Tooltip key={i}>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="sm" className="text-xs" onClick={() => handleUseItem(item)}>
+                          {item.name} x{item.quantity}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[180px] z-[100]">
+                        <p className="font-semibold text-sm">{item.name}</p>
+                        <p className="text-xs text-muted-foreground">{itemDescription}</p>
+                        {item.value > 0 && <p className="text-xs text-accent">+{item.value}</p>}
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
               </div>}
           </div>}
         

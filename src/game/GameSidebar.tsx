@@ -118,27 +118,27 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
           </div>
           
           {/* Player bars - always visible */}
-          <div className="flex flex-col gap-1 min-w-[100px]">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-stat-hp w-6 font-medium">HP</span>
-              <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden" title={`HP: ${currentHp}/${maxHp}`}>
+          <div className="flex flex-col gap-1 w-[180px]">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-stat-hp w-6 font-medium">HP</span>
+              <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden min-w-[100px]" title={`HP: ${currentHp}/${maxHp}`}>
                 <div className="h-full bg-stat-hp transition-all" style={{ width: `${hpPercent}%` }} />
               </div>
-              <span className="text-[10px] font-mono w-14 text-right">{currentHp}/{maxHp}</span>
+              <span className="text-xs font-mono w-16 text-right">{currentHp}/{maxHp}</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-stat-special w-6 font-medium">ST</span>
-              <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden" title={`Stamina: ${currentStamina}/${maxStamina}`}>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-stat-special w-6 font-medium">ST</span>
+              <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden min-w-[100px]" title={`Stamina: ${currentStamina}/${maxStamina}`}>
                 <div className="h-full bg-stat-special transition-all" style={{ width: `${staminaPercent}%` }} />
               </div>
-              <span className="text-[10px] font-mono w-14 text-right">{currentStamina}/{maxStamina}</span>
+              <span className="text-xs font-mono w-16 text-right">{currentStamina}/{maxStamina}</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-secondary w-6 font-medium">XP</span>
-              <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden" title={`XP: ${experience}/${experienceToNext}`}>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-secondary w-6 font-medium">XP</span>
+              <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden min-w-[100px]" title={`XP: ${experience}/${experienceToNext}`}>
                 <div className="h-full bg-secondary transition-all" style={{ width: `${xpPercent}%` }} />
               </div>
-              <span className="text-[10px] font-mono w-14 text-right">{experience}/{experienceToNext}</span>
+              <span className="text-xs font-mono w-16 text-right">{experience}/{experienceToNext}</span>
             </div>
           </div>
         </div>

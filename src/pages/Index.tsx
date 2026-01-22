@@ -722,8 +722,24 @@ function BattleView() {
   // Check if any move is affordable
   const canAffordAnyMove = playerMoves.some(m => (m.staminaCost || 0) <= currentStamina);
 
+  // Apply user's move order and filter hidden moves
+  const moveOrder = state.run?.moveOrder || [];
+  const hiddenMoves = state.run?.hiddenMoves || [];
+  
+  const orderedMoves = [...playerMoves]
+    .filter(move => !hiddenMoves.includes(move.id))
+    .sort((a, b) => {
+      const aIndex = moveOrder.indexOf(a.id);
+      const bIndex = moveOrder.indexOf(b.id);
+      // Moves not in order go to end, maintaining original order
+      if (aIndex === -1 && bIndex === -1) return 0;
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    });
+
   // Moves to show - include struggle if out of stamina
-  const availableMoves = canAffordAnyMove ? playerMoves : [...playerMoves, STRUGGLE_MOVE];
+  const availableMoves = canAffordAnyMove ? orderedMoves : [...orderedMoves, STRUGGLE_MOVE];
   const inventory = state.run.inventory || [];
   return <div className="fixed inset-0 flex flex-col" style={{
     height: 'calc(100vh - 180px)'

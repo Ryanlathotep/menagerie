@@ -790,9 +790,6 @@ function BattleView() {
     };
   };
 
-  // Check if any move is affordable
-  const canAffordAnyMove = playerMoves.some(m => (m.staminaCost || 0) <= currentStamina);
-
   // Apply user's move order and filter hidden moves
   const moveOrder = state.run?.moveOrder || [];
   const hiddenMoves = state.run?.hiddenMoves || [];
@@ -809,7 +806,10 @@ function BattleView() {
       return aIndex - bIndex;
     });
 
-  // Moves to show - include struggle if out of stamina
+  // Check if any VISIBLE move is affordable
+  const canAffordAnyMove = orderedMoves.some(m => (m.staminaCost || 0) <= currentStamina);
+
+  // Moves to show - include struggle if out of stamina for visible moves
   const availableMoves = canAffordAnyMove ? orderedMoves : [...orderedMoves, STRUGGLE_MOVE];
   const inventory = state.run.inventory || [];
   return <div className="fixed inset-0 flex flex-col" style={{

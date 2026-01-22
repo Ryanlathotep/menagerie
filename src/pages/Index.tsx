@@ -18,8 +18,9 @@ import { toast } from 'sonner';
 import { SettingsProvider, SettingsButton, useSettings } from '@/game/Settings';
 import { MonsterStatsPreview } from '@/game/MonsterStatsPreview';
 import { LevelUpScreen } from '@/game/LevelUpScreen';
-import { EquipmentItem, EquipmentSlot } from '@/game/equipment';
+import { EquipmentItem, EquipmentSlot, MonsterEquipment } from '@/game/equipment';
 import { EquipmentView } from '@/game/EquipmentView';
+import { PreRunEquipment } from '@/game/PreRunEquipment';
 import { 
   CombatEffects, 
   EMPTY_COMBAT_EFFECTS, 
@@ -136,6 +137,8 @@ function CharacterSelect() {
   const unlockedMonsters = state.saveData.unlockedMonsters || [];
   const [selectedMonster, setSelectedMonster] = useState<typeof unlockedMonsters[0] | null>(unlockedMonsters.length > 0 ? unlockedMonsters[0] : null);
   const [sortBy, setSortBy] = useState<SortOption>('recent');
+  const [showEquipmentSelect, setShowEquipmentSelect] = useState(false);
+  const [monsterForRun, setMonsterForRun] = useState<ReturnType<typeof createMonster> | null>(null);
   
   // Sort monsters based on selected option
   const sortedMonsters = [...unlockedMonsters].sort((a, b) => {
@@ -155,15 +158,35 @@ function CharacterSelect() {
     }
   });
   
-  const startRun = () => {
+  const proceedToEquipment = () => {
     if (!selectedMonster) return;
     // Create monster at the level it was unlocked at
     const monster = createMonster(selectedMonster.species, selectedMonster.classType, selectedMonster.element, selectedMonster.level);
+    setMonsterForRun(monster);
+    setShowEquipmentSelect(true);
+  };
+  
+  const startRun = (equipment: MonsterEquipment, withdrawnIds: string[]) => {
+    if (!monsterForRun) return;
     dispatch({
       type: 'START_RUN',
-      monster
+      monster: monsterForRun,
+      preEquipped: equipment,
+      withdrawnIds,
     });
   };
+  
+  // Show equipment selection screen
+  if (showEquipmentSelect && monsterForRun) {
+    return (
+      <PreRunEquipment
+        monster={monsterForRun}
+        storedEquipment={state.saveData.storedEquipment || []}
+        onStart={startRun}
+        onBack={() => setShowEquipmentSelect(false)}
+      />
+    );
+  }
   return <div className="game-container">
       <div className="space-y-6 max-w-4xl">
         <h2 className="text-3xl font-bold text-center bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
@@ -311,8 +334,8 @@ function CharacterSelect() {
         })}>
             Back
           </Button>
-          <Button className="flex-1 bg-gradient-to-r from-primary to-secondary" disabled={!selectedMonster} onClick={startRun}>
-            Start Adventure! ✨
+          <Button className="flex-1 bg-gradient-to-r from-primary to-secondary" disabled={!selectedMonster} onClick={proceedToEquipment}>
+            {state.saveData.storedEquipment?.length > 0 ? 'Select Equipment →' : 'Start Adventure! ✨'}
           </Button>
         </div>
       </div>

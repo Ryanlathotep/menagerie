@@ -301,6 +301,7 @@ export interface RunState {
   dungeon: DungeonState | null;
   battle: BattleState | null;
   gold: number;
+  experience: number;       // Current XP toward next level
   itemsCollected: string[];
   inventory: InventoryItem[];
   enemiesDefeated: number;

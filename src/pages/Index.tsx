@@ -793,9 +793,9 @@ function BattleView() {
       {/* Bottom action bar - fixed at bottom, full width like GameSidebar */}
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t-2 border-primary/20 shadow-lg z-50">
         {/* Battle log - above menu items */}
-        <div className="bg-muted/50 border-b border-primary/10 p-2 text-sm max-h-20 overflow-y-auto my-0">
-          <p className="text-xs text-muted-foreground mb-1 font-semibold">Battle Log</p>
-          {battle.log.slice(-3).map((msg, i) => <p key={i} className="py-0.5 text-xs">{msg}</p>)}
+        <div className="bg-muted/50 border-b border-primary/10 p-3 text-sm max-h-32 overflow-y-auto my-0">
+          <p className="text-xs text-muted-foreground mb-2 font-semibold">Battle Log</p>
+          {battle.log.slice(-5).map((msg, i) => <p key={i} className="py-1 text-sm">{msg}</p>)}
         </div>
         
         {/* Expandable panel for inventory */}
@@ -812,9 +812,9 @@ function BattleView() {
           </div>}
         
         {/* Main bottom bar content */}
-        <div className="p-3">
+        <div className="p-4">
           {/* Moves header */}
-          <h3 className="font-semibold text-sm mb-2">Move Set</h3>
+          <h3 className="font-semibold text-base mb-3">Move Set</h3>
           {/* Moves grid + action buttons in one row */}
           <div className="grid grid-cols-[1fr_auto] gap-3 items-start">
             {/* Move selection - horizontal scroll */}

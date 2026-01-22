@@ -1,11 +1,17 @@
 // Enhanced Dungeon Renderer with visual tiles - Bright Anime Style
 
+import { forwardRef, useEffect, useRef, useImperativeHandle } from 'react';
 import { DungeonState, DungeonTile, TileType, ElementType, Monster, SpeciesType } from './types';
 import { MonsterSpriteSmall } from './sprites';
+
 interface DungeonRendererProps {
   dungeon: DungeonState;
   playerElement: ElementType;
   playerSpecies?: SpeciesType;
+}
+
+export interface DungeonRendererHandle {
+  scrollToPlayer: () => void;
 }
 
 // Tile visual configurations - Bright anime colors
@@ -149,12 +155,49 @@ function Tile({
       {tile.visible && tile.type === 'floor' && <span className="text-muted-foreground/20 text-[6px]">·</span>}
     </div>;
 }
-export function DungeonRenderer({
+export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRendererProps>(({
   dungeon,
   playerElement,
   playerSpecies
-}: DungeonRendererProps) {
-  return <div className="w-full h-full flex flex-col">
+}, ref) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Expose scroll method to parent
+  useImperativeHandle(ref, () => ({
+    scrollToPlayer: () => {
+      if (scrollRef.current) {
+        const tileSize = 28; // Match CSS
+        const containerWidth = scrollRef.current.clientWidth;
+        const containerHeight = scrollRef.current.clientHeight;
+        const scrollX = dungeon.playerPosition.x * tileSize - containerWidth / 2 + tileSize / 2;
+        const scrollY = dungeon.playerPosition.y * tileSize - containerHeight / 2 + tileSize / 2;
+        scrollRef.current.scrollTo({
+          left: Math.max(0, scrollX),
+          top: Math.max(0, scrollY),
+          behavior: 'smooth'
+        });
+      }
+    }
+  }), [dungeon.playerPosition]);
+  
+  // Auto-scroll when player moves
+  useEffect(() => {
+    if (scrollRef.current) {
+      const tileSize = 28;
+      const containerWidth = scrollRef.current.clientWidth;
+      const containerHeight = scrollRef.current.clientHeight;
+      const scrollX = dungeon.playerPosition.x * tileSize - containerWidth / 2 + tileSize / 2;
+      const scrollY = dungeon.playerPosition.y * tileSize - containerHeight / 2 + tileSize / 2;
+      scrollRef.current.scrollTo({
+        left: Math.max(0, scrollX),
+        top: Math.max(0, scrollY),
+        behavior: 'smooth'
+      });
+    }
+  }, [dungeon.playerPosition.x, dungeon.playerPosition.y]);
+  
+  return (
+    <div className="w-full h-full flex flex-col">
       {/* Floor header - anime style */}
       <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-2">
@@ -176,11 +219,25 @@ export function DungeonRenderer({
       </div>
       
       {/* Dungeon grid - fills available space */}
-      <div className="flex-1 w-full overflow-auto flex items-center justify-center">
+      <div ref={scrollRef} className="flex-1 w-full overflow-auto flex items-center justify-center">
         <div className="inline-block">
-          {dungeon.tiles.map((row, y) => <div key={y} className="flex">
-              {row.map((tile, x) => <Tile key={`${x}-${y}`} tile={tile} x={x} y={y} tiles={dungeon.tiles} enemies={dungeon.enemies} isPlayer={dungeon.playerPosition.x === x && dungeon.playerPosition.y === y} playerElement={playerElement} playerSpecies={playerSpecies} />)}
-            </div>)}
+          {dungeon.tiles.map((row, y) => (
+            <div key={y} className="flex">
+              {row.map((tile, x) => (
+                <Tile 
+                  key={`${x}-${y}`} 
+                  tile={tile} 
+                  x={x} 
+                  y={y} 
+                  tiles={dungeon.tiles} 
+                  enemies={dungeon.enemies} 
+                  isPlayer={dungeon.playerPosition.x === x && dungeon.playerPosition.y === y} 
+                  playerElement={playerElement} 
+                  playerSpecies={playerSpecies} 
+                />
+              ))}
+            </div>
+          ))}
         </div>
       </div>
       
@@ -190,5 +247,8 @@ export function DungeonRenderer({
         <span>⬇️ Stairs</span>
         <span>⚠️ Trap</span>
       </div>
-    </div>;
-}
+    </div>
+  );
+});
+
+DungeonRenderer.displayName = 'DungeonRenderer';

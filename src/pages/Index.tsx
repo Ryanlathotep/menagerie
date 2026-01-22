@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { SPECIES_DATA, getComboId, UnlockedMonster, InventoryItem } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
 import { generateDungeon, movePlayer, removeEnemy, LootItem } from '@/game/dungeon';
-import { useEffect, useCallback, useState, useRef } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { MonsterSprite } from '@/game/sprites';
 import { DungeonRenderer } from '@/game/DungeonRenderer';
 import { GameSidebar } from '@/game/GameSidebar';
@@ -175,7 +175,7 @@ function DungeonView() {
   const dungeon = state.run?.dungeon;
   const [showShop, setShowShop] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  
   useEffect(() => {
     if (!dungeon) {
       const newDungeon = generateDungeon(1);
@@ -186,21 +186,6 @@ function DungeonView() {
     }
   }, [dungeon, dispatch]);
 
-  // Scroll dungeon view to center on player
-  useEffect(() => {
-    if (dungeon && containerRef.current) {
-      const tileSize = 28; // Match CSS
-      const containerWidth = containerRef.current.clientWidth;
-      const containerHeight = containerRef.current.clientHeight;
-      const scrollX = dungeon.playerPosition.x * tileSize - containerWidth / 2 + tileSize / 2;
-      const scrollY = dungeon.playerPosition.y * tileSize - containerHeight / 2 + tileSize / 2;
-      containerRef.current.scrollTo({
-        left: Math.max(0, scrollX),
-        top: Math.max(0, scrollY),
-        behavior: 'smooth'
-      });
-    }
-  }, [dungeon?.playerPosition]);
   const handleMove = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
     if (!dungeon || !state.run) return;
     const result = movePlayer(dungeon, direction);
@@ -353,7 +338,7 @@ function DungeonView() {
       <div className={`fixed inset-0 ${bottomOffset} overflow-hidden transition-all duration-300`}>
         <div className="h-full flex flex-col">
           {/* Scrollable dungeon viewport - fills available space */}
-          <div ref={containerRef} className="flex-1 overflow-auto bg-card border-b-2 border-primary/20">
+          <div className="flex-1 overflow-hidden bg-card border-b-2 border-primary/20">
             <DungeonRenderer dungeon={dungeon} playerElement={state.run?.currentMonster.element || 'fire'} playerSpecies={state.run?.currentMonster.species} />
           </div>
 

@@ -12,29 +12,25 @@ import { GameSidebar } from '@/game/GameSidebar';
 import { getMonsterMoves, Move, STRUGGLE_MOVE } from '@/game/moves';
 import { MoveTooltip } from '@/game/BattleTooltip';
 import { ShopView } from '@/game/ShopView';
-import { 
-  executeCombat, 
-  calculateXpReward, 
-  xpToNextLevel, 
-  checkLevelUp,
-  getEffectiveness 
-} from '@/game/combat';
+import { executeCombat, calculateXpReward, xpToNextLevel, checkLevelUp, getEffectiveness } from '@/game/combat';
 import { toast } from 'sonner';
 import { Backpack, DoorOpen } from 'lucide-react';
 
 // Main Menu Component
 function MainMenu() {
-  const { state, dispatch } = useGame();
-
+  const {
+    state,
+    dispatch
+  } = useGame();
   const handleResetSave = () => {
     if (confirm('Are you sure you want to reset all progress? This cannot be undone.')) {
-      dispatch({ type: 'RESET_SAVE' });
+      dispatch({
+        type: 'RESET_SAVE'
+      });
       toast.success('Save data reset!');
     }
   };
-
-  return (
-    <div className="game-container">
+  return <div className="game-container">
       <div className="text-center space-y-8">
         <h1 className="text-5xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
           Monster Roguelike
@@ -42,11 +38,10 @@ function MainMenu() {
         <p className="text-muted-foreground text-lg">Play as the monsters. Unlock them all.</p>
         
         <div className="space-y-4">
-          <Button 
-            size="lg" 
-            className="w-64 bg-gradient-to-r from-primary to-secondary hover:opacity-90"
-            onClick={() => dispatch({ type: 'SET_PHASE', phase: 'character_select' })}
-          >
+          <Button size="lg" className="w-64 bg-gradient-to-r from-primary to-secondary hover:opacity-90" onClick={() => dispatch({
+          type: 'SET_PHASE',
+          phase: 'character_select'
+        })}>
             ✨ Start Run
           </Button>
         </div>
@@ -57,44 +52,33 @@ function MainMenu() {
           <p>🎮 Total Runs: {state.saveData.totalRuns}</p>
         </div>
 
-        <Button 
-          variant="ghost" 
-          size="sm"
-          className="text-muted-foreground hover:text-destructive"
-          onClick={handleResetSave}
-        >
+        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={handleResetSave}>
           Reset Save Data
         </Button>
       </div>
-    </div>
-  );
+    </div>;
 }
 
 // Character Select Component - Now uses unlocked monster combos
 function CharacterSelect() {
-  const { state, dispatch } = useGame();
-  
+  const {
+    state,
+    dispatch
+  } = useGame();
+
   // Get all unlocked monsters (specific combos with levels)
   const unlockedMonsters = state.saveData.unlockedMonsters || [];
-  
-  const [selectedMonster, setSelectedMonster] = useState<typeof unlockedMonsters[0] | null>(
-    unlockedMonsters.length > 0 ? unlockedMonsters[0] : null
-  );
-
+  const [selectedMonster, setSelectedMonster] = useState<typeof unlockedMonsters[0] | null>(unlockedMonsters.length > 0 ? unlockedMonsters[0] : null);
   const startRun = () => {
     if (!selectedMonster) return;
     // Create monster at the level it was unlocked at
-    const monster = createMonster(
-      selectedMonster.species, 
-      selectedMonster.classType, 
-      selectedMonster.element, 
-      selectedMonster.level
-    );
-    dispatch({ type: 'START_RUN', monster });
+    const monster = createMonster(selectedMonster.species, selectedMonster.classType, selectedMonster.element, selectedMonster.level);
+    dispatch({
+      type: 'START_RUN',
+      monster
+    });
   };
-
-  return (
-    <div className="game-container">
+  return <div className="game-container">
       <div className="space-y-6 max-w-4xl">
         <h2 className="text-3xl font-bold text-center bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
           Choose Your Monster
@@ -111,25 +95,10 @@ function CharacterSelect() {
           </h3>
           <ScrollArea className="h-48">
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-              {unlockedMonsters.map((monster) => (
-                <Card 
-                  key={monster.comboId}
-                  className={`p-3 cursor-pointer transition-all ${
-                    selectedMonster?.comboId === monster.comboId 
-                      ? 'ring-2 ring-primary bg-primary/10' 
-                      : 'hover:border-primary/50'
-                  }`}
-                  onClick={() => setSelectedMonster(monster)}
-                >
+              {unlockedMonsters.map(monster => <Card key={monster.comboId} className={`p-3 cursor-pointer transition-all ${selectedMonster?.comboId === monster.comboId ? 'ring-2 ring-primary bg-primary/10' : 'hover:border-primary/50'}`} onClick={() => setSelectedMonster(monster)}>
                   <div className="text-center">
                     <div className="flex justify-center mb-1">
-                      <MonsterSprite 
-                        species={monster.species} 
-                        element={monster.element} 
-                        classType={monster.classType} 
-                        size={48} 
-                        animated={false} 
-                      />
+                      <MonsterSprite species={monster.species} element={monster.element} classType={monster.classType} size={48} animated={false} />
                     </div>
                     <p className="text-xs font-medium capitalize">{monster.species}</p>
                     <div className="flex gap-1 justify-center mt-1 flex-wrap">
@@ -141,22 +110,15 @@ function CharacterSelect() {
                       Lv.{monster.level} • {monster.classType}
                     </p>
                   </div>
-                </Card>
-              ))}
+                </Card>)}
             </div>
           </ScrollArea>
         </div>
         
         {/* Preview */}
-        {selectedMonster && (
-          <Card className="p-4">
+        {selectedMonster && <Card className="p-4">
             <div className="flex items-center gap-4">
-              <MonsterSprite 
-                species={selectedMonster.species} 
-                element={selectedMonster.element} 
-                classType={selectedMonster.classType} 
-                size={80} 
-              />
+              <MonsterSprite species={selectedMonster.species} element={selectedMonster.element} classType={selectedMonster.classType} size={80} />
               <div className="flex-1">
                 <h3 className="font-bold text-lg capitalize">
                   {selectedMonster.species}
@@ -187,40 +149,39 @@ function CharacterSelect() {
                 </div>
               </div>
             </div>
-          </Card>
-        )}
+          </Card>}
 
         <div className="flex gap-3">
-          <Button 
-            variant="outline" 
-            onClick={() => dispatch({ type: 'SET_PHASE', phase: 'main_menu' })}
-          >
+          <Button variant="outline" onClick={() => dispatch({
+          type: 'SET_PHASE',
+          phase: 'main_menu'
+        })}>
             Back
           </Button>
-          <Button 
-            className="flex-1 bg-gradient-to-r from-primary to-secondary"
-            disabled={!selectedMonster}
-            onClick={startRun}
-          >
+          <Button className="flex-1 bg-gradient-to-r from-primary to-secondary" disabled={!selectedMonster} onClick={startRun}>
             Start Adventure! ✨
           </Button>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }
 
 // Dungeon View Component with scrolling viewport
 function DungeonView() {
-  const { state, dispatch } = useGame();
+  const {
+    state,
+    dispatch
+  } = useGame();
   const dungeon = state.run?.dungeon;
   const [showShop, setShowShop] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (!dungeon) {
       const newDungeon = generateDungeon(1);
-      dispatch({ type: 'SET_DUNGEON', dungeon: newDungeon });
+      dispatch({
+        type: 'SET_DUNGEON',
+        dungeon: newDungeon
+      });
     }
   }, [dungeon, dispatch]);
 
@@ -230,29 +191,33 @@ function DungeonView() {
       const tileSize = 28; // Match CSS
       const containerWidth = containerRef.current.clientWidth;
       const containerHeight = containerRef.current.clientHeight;
-      
-      const scrollX = (dungeon.playerPosition.x * tileSize) - (containerWidth / 2) + (tileSize / 2);
-      const scrollY = (dungeon.playerPosition.y * tileSize) - (containerHeight / 2) + (tileSize / 2);
-      
+      const scrollX = dungeon.playerPosition.x * tileSize - containerWidth / 2 + tileSize / 2;
+      const scrollY = dungeon.playerPosition.y * tileSize - containerHeight / 2 + tileSize / 2;
       containerRef.current.scrollTo({
         left: Math.max(0, scrollX),
         top: Math.max(0, scrollY),
-        behavior: 'smooth',
+        behavior: 'smooth'
       });
     }
   }, [dungeon?.playerPosition]);
-
   const handleMove = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
     if (!dungeon || !state.run) return;
-    
     const result = movePlayer(dungeon, direction);
-    dispatch({ type: 'SET_DUNGEON', dungeon: result.dungeon });
-
+    dispatch({
+      type: 'SET_DUNGEON',
+      dungeon: result.dungeon
+    });
     if (result.encounter) {
-      dispatch({ type: 'START_BATTLE', enemy: result.encounter });
+      dispatch({
+        type: 'START_BATTLE',
+        enemy: result.encounter
+      });
     } else if (result.treasure && result.loot) {
       if (result.loot.type === 'gold') {
-        dispatch({ type: 'ADD_GOLD', amount: result.loot.value });
+        dispatch({
+          type: 'ADD_GOLD',
+          amount: result.loot.value
+        });
         toast.success(`Found ${result.loot.value} gold!`);
       } else {
         // Add loot to real inventory
@@ -262,28 +227,45 @@ function DungeonView() {
           type: result.loot.type,
           value: result.loot.value,
           effect: result.loot.effect,
-          quantity: 1,
+          quantity: 1
         };
-        dispatch({ type: 'ADD_ITEM', item: lootItem });
+        dispatch({
+          type: 'ADD_ITEM',
+          item: lootItem
+        });
         toast.success(`Found ${result.loot.name}!`);
       }
     } else if (result.stairs) {
       const newDungeon = generateDungeon(dungeon.floor + 1);
-      dispatch({ type: 'SET_DUNGEON', dungeon: newDungeon });
+      dispatch({
+        type: 'SET_DUNGEON',
+        dungeon: newDungeon
+      });
       toast.success(`Descended to Floor ${dungeon.floor + 1}!`);
     } else if (result.trap) {
       if (result.trap.type === 'spike' && result.trap.damage) {
         const newHp = Math.max(0, state.run.currentMonster.stats.currentHp - result.trap.damage);
         const updatedMonster = {
           ...state.run.currentMonster,
-          stats: { ...state.run.currentMonster.stats, currentHp: newHp },
+          stats: {
+            ...state.run.currentMonster.stats,
+            currentHp: newHp
+          }
         };
-        dispatch({ type: 'UPDATE_PLAYER_MONSTER', monster: updatedMonster });
+        dispatch({
+          type: 'UPDATE_PLAYER_MONSTER',
+          monster: updatedMonster
+        });
         toast.error(`Stepped on a spike trap! Took ${result.trap.damage} damage!`);
-        
         if (newHp <= 0) {
-          dispatch({ type: 'END_RUN', victory: false });
-          dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
+          dispatch({
+            type: 'END_RUN',
+            victory: false
+          });
+          dispatch({
+            type: 'SET_PHASE',
+            phase: 'run_summary'
+          });
         }
       } else if (result.trap.type === 'poison') {
         toast.error('Poisoned by a trap!');
@@ -296,7 +278,6 @@ function DungeonView() {
       setShowShop(true);
     }
   }, [dungeon, dispatch, state.run]);
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (showShop) return;
@@ -308,60 +289,49 @@ function DungeonView() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleMove, showShop]);
-
   const handleFlee = () => {
-    dispatch({ type: 'END_RUN', victory: false });
-    dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
+    dispatch({
+      type: 'END_RUN',
+      victory: false
+    });
+    dispatch({
+      type: 'SET_PHASE',
+      phase: 'run_summary'
+    });
   };
-
   const handleBuyItem = (item: LootItem) => {
     const price = item.value * 1.5; // Shop markup
     if (state.run && state.run.gold >= price) {
-      dispatch({ type: 'ADD_GOLD', amount: -Math.floor(price) });
+      dispatch({
+        type: 'ADD_GOLD',
+        amount: -Math.floor(price)
+      });
       const lootItem: InventoryItem = {
         id: item.id,
         name: item.name,
         type: item.type,
         value: item.value,
         effect: item.effect,
-        quantity: 1,
+        quantity: 1
       };
-      dispatch({ type: 'ADD_ITEM', item: lootItem });
+      dispatch({
+        type: 'ADD_ITEM',
+        item: lootItem
+      });
       toast.success(`Bought ${item.name}!`);
     }
   };
-
   if (!dungeon) return <div className="game-container">Loading...</div>;
-
-  return (
-    <>
-      <GameSidebar 
-        monster={state.run?.currentMonster || null}
-        gold={state.run?.gold || 0}
-        floor={dungeon.floor}
-        onFlee={handleFlee}
-      />
+  return <>
+      <GameSidebar monster={state.run?.currentMonster || null} gold={state.run?.gold || 0} floor={dungeon.floor} onFlee={handleFlee} />
       
-      {showShop && (
-        <ShopView 
-          gold={state.run?.gold || 0}
-          onBuy={handleBuyItem}
-          onClose={() => setShowShop(false)}
-        />
-      )}
+      {showShop && <ShopView gold={state.run?.gold || 0} onBuy={handleBuyItem} onClose={() => setShowShop(false)} />}
       
       <div className="game-container pb-20">
         <div className="flex flex-col items-center gap-4">
           {/* Scrollable dungeon viewport */}
-          <div 
-            ref={containerRef}
-            className="w-full max-w-[600px] h-[400px] overflow-auto bg-card rounded-2xl p-4 border-2 border-primary/20 shadow-xl"
-          >
-            <DungeonRenderer 
-              dungeon={dungeon} 
-              playerElement={state.run?.currentMonster.element || 'fire'}
-              playerSpecies={state.run?.currentMonster.species}
-            />
+          <div ref={containerRef} className="w-full max-w-[600px] h-[400px] overflow-auto bg-card rounded-2xl p-4 border-2 border-primary/20 shadow-xl">
+            <DungeonRenderer dungeon={dungeon} playerElement={state.run?.currentMonster.element || 'fire'} playerSpecies={state.run?.currentMonster.species} />
           </div>
 
           {/* Mobile controls */}
@@ -388,25 +358,20 @@ function DungeonView() {
           </div>
         </div>
       </div>
-    </>
-  );
+    </>;
 }
 
 // Battle View Component with proper combat calculations
 function BattleView() {
-  const { state, dispatch } = useGame();
+  const {
+    state,
+    dispatch
+  } = useGame();
   const battle = state.run?.battle;
   const [experience, setExperience] = useState(0);
   const [showInventory, setShowInventory] = useState(false);
-
   if (!battle || !state.run) return null;
-
-  const playerMoves = getMonsterMoves(
-    battle.playerMonster.species,
-    battle.playerMonster.element,
-    battle.playerMonster.class
-  );
-
+  const playerMoves = getMonsterMoves(battle.playerMonster.species, battle.playerMonster.element, battle.playerMonster.class);
   const experienceToNext = xpToNextLevel(battle.playerMonster.level);
   const currentStamina = battle.playerMonster.stats.currentStamina ?? battle.playerMonster.stats.stamina ?? 50;
   const maxStamina = battle.playerMonster.stats.stamina ?? 50;
@@ -415,39 +380,47 @@ function BattleView() {
   const handleFlee = () => {
     const playerSpeed = battle.playerMonster.stats.speed;
     const enemySpeed = battle.enemyMonster.stats.speed;
-    const fleeChance = 50 + ((playerSpeed - enemySpeed) * 2);
+    const fleeChance = 50 + (playerSpeed - enemySpeed) * 2;
     const roll = Math.random() * 100;
-    
     if (roll <= fleeChance) {
       toast.success('Got away safely!');
-      dispatch({ type: 'END_BATTLE', victory: false });
+      dispatch({
+        type: 'END_BATTLE',
+        victory: false
+      });
       // Don't end run, just return to dungeon without dying
-      dispatch({ type: 'SET_PHASE', phase: 'dungeon' });
+      dispatch({
+        type: 'SET_PHASE',
+        phase: 'dungeon'
+      });
     } else {
       // Failed to flee - enemy gets a free attack
-      const enemyMoves = getMonsterMoves(
-        battle.enemyMonster.species,
-        battle.enemyMonster.element,
-        battle.enemyMonster.class
-      );
+      const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class);
       const enemyMove = enemyMoves[Math.floor(Math.random() * Math.min(3, enemyMoves.length))];
       const enemyResult = executeCombat(enemyMove, battle.enemyMonster, battle.playerMonster);
       const newPlayerHp = Math.max(0, battle.playerMonster.stats.currentHp - enemyResult.damage);
-      
       const newLog = [...battle.log, `Couldn't escape!`, enemyResult.message];
-      
       if (newPlayerHp <= 0) {
-        dispatch({ type: 'END_BATTLE', victory: false });
-        dispatch({ type: 'END_RUN', victory: false });
+        dispatch({
+          type: 'END_BATTLE',
+          victory: false
+        });
+        dispatch({
+          type: 'END_RUN',
+          victory: false
+        });
       } else {
-        dispatch({ 
-          type: 'UPDATE_BATTLE', 
+        dispatch({
+          type: 'UPDATE_BATTLE',
           battle: {
-            playerMonster: { 
-              ...battle.playerMonster, 
-              stats: { ...battle.playerMonster.stats, currentHp: newPlayerHp }
+            playerMonster: {
+              ...battle.playerMonster,
+              stats: {
+                ...battle.playerMonster.stats,
+                currentHp: newPlayerHp
+              }
             },
-            log: newLog,
+            log: newLog
           }
         });
         toast.error("Couldn't escape!");
@@ -458,8 +431,9 @@ function BattleView() {
   // Use item during battle
   const handleUseItem = (item: InventoryItem) => {
     let message = '';
-    let newStats = { ...battle.playerMonster.stats };
-    
+    let newStats = {
+      ...battle.playerMonster.stats
+    };
     if (item.effect === 'heal_hp' || item.effect === 'heal_30') {
       const healAmount = item.value || 30;
       const actualHeal = Math.min(healAmount, newStats.maxHp - newStats.currentHp);
@@ -475,63 +449,72 @@ function BattleView() {
     } else {
       message = `Used ${item.name}!`;
     }
-    
-    dispatch({ type: 'USE_ITEM', itemId: item.id });
-    dispatch({ 
-      type: 'UPDATE_BATTLE', 
+    dispatch({
+      type: 'USE_ITEM',
+      itemId: item.id
+    });
+    dispatch({
+      type: 'UPDATE_BATTLE',
       battle: {
-        playerMonster: { ...battle.playerMonster, stats: newStats },
-        log: [...battle.log, message],
+        playerMonster: {
+          ...battle.playerMonster,
+          stats: newStats
+        },
+        log: [...battle.log, message]
       }
     });
     toast.success(message);
     setShowInventory(false);
-    
+
     // Enemy gets a turn after using item
-    const enemyMoves = getMonsterMoves(
-      battle.enemyMonster.species,
-      battle.enemyMonster.element,
-      battle.enemyMonster.class
-    );
+    const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class);
     const enemyMove = enemyMoves[Math.floor(Math.random() * Math.min(3, enemyMoves.length))];
-    const enemyResult = executeCombat(enemyMove, battle.enemyMonster, { ...battle.playerMonster, stats: newStats });
+    const enemyResult = executeCombat(enemyMove, battle.enemyMonster, {
+      ...battle.playerMonster,
+      stats: newStats
+    });
     const newPlayerHp = Math.max(0, newStats.currentHp - enemyResult.damage);
-    
     if (newPlayerHp <= 0) {
-      dispatch({ type: 'END_BATTLE', victory: false });
-      dispatch({ type: 'END_RUN', victory: false });
+      dispatch({
+        type: 'END_BATTLE',
+        victory: false
+      });
+      dispatch({
+        type: 'END_RUN',
+        victory: false
+      });
     } else {
-      dispatch({ 
-        type: 'UPDATE_BATTLE', 
+      dispatch({
+        type: 'UPDATE_BATTLE',
         battle: {
-          playerMonster: { 
-            ...battle.playerMonster, 
-            stats: { ...newStats, currentHp: newPlayerHp }
+          playerMonster: {
+            ...battle.playerMonster,
+            stats: {
+              ...newStats,
+              currentHp: newPlayerHp
+            }
           },
-          log: [...battle.log, message, enemyResult.message],
+          log: [...battle.log, message, enemyResult.message]
         }
       });
     }
   };
-
   const executeMove = (move: Move) => {
     if (!state.run) return;
-    
+
     // Check if player has enough stamina
     const staminaCost = move.staminaCost || 0;
-    
     if (currentStamina < staminaCost) {
       toast.error('Not enough stamina!');
       return;
     }
-    
+
     // Consume stamina
     let newPlayerStamina = currentStamina - staminaCost;
-    
+
     // Handle special move effects
     let healAmount = 0;
     let staminaRecovery = 0;
-    
     if (move.type === 'heal' && move.power > 0) {
       healAmount = move.power;
     }
@@ -554,15 +537,14 @@ function BattleView() {
     if (move.effect === 'restore_stamina_30') {
       staminaRecovery = 30;
     }
-    
+
     // Execute combat with proper calculations
     const result = executeCombat(move, battle.playerMonster, battle.enemyMonster);
     const newLog = [...battle.log, result.message];
-    
     if (staminaCost > 0) {
       newLog.push(`Used ${staminaCost} stamina`);
     }
-    
+
     // Apply heal if it's a heal move
     let newPlayerHp = battle.playerMonster.stats.currentHp;
     if (healAmount > 0 && move.type === 'heal') {
@@ -570,16 +552,15 @@ function BattleView() {
       newPlayerHp = Math.min(battle.playerMonster.stats.maxHp, newPlayerHp + healAmount);
       newLog.push(`Healed ${actualHeal} HP!`);
     }
-    
+
     // Apply stamina recovery
     if (staminaRecovery > 0) {
       const actualRecovery = Math.min(staminaRecovery, maxStamina - newPlayerStamina);
       newPlayerStamina = Math.min(maxStamina, newPlayerStamina + staminaRecovery);
       newLog.push(`Recovered ${actualRecovery} stamina!`);
     }
-    
     const newEnemyHp = Math.max(0, battle.enemyMonster.stats.currentHp - result.damage);
-    
+
     // Apply drain heal (after damage)
     if (move.effect === 'heal_self' && result.damage > 0) {
       const drainHeal = Math.floor(result.damage * 0.5);
@@ -589,113 +570,135 @@ function BattleView() {
         newLog.push(`Drained ${actualDrainHeal} HP!`);
       }
     }
-    
     if (newEnemyHp <= 0) {
       // Victory - unlock this specific monster combo with its level
       const comboId = getComboId({
         species: battle.enemyMonster.species,
         element: battle.enemyMonster.element,
-        classType: battle.enemyMonster.class,
+        classType: battle.enemyMonster.class
       });
-      
+
       // Unlock the full monster data with level
       const unlockedMonster: UnlockedMonster = {
         comboId,
         species: battle.enemyMonster.species,
         element: battle.enemyMonster.element,
         classType: battle.enemyMonster.class,
-        level: battle.enemyMonster.level,
+        level: battle.enemyMonster.level
       };
-      dispatch({ type: 'UNLOCK_MONSTER', monster: unlockedMonster });
-      dispatch({ type: 'UNLOCK_COMBO', comboId });
-      dispatch({ type: 'UNLOCK_SPECIES', species: battle.enemyMonster.species });
-      
+      dispatch({
+        type: 'UNLOCK_MONSTER',
+        monster: unlockedMonster
+      });
+      dispatch({
+        type: 'UNLOCK_COMBO',
+        comboId
+      });
+      dispatch({
+        type: 'UNLOCK_SPECIES',
+        species: battle.enemyMonster.species
+      });
       toast.success(`Unlocked ${battle.enemyMonster.species} (Lv.${battle.enemyMonster.level})!`);
-      
+
       // Award XP
       const xpGained = calculateXpReward(battle.enemyMonster.level, battle.playerMonster.level);
       const newXp = experience + xpGained;
-      
+
       // Check for level up
       const levelUpResult = checkLevelUp(battle.playerMonster, newXp);
-      
       if (levelUpResult.leveled) {
         // Level up!
-        const newStats = calculateStats(
-          battle.playerMonster.species,
-          battle.playerMonster.class,
-          levelUpResult.newLevel
-        );
+        const newStats = calculateStats(battle.playerMonster.species, battle.playerMonster.class, levelUpResult.newLevel);
         const leveledMonster = {
           ...battle.playerMonster,
           level: levelUpResult.newLevel,
-          stats: { ...newStats, currentHp: newPlayerHp, currentStamina: newPlayerStamina },
+          stats: {
+            ...newStats,
+            currentHp: newPlayerHp,
+            currentStamina: newPlayerStamina
+          }
         };
-        dispatch({ type: 'UPDATE_PLAYER_MONSTER', monster: leveledMonster });
+        dispatch({
+          type: 'UPDATE_PLAYER_MONSTER',
+          monster: leveledMonster
+        });
         setExperience(levelUpResult.xpRemaining);
         toast.success(`🎉 Level Up! Now level ${levelUpResult.newLevel}!`);
       } else {
         setExperience(newXp);
         // Update player monster with current HP/Stamina
-        dispatch({ 
-          type: 'UPDATE_PLAYER_MONSTER', 
-          monster: { 
-            ...battle.playerMonster, 
-            stats: { 
-              ...battle.playerMonster.stats, 
+        dispatch({
+          type: 'UPDATE_PLAYER_MONSTER',
+          monster: {
+            ...battle.playerMonster,
+            stats: {
+              ...battle.playerMonster.stats,
               currentHp: newPlayerHp,
-              currentStamina: newPlayerStamina,
+              currentStamina: newPlayerStamina
             }
           }
         });
       }
-      
       toast.success(`+${xpGained} XP!`);
-      
       if (state.run?.dungeon) {
         const updatedDungeon = removeEnemy(state.run.dungeon, battle.enemyMonster.id);
-        dispatch({ type: 'SET_DUNGEON', dungeon: updatedDungeon });
+        dispatch({
+          type: 'SET_DUNGEON',
+          dungeon: updatedDungeon
+        });
       }
-      dispatch({ type: 'END_BATTLE', victory: true });
-      dispatch({ type: 'ADD_GOLD', amount: 5 + battle.enemyMonster.level * 3 });
+      dispatch({
+        type: 'END_BATTLE',
+        victory: true
+      });
+      dispatch({
+        type: 'ADD_GOLD',
+        amount: 5 + battle.enemyMonster.level * 3
+      });
     } else {
       // Enemy turn - use random enemy move
-      const enemyMoves = getMonsterMoves(
-        battle.enemyMonster.species,
-        battle.enemyMonster.element,
-        battle.enemyMonster.class
-      );
+      const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class);
       const enemyMove = enemyMoves[Math.floor(Math.random() * Math.min(3, enemyMoves.length))];
-      
-      const enemyResult = executeCombat(
-        enemyMove,
-        { ...battle.enemyMonster, stats: { ...battle.enemyMonster.stats, currentHp: newEnemyHp } },
-        battle.playerMonster
-      );
-      
+      const enemyResult = executeCombat(enemyMove, {
+        ...battle.enemyMonster,
+        stats: {
+          ...battle.enemyMonster.stats,
+          currentHp: newEnemyHp
+        }
+      }, battle.playerMonster);
       newPlayerHp = Math.max(0, newPlayerHp - enemyResult.damage);
       newLog.push(enemyResult.message);
-      
       if (newPlayerHp <= 0) {
-        dispatch({ type: 'END_BATTLE', victory: false });
-        dispatch({ type: 'END_RUN', victory: false });
+        dispatch({
+          type: 'END_BATTLE',
+          victory: false
+        });
+        dispatch({
+          type: 'END_RUN',
+          victory: false
+        });
       } else {
         // Regenerate a bit of stamina each turn (2 stamina recovery)
         const recoveredStamina = Math.min(maxStamina, newPlayerStamina + 2);
-        
-        dispatch({ 
-          type: 'UPDATE_BATTLE', 
+        dispatch({
+          type: 'UPDATE_BATTLE',
           battle: {
-            enemyMonster: { ...battle.enemyMonster, stats: { ...battle.enemyMonster.stats, currentHp: newEnemyHp }},
-            playerMonster: { 
-              ...battle.playerMonster, 
-              stats: { 
-                ...battle.playerMonster.stats, 
-                currentHp: newPlayerHp,
-                currentStamina: recoveredStamina,
+            enemyMonster: {
+              ...battle.enemyMonster,
+              stats: {
+                ...battle.enemyMonster.stats,
+                currentHp: newEnemyHp
               }
             },
-            log: newLog,
+            playerMonster: {
+              ...battle.playerMonster,
+              stats: {
+                ...battle.playerMonster.stats,
+                currentHp: newPlayerHp,
+                currentStamina: recoveredStamina
+              }
+            },
+            log: newLog
           }
         });
       }
@@ -712,14 +715,13 @@ function BattleView() {
 
   // Check if any move is affordable
   const canAffordAnyMove = playerMoves.some(m => (m.staminaCost || 0) <= currentStamina);
-  
+
   // Moves to show - include struggle if out of stamina
   const availableMoves = canAffordAnyMove ? playerMoves : [...playerMoves, STRUGGLE_MOVE];
-  
   const inventory = state.run.inventory || [];
-
-  return (
-    <div className="fixed inset-0 flex flex-col" style={{ height: 'calc(100vh - 180px)' }}>
+  return <div className="fixed inset-0 flex flex-col" style={{
+    height: 'calc(100vh - 180px)'
+  }}>
       {/* Main battle area - fills available space */}
       <div className="flex-1 flex flex-col p-4 overflow-auto">
         {/* Header */}
@@ -732,12 +734,7 @@ function BattleView() {
           {/* Enemy */}
           <Card className="p-4 flex flex-col">
             <div className="flex items-center gap-4 mb-3">
-              <MonsterSprite 
-                species={battle.enemyMonster.species}
-                element={battle.enemyMonster.element}
-                classType={battle.enemyMonster.class}
-                size={80}
-              />
+              <MonsterSprite species={battle.enemyMonster.species} element={battle.enemyMonster.element} classType={battle.enemyMonster.class} size={80} />
               <div className="flex-1">
                 <div className="flex justify-between items-center mb-1">
                   <span className="font-semibold text-lg">{battle.enemyMonster.name}</span>
@@ -752,10 +749,9 @@ function BattleView() {
                 </div>
                 <p className="text-xs text-muted-foreground mb-2">Enemy • Lv.{battle.enemyMonster.level}</p>
                 <div className="health-bar h-3">
-                  <div 
-                    className="health-bar-fill" 
-                    style={{ width: `${(battle.enemyMonster.stats.currentHp / battle.enemyMonster.stats.maxHp) * 100}%` }}
-                  />
+                  <div className="health-bar-fill" style={{
+                  width: `${battle.enemyMonster.stats.currentHp / battle.enemyMonster.stats.maxHp * 100}%`
+                }} />
                 </div>
                 <p className="text-sm mt-1 font-mono">{battle.enemyMonster.stats.currentHp} / {battle.enemyMonster.stats.maxHp} HP</p>
               </div>
@@ -765,12 +761,7 @@ function BattleView() {
           {/* Player */}
           <Card className="p-4 border-2 border-primary/50 flex flex-col">
             <div className="flex items-center gap-4 mb-3">
-              <MonsterSprite 
-                species={battle.playerMonster.species}
-                element={battle.playerMonster.element}
-                classType={battle.playerMonster.class}
-                size={80}
-              />
+              <MonsterSprite species={battle.playerMonster.species} element={battle.playerMonster.element} classType={battle.playerMonster.class} size={80} />
               <div className="flex-1">
                 <div className="flex justify-between items-center mb-1">
                   <span className="font-semibold text-lg">{battle.playerMonster.name}</span>
@@ -781,18 +772,16 @@ function BattleView() {
                 <p className="text-xs text-muted-foreground mb-2">You • Lv.{battle.playerMonster.level}</p>
                 {/* HP Bar */}
                 <div className="health-bar h-3">
-                  <div 
-                    className="health-bar-fill" 
-                    style={{ width: `${(battle.playerMonster.stats.currentHp / battle.playerMonster.stats.maxHp) * 100}%` }}
-                  />
+                  <div className="health-bar-fill" style={{
+                  width: `${battle.playerMonster.stats.currentHp / battle.playerMonster.stats.maxHp * 100}%`
+                }} />
                 </div>
                 <p className="text-sm mt-1 font-mono">{battle.playerMonster.stats.currentHp} / {battle.playerMonster.stats.maxHp} HP</p>
                 {/* Stamina Bar */}
                 <div className="h-3 bg-muted rounded-full overflow-hidden mt-2">
-                  <div 
-                    className="h-full bg-stat-special transition-all"
-                    style={{ width: `${(currentStamina / maxStamina) * 100}%` }}
-                  />
+                  <div className="h-full bg-stat-special transition-all" style={{
+                  width: `${currentStamina / maxStamina * 100}%`
+                }} />
                 </div>
                 <p className="text-sm mt-1 font-mono">{currentStamina} / {maxStamina} Stamina</p>
               </div>
@@ -804,37 +793,23 @@ function BattleView() {
       {/* Bottom action bar - fixed at bottom, full width like GameSidebar */}
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t-2 border-primary/20 shadow-lg z-50">
         {/* Battle log - above menu items */}
-        <div className="bg-muted/50 border-b border-primary/10 p-2 text-sm max-h-20 overflow-y-auto">
+        <div className="bg-muted/50 border-b border-primary/10 p-2 text-sm max-h-20 overflow-y-auto my-[8px]">
           <p className="text-xs text-muted-foreground mb-1 font-semibold">Battle Log</p>
           {battle.log.slice(-3).map((msg, i) => <p key={i} className="py-0.5 text-xs">{msg}</p>)}
         </div>
         
         {/* Expandable panel for inventory */}
-        {showInventory && (
-          <div className="border-b border-primary/10 p-3">
+        {showInventory && <div className="border-b border-primary/10 p-3">
             <div className="flex justify-between items-center mb-2">
               <h3 className="font-semibold text-sm">Items</h3>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowInventory(false)}>✕</Button>
             </div>
-            {inventory.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No items in inventory</p>
-            ) : (
-              <div className="flex gap-2 flex-wrap">
-                {inventory.map((item, i) => (
-                  <Button 
-                    key={i}
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                    onClick={() => handleUseItem(item)}
-                  >
+            {inventory.length === 0 ? <p className="text-xs text-muted-foreground">No items in inventory</p> : <div className="flex gap-2 flex-wrap">
+                {inventory.map((item, i) => <Button key={i} variant="outline" size="sm" className="text-xs" onClick={() => handleUseItem(item)}>
                     {item.name} x{item.quantity}
-                  </Button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                  </Button>)}
+              </div>}
+          </div>}
         
         {/* Main bottom bar content */}
         <div className="p-3">
@@ -844,23 +819,10 @@ function BattleView() {
           <div className="grid grid-cols-[1fr_auto] gap-3 items-start">
             {/* Move selection - horizontal scroll */}
             <div className="flex gap-2 overflow-x-auto pb-1">
-              {availableMoves.map((move) => {
-                const canAfford = (move.staminaCost || 0) <= currentStamina;
-                return (
-                  <MoveTooltip 
-                    key={move.id} 
-                    move={move} 
-                    attacker={battle.playerMonster} 
-                    defender={battle.enemyMonster}
-                  >
-                    <Button 
-                      variant={canAfford ? "outline" : "ghost"}
-                      className={`h-auto py-2 px-3 text-left flex-shrink-0 ${
-                        !canAfford && move.id !== 'struggle' ? 'opacity-50' : ''
-                      } ${move.id === 'struggle' ? 'border-destructive text-destructive' : ''}`}
-                      onClick={() => executeMove(move)}
-                      disabled={!canAfford && move.id !== 'struggle'}
-                    >
+              {availableMoves.map(move => {
+              const canAfford = (move.staminaCost || 0) <= currentStamina;
+              return <MoveTooltip key={move.id} move={move} attacker={battle.playerMonster} defender={battle.enemyMonster}>
+                    <Button variant={canAfford ? "outline" : "ghost"} className={`h-auto py-2 px-3 text-left flex-shrink-0 ${!canAfford && move.id !== 'struggle' ? 'opacity-50' : ''} ${move.id === 'struggle' ? 'border-destructive text-destructive' : ''}`} onClick={() => executeMove(move)} disabled={!canAfford && move.id !== 'struggle'}>
                       <div>
                         <p className="font-semibold text-xs">{move.name}</p>
                         <p className="text-[9px] opacity-70">
@@ -873,28 +835,17 @@ function BattleView() {
                         </p>
                       </div>
                     </Button>
-                  </MoveTooltip>
-                );
-              })}
+                  </MoveTooltip>;
+            })}
             </div>
             
             {/* Action buttons - right side */}
             <div className="flex gap-2 flex-shrink-0">
-              <Button 
-                variant={showInventory ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowInventory(!showInventory)}
-                className="flex items-center gap-1"
-              >
+              <Button variant={showInventory ? "default" : "outline"} size="sm" onClick={() => setShowInventory(!showInventory)} className="flex items-center gap-1">
                 <Backpack className="w-4 h-4" />
                 <span className="hidden sm:inline">Items</span> ({inventory.length})
               </Button>
-              <Button 
-                variant="destructive" 
-                size="sm"
-                onClick={handleFlee}
-                className="flex items-center gap-1"
-              >
+              <Button variant="destructive" size="sm" onClick={handleFlee} className="flex items-center gap-1">
                 <DoorOpen className="w-4 h-4" />
                 <span className="hidden sm:inline">Flee</span> ({Math.min(95, Math.max(5, 50 + (battle.playerMonster.stats.speed - battle.enemyMonster.stats.speed) * 2))}%)
               </Button>
@@ -902,16 +853,16 @@ function BattleView() {
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }
 
 // Run Summary Component
 function RunSummary() {
-  const { state, dispatch } = useGame();
-
-  return (
-    <div className="game-container">
+  const {
+    state,
+    dispatch
+  } = useGame();
+  return <div className="game-container">
       <Card className="p-8 text-center space-y-4 max-w-md">
         <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-destructive bg-clip-text text-transparent">
           Run Over
@@ -922,36 +873,39 @@ function RunSummary() {
           <p>💰 Gold Collected: {state.run?.gold}</p>
           <p>🔓 Monsters Unlocked: {state.saveData.unlockedCombos.length}</p>
         </div>
-        <Button 
-          className="w-full bg-gradient-to-r from-primary to-secondary"
-          onClick={() => dispatch({ type: 'SET_PHASE', phase: 'main_menu' })}
-        >
+        <Button className="w-full bg-gradient-to-r from-primary to-secondary" onClick={() => dispatch({
+        type: 'SET_PHASE',
+        phase: 'main_menu'
+      })}>
           Return to Menu
         </Button>
       </Card>
-    </div>
-  );
+    </div>;
 }
 
 // Game Component
 function Game() {
-  const { state } = useGame();
-
+  const {
+    state
+  } = useGame();
   switch (state.phase) {
-    case 'main_menu': return <MainMenu />;
-    case 'character_select': return <CharacterSelect />;
-    case 'dungeon': return <DungeonView />;
-    case 'battle': return <BattleView />;
+    case 'main_menu':
+      return <MainMenu />;
+    case 'character_select':
+      return <CharacterSelect />;
+    case 'dungeon':
+      return <DungeonView />;
+    case 'battle':
+      return <BattleView />;
     case 'defeat':
-    case 'run_summary': return <RunSummary />;
-    default: return <MainMenu />;
+    case 'run_summary':
+      return <RunSummary />;
+    default:
+      return <MainMenu />;
   }
 }
-
 export default function Index() {
-  return (
-    <GameProvider>
+  return <GameProvider>
       <Game />
-    </GameProvider>
-  );
+    </GameProvider>;
 }

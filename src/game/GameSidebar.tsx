@@ -44,10 +44,10 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   const staminaPercent = currentStamina / maxStamina * 100;
   const xpPercent = experience / experienceToNext * 100;
   return <>
-      {/* Always visible mini sidebar */}
-      <div ref={ref} className="fixed left-0 top-0 h-full w-16 bg-card border-r-2 border-primary/20 flex flex-col items-center py-4 gap-3 z-50 shadow-lg">
+      {/* Always visible bottom bar */}
+      <div ref={ref} className="fixed bottom-0 left-0 right-0 h-16 bg-card border-t-2 border-primary/20 flex items-center px-4 gap-4 z-50 shadow-lg">
         {/* Monster portrait */}
-        <div className="relative">
+        <div className="relative flex-shrink-0">
           <MonsterSprite species={monster.species} element={monster.element} classType={monster.class} size={48} animated={false} />
           {/* HP indicator ring */}
           <div className="absolute inset-0 rounded-full border-2 border-transparent" style={{
@@ -57,20 +57,20 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
         }} />
         </div>
         
-        {/* Level badge */}
-        <div className="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
-          Lv.{monster.level}
-        </div>
-        
-        {/* Stamina bar mini */}
-        <div className="w-10 h-1.5 bg-muted rounded-full overflow-hidden" title={`Stamina: ${currentStamina}/${maxStamina}`}>
-          <div className="h-full bg-stat-special transition-all" style={{
-          width: `${staminaPercent}%`
-        }} />
+        {/* Level badge and stamina */}
+        <div className="flex flex-col gap-1">
+          <div className="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full text-center">
+            Lv.{monster.level}
+          </div>
+          <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden" title={`Stamina: ${currentStamina}/${maxStamina}`}>
+            <div className="h-full bg-stat-special transition-all" style={{
+            width: `${staminaPercent}%`
+          }} />
+          </div>
         </div>
         
         {/* Menu buttons */}
-        <div className="flex flex-col gap-2 mt-2">
+        <div className="flex gap-2">
           <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="w-10 h-10" onClick={() => setActivePanel(activePanel === 'character' ? null : 'character')} title="Character Sheet">
             <User className="w-5 h-5" />
           </Button>
@@ -85,7 +85,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
         </div>
         
         {/* Floor and gold */}
-        <div className="mt-auto flex flex-col items-center gap-1 text-xs">
+        <div className="flex items-center gap-3 text-xs ml-auto">
           <div className="flex items-center gap-1 text-muted-foreground">
             <Map className="w-3 h-3" />
             <span>F{floor}</span>
@@ -99,9 +99,9 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
           </Button>}
       </div>
       
-      {/* Slide-out panels */}
-      {activePanel && <div className="fixed left-16 top-0 h-full w-80 bg-card border-r-2 border-primary/20 shadow-xl z-40 animate-slide-in-right">
-          <div className="p-4 h-full flex-col flex items-center justify-end">
+      {/* Slide-up panels */}
+      {activePanel && <div className="fixed bottom-16 left-0 right-0 max-h-[60vh] bg-card border-t-2 border-primary/20 shadow-xl z-40 animate-fade-in">
+          <div className="p-4 h-full flex flex-col">
             {/* Panel header */}
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-primary">

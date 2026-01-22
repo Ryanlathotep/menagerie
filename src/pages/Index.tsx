@@ -731,11 +731,8 @@ function BattleView() {
     return '';
   };
 
-  // Check if any move is affordable
-  const canAffordAnyMove = playerMoves.some(m => (m.staminaCost || 0) <= currentStamina);
-
-  // Moves to show - include struggle if out of stamina
-  const availableMoves = canAffordAnyMove ? playerMoves : [...playerMoves, STRUGGLE_MOVE];
+  // Always include struggle as an option - players can hide it if they want
+  const availableMoves = [...playerMoves, STRUGGLE_MOVE];
   const inventory = state.run.inventory || [];
   return <div className="fixed inset-0 flex flex-col" style={{
     height: 'calc(100vh - 180px)'

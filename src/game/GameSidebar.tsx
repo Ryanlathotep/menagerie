@@ -6,15 +6,15 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-import { User, Backpack, Map, DoorOpen, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, ScrollText, Shirt } from 'lucide-react';
-import { Monster, InventoryItem } from './types';
+import { User, Backpack, Map, DoorOpen, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, ScrollText, Shirt, Gem } from 'lucide-react';
+import { Monster, InventoryItem, MaterialInventory } from './types';
 import { MonsterSprite } from './sprites';
 import { getMonsterMoves, Move } from './moves';
 import { ExpandedStats } from './CharacterSheet';
 import { ITEMS } from './Inventory';
 import { MovePanel } from './MovePanel';
 import { SettingsPanel } from './Settings';
-import { MonsterEquipment, EquipmentItem, SLOT_INFO, RARITY_COLORS, calculateEquipmentBonuses } from './equipment';
+import { MonsterEquipment, EquipmentItem, SLOT_INFO, RARITY_COLORS, calculateEquipmentBonuses, CRAFTING_MATERIALS } from './equipment';
 
 // Helper functions to get item info when not in ITEMS database
 function getItemDescription(item: InventoryItem): string {
@@ -45,6 +45,7 @@ interface GameSidebarProps {
   inventory?: InventoryItem[];
   equipmentInventory?: EquipmentItem[];
   equipment?: MonsterEquipment;
+  runMaterials?: MaterialInventory;
   moveOrder?: string[];
   hiddenMoves?: string[];
   onFlee?: () => void;
@@ -70,6 +71,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   inventory = [],
   equipmentInventory = [],
   equipment,
+  runMaterials = {},
   moveOrder = [],
   hiddenMoves = [],
   onFlee,
@@ -342,68 +344,114 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             
             {/* Inventory Panel */}
             {activePanel === 'inventory' && (
-              inventory.length === 0 ? (
-                <div className="text-center py-4 text-muted-foreground">
-                  <Backpack className="w-8 h-8 mx-auto mb-1 opacity-30" />
-                  <p className="text-xs">Inventory empty</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                  {inventory.map(item => {
-                    const itemData = ITEMS[item.id];
-                    const description = itemData?.description || getItemDescription(item);
-                    const icon = itemData?.icon || getItemIcon(item);
-                    
-                    return (
-                      <Tooltip key={item.id}>
-                        <TooltipTrigger asChild>
-                          <Card 
-                            className={`p-2 transition-all ${onUseItem ? 'cursor-pointer hover:bg-primary/10 hover:border-primary' : 'cursor-default hover:bg-muted/50'}`}
-                            onClick={() => onUseItem?.(item)}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg">{icon}</span>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1">
-                                  <span className="font-semibold text-xs truncate">{item.name}</span>
-                                  {item.quantity > 1 && (
-                                    <span className="text-[10px] text-muted-foreground">x{item.quantity}</span>
-                                  )}
+              <div className="space-y-3">
+                {/* Consumables */}
+                {inventory.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                    {inventory.map(item => {
+                      const itemData = ITEMS[item.id];
+                      const description = itemData?.description || getItemDescription(item);
+                      const icon = itemData?.icon || getItemIcon(item);
+                      
+                      return (
+                        <Tooltip key={item.id}>
+                          <TooltipTrigger asChild>
+                            <Card 
+                              className={`p-2 transition-all ${onUseItem ? 'cursor-pointer hover:bg-primary/10 hover:border-primary' : 'cursor-default hover:bg-muted/50'}`}
+                              onClick={() => onUseItem?.(item)}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">{icon}</span>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1">
+                                    <span className="font-semibold text-xs truncate">{item.name}</span>
+                                    {item.quantity > 1 && (
+                                      <span className="text-[10px] text-muted-foreground">x{item.quantity}</span>
+                                    )}
+                                  </div>
+                                  {onUseItem && <p className="text-[9px] text-primary">Click to use</p>}
                                 </div>
-                                {onUseItem && <p className="text-[9px] text-primary">Click to use</p>}
+                                {onDropItem && !inBattle && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="w-6 h-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onDropItem(item.id);
+                                    }}
+                                    title="Drop item"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                )}
                               </div>
-                              {onDropItem && !inBattle && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="w-6 h-6 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDropItem(item.id);
-                                  }}
-                                  title="Drop item"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
-                              )}
-                            </div>
-                          </Card>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-[200px] z-[100]">
-                          <p className="font-semibold text-sm">{item.name}</p>
-                          <p className="text-xs text-muted-foreground">{description}</p>
-                          {item.effect && (
-                            <p className="text-xs text-accent mt-1">
-                              ✨ {item.effect.replace(/_/g, ' ')}
-                              {item.value > 0 && ` (+${item.value})`}
-                            </p>
-                          )}
-                        </TooltipContent>
-                      </Tooltip>
-                    );
-                  })}
-                </div>
-              )
+                            </Card>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[200px] z-[100]">
+                            <p className="font-semibold text-sm">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">{description}</p>
+                            {item.effect && (
+                              <p className="text-xs text-accent mt-1">
+                                ✨ {item.effect.replace(/_/g, ' ')}
+                                {item.value > 0 && ` (+${item.value})`}
+                              </p>
+                            )}
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-2 text-muted-foreground">
+                    <Backpack className="w-6 h-6 mx-auto mb-1 opacity-30" />
+                    <p className="text-xs">No items</p>
+                  </div>
+                )}
+                
+                {/* Materials found this run */}
+                {Object.keys(runMaterials).length > 0 && (
+                  <div className="border-t border-border/50 pt-2">
+                    <div className="flex items-center gap-1 mb-2">
+                      <Gem className="w-3 h-3 text-secondary" />
+                      <p className="text-xs font-semibold text-muted-foreground">Materials Found (kept on flee)</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {Object.entries(runMaterials).map(([materialId, quantity]) => {
+                        const material = CRAFTING_MATERIALS.find(m => m.id === materialId);
+                        const rarityColor = material ? RARITY_COLORS[material.rarity] : null;
+                        
+                        return (
+                          <Tooltip key={materialId}>
+                            <TooltipTrigger asChild>
+                              <span 
+                                className={`
+                                  px-2 py-1 rounded text-xs flex items-center gap-1
+                                  ${rarityColor?.bg || 'bg-muted'} ${rarityColor?.border || 'border-muted'} border
+                                `}
+                              >
+                                <span>{material?.icon || '📦'}</span>
+                                <span className={rarityColor?.text}>{quantity}</span>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="z-[100]">
+                              <p className={`font-semibold text-sm ${rarityColor?.text}`}>
+                                {material?.name || materialId}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {material?.type || 'Material'} • {quantity}x
+                              </p>
+                              <p className="text-xs text-green-400 mt-1">
+                                ✓ Kept when you flee!
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
             
             {/* Battle Log Panel */}

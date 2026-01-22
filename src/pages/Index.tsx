@@ -566,13 +566,13 @@ function DungeonView() {
   }, [handleMove, showShop, isAutoRunning, settings.autoRunDelay]);
   const handleFlee = () => {
     dispatch({
-      type: 'END_RUN',
-      victory: false
+      type: 'FLEE_DUNGEON'
     });
     dispatch({
       type: 'SET_PHASE',
       phase: 'run_summary'
     });
+    toast.success('Escaped safely! Materials and equipment kept.');
   };
   const handleBuyItem = (item: LootItem) => {
     const price = item.value * 1.5; // Shop markup
@@ -681,6 +681,7 @@ function DungeonView() {
         inventory={state.run?.inventory || []} 
         equipmentInventory={state.run?.equipmentInventory || []}
         equipment={state.run?.equipment}
+        runMaterials={state.run?.runMaterials || {}}
         moveOrder={state.run?.moveOrder || []} 
         hiddenMoves={state.run?.hiddenMoves || []} 
         experience={state.run?.experience || 0} 
@@ -1743,6 +1744,7 @@ function BattleView() {
         inventory={inventory}
         equipmentInventory={state.run.equipmentInventory}
         equipment={state.run.equipment}
+        runMaterials={state.run.runMaterials}
         moveOrder={state.run.moveOrder}
         hiddenMoves={state.run.hiddenMoves}
         onFlee={handleFlee}

@@ -1,7 +1,7 @@
 // Enhanced Dungeon Renderer with visual tiles - Bright Anime Style
 
 import { forwardRef, useEffect, useRef, useImperativeHandle } from 'react';
-import { DungeonState, DungeonTile, TileType, ElementType, ClassType, Monster, SpeciesType, SPECIES_DATA, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED, TrapType } from './types';
+import { DungeonState, DungeonTile, TileType, ElementType, ClassType, Monster, SpeciesType, SPECIES_DATA, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED, TrapType, UnlockedMonster } from './types';
 import { MonsterSprite } from './sprites';
 import {
   Tooltip,
@@ -9,6 +9,23 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+
+// Check if a monster combo has been captured at equal or lower level
+function isCaptured(
+  enemy: Monster,
+  unlockedMonsters: UnlockedMonster[]
+): { captured: boolean; capturedLevel?: number } {
+  const match = unlockedMonsters.find(
+    m => m.species === enemy.species && 
+         m.element === enemy.element && 
+         m.classType === enemy.class
+  );
+  
+  if (match && match.level >= enemy.level) {
+    return { captured: true, capturedLevel: match.level };
+  }
+  return { captured: false };
+}
 
 // Calculate matchup between player and enemy
 function getMatchupInfo(
@@ -49,6 +66,7 @@ interface DungeonRendererProps {
   playerSpecies?: SpeciesType;
   playerDexterity?: number; // For disarm calculations
   zoom?: number; // 50-400, 100 = default
+  unlockedMonsters?: UnlockedMonster[]; // For showing captured status
   onDisarmTrap?: (x: number, y: number, success: boolean) => void;
 }
 
@@ -181,6 +199,7 @@ interface TileProps {
   playerDexterity?: number;
   tileSize: number;
   spriteSize: number;
+  unlockedMonsters?: UnlockedMonster[];
   onDisarmTrap?: (x: number, y: number, success: boolean) => void;
 }
 function Tile({
@@ -196,6 +215,7 @@ function Tile({
   playerDexterity = 10,
   tileSize,
   spriteSize,
+  unlockedMonsters = [],
   onDisarmTrap
 }: TileProps) {
   const tileStyle = {
@@ -234,6 +254,7 @@ function Tile({
       
       const hasWeakness = matchup && (matchup.playerWeakToElement || matchup.playerWeakToClass);
       const hasStrength = matchup && (matchup.playerStrongVsElement || matchup.playerStrongVsClass);
+      const captureStatus = isCaptured(enemy, unlockedMonsters);
       
       return (
         <Tooltip>
@@ -245,9 +266,17 @@ function Tile({
           <TooltipContent side="top" className="max-w-[260px] p-3">
             <div className="space-y-2">
               {/* Header with name and level */}
-              <div>
-                <p className="font-bold text-sm">{enemy.name}</p>
-                <p className="text-xs text-muted-foreground">Lv.{enemy.level}</p>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="font-bold text-sm">{enemy.name}</p>
+                  <p className="text-xs text-muted-foreground">Lv.{enemy.level}</p>
+                </div>
+                {captureStatus.captured && (
+                  <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/20 border border-primary/40 text-primary shrink-0">
+                    <span className="text-xs">✓</span>
+                    <span className="text-[10px] font-medium">Captured</span>
+                  </div>
+                )}
               </div>
               
               {/* Type badges */}
@@ -440,6 +469,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   playerSpecies,
   playerDexterity = 10,
   zoom = 100,
+  unlockedMonsters = [],
   onDisarmTrap
 }, ref) => {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -534,6 +564,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                   playerDexterity={playerDexterity}
                   tileSize={tileSize}
                   spriteSize={spriteSize}
+                  unlockedMonsters={unlockedMonsters}
                   onDisarmTrap={onDisarmTrap}
                 />
               ))}

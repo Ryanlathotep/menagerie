@@ -641,6 +641,7 @@ function DungeonView() {
               playerSpecies={state.run?.currentMonster.species}
               playerDexterity={state.run?.currentMonster.stats.dodge || 10}
               zoom={settings.dungeonZoom}
+              unlockedMonsters={state.saveData.unlockedMonsters}
               onDisarmTrap={(x, y, success) => {
                 dispatch({ type: 'DISARM_TRAP', x, y, success });
                 if (success) {

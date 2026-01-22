@@ -176,10 +176,12 @@ export function DungeonRenderer({
       </div>
       
       {/* Dungeon grid - fills available space */}
-      <div className="flex-1 flex items-center justify-center overflow-auto rounded-xl border-2 border-border/30 bg-tile-floor/50">
-        {dungeon.tiles.map((row, y) => <div key={y} className="flex">
-            {row.map((tile, x) => <Tile key={`${x}-${y}`} tile={tile} x={x} y={y} tiles={dungeon.tiles} enemies={dungeon.enemies} isPlayer={dungeon.playerPosition.x === x && dungeon.playerPosition.y === y} playerElement={playerElement} playerSpecies={playerSpecies} />)}
-          </div>)}
+      <div className="flex-1 w-full overflow-auto flex items-center justify-center">
+        <div className="inline-block">
+          {dungeon.tiles.map((row, y) => <div key={y} className="flex">
+              {row.map((tile, x) => <Tile key={`${x}-${y}`} tile={tile} x={x} y={y} tiles={dungeon.tiles} enemies={dungeon.enemies} isPlayer={dungeon.playerPosition.x === x && dungeon.playerPosition.y === y} playerElement={playerElement} playerSpecies={playerSpecies} />)}
+            </div>)}
+        </div>
       </div>
       
       {/* Minimap legend */}

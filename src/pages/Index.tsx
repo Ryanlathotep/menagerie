@@ -297,7 +297,14 @@ function DungeonView() {
   // Keyboard input with double-tap detection
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (showShop || isAutoRunning) return;
+      if (showShop) return;
+      
+      // If auto-running, any key stops it
+      if (isAutoRunning) {
+        setIsAutoRunning(false);
+        autoRunDirection.current = null;
+        return;
+      }
       
       let direction: 'up' | 'down' | 'left' | 'right' | null = null;
       if (e.key === 'ArrowUp' || e.key === 'w') direction = 'up';
@@ -324,19 +331,9 @@ function DungeonView() {
       }
     };
     
-    // Stop auto-run on any key press
-    const handleKeyUp = () => {
-      if (isAutoRunning) {
-        setIsAutoRunning(false);
-        autoRunDirection.current = null;
-      }
-    };
-    
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
     };
   }, [handleMove, showShop, isAutoRunning]);
   const handleFlee = () => {

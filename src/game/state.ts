@@ -47,6 +47,7 @@ type GameAction =
   | { type: 'END_RUN'; victory: boolean }
   | { type: 'SET_DUNGEON'; dungeon: DungeonState }
   | { type: 'UPDATE_DUNGEON'; dungeon: Partial<DungeonState> }
+  | { type: 'DISARM_TRAP'; x: number; y: number; success: boolean }
   | { type: 'START_BATTLE'; enemy: Monster }
   | { type: 'UPDATE_BATTLE'; battle: Partial<BattleState> }
   | { type: 'END_BATTLE'; victory: boolean }
@@ -122,6 +123,30 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         run: {
           ...state.run,
           dungeon: { ...state.run.dungeon, ...action.dungeon },
+        },
+      };
+    
+    case 'DISARM_TRAP':
+      if (!state.run || !state.run.dungeon) return state;
+      const newTiles = state.run.dungeon.tiles.map((row, rowY) =>
+        row.map((tile, tileX) => {
+          if (tileX === action.x && rowY === action.y && tile.type === 'trap') {
+            if (action.success) {
+              // Successfully disarmed - convert to floor
+              return { ...tile, type: 'floor' as const, trapType: undefined, triggered: undefined };
+            } else {
+              // Failed - trigger the trap
+              return { ...tile, triggered: true };
+            }
+          }
+          return tile;
+        })
+      );
+      return {
+        ...state,
+        run: {
+          ...state.run,
+          dungeon: { ...state.run.dungeon, tiles: newTiles },
         },
       };
       

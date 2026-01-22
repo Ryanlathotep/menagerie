@@ -1,7 +1,7 @@
 // Enhanced Dungeon Renderer with visual tiles - Bright Anime Style
 
-import { forwardRef, useEffect, useRef, useImperativeHandle } from 'react';
-import { DungeonState, DungeonTile, TileType, ElementType, Monster, SpeciesType, SPECIES_DATA } from './types';
+import { forwardRef, useEffect, useRef, useImperativeHandle, useState } from 'react';
+import { DungeonState, DungeonTile, TileType, ElementType, Monster, SpeciesType, SPECIES_DATA, TrapType } from './types';
 import { MonsterSpriteSmall } from './sprites';
 import {
   Tooltip,
@@ -14,7 +14,9 @@ interface DungeonRendererProps {
   dungeon: DungeonState;
   playerElement: ElementType;
   playerSpecies?: SpeciesType;
+  playerDexterity?: number; // For disarm calculations
   zoom?: number; // 50-200, 100 = default
+  onDisarmTrap?: (x: number, y: number, success: boolean) => void;
 }
 
 export interface DungeonRendererHandle {
@@ -68,6 +70,28 @@ const TILE_VISUALS: Record<TileType, {
   }
 };
 
+// Trap info for tooltips and visuals
+const TRAP_INFO: Record<TrapType, { name: string; icon: string; description: string; color: string }> = {
+  spike: { 
+    name: 'Spike Trap', 
+    icon: '🔺', 
+    description: 'Deals physical damage when triggered',
+    color: 'from-red-200 to-red-300'
+  },
+  poison: { 
+    name: 'Poison Trap', 
+    icon: '☠️', 
+    description: 'Inflicts poison status when triggered',
+    color: 'from-purple-200 to-purple-300'
+  },
+  alarm: { 
+    name: 'Alarm Trap', 
+    icon: '🔔', 
+    description: 'Alerts nearby enemies when triggered',
+    color: 'from-yellow-200 to-orange-300'
+  },
+};
+
 // Wall texture patterns - softer anime style
 function getWallVariant(x: number, y: number, tiles: DungeonTile[][]): string {
   const hash = (x * 7 + y * 13) % 4;
@@ -115,8 +139,10 @@ interface TileProps {
   isPlayer: boolean;
   playerElement?: ElementType;
   playerSpecies?: SpeciesType;
+  playerDexterity?: number;
   tileSize: number;
   spriteSize: number;
+  onDisarmTrap?: (x: number, y: number, success: boolean) => void;
 }
 function Tile({
   tile,
@@ -127,8 +153,10 @@ function Tile({
   isPlayer,
   playerElement,
   playerSpecies,
+  playerDexterity = 10,
   tileSize,
-  spriteSize
+  spriteSize,
+  onDisarmTrap
 }: TileProps) {
   const tileStyle = {
     width: `${tileSize}px`,
@@ -182,7 +210,57 @@ function Tile({
     }
   }
 
-  // Special tiles with tooltips
+  // Trap tiles with detailed tooltips and right-click disarm
+  if (tile.type === 'trap' && tile.visible) {
+    const trapType = tile.trapType || 'spike';
+    const trapInfo = TRAP_INFO[trapType];
+    const isTriggered = tile.triggered;
+    const disarmChance = Math.min(95, Math.max(5, playerDexterity * 3 + 20)); // 20-95% based on dexterity
+    
+    const handleRightClick = (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (isTriggered || !onDisarmTrap) return;
+      
+      // Calculate disarm success
+      const roll = Math.random() * 100;
+      const success = roll < disarmChance;
+      onDisarmTrap(x, y, success);
+    };
+    
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div 
+            className={`flex items-center justify-center bg-gradient-to-br ${trapInfo.color} ${isTriggered ? 'opacity-50' : 'cursor-pointer hover:scale-110'} transition-transform`} 
+            style={tileStyle}
+            onContextMenu={handleRightClick}
+          >
+            <span style={{ fontSize: `${Math.max(10, tileSize * 0.5)}px` }}>
+              {isTriggered ? '✓' : trapInfo.icon}
+            </span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[220px] p-2">
+          <div className="space-y-1">
+            <p className="font-bold text-sm">{trapInfo.icon} {trapInfo.name}</p>
+            <p className="text-xs text-muted-foreground">{trapInfo.description}</p>
+            {isTriggered ? (
+              <p className="text-xs text-green-600 font-medium">Already triggered</p>
+            ) : (
+              <div className="pt-1 border-t border-border mt-1">
+                <p className="text-xs font-medium">Right-click to disarm</p>
+                <p className="text-[10px] text-muted-foreground">
+                  Success chance: <span className={disarmChance >= 60 ? 'text-green-600' : disarmChance >= 30 ? 'text-yellow-600' : 'text-red-600'}>{disarmChance}%</span> (based on Dexterity)
+                </p>
+              </div>
+            )}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  // Special tiles with tooltips (excluding traps which are handled above)
   const visual = TILE_VISUALS[tile.type];
   const floorClass = getFloorVariant(x, y, tile.visible);
   
@@ -190,7 +268,6 @@ function Tile({
   const tileTooltips: Partial<Record<TileType, { title: string; description: string }>> = {
     treasure: { title: '💎 Treasure', description: 'Walk over to collect loot!' },
     stairs: { title: '⬇️ Stairs', description: 'Descend to the next floor' },
-    trap: { title: '⚠️ Trap', description: tile.triggered ? 'Already triggered' : 'Watch your step!' },
     shop: { title: '🏪 Shop', description: 'Buy items and equipment' },
   };
   
@@ -221,7 +298,9 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   dungeon,
   playerElement,
   playerSpecies,
-  zoom = 100
+  playerDexterity = 10,
+  zoom = 100,
+  onDisarmTrap
 }, ref) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   
@@ -311,8 +390,10 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                   isPlayer={dungeon.playerPosition.x === x && dungeon.playerPosition.y === y} 
                   playerElement={playerElement} 
                   playerSpecies={playerSpecies}
+                  playerDexterity={playerDexterity}
                   tileSize={tileSize}
                   spriteSize={spriteSize}
+                  onDisarmTrap={onDisarmTrap}
                 />
               ))}
             </div>

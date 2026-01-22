@@ -52,6 +52,8 @@ interface GameSidebarProps {
   // Battle-specific props
   battleLog?: string[];
   onUseItem?: (item: InventoryItem) => void;
+  enemyMonster?: Monster | null;
+  enemyExpandedStats?: ExpandedStats;
 }
 export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   monster,
@@ -70,7 +72,9 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   expandedStats,
   onPanelChange,
   battleLog = [],
-  onUseItem
+  onUseItem,
+  enemyMonster,
+  enemyExpandedStats
 }, ref) => {
   const [activePanel, setActivePanel] = useState<'character' | 'inventory' | 'moves' | 'log' | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -92,61 +96,110 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   const hpPercent = currentHp / maxHp * 100;
   const staminaPercent = currentStamina / maxStamina * 100;
   const xpPercent = experience / experienceToNext * 100;
+
+  // Enemy stats for battle
+  const enemyCurrentHp = enemyExpandedStats?.currentHp ?? enemyMonster?.stats.currentHp ?? 0;
+  const enemyMaxHp = enemyExpandedStats?.maxHp ?? enemyMonster?.stats.maxHp ?? 1;
+  const enemyCurrentStamina = enemyExpandedStats?.currentStamina ?? enemyMonster?.stats.special ?? 0;
+  const enemyMaxStamina = enemyExpandedStats?.stamina ?? enemyMonster?.stats.special ?? 1;
+  const enemyHpPercent = enemyCurrentHp / enemyMaxHp * 100;
+  const enemyStaminaPercent = enemyCurrentStamina / enemyMaxStamina * 100;
   return <>
       {/* Always visible bottom bar */}
-      <div ref={ref} className="fixed bottom-0 left-0 right-0 h-16 bg-card border-t-2 border-primary/20 flex items-center px-4 gap-4 z-50 shadow-lg">
-        {/* Monster portrait */}
-        <div className="relative flex-shrink-0">
-          <MonsterSprite species={monster.species} element={monster.element} classType={monster.class} size={48} animated={false} />
-          {/* HP indicator ring */}
-          <div className="absolute inset-0 rounded-full border-2 border-transparent" style={{
-          background: `conic-gradient(hsl(var(--stat-hp)) ${hpPercent}%, transparent ${hpPercent}%)`,
-          mask: 'radial-gradient(transparent 55%, black 56%)',
-          WebkitMask: 'radial-gradient(transparent 55%, black 56%)'
-        }} />
-        </div>
-        
-        {/* Level badge and stamina */}
-        <div className="flex flex-col gap-1">
-          <div className="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full text-center">
-            Lv.{monster.level}
+      <div ref={ref} className="fixed bottom-0 left-0 right-0 h-20 bg-card border-t-2 border-primary/20 flex items-center px-3 gap-3 z-50 shadow-lg">
+        {/* Player section */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Monster portrait */}
+          <div className="relative flex-shrink-0">
+            <MonsterSprite species={monster.species} element={monster.element} classType={monster.class} size={40} animated={false} />
+            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] font-bold px-1.5 rounded-full">
+              {monster.level}
+            </div>
           </div>
-          <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden" title={`Stamina: ${currentStamina}/${maxStamina}`}>
-            <div className="h-full bg-stat-special transition-all" style={{
-            width: `${staminaPercent}%`
-          }} />
+          
+          {/* Player bars - always visible */}
+          <div className="flex flex-col gap-0.5 min-w-[80px]">
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] text-stat-hp w-5">HP</span>
+              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden" title={`HP: ${currentHp}/${maxHp}`}>
+                <div className="h-full bg-stat-hp transition-all" style={{ width: `${hpPercent}%` }} />
+              </div>
+              <span className="text-[9px] font-mono w-12 text-right">{currentHp}/{maxHp}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] text-stat-special w-5">ST</span>
+              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden" title={`Stamina: ${currentStamina}/${maxStamina}`}>
+                <div className="h-full bg-stat-special transition-all" style={{ width: `${staminaPercent}%` }} />
+              </div>
+              <span className="text-[9px] font-mono w-12 text-right">{currentStamina}/{maxStamina}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] text-secondary w-5">XP</span>
+              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden" title={`XP: ${experience}/${experienceToNext}`}>
+                <div className="h-full bg-secondary transition-all" style={{ width: `${xpPercent}%` }} />
+              </div>
+              <span className="text-[9px] font-mono w-12 text-right">{experience}/{experienceToNext}</span>
+            </div>
           </div>
         </div>
+
+        {/* Enemy section - only in battle */}
+        {inBattle && enemyMonster && (
+          <div className="flex items-center gap-2 flex-shrink-0 border-l border-border/50 pl-3">
+            <div className="relative flex-shrink-0">
+              <MonsterSprite species={enemyMonster.species} element={enemyMonster.element} classType={enemyMonster.class} size={36} animated={false} />
+              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 rounded-full">
+                {enemyMonster.level}
+              </div>
+            </div>
+            <div className="flex flex-col gap-0.5 min-w-[70px]">
+              <div className="flex items-center gap-1">
+                <span className="text-[9px] text-stat-hp w-5">HP</span>
+                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-stat-hp transition-all" style={{ width: `${enemyHpPercent}%` }} />
+                </div>
+                <span className="text-[9px] font-mono w-10 text-right">{enemyCurrentHp}/{enemyMaxHp}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-[9px] text-stat-special w-5">ST</span>
+                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-stat-special transition-all" style={{ width: `${enemyStaminaPercent}%` }} />
+                </div>
+                <span className="text-[9px] font-mono w-10 text-right">{enemyCurrentStamina}/{enemyMaxStamina}</span>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Menu buttons */}
-        <div className="flex gap-1">
-          <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="w-9 h-9" onClick={() => handlePanelChange('character')} title="Character Sheet">
+        <div className="flex gap-1 ml-auto">
+          <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="w-8 h-8" onClick={() => handlePanelChange('character')} title="Character Sheet">
             <User className="w-4 h-4" />
           </Button>
           
-          <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-9 h-9" onClick={() => handlePanelChange('moves')} title="Moves">
+          <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-8 h-8" onClick={() => handlePanelChange('moves')} title="Moves">
             <Swords className="w-4 h-4" />
           </Button>
           
-          <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className="w-9 h-9" onClick={() => handlePanelChange('inventory')} title="Inventory">
+          <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className="w-8 h-8" onClick={() => handlePanelChange('inventory')} title="Inventory">
             <Backpack className="w-4 h-4" />
           </Button>
           
           {/* Battle log button - only in battle */}
           {inBattle && (
-            <Button variant={activePanel === 'log' ? 'default' : 'ghost'} size="icon" className="w-9 h-9" onClick={() => handlePanelChange('log')} title="Battle Log">
+            <Button variant={activePanel === 'log' ? 'default' : 'ghost'} size="icon" className="w-8 h-8" onClick={() => handlePanelChange('log')} title="Battle Log">
               <ScrollText className="w-4 h-4" />
             </Button>
           )}
           
           {/* Settings button */}
-          <Button variant="ghost" size="icon" className="w-9 h-9" onClick={() => setShowSettings(true)} title="Settings">
+          <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => setShowSettings(true)} title="Settings">
             <Settings className="w-4 h-4" />
           </Button>
         </div>
         
         {/* Floor and gold */}
-        <div className="flex items-center gap-3 text-xs ml-auto">
+        <div className="flex items-center gap-2 text-xs flex-shrink-0">
           <div className="flex items-center gap-1 text-muted-foreground">
             <Map className="w-3 h-3" />
             <span>F{floor}</span>
@@ -156,14 +209,14 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
         
         {/* Flee button */}
         {onFlee && (
-          <Button variant="destructive" size="icon" className="w-9 h-9" onClick={onFlee} title={inBattle ? "Flee from battle" : "Flee from dungeon"}>
+          <Button variant="destructive" size="icon" className="w-8 h-8 flex-shrink-0" onClick={onFlee} title={inBattle ? "Flee from battle" : "Flee from dungeon"}>
             <DoorOpen className="w-4 h-4" />
           </Button>
         )}
       </div>
       
       {/* Compact slide-up panels */}
-      {activePanel && <div className="fixed bottom-16 left-0 right-0 bg-card border-t-2 border-primary/20 shadow-xl z-40 animate-fade-in">
+      {activePanel && <div className="fixed bottom-20 left-0 right-0 bg-card border-t-2 border-primary/20 shadow-xl z-40 animate-fade-in">
           <div className="p-3">
             {/* Panel header */}
             <div className="flex items-center justify-between mb-2">

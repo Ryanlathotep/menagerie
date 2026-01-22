@@ -79,6 +79,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           dungeon: null,
           battle: null,
           gold: 0,
+          experience: 0,
           itemsCollected: [],
           inventory: [
             { id: 'small_potion', name: 'Small Potion', type: 'potion', value: 30, effect: 'heal_hp', quantity: 2 },
@@ -229,6 +230,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         run: { ...state.run, gold: state.run.gold + action.amount },
+      };
+    
+    case 'ADD_XP':
+      if (!state.run) return state;
+      return {
+        ...state,
+        run: { ...state.run, experience: state.run.experience + action.amount },
       };
     
     case 'ADD_ITEM':

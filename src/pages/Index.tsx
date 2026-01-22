@@ -318,7 +318,7 @@ function DungeonView() {
     toast.success('Item dropped');
   };
   return <>
-      <GameSidebar monster={state.run?.currentMonster || null} gold={state.run?.gold || 0} floor={dungeon.floor} inventory={state.run?.inventory || []} moveOrder={state.run?.moveOrder || []} hiddenMoves={state.run?.hiddenMoves || []} onFlee={handleFlee} onDropItem={handleDropItem} onReorderMoves={order => dispatch({
+      <GameSidebar monster={state.run?.currentMonster || null} gold={state.run?.gold || 0} floor={dungeon.floor} inventory={state.run?.inventory || []} moveOrder={state.run?.moveOrder || []} hiddenMoves={state.run?.hiddenMoves || []} experience={state.run?.experience || 0} experienceToNext={xpToNextLevel(state.run?.currentMonster?.level || 1)} onFlee={handleFlee} onDropItem={handleDropItem} onReorderMoves={order => dispatch({
       type: 'SET_MOVE_ORDER',
       order
     })} onToggleHideMove={moveId => dispatch({
@@ -372,7 +372,7 @@ function BattleView() {
     dispatch
   } = useGame();
   const battle = state.run?.battle;
-  const [experience, setExperience] = useState(0);
+  const experience = state.run?.experience || 0;
   const [showInventory, setShowInventory] = useState(false);
   if (!battle || !state.run) return null;
   const playerMoves = getMonsterMoves(battle.playerMonster.species, battle.playerMonster.element, battle.playerMonster.class);
@@ -626,10 +626,12 @@ function BattleView() {
           type: 'UPDATE_PLAYER_MONSTER',
           monster: leveledMonster
         });
-        setExperience(levelUpResult.xpRemaining);
+        // Set XP to remainder after level up
+        dispatch({ type: 'ADD_XP', amount: levelUpResult.xpRemaining - experience });
         toast.success(`🎉 Level Up! Now level ${levelUpResult.newLevel}!`);
       } else {
-        setExperience(newXp);
+        // Add XP to global state
+        dispatch({ type: 'ADD_XP', amount: xpGained });
         // Update player monster with current HP/Stamina
         dispatch({
           type: 'UPDATE_PLAYER_MONSTER',

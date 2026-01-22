@@ -79,7 +79,7 @@ export const SPECIES_DATA: Record<SpeciesType, SpeciesData> = {
     category: 'fantasy',
     baseStats: { hp: 20, attack: 12, defense: 8, speed: 10, special: 10 },
     passiveAbility: 'Undead',
-    passiveDescription: 'Immune to poison, weak to healing',
+    passiveDescription: '10% chance to survive fatal hit with 1 HP',
   },
   goblin: {
     name: 'Goblin',
@@ -93,7 +93,7 @@ export const SPECIES_DATA: Record<SpeciesType, SpeciesData> = {
     category: 'fantasy',
     baseStats: { hp: 25, attack: 6, defense: 12, speed: 4, special: 13 },
     passiveAbility: 'Spore Cloud',
-    passiveDescription: 'Chance to inflict poison when hit',
+    passiveDescription: 'Regenerates 5% HP each turn',
   },
   ghost: {
     name: 'Ghost',
@@ -107,28 +107,28 @@ export const SPECIES_DATA: Record<SpeciesType, SpeciesData> = {
     category: 'fantasy',
     baseStats: { hp: 16, attack: 11, defense: 5, speed: 16, special: 12 },
     passiveAbility: 'Mischievous',
-    passiveDescription: 'Steals small buffs from enemies',
+    passiveDescription: '15% chance to steal stat boost on hit',
   },
   golem: {
     name: 'Golem',
     category: 'fantasy',
     baseStats: { hp: 40, attack: 14, defense: 18, speed: 2, special: 6 },
     passiveAbility: 'Stone Body',
-    passiveDescription: 'Cannot be knocked back or stunned',
+    passiveDescription: 'Cannot take more than 25% max HP per hit',
   },
   wisp: {
     name: 'Wisp',
     category: 'fantasy',
     baseStats: { hp: 12, attack: 4, defense: 4, speed: 18, special: 22 },
     passiveAbility: 'Luminous',
-    passiveDescription: 'Allies gain +10% accuracy',
+    passiveDescription: '+10% healing effectiveness',
   },
   chimera: {
     name: 'Chimera',
     category: 'fantasy',
     baseStats: { hp: 28, attack: 13, defense: 10, speed: 9, special: 10 },
     passiveAbility: 'Hybrid Nature',
-    passiveDescription: 'Can use one extra ability from another species',
+    passiveDescription: 'Gains 50% resistance to elements that hit it',
   },
   dragon: {
     name: 'Dragon',
@@ -150,42 +150,42 @@ export const SPECIES_DATA: Record<SpeciesType, SpeciesData> = {
     category: 'real',
     baseStats: { hp: 16, attack: 10, defense: 6, speed: 14, special: 14 },
     passiveAbility: 'Web Spinner',
-    passiveDescription: 'Attacks have chance to slow enemies',
+    passiveDescription: 'Attacks reduce enemy speed by 20%',
   },
   bat: {
     name: 'Bat',
     category: 'real',
     baseStats: { hp: 14, attack: 9, defense: 5, speed: 17, special: 15 },
     passiveAbility: 'Echolocation',
-    passiveDescription: 'Cannot miss attacks in darkness',
+    passiveDescription: '+15% accuracy on all attacks',
   },
   snake: {
     name: 'Snake',
     category: 'real',
     baseStats: { hp: 18, attack: 12, defense: 7, speed: 13, special: 10 },
     passiveAbility: 'Venomous',
-    passiveDescription: 'Basic attacks may poison',
+    passiveDescription: '+15% damage vs full HP enemies',
   },
   wolf: {
     name: 'Wolf',
     category: 'real',
     baseStats: { hp: 22, attack: 14, defense: 8, speed: 12, special: 4 },
     passiveAbility: 'Pack Hunter',
-    passiveDescription: '+15% damage for each ally in battle',
+    passiveDescription: '+10% damage bonus',
   },
   beetle: {
     name: 'Beetle',
     category: 'real',
     baseStats: { hp: 24, attack: 10, defense: 16, speed: 6, special: 4 },
     passiveAbility: 'Carapace',
-    passiveDescription: 'First hit each turn deals reduced damage',
+    passiveDescription: 'First hit each turn deals 30% reduced damage',
   },
   crow: {
     name: 'Crow',
     category: 'real',
     baseStats: { hp: 15, attack: 9, defense: 5, speed: 16, special: 15 },
     passiveAbility: 'Keen Eye',
-    passiveDescription: 'Can see enemy stats and weaknesses',
+    passiveDescription: '25% chance to steal enemy items on hit',
   },
   shark: {
     name: 'Shark',
@@ -231,6 +231,19 @@ export interface Monster {
   level: number;
   stats: MonsterStats;
   name: string;
+  // Item the monster is carrying (can be stolen by Crow)
+  carriedItem?: {
+    id: string;
+    name: string;
+    type: 'potion' | 'equipment' | 'gold';
+    value: number;
+    effect?: string;
+  };
+  // Chimera's temporary element resistances
+  temporaryResistances?: Array<{
+    element: ElementType;
+    turnsRemaining: number;
+  }>;
 }
 
 // ============= MOVES/ABILITIES =============

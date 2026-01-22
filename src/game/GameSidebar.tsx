@@ -5,16 +5,37 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 
-import { User, Backpack, Map, DoorOpen, Swords, Shield, Wind, Target, Footprints } from 'lucide-react';
-import { Monster } from './types';
+import { User, Backpack, Map, DoorOpen, Swords, Shield, Wind, Target, Footprints, Trash2 } from 'lucide-react';
+import { Monster, InventoryItem } from './types';
 import { MonsterSprite } from './sprites';
 import { getMonsterMoves, Move } from './moves';
 import { ExpandedStats } from './CharacterSheet';
+import { ITEMS } from './Inventory';
+
+// Helper functions to get item info when not in ITEMS database
+function getItemDescription(item: InventoryItem): string {
+  if (item.effect === 'heal_hp') return `Restores ${item.value} HP`;
+  if (item.effect === 'heal_stamina') return `Restores ${item.value} Stamina`;
+  if (item.effect === 'cure_poison') return 'Cures poison';
+  if (item.effect === 'cure_burn') return 'Cures burn';
+  if (item.effect === 'cure_freeze') return 'Cures freeze';
+  if (item.effect === 'cure_all') return 'Cures all status effects';
+  return item.name;
+}
+
+function getItemIcon(item: InventoryItem): string {
+  if (item.type === 'potion') return '🧪';
+  if (item.type === 'equipment') return '⚔️';
+  if (item.type === 'gold') return '💰';
+  return '📦';
+}
 interface GameSidebarProps {
   monster: Monster | null;
   gold: number;
   floor: number;
+  inventory?: InventoryItem[];
   onFlee?: () => void;
+  onDropItem?: (itemId: string) => void;
   inBattle?: boolean;
   experience?: number;
   experienceToNext?: number;
@@ -25,7 +46,9 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   monster,
   gold,
   floor,
+  inventory = [],
   onFlee,
+  onDropItem,
   inBattle = false,
   experience = 0,
   experienceToNext = 100,
@@ -33,6 +56,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   onPanelChange
 }, ref) => {
   const [activePanel, setActivePanel] = useState<'character' | 'inventory' | 'moves' | null>(null);
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   
   const handlePanelChange = (panel: typeof activePanel) => {
     const newPanel = activePanel === panel ? null : panel;
@@ -184,10 +208,71 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
               </div>}
             
             {/* Inventory Panel */}
-            {activePanel === 'inventory' && <div className="text-center py-4 text-muted-foreground">
-                <Backpack className="w-8 h-8 mx-auto mb-1 opacity-30" />
-                <p className="text-xs">Inventory empty - Use items in battle</p>
-              </div>}
+            {activePanel === 'inventory' && (
+              inventory.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground">
+                  <Backpack className="w-8 h-8 mx-auto mb-1 opacity-30" />
+                  <p className="text-xs">Inventory empty</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {inventory.map(item => {
+                    const itemData = ITEMS[item.id];
+                    const description = itemData?.description || getItemDescription(item);
+                    const icon = itemData?.icon || getItemIcon(item);
+                    const isSelected = selectedItem?.id === item.id;
+                    
+                    return (
+                      <Card 
+                        key={item.id} 
+                        className={`p-2 cursor-pointer transition-all ${isSelected ? 'ring-2 ring-primary bg-primary/10' : 'hover:bg-muted/50'}`}
+                        onClick={() => setSelectedItem(isSelected ? null : item)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1">
+                              <span className="font-semibold text-xs truncate">{item.name}</span>
+                              {item.quantity > 1 && (
+                                <span className="text-[10px] text-muted-foreground">x{item.quantity}</span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground line-clamp-1">{description}</p>
+                          </div>
+                          {onDropItem && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="w-6 h-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDropItem(item.id);
+                              }}
+                              title="Drop item"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
+                        
+                        {/* Expanded details when selected */}
+                        {isSelected && (
+                          <div className="mt-2 pt-2 border-t border-border/50">
+                            <p className="text-[10px] text-muted-foreground">{description}</p>
+                            {item.effect && (
+                              <p className="text-[10px] text-accent mt-1">
+                                ✨ Effect: {item.effect.replace(/_/g, ' ')}
+                                {item.value > 0 && ` (+${item.value})`}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </Card>
+                    );
+                  })}
+                </div>
+              )
+            )}
           </div>
         </div>}
     </>;

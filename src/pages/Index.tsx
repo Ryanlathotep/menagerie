@@ -328,12 +328,19 @@ function DungeonView() {
   const bottomOffset = menuOpen ? 'bottom-[420px]' : 'bottom-[224px]';
   const controlsOffset = menuOpen ? 'bottom-16' : 'bottom-0';
   
+  const handleDropItem = (itemId: string) => {
+    dispatch({ type: 'DROP_ITEM', itemId });
+    toast.success('Item dropped');
+  };
+  
   return <>
       <GameSidebar 
         monster={state.run?.currentMonster || null} 
         gold={state.run?.gold || 0} 
-        floor={dungeon.floor} 
-        onFlee={handleFlee} 
+        floor={dungeon.floor}
+        inventory={state.run?.inventory || []}
+        onFlee={handleFlee}
+        onDropItem={handleDropItem}
         onPanelChange={setMenuOpen}
       />
       

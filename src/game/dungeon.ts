@@ -184,6 +184,33 @@ export function generateDungeon(floor: number): DungeonState {
     }
   }
 
+  // Place water hazards (inside rooms only, never in corridors to avoid blocking paths)
+  const numWaterTiles = 2 + Math.floor(floor / 3) + Math.floor(Math.random() * 3);
+  for (let i = 0; i < numWaterTiles; i++) {
+    let placed = false;
+    let attempts = 0;
+    
+    while (!placed && attempts < 50) {
+      // Only place water inside rooms, not in first room (player start) or last room (stairs)
+      const roomIndex = 1 + Math.floor(Math.random() * Math.max(1, rooms.length - 2));
+      if (roomIndex >= rooms.length - 1) {
+        attempts++;
+        continue;
+      }
+      
+      const room = rooms[roomIndex];
+      // Place inside room, not on edges
+      const wx = room.x + 1 + Math.floor(Math.random() * Math.max(1, room.width - 2));
+      const wy = room.y + 1 + Math.floor(Math.random() * Math.max(1, room.height - 2));
+      
+      if (tiles[wy]?.[wx]?.type === 'floor') {
+        tiles[wy][wx].type = 'water';
+        placed = true;
+      }
+      attempts++;
+    }
+  }
+
   // Place a shop room every 3 floors
   if (floor % 3 === 0 && rooms.length > 2) {
     const shopRoom = rooms[Math.floor(rooms.length / 2)]; // Middle room
@@ -253,6 +280,7 @@ export interface MoveResult {
   treasure: boolean;
   stairs: boolean;
   trap: { type: TrapType; damage?: number } | null;
+  water: { damage: number } | null; // Water hazard damage (0 if immune)
   shop: boolean;
   loot: LootItem | null;
   blocked: boolean; // True if move was blocked by wall
@@ -293,14 +321,14 @@ export function movePlayer(
 
   // Check bounds
   if (newX < 0 || newX >= dungeon.width || newY < 0 || newY >= dungeon.height) {
-    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, shop: false, loot: null, blocked: true };
+    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, water: null, shop: false, loot: null, blocked: true };
   }
 
   const targetTile = tiles[newY][newX];
   
   // Can't move into walls
   if (targetTile.type === 'wall') {
-    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, shop: false, loot: null, blocked: true };
+    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, water: null, shop: false, loot: null, blocked: true };
   }
 
   // Create new tiles array
@@ -313,6 +341,7 @@ export function movePlayer(
   let treasure = false;
   let stairs = false;
   let trap: { type: TrapType; damage?: number } | null = null;
+  let water: { damage: number } | null = null;
   let shop = false;
   let loot: LootItem | null = null;
 
@@ -331,6 +360,10 @@ export function movePlayer(
     const damage = trapType === 'spike' ? 10 + Math.floor(dungeon.floor * 2) : 0;
     trap = { type: trapType, damage };
     newTiles[newY][newX].triggered = true;
+  } else if (targetTile.type === 'water') {
+    // Water hazard - damage is calculated in Index.tsx based on species immunity
+    const waterDamage = 5 + Math.floor(dungeon.floor * 1.5);
+    water = { damage: waterDamage };
   } else if (targetTile.type === 'shop') {
     shop = true;
   }
@@ -351,6 +384,7 @@ export function movePlayer(
     treasure,
     stairs,
     trap,
+    water,
     shop,
     loot,
     blocked: false,

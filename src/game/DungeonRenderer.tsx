@@ -67,6 +67,11 @@ const TILE_VISUALS: Record<TileType, {
     bg: 'bg-gradient-to-br from-green-200 to-emerald-300',
     content: '🏪',
     glow: 'shadow-lg shadow-green-300/50'
+  },
+  water: {
+    bg: 'bg-gradient-to-br from-blue-300 to-cyan-400',
+    content: '🌊',
+    glow: 'shadow-md shadow-blue-400/40'
   }
 };
 
@@ -268,6 +273,7 @@ function Tile({
   const tileTooltips: Partial<Record<TileType, { title: string; description: string }>> = {
     treasure: { title: '💎 Treasure', description: 'Walk over to collect loot!' },
     stairs: { title: '⬇️ Stairs', description: 'Descend to the next floor' },
+    water: { title: '🌊 Water Hazard', description: 'Deals damage when walked through. Frogs are immune!' },
     shop: { title: '🏪 Shop', description: 'Buy items and equipment' },
   };
   

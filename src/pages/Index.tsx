@@ -637,6 +637,7 @@ function DungeonView() {
             <DungeonRenderer 
               dungeon={dungeon} 
               playerElement={state.run?.currentMonster.element || 'fire'} 
+              playerClass={state.run?.currentMonster.class}
               playerSpecies={state.run?.currentMonster.species}
               playerDexterity={state.run?.currentMonster.stats.dodge || 10}
               zoom={settings.dungeonZoom}

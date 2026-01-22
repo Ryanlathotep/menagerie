@@ -977,6 +977,29 @@ function BattleView() {
         battleLog={battle.log}
         onUseItem={handleUseItem}
         onPanelChange={setMenuOpen}
+        expandedStats={{
+          currentHp: battle.playerMonster.stats.currentHp,
+          maxHp: battle.playerMonster.stats.maxHp,
+          currentStamina,
+          stamina: maxStamina,
+          melee: battle.playerMonster.stats.attack,
+          ranged: battle.playerMonster.stats.special,
+          defense: battle.playerMonster.stats.defense,
+          speed: battle.playerMonster.stats.speed,
+          dodge: Math.floor(battle.playerMonster.stats.speed * 0.5),
+        }}
+        enemyMonster={battle.enemyMonster}
+        enemyExpandedStats={{
+          currentHp: battle.enemyMonster.stats.currentHp,
+          maxHp: battle.enemyMonster.stats.maxHp,
+          currentStamina: battle.enemyMonster.stats.currentStamina ?? battle.enemyMonster.stats.stamina ?? 50,
+          stamina: battle.enemyMonster.stats.stamina ?? 50,
+          melee: battle.enemyMonster.stats.attack,
+          ranged: battle.enemyMonster.stats.special,
+          defense: battle.enemyMonster.stats.defense,
+          speed: battle.enemyMonster.stats.speed,
+          dodge: Math.floor(battle.enemyMonster.stats.speed * 0.5),
+        }}
       />
     </div>
   );

@@ -2,7 +2,7 @@ import { GameProvider, useGame } from '@/game/state';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SPECIES_DATA, getComboId, UnlockedMonster, InventoryItem } from '@/game/types';
+import { SPECIES_DATA, getComboId, UnlockedMonster, InventoryItem, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
 import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun } from '@/game/dungeon';
 import { useEffect, useCallback, useState, useRef } from 'react';
@@ -141,14 +141,46 @@ function CharacterSelect() {
                   </span>
                 </div>
                 
-                {/* Class type info tooltip */}
+                {/* Class type info */}
                 <div className="mt-2 text-xs text-muted-foreground">
-                  <span className="font-medium">Class Bonus: </span>
-                  {selectedMonster.classType === 'kinetic' && 'Strong vs Energy & Biological'}
-                  {selectedMonster.classType === 'energy' && 'Strong vs Biological & Chemical'}
-                  {selectedMonster.classType === 'biological' && 'Strong vs Chemical & Political'}
-                  {selectedMonster.classType === 'chemical' && 'Strong vs Political & Kinetic'}
-                  {selectedMonster.classType === 'political' && 'Strong vs Kinetic & Energy'}
+                  <span className="font-medium">Class: </span>
+                  {selectedMonster.classType === 'normal' && 'No strengths or weaknesses'}
+                  {selectedMonster.classType === 'kinetic' && (
+                    <><span className="text-green-600">Strong vs Energy & Biological</span> · <span className="text-red-500">Weak vs Chemical & Political</span></>
+                  )}
+                  {selectedMonster.classType === 'energy' && (
+                    <><span className="text-green-600">Strong vs Biological & Chemical</span> · <span className="text-red-500">Weak vs Political & Kinetic</span></>
+                  )}
+                  {selectedMonster.classType === 'biological' && (
+                    <><span className="text-green-600">Strong vs Chemical & Political</span> · <span className="text-red-500">Weak vs Kinetic & Energy</span></>
+                  )}
+                  {selectedMonster.classType === 'chemical' && (
+                    <><span className="text-green-600">Strong vs Political & Kinetic</span> · <span className="text-red-500">Weak vs Energy & Biological</span></>
+                  )}
+                  {selectedMonster.classType === 'political' && (
+                    <><span className="text-green-600">Strong vs Kinetic & Energy</span> · <span className="text-red-500">Weak vs Biological & Chemical</span></>
+                  )}
+                </div>
+                
+                {/* Element info */}
+                <div className="mt-1 text-xs text-muted-foreground">
+                  <span className="font-medium">Element: </span>
+                  {selectedMonster.element === 'normal' && 'No strengths or weaknesses'}
+                  {selectedMonster.element === 'fire' && (
+                    <><span className="text-green-600">Strong vs Air & Earth</span> · <span className="text-red-500">Weak vs Water & Void</span></>
+                  )}
+                  {selectedMonster.element === 'water' && (
+                    <><span className="text-green-600">Strong vs Fire & Void</span> · <span className="text-red-500">Weak vs Earth & Air</span></>
+                  )}
+                  {selectedMonster.element === 'earth' && (
+                    <><span className="text-green-600">Strong vs Water & Air</span> · <span className="text-red-500">Weak vs Fire & Void</span></>
+                  )}
+                  {selectedMonster.element === 'air' && (
+                    <><span className="text-green-600">Strong vs Void & Water</span> · <span className="text-red-500">Weak vs Fire & Earth</span></>
+                  )}
+                  {selectedMonster.element === 'void' && (
+                    <><span className="text-green-600">Strong vs Fire & Earth</span> · <span className="text-red-500">Weak vs Water & Air</span></>
+                  )}
                 </div>
               </div>
             </div>

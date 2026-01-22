@@ -47,7 +47,7 @@ const INITIAL_STATE: GameState = {
 // Action types
 type GameAction =
   | { type: 'SET_PHASE'; phase: GamePhase }
-  | { type: 'START_RUN'; monster: Monster }
+  | { type: 'START_RUN'; monster: Monster; preEquipped?: MonsterEquipment; withdrawnIds?: string[] }
   | { type: 'END_RUN'; victory: boolean }
   | { type: 'FLEE_DUNGEON' }  // Flee safely - keeps materials and equipment
   | { type: 'SET_DUNGEON'; dungeon: DungeonState }
@@ -84,7 +84,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case 'SET_PHASE':
       return { ...state, phase: action.phase };
       
-    case 'START_RUN':
+    case 'START_RUN': {
+      // Remove withdrawn equipment from storage
+      const remainingStorage = action.withdrawnIds 
+        ? state.saveData.storedEquipment.filter(item => !action.withdrawnIds!.includes(item.id))
+        : state.saveData.storedEquipment;
+      
       return {
         ...state,
         phase: 'dungeon',
@@ -100,7 +105,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             { id: 'stamina_tonic', name: 'Stamina Tonic', type: 'potion', value: 20, effect: 'heal_stamina', quantity: 1 },
           ],
           equipmentInventory: [],
-          equipment: createEmptyEquipment(),
+          equipment: action.preEquipped || createEmptyEquipment(),
           runMaterials: {},
           enemiesDefeated: 0,
           moveOrder: [],
@@ -109,8 +114,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         saveData: {
           ...state.saveData,
           totalRuns: state.saveData.totalRuns + 1,
+          storedEquipment: remainingStorage,
         },
       };
+    }
       
     case 'END_RUN': {
       // On death (victory=false), return equipped items to town storage

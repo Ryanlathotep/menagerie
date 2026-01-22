@@ -15,6 +15,7 @@ import { ShopView } from '@/game/ShopView';
 import { executeCombat, calculateXpReward, xpToNextLevel, checkLevelUp, getEffectiveness } from '@/game/combat';
 import { toast } from 'sonner';
 import { Backpack, DoorOpen } from 'lucide-react';
+import { SettingsProvider, SettingsButton, useSettings } from '@/game/Settings';
 
 // Main Menu Component
 function MainMenu() {
@@ -52,9 +53,12 @@ function MainMenu() {
           <p>🎮 Total Runs: {state.saveData.totalRuns}</p>
         </div>
 
-        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={handleResetSave}>
-          Reset Save Data
-        </Button>
+        <div className="flex gap-2 justify-center">
+          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={handleResetSave}>
+            Reset Save Data
+          </Button>
+          <SettingsButton />
+        </div>
       </div>
     </div>;
 }
@@ -172,6 +176,7 @@ function DungeonView() {
     state,
     dispatch
   } = useGame();
+  const { settings } = useSettings();
   const dungeon = state.run?.dungeon;
   const [showShop, setShowShop] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -289,10 +294,10 @@ function DungeonView() {
       }
       
       handleMove(direction);
-    }, 100); // Move every 100ms
+    }, settings.autoRunSpeed); // Use settings for speed
     
     return () => clearInterval(interval);
-  }, [isAutoRunning, dungeon, handleMove]);
+  }, [isAutoRunning, dungeon, handleMove, settings.autoRunSpeed]);
 
   // Keyboard input with double-tap detection
   useEffect(() => {
@@ -317,8 +322,8 @@ function DungeonView() {
       const now = Date.now();
       const lastPress = lastKeyPress.current;
       
-      // Check for double-tap (same key within 300ms)
-      if (lastPress && lastPress.key === e.key && now - lastPress.time < 300) {
+      // Check for double-tap using settings delay
+      if (lastPress && lastPress.key === e.key && now - lastPress.time < settings.autoRunDelay) {
         // Start auto-run
         autoRunDirection.current = direction;
         setIsAutoRunning(true);
@@ -335,7 +340,7 @@ function DungeonView() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [handleMove, showShop, isAutoRunning]);
+  }, [handleMove, showShop, isAutoRunning, settings.autoRunDelay]);
   const handleFlee = () => {
     dispatch({
       type: 'END_RUN',
@@ -1001,7 +1006,11 @@ function Game() {
   }
 }
 export default function Index() {
-  return <GameProvider>
-      <Game />
-    </GameProvider>;
+  return (
+    <SettingsProvider>
+      <GameProvider>
+        <Game />
+      </GameProvider>
+    </SettingsProvider>
+  );
 }

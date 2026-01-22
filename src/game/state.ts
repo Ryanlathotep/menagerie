@@ -10,6 +10,7 @@ import {
   BattleState,
   SpeciesType,
   UnlockedMonster,
+  InventoryItem,
   getComboId 
 } from './types';
 
@@ -55,7 +56,10 @@ type GameAction =
   | { type: 'UPDATE_PLAYER_MONSTER'; monster: Monster }
   | { type: 'ADD_GOLD'; amount: number }
   | { type: 'ADD_XP'; amount: number }
-  | { type: 'LOAD_SAVE'; saveData: SaveData };
+  | { type: 'ADD_ITEM'; item: InventoryItem }
+  | { type: 'USE_ITEM'; itemId: string }
+  | { type: 'LOAD_SAVE'; saveData: SaveData }
+  | { type: 'RESET_SAVE' };
 
 // Reducer
 function gameReducer(state: GameState, action: GameAction): GameState {
@@ -73,6 +77,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           battle: null,
           gold: 0,
           itemsCollected: [],
+          inventory: [
+            { id: 'small_potion', name: 'Small Potion', type: 'potion', value: 30, effect: 'heal_hp', quantity: 2 },
+            { id: 'stamina_tonic', name: 'Stamina Tonic', type: 'potion', value: 20, effect: 'heal_stamina', quantity: 1 },
+          ],
           enemiesDefeated: 0,
         },
         saveData: {
@@ -217,11 +225,61 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         run: { ...state.run, gold: state.run.gold + action.amount },
       };
+    
+    case 'ADD_ITEM':
+      if (!state.run) return state;
+      const existingItemIndex = state.run.inventory.findIndex(i => i.id === action.item.id);
+      if (existingItemIndex !== -1) {
+        // Stack existing item
+        const newInventory = [...state.run.inventory];
+        newInventory[existingItemIndex] = {
+          ...newInventory[existingItemIndex],
+          quantity: newInventory[existingItemIndex].quantity + (action.item.quantity || 1),
+        };
+        return {
+          ...state,
+          run: { ...state.run, inventory: newInventory },
+        };
+      }
+      return {
+        ...state,
+        run: { ...state.run, inventory: [...state.run.inventory, action.item] },
+      };
+    
+    case 'USE_ITEM':
+      if (!state.run) return state;
+      const itemIndex = state.run.inventory.findIndex(i => i.id === action.itemId);
+      if (itemIndex === -1) return state;
+      const item = state.run.inventory[itemIndex];
+      if (item.quantity <= 1) {
+        // Remove item
+        return {
+          ...state,
+          run: { 
+            ...state.run, 
+            inventory: state.run.inventory.filter((_, i) => i !== itemIndex),
+          },
+        };
+      }
+      // Reduce quantity
+      const updatedInventory = [...state.run.inventory];
+      updatedInventory[itemIndex] = { ...item, quantity: item.quantity - 1 };
+      return {
+        ...state,
+        run: { ...state.run, inventory: updatedInventory },
+      };
       
     case 'LOAD_SAVE':
       return {
         ...state,
         saveData: action.saveData,
+      };
+    
+    case 'RESET_SAVE':
+      localStorage.removeItem('monster-roguelike-save');
+      return {
+        ...INITIAL_STATE,
+        saveData: DEFAULT_SAVE_DATA,
       };
       
     default:

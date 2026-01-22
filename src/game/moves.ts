@@ -143,23 +143,41 @@ export const CLASS_MOVES: Record<ClassType, Move[]> = {
   kinetic: [
     { id: 'power_strike', name: 'Power Strike', description: 'Raw physical force', type: 'melee', power: 40, accuracy: 90, staminaCost: 8, speedMod: 0, aspects: ['class'], classBonus: 'kinetic' },
     { id: 'momentum', name: 'Momentum', description: 'Build up power', type: 'status', power: 0, accuracy: 100, staminaCost: 5, speedMod: 0, aspects: ['class'], classBonus: 'kinetic', effect: 'charge_next' },
+    { id: 'second_wind', name: 'Second Wind', description: 'Recover 25 stamina', type: 'status', power: 0, accuracy: 100, staminaCost: 0, speedMod: -1, aspects: ['class'], classBonus: 'kinetic', effect: 'restore_stamina_25' },
   ],
   energy: [
     { id: 'energy_blast', name: 'Energy Blast', description: 'Pure energy attack', type: 'ranged', power: 35, accuracy: 95, staminaCost: 7, speedMod: 1, aspects: ['class'], classBonus: 'energy' },
     { id: 'overcharge', name: 'Overcharge', description: 'Boost special power', type: 'status', power: 0, accuracy: 100, staminaCost: 6, speedMod: 0, aspects: ['class'], classBonus: 'energy', effect: 'raise_special' },
+    { id: 'energy_siphon', name: 'Energy Siphon', description: 'Drain stamina from enemy', type: 'status', power: 0, accuracy: 85, staminaCost: 0, speedMod: 0, aspects: ['class'], classBonus: 'energy', effect: 'drain_enemy_stamina' },
   ],
   biological: [
     { id: 'bio_strike', name: 'Bio Strike', description: 'Nature-infused attack', type: 'melee', power: 30, accuracy: 90, staminaCost: 6, speedMod: 0, aspects: ['class'], classBonus: 'biological' },
-    { id: 'regeneration', name: 'Regeneration', description: 'Heal over time', type: 'heal', power: 30, accuracy: 100, staminaCost: 10, speedMod: -1, aspects: ['class'], classBonus: 'biological' },
+    { id: 'regeneration', name: 'Regeneration', description: 'Heal 30 HP', type: 'heal', power: 30, accuracy: 100, staminaCost: 10, speedMod: -1, aspects: ['class'], classBonus: 'biological' },
+    { id: 'photosynthesis', name: 'Photosynthesis', description: 'Recover 20 stamina', type: 'status', power: 0, accuracy: 100, staminaCost: 0, speedMod: -2, aspects: ['class'], classBonus: 'biological', effect: 'restore_stamina_20' },
   ],
   chemical: [
     { id: 'acid_spray', name: 'Acid Spray', description: 'Corrosive attack', type: 'ranged', power: 30, accuracy: 90, staminaCost: 7, speedMod: 0, aspects: ['class'], classBonus: 'chemical', effect: 'lower_defense' },
     { id: 'catalyst', name: 'Catalyst', description: 'Boost next attack', type: 'status', power: 0, accuracy: 100, staminaCost: 5, speedMod: 0, aspects: ['class'], classBonus: 'chemical', effect: 'double_next' },
+    { id: 'adrenaline', name: 'Adrenaline', description: 'Recover 15 stamina', type: 'status', power: 0, accuracy: 100, staminaCost: 0, speedMod: 1, aspects: ['class'], classBonus: 'chemical', effect: 'restore_stamina_15' },
   ],
   political: [
     { id: 'decree', name: 'Decree', description: 'Commanding strike', type: 'ranged', power: 25, accuracy: 100, staminaCost: 6, speedMod: 1, aspects: ['class'], classBonus: 'political' },
     { id: 'inspire', name: 'Inspire', description: 'Boost all stats', type: 'status', power: 0, accuracy: 100, staminaCost: 12, speedMod: 0, aspects: ['class'], classBonus: 'political', effect: 'raise_all_stats' },
+    { id: 'rally', name: 'Rally', description: 'Recover 30 stamina', type: 'status', power: 0, accuracy: 100, staminaCost: 0, speedMod: -1, aspects: ['class'], classBonus: 'political', effect: 'restore_stamina_30' },
   ],
+};
+
+// Free basic attack for when out of stamina
+export const STRUGGLE_MOVE: Move = {
+  id: 'struggle',
+  name: 'Struggle',
+  description: 'A desperate attack when out of stamina',
+  type: 'melee',
+  power: 15,
+  accuracy: 90,
+  staminaCost: 0,
+  speedMod: -1,
+  aspects: [],
 };
 
 // ============= DUAL-ASPECT MOVES (2 aspects) =============

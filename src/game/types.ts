@@ -287,12 +287,22 @@ export interface DungeonState {
   height: number;
 }
 
+export interface InventoryItem {
+  id: string;
+  name: string;
+  type: 'potion' | 'equipment' | 'gold';
+  value: number;
+  effect?: string;
+  quantity: number;
+}
+
 export interface RunState {
   currentMonster: Monster;
   dungeon: DungeonState | null;
   battle: BattleState | null;
   gold: number;
   itemsCollected: string[];
+  inventory: InventoryItem[];
   enemiesDefeated: number;
 }
 

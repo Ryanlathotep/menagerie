@@ -2,14 +2,14 @@ import { GameProvider, useGame } from '@/game/state';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SPECIES_DATA, SpeciesType, ClassType, ElementType, getComboId, UnlockedMonster } from '@/game/types';
+import { SPECIES_DATA, getComboId, UnlockedMonster, InventoryItem } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
 import { generateDungeon, movePlayer, removeEnemy, LootItem } from '@/game/dungeon';
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { MonsterSprite } from '@/game/sprites';
 import { DungeonRenderer } from '@/game/DungeonRenderer';
 import { GameSidebar } from '@/game/GameSidebar';
-import { getMonsterMoves, Move } from '@/game/moves';
+import { getMonsterMoves, Move, STRUGGLE_MOVE } from '@/game/moves';
 import { MoveTooltip } from '@/game/BattleTooltip';
 import { ShopView } from '@/game/ShopView';
 import { 
@@ -20,10 +20,18 @@ import {
   getEffectiveness 
 } from '@/game/combat';
 import { toast } from 'sonner';
+import { Backpack, DoorOpen } from 'lucide-react';
 
 // Main Menu Component
 function MainMenu() {
   const { state, dispatch } = useGame();
+
+  const handleResetSave = () => {
+    if (confirm('Are you sure you want to reset all progress? This cannot be undone.')) {
+      dispatch({ type: 'RESET_SAVE' });
+      toast.success('Save data reset!');
+    }
+  };
 
   return (
     <div className="game-container">
@@ -48,6 +56,15 @@ function MainMenu() {
           <p>🏔️ Highest Floor: {state.saveData.highestFloor}</p>
           <p>🎮 Total Runs: {state.saveData.totalRuns}</p>
         </div>
+
+        <Button 
+          variant="ghost" 
+          size="sm"
+          className="text-muted-foreground hover:text-destructive"
+          onClick={handleResetSave}
+        >
+          Reset Save Data
+        </Button>
       </div>
     </div>
   );
@@ -197,10 +214,7 @@ function CharacterSelect() {
 function DungeonView() {
   const { state, dispatch } = useGame();
   const dungeon = state.run?.dungeon;
-  const [experience, setExperience] = useState(0);
   const [showShop, setShowShop] = useState(false);
-  const [inventory, setInventory] = useState<LootItem[]>([]);
-  const experienceToNext = xpToNextLevel(state.run?.currentMonster.level || 1);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -241,7 +255,16 @@ function DungeonView() {
         dispatch({ type: 'ADD_GOLD', amount: result.loot.value });
         toast.success(`Found ${result.loot.value} gold!`);
       } else {
-        setInventory(prev => [...prev, result.loot!]);
+        // Add loot to real inventory
+        const lootItem: InventoryItem = {
+          id: result.loot.id,
+          name: result.loot.name,
+          type: result.loot.type,
+          value: result.loot.value,
+          effect: result.loot.effect,
+          quantity: 1,
+        };
+        dispatch({ type: 'ADD_ITEM', item: lootItem });
         toast.success(`Found ${result.loot.name}!`);
       }
     } else if (result.stairs) {
@@ -295,7 +318,15 @@ function DungeonView() {
     const price = item.value * 1.5; // Shop markup
     if (state.run && state.run.gold >= price) {
       dispatch({ type: 'ADD_GOLD', amount: -Math.floor(price) });
-      setInventory(prev => [...prev, item]);
+      const lootItem: InventoryItem = {
+        id: item.id,
+        name: item.name,
+        type: item.type,
+        value: item.value,
+        effect: item.effect,
+        quantity: 1,
+      };
+      dispatch({ type: 'ADD_ITEM', item: lootItem });
       toast.success(`Bought ${item.name}!`);
     }
   };
@@ -309,8 +340,6 @@ function DungeonView() {
         gold={state.run?.gold || 0}
         floor={dungeon.floor}
         onFlee={handleFlee}
-        experience={experience}
-        experienceToNext={experienceToNext}
       />
       
       {showShop && (
@@ -368,6 +397,7 @@ function BattleView() {
   const { state, dispatch } = useGame();
   const battle = state.run?.battle;
   const [experience, setExperience] = useState(0);
+  const [showInventory, setShowInventory] = useState(false);
 
   if (!battle || !state.run) return null;
 
@@ -378,13 +408,117 @@ function BattleView() {
   );
 
   const experienceToNext = xpToNextLevel(battle.playerMonster.level);
+  const currentStamina = battle.playerMonster.stats.currentStamina ?? battle.playerMonster.stats.stamina ?? 50;
+  const maxStamina = battle.playerMonster.stats.stamina ?? 50;
+
+  // Flee attempt based on speed comparison
+  const handleFlee = () => {
+    const playerSpeed = battle.playerMonster.stats.speed;
+    const enemySpeed = battle.enemyMonster.stats.speed;
+    const fleeChance = 50 + ((playerSpeed - enemySpeed) * 2);
+    const roll = Math.random() * 100;
+    
+    if (roll <= fleeChance) {
+      toast.success('Got away safely!');
+      dispatch({ type: 'END_BATTLE', victory: false });
+      // Don't end run, just return to dungeon without dying
+      dispatch({ type: 'SET_PHASE', phase: 'dungeon' });
+    } else {
+      // Failed to flee - enemy gets a free attack
+      const enemyMoves = getMonsterMoves(
+        battle.enemyMonster.species,
+        battle.enemyMonster.element,
+        battle.enemyMonster.class
+      );
+      const enemyMove = enemyMoves[Math.floor(Math.random() * Math.min(3, enemyMoves.length))];
+      const enemyResult = executeCombat(enemyMove, battle.enemyMonster, battle.playerMonster);
+      const newPlayerHp = Math.max(0, battle.playerMonster.stats.currentHp - enemyResult.damage);
+      
+      const newLog = [...battle.log, `Couldn't escape!`, enemyResult.message];
+      
+      if (newPlayerHp <= 0) {
+        dispatch({ type: 'END_BATTLE', victory: false });
+        dispatch({ type: 'END_RUN', victory: false });
+      } else {
+        dispatch({ 
+          type: 'UPDATE_BATTLE', 
+          battle: {
+            playerMonster: { 
+              ...battle.playerMonster, 
+              stats: { ...battle.playerMonster.stats, currentHp: newPlayerHp }
+            },
+            log: newLog,
+          }
+        });
+        toast.error("Couldn't escape!");
+      }
+    }
+  };
+
+  // Use item during battle
+  const handleUseItem = (item: InventoryItem) => {
+    let message = '';
+    let newStats = { ...battle.playerMonster.stats };
+    
+    if (item.effect === 'heal_hp' || item.effect === 'heal_30') {
+      const healAmount = item.value || 30;
+      const actualHeal = Math.min(healAmount, newStats.maxHp - newStats.currentHp);
+      newStats.currentHp = Math.min(newStats.maxHp, newStats.currentHp + healAmount);
+      message = `Restored ${actualHeal} HP!`;
+    } else if (item.effect === 'heal_stamina' || item.effect === 'stamina_20') {
+      const healAmount = item.value || 20;
+      const actualHeal = Math.min(healAmount, (newStats.stamina || 50) - (newStats.currentStamina || 0));
+      newStats.currentStamina = Math.min(newStats.stamina || 50, (newStats.currentStamina || 0) + healAmount);
+      message = `Restored ${actualHeal} Stamina!`;
+    } else if (item.effect === 'cure_poison') {
+      message = 'Cured poison!';
+    } else {
+      message = `Used ${item.name}!`;
+    }
+    
+    dispatch({ type: 'USE_ITEM', itemId: item.id });
+    dispatch({ 
+      type: 'UPDATE_BATTLE', 
+      battle: {
+        playerMonster: { ...battle.playerMonster, stats: newStats },
+        log: [...battle.log, message],
+      }
+    });
+    toast.success(message);
+    setShowInventory(false);
+    
+    // Enemy gets a turn after using item
+    const enemyMoves = getMonsterMoves(
+      battle.enemyMonster.species,
+      battle.enemyMonster.element,
+      battle.enemyMonster.class
+    );
+    const enemyMove = enemyMoves[Math.floor(Math.random() * Math.min(3, enemyMoves.length))];
+    const enemyResult = executeCombat(enemyMove, battle.enemyMonster, { ...battle.playerMonster, stats: newStats });
+    const newPlayerHp = Math.max(0, newStats.currentHp - enemyResult.damage);
+    
+    if (newPlayerHp <= 0) {
+      dispatch({ type: 'END_BATTLE', victory: false });
+      dispatch({ type: 'END_RUN', victory: false });
+    } else {
+      dispatch({ 
+        type: 'UPDATE_BATTLE', 
+        battle: {
+          playerMonster: { 
+            ...battle.playerMonster, 
+            stats: { ...newStats, currentHp: newPlayerHp }
+          },
+          log: [...battle.log, message, enemyResult.message],
+        }
+      });
+    }
+  };
 
   const executeMove = (move: Move) => {
     if (!state.run) return;
     
     // Check if player has enough stamina
     const staminaCost = move.staminaCost || 0;
-    const currentStamina = battle.playerMonster.stats.currentStamina || battle.playerMonster.stats.stamina || 50;
     
     if (currentStamina < staminaCost) {
       toast.error('Not enough stamina!');
@@ -392,13 +526,69 @@ function BattleView() {
     }
     
     // Consume stamina
-    const newPlayerStamina = currentStamina - staminaCost;
+    let newPlayerStamina = currentStamina - staminaCost;
+    
+    // Handle special move effects
+    let healAmount = 0;
+    let staminaRecovery = 0;
+    
+    if (move.type === 'heal' && move.power > 0) {
+      healAmount = move.power;
+    }
+    if (move.effect === 'heal_self' && move.power > 0) {
+      // Drain attacks heal for portion of damage
+      healAmount = Math.floor(move.power * 0.5);
+    }
+    if (move.effect === 'restore_stamina') {
+      staminaRecovery = 15;
+    }
+    if (move.effect === 'restore_stamina_15') {
+      staminaRecovery = 15;
+    }
+    if (move.effect === 'restore_stamina_20') {
+      staminaRecovery = 20;
+    }
+    if (move.effect === 'restore_stamina_25') {
+      staminaRecovery = 25;
+    }
+    if (move.effect === 'restore_stamina_30') {
+      staminaRecovery = 30;
+    }
     
     // Execute combat with proper calculations
     const result = executeCombat(move, battle.playerMonster, battle.enemyMonster);
-    const newLog = [...battle.log, result.message, `Used ${staminaCost} stamina`];
+    const newLog = [...battle.log, result.message];
+    
+    if (staminaCost > 0) {
+      newLog.push(`Used ${staminaCost} stamina`);
+    }
+    
+    // Apply heal if it's a heal move
+    let newPlayerHp = battle.playerMonster.stats.currentHp;
+    if (healAmount > 0 && move.type === 'heal') {
+      const actualHeal = Math.min(healAmount, battle.playerMonster.stats.maxHp - newPlayerHp);
+      newPlayerHp = Math.min(battle.playerMonster.stats.maxHp, newPlayerHp + healAmount);
+      newLog.push(`Healed ${actualHeal} HP!`);
+    }
+    
+    // Apply stamina recovery
+    if (staminaRecovery > 0) {
+      const actualRecovery = Math.min(staminaRecovery, maxStamina - newPlayerStamina);
+      newPlayerStamina = Math.min(maxStamina, newPlayerStamina + staminaRecovery);
+      newLog.push(`Recovered ${actualRecovery} stamina!`);
+    }
     
     const newEnemyHp = Math.max(0, battle.enemyMonster.stats.currentHp - result.damage);
+    
+    // Apply drain heal (after damage)
+    if (move.effect === 'heal_self' && result.damage > 0) {
+      const drainHeal = Math.floor(result.damage * 0.5);
+      const actualDrainHeal = Math.min(drainHeal, battle.playerMonster.stats.maxHp - newPlayerHp);
+      newPlayerHp = Math.min(battle.playerMonster.stats.maxHp, newPlayerHp + drainHeal);
+      if (actualDrainHeal > 0) {
+        newLog.push(`Drained ${actualDrainHeal} HP!`);
+      }
+    }
     
     if (newEnemyHp <= 0) {
       // Victory - unlock this specific monster combo with its level
@@ -439,13 +629,25 @@ function BattleView() {
         const leveledMonster = {
           ...battle.playerMonster,
           level: levelUpResult.newLevel,
-          stats: { ...newStats, currentHp: battle.playerMonster.stats.currentHp },
+          stats: { ...newStats, currentHp: newPlayerHp, currentStamina: newPlayerStamina },
         };
         dispatch({ type: 'UPDATE_PLAYER_MONSTER', monster: leveledMonster });
         setExperience(levelUpResult.xpRemaining);
         toast.success(`🎉 Level Up! Now level ${levelUpResult.newLevel}!`);
       } else {
         setExperience(newXp);
+        // Update player monster with current HP/Stamina
+        dispatch({ 
+          type: 'UPDATE_PLAYER_MONSTER', 
+          monster: { 
+            ...battle.playerMonster, 
+            stats: { 
+              ...battle.playerMonster.stats, 
+              currentHp: newPlayerHp,
+              currentStamina: newPlayerStamina,
+            }
+          }
+        });
       }
       
       toast.success(`+${xpGained} XP!`);
@@ -471,7 +673,7 @@ function BattleView() {
         battle.playerMonster
       );
       
-      const newPlayerHp = Math.max(0, battle.playerMonster.stats.currentHp - enemyResult.damage);
+      newPlayerHp = Math.max(0, newPlayerHp - enemyResult.damage);
       newLog.push(enemyResult.message);
       
       if (newPlayerHp <= 0) {
@@ -479,10 +681,7 @@ function BattleView() {
         dispatch({ type: 'END_RUN', victory: false });
       } else {
         // Regenerate a bit of stamina each turn (2 stamina recovery)
-        const recoveredStamina = Math.min(
-          battle.playerMonster.stats.stamina || 50,
-          newPlayerStamina + 2
-        );
+        const recoveredStamina = Math.min(maxStamina, newPlayerStamina + 2);
         
         dispatch({ 
           type: 'UPDATE_BATTLE', 
@@ -511,119 +710,190 @@ function BattleView() {
     return '';
   };
 
-  return (
-    <>
-      <GameSidebar 
-        monster={state.run?.currentMonster || null}
-        gold={state.run?.gold || 0}
-        floor={state.run?.dungeon?.floor || 1}
-        inBattle={true}
-        experience={experience}
-        experienceToNext={experienceToNext}
-      />
-      
-      <div className="game-container pl-20">
-        <div className="space-y-4 max-w-2xl w-full">
-          <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-primary to-destructive bg-clip-text text-transparent">
-            ⚔️ Battle!
-          </h2>
-          
-          {/* Enemy */}
-          <Card className="p-4">
-            <div className="flex items-center gap-4 mb-2">
-              <MonsterSprite 
-                species={battle.enemyMonster.species}
-                element={battle.enemyMonster.element}
-                classType={battle.enemyMonster.class}
-                size={64}
-              />
-              <div className="flex-1">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="font-semibold">{battle.enemyMonster.name}</span>
-                  <div className="flex gap-1">
-                    <span className={`element-badge element-${battle.enemyMonster.element} text-xs`}>
-                      {battle.enemyMonster.element}
-                    </span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-muted">
-                      {battle.enemyMonster.class}
-                    </span>
-                  </div>
-                </div>
-                <div className="health-bar">
-                  <div 
-                    className="health-bar-fill" 
-                    style={{ width: `${(battle.enemyMonster.stats.currentHp / battle.enemyMonster.stats.maxHp) * 100}%` }}
-                  />
-                </div>
-                <p className="text-xs mt-1">{battle.enemyMonster.stats.currentHp} / {battle.enemyMonster.stats.maxHp}</p>
-              </div>
-            </div>
-          </Card>
+  // Check if any move is affordable
+  const canAffordAnyMove = playerMoves.some(m => (m.staminaCost || 0) <= currentStamina);
+  
+  // Moves to show - include struggle if out of stamina
+  const availableMoves = canAffordAnyMove ? playerMoves : [...playerMoves, STRUGGLE_MOVE];
+  
+  const inventory = state.run.inventory || [];
 
-          {/* Player */}
-          <Card className="p-4 border-2 border-primary/50">
-            <div className="flex items-center gap-4 mb-2">
-              <MonsterSprite 
-                species={battle.playerMonster.species}
-                element={battle.playerMonster.element}
-                classType={battle.playerMonster.class}
-                size={64}
-              />
-              <div className="flex-1">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="font-semibold">{battle.playerMonster.name}</span>
-                  <span className={`element-badge element-${battle.playerMonster.element} text-xs`}>
-                    {battle.playerMonster.element}
+  return (
+    <div className="game-container pl-20 flex flex-col h-screen">
+      {/* Main battle area */}
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 max-w-2xl w-full mx-auto p-4">
+        <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-primary to-destructive bg-clip-text text-transparent">
+          ⚔️ Battle!
+        </h2>
+        
+        {/* Enemy */}
+        <Card className="p-4 w-full">
+          <div className="flex items-center gap-4 mb-2">
+            <MonsterSprite 
+              species={battle.enemyMonster.species}
+              element={battle.enemyMonster.element}
+              classType={battle.enemyMonster.class}
+              size={64}
+            />
+            <div className="flex-1">
+              <div className="flex justify-between items-center mb-1">
+                <span className="font-semibold">{battle.enemyMonster.name}</span>
+                <div className="flex gap-1">
+                  <span className={`element-badge element-${battle.enemyMonster.element} text-xs`}>
+                    {battle.enemyMonster.element}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-muted">
+                    {battle.enemyMonster.class}
                   </span>
                 </div>
-                <div className="health-bar">
-                  <div 
-                    className="health-bar-fill" 
-                    style={{ width: `${(battle.playerMonster.stats.currentHp / battle.playerMonster.stats.maxHp) * 100}%` }}
-                  />
-                </div>
-                <p className="text-xs mt-1">{battle.playerMonster.stats.currentHp} / {battle.playerMonster.stats.maxHp}</p>
               </div>
+              <div className="health-bar">
+                <div 
+                  className="health-bar-fill" 
+                  style={{ width: `${(battle.enemyMonster.stats.currentHp / battle.enemyMonster.stats.maxHp) * 100}%` }}
+                />
+              </div>
+              <p className="text-xs mt-1">{battle.enemyMonster.stats.currentHp} / {battle.enemyMonster.stats.maxHp}</p>
             </div>
-          </Card>
+          </div>
+        </Card>
 
-          {/* Move selection - ALL moves with tooltips */}
-          <ScrollArea className="h-48">
-            <div className="grid grid-cols-2 gap-2 pr-4">
-              {playerMoves.map((move) => (
-                <MoveTooltip 
-                  key={move.id} 
-                  move={move} 
-                  attacker={battle.playerMonster} 
-                  defender={battle.enemyMonster}
-                >
-                  <Button 
-                    variant="outline"
-                    className="h-auto py-2 px-3 text-left justify-start hover:bg-primary/10"
-                    onClick={() => executeMove(move)}
+        {/* Player */}
+        <Card className="p-4 border-2 border-primary/50 w-full">
+          <div className="flex items-center gap-4 mb-2">
+            <MonsterSprite 
+              species={battle.playerMonster.species}
+              element={battle.playerMonster.element}
+              classType={battle.playerMonster.class}
+              size={64}
+            />
+            <div className="flex-1">
+              <div className="flex justify-between items-center mb-1">
+                <span className="font-semibold">{battle.playerMonster.name}</span>
+                <span className={`element-badge element-${battle.playerMonster.element} text-xs`}>
+                  {battle.playerMonster.element}
+                </span>
+              </div>
+              {/* HP Bar */}
+              <div className="health-bar">
+                <div 
+                  className="health-bar-fill" 
+                  style={{ width: `${(battle.playerMonster.stats.currentHp / battle.playerMonster.stats.maxHp) * 100}%` }}
+                />
+              </div>
+              <p className="text-xs mt-1">HP: {battle.playerMonster.stats.currentHp} / {battle.playerMonster.stats.maxHp}</p>
+              {/* Stamina Bar */}
+              <div className="h-2 bg-muted rounded-full overflow-hidden mt-1">
+                <div 
+                  className="h-full bg-stat-special transition-all"
+                  style={{ width: `${(currentStamina / maxStamina) * 100}%` }}
+                />
+              </div>
+              <p className="text-xs mt-1">Stamina: {currentStamina} / {maxStamina}</p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Battle log */}
+        <div className="bg-muted rounded-lg p-3 text-xs max-h-20 overflow-y-auto w-full">
+          {battle.log.slice(-3).map((msg, i) => <p key={i}>{msg}</p>)}
+        </div>
+      </div>
+
+      {/* Bottom action bar - fixed at bottom */}
+      <div className="bg-card border-t-2 border-primary/20 p-4 shadow-lg">
+        <div className="max-w-2xl mx-auto">
+          {/* Inventory panel */}
+          {showInventory && (
+            <div className="mb-4 bg-muted/50 rounded-lg p-3">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-semibold text-sm">Items</h3>
+                <Button variant="ghost" size="sm" onClick={() => setShowInventory(false)}>✕</Button>
+              </div>
+              {inventory.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No items in inventory</p>
+              ) : (
+                <div className="flex gap-2 flex-wrap">
+                  {inventory.map((item, i) => (
+                    <Button 
+                      key={i}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => handleUseItem(item)}
+                    >
+                      {item.name} x{item.quantity}
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Move selection */}
+          <ScrollArea className="h-32 mb-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pr-4">
+              {availableMoves.map((move) => {
+                const canAfford = (move.staminaCost || 0) <= currentStamina;
+                return (
+                  <MoveTooltip 
+                    key={move.id} 
+                    move={move} 
+                    attacker={battle.playerMonster} 
+                    defender={battle.enemyMonster}
                   >
-                    <div className="w-full">
-                      <div className="flex justify-between items-center">
-                        <p className="font-semibold text-sm">{move.name}</p>
-                        <span>{getMoveEffectivenessIndicator(move)}</span>
+                    <Button 
+                      variant={canAfford ? "outline" : "ghost"}
+                      className={`h-auto py-2 px-3 text-left justify-start hover:bg-primary/10 ${
+                        !canAfford && move.id !== 'struggle' ? 'opacity-50' : ''
+                      } ${move.id === 'struggle' ? 'border-destructive text-destructive' : ''}`}
+                      onClick={() => executeMove(move)}
+                      disabled={!canAfford && move.id !== 'struggle'}
+                    >
+                      <div className="w-full">
+                        <div className="flex justify-between items-center">
+                          <p className="font-semibold text-sm">{move.name}</p>
+                          <span>{getMoveEffectivenessIndicator(move)}</span>
+                        </div>
+                        <p className="text-[10px] opacity-70">
+                          {move.power > 0 ? `⚔️${move.power} ` : ''} 
+                          🎯{move.accuracy}% 
+                          ⚡{move.staminaCost}
+                          {move.type === 'heal' ? ' 💚' : ''}
+                          {move.effect?.includes('stamina') ? ' ⚡+' : ''}
+                        </p>
                       </div>
-                      <p className="text-[10px] opacity-70">
-                        {move.power > 0 ? `⚔️${move.power} ` : ''} 🎯{move.accuracy}% ⚡{move.staminaCost}
-                      </p>
-                    </div>
-                  </Button>
-                </MoveTooltip>
-              ))}
+                    </Button>
+                  </MoveTooltip>
+                );
+              })}
             </div>
           </ScrollArea>
-
-          {/* Battle log */}
-          <div className="bg-muted rounded-lg p-3 text-xs max-h-24 overflow-y-auto">
-            {battle.log.slice(-4).map((msg, i) => <p key={i}>{msg}</p>)}
+          
+          {/* Action buttons */}
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowInventory(!showInventory)}
+              className="flex items-center gap-1"
+            >
+              <Backpack className="w-4 h-4" />
+              Items ({inventory.length})
+            </Button>
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={handleFlee}
+              className="flex items-center gap-1"
+            >
+              <DoorOpen className="w-4 h-4" />
+              Flee ({Math.min(95, Math.max(5, 50 + (battle.playerMonster.stats.speed - battle.enemyMonster.stats.speed) * 2))}%)
+            </Button>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

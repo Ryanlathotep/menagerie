@@ -4,8 +4,8 @@ import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SPECIES_DATA, getComboId, UnlockedMonster, InventoryItem } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
-import { generateDungeon, movePlayer, removeEnemy, LootItem } from '@/game/dungeon';
-import { useEffect, useCallback, useState } from 'react';
+import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun } from '@/game/dungeon';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { MonsterSprite } from '@/game/sprites';
 import { DungeonRenderer } from '@/game/DungeonRenderer';
 import { GameSidebar } from '@/game/GameSidebar';
@@ -175,6 +175,9 @@ function DungeonView() {
   const dungeon = state.run?.dungeon;
   const [showShop, setShowShop] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isAutoRunning, setIsAutoRunning] = useState(false);
+  const autoRunDirection = useRef<'up' | 'down' | 'left' | 'right' | null>(null);
+  const lastKeyPress = useRef<{ key: string; time: number } | null>(null);
   useEffect(() => {
     if (!dungeon) {
       const newDungeon = generateDungeon(1);
@@ -262,17 +265,80 @@ function DungeonView() {
       setShowShop(true);
     }
   }, [dungeon, dispatch, state.run]);
+  // Auto-run logic - runs in intervals when active
+  useEffect(() => {
+    if (!isAutoRunning || !autoRunDirection.current || !dungeon) return;
+    
+    const interval = setInterval(() => {
+      if (!autoRunDirection.current || !dungeon) {
+        setIsAutoRunning(false);
+        return;
+      }
+      
+      const direction = autoRunDirection.current;
+      const dx = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
+      const dy = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
+      const nextX = dungeon.playerPosition.x + dx;
+      const nextY = dungeon.playerPosition.y + dy;
+      
+      // Check if we should stop before moving
+      if (shouldStopAutoRun(dungeon.tiles, nextX, nextY, dungeon.width, dungeon.height)) {
+        setIsAutoRunning(false);
+        autoRunDirection.current = null;
+        return;
+      }
+      
+      handleMove(direction);
+    }, 100); // Move every 100ms
+    
+    return () => clearInterval(interval);
+  }, [isAutoRunning, dungeon, handleMove]);
+
+  // Keyboard input with double-tap detection
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (showShop) return;
-      if (e.key === 'ArrowUp' || e.key === 'w') handleMove('up');
-      if (e.key === 'ArrowDown' || e.key === 's') handleMove('down');
-      if (e.key === 'ArrowLeft' || e.key === 'a') handleMove('left');
-      if (e.key === 'ArrowRight' || e.key === 'd') handleMove('right');
+      if (showShop || isAutoRunning) return;
+      
+      let direction: 'up' | 'down' | 'left' | 'right' | null = null;
+      if (e.key === 'ArrowUp' || e.key === 'w') direction = 'up';
+      if (e.key === 'ArrowDown' || e.key === 's') direction = 'down';
+      if (e.key === 'ArrowLeft' || e.key === 'a') direction = 'left';
+      if (e.key === 'ArrowRight' || e.key === 'd') direction = 'right';
+      
+      if (!direction) return;
+      
+      const now = Date.now();
+      const lastPress = lastKeyPress.current;
+      
+      // Check for double-tap (same key within 300ms)
+      if (lastPress && lastPress.key === e.key && now - lastPress.time < 300) {
+        // Start auto-run
+        autoRunDirection.current = direction;
+        setIsAutoRunning(true);
+        lastKeyPress.current = null;
+        toast.success(`Auto-running ${direction}! Press any key to stop.`);
+      } else {
+        // Single press - normal move
+        handleMove(direction);
+        lastKeyPress.current = { key: e.key, time: now };
+      }
     };
+    
+    // Stop auto-run on any key press
+    const handleKeyUp = () => {
+      if (isAutoRunning) {
+        setIsAutoRunning(false);
+        autoRunDirection.current = null;
+      }
+    };
+    
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleMove, showShop]);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [handleMove, showShop, isAutoRunning]);
   const handleFlee = () => {
     dispatch({
       type: 'END_RUN',

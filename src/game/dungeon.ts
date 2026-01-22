@@ -255,6 +255,27 @@ export interface MoveResult {
   trap: { type: TrapType; damage?: number } | null;
   shop: boolean;
   loot: LootItem | null;
+  blocked: boolean; // True if move was blocked by wall
+}
+
+// Check if a tile should stop auto-run
+export function shouldStopAutoRun(tiles: DungeonTile[][], x: number, y: number, width: number, height: number): boolean {
+  // Out of bounds
+  if (x < 0 || x >= width || y < 0 || y >= height) return true;
+  
+  const tile = tiles[y][x];
+  
+  // Stop on walls
+  if (tile.type === 'wall') return true;
+  
+  // Stop on anything interesting
+  if (tile.type === 'enemy') return true;
+  if (tile.type === 'treasure') return true;
+  if (tile.type === 'trap' && !tile.triggered) return true;
+  if (tile.type === 'stairs') return true;
+  if (tile.type === 'shop') return true;
+  
+  return false;
 }
 
 // Move player in dungeon
@@ -272,14 +293,14 @@ export function movePlayer(
 
   // Check bounds
   if (newX < 0 || newX >= dungeon.width || newY < 0 || newY >= dungeon.height) {
-    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, shop: false, loot: null };
+    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, shop: false, loot: null, blocked: true };
   }
 
   const targetTile = tiles[newY][newX];
   
   // Can't move into walls
   if (targetTile.type === 'wall') {
-    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, shop: false, loot: null };
+    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, shop: false, loot: null, blocked: true };
   }
 
   // Create new tiles array
@@ -332,6 +353,7 @@ export function movePlayer(
     trap,
     shop,
     loot,
+    blocked: false,
   };
 }
 

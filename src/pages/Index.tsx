@@ -66,6 +66,8 @@ function MainMenu() {
 }
 
 // Character Select Component - Now uses unlocked monster combos
+type SortOption = 'recent' | 'species' | 'element' | 'class' | 'level';
+
 function CharacterSelect() {
   const {
     state,
@@ -75,6 +77,26 @@ function CharacterSelect() {
   // Get all unlocked monsters (specific combos with levels)
   const unlockedMonsters = state.saveData.unlockedMonsters || [];
   const [selectedMonster, setSelectedMonster] = useState<typeof unlockedMonsters[0] | null>(unlockedMonsters.length > 0 ? unlockedMonsters[0] : null);
+  const [sortBy, setSortBy] = useState<SortOption>('recent');
+  
+  // Sort monsters based on selected option
+  const sortedMonsters = [...unlockedMonsters].sort((a, b) => {
+    switch (sortBy) {
+      case 'species':
+        return a.species.localeCompare(b.species);
+      case 'element':
+        return a.element.localeCompare(b.element);
+      case 'class':
+        return a.classType.localeCompare(b.classType);
+      case 'level':
+        return b.level - a.level; // Highest first
+      case 'recent':
+      default:
+        // Recent = reverse order (last added first)
+        return unlockedMonsters.indexOf(b) - unlockedMonsters.indexOf(a);
+    }
+  });
+  
   const startRun = () => {
     if (!selectedMonster) return;
     // Create monster at the level it was unlocked at
@@ -96,12 +118,32 @@ function CharacterSelect() {
         
         {/* Unlocked monster selection */}
         <div>
-          <h3 className="text-sm font-semibold text-muted-foreground mb-2">
-            Unlocked Monsters ({unlockedMonsters.length})
-          </h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-muted-foreground">
+              Unlocked Monsters ({unlockedMonsters.length})
+            </h3>
+            
+            {/* Sort controls */}
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground mr-1">Sort:</span>
+              {(['recent', 'species', 'element', 'class', 'level'] as SortOption[]).map(option => (
+                <Button
+                  key={option}
+                  variant={sortBy === option ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-6 px-2 text-xs capitalize"
+                  onClick={() => setSortBy(option)}
+                >
+                  {option === 'recent' ? '🕐' : option === 'species' ? '🐾' : option === 'element' ? '🔥' : option === 'class' ? '⚔️' : '📈'}
+                  <span className="ml-1 hidden sm:inline">{option}</span>
+                </Button>
+              ))}
+            </div>
+          </div>
+          
           <ScrollArea className="h-48">
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-              {unlockedMonsters.map(monster => <Card key={monster.comboId} className={`p-3 cursor-pointer transition-all ${selectedMonster?.comboId === monster.comboId ? 'ring-2 ring-primary bg-primary/10' : 'hover:border-primary/50'}`} onClick={() => setSelectedMonster(monster)}>
+              {sortedMonsters.map(monster => <Card key={monster.comboId} className={`p-3 cursor-pointer transition-all ${selectedMonster?.comboId === monster.comboId ? 'ring-2 ring-primary bg-primary/10' : 'hover:border-primary/50'}`} onClick={() => setSelectedMonster(monster)}>
                   <div className="text-center">
                     <div className="flex justify-center mb-1">
                       <MonsterSprite species={monster.species} element={monster.element} classType={monster.classType} size={48} animated={false} />

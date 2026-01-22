@@ -4,11 +4,11 @@ import { useState, forwardRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import { User, Backpack, Map, DoorOpen, Swords, Shield, Wind, Target, Footprints } from 'lucide-react';
-import { Monster, SPECIES_DATA } from './types';
+import { Monster } from './types';
 import { MonsterSprite } from './sprites';
-import { getMonsterMoves, getAspectBadges, Move } from './moves';
+import { getMonsterMoves, Move } from './moves';
 import { ExpandedStats } from './CharacterSheet';
 interface GameSidebarProps {
   monster: Monster | null;
@@ -33,7 +33,6 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   const [activePanel, setActivePanel] = useState<'character' | 'inventory' | 'moves' | null>(null);
   if (!monster) return null;
   const moves = getMonsterMoves(monster.species, monster.element, monster.class);
-  const speciesData = SPECIES_DATA[monster.species];
 
   // Use expanded stats if provided, otherwise fall back to basic stats
   const currentHp = expandedStats?.currentHp ?? monster.stats.currentHp;
@@ -99,200 +98,133 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
           </Button>}
       </div>
       
-      {/* Slide-up panels */}
-      {activePanel && <div className="fixed bottom-16 left-0 right-0 max-h-[60vh] bg-card border-t-2 border-primary/20 shadow-xl z-40 animate-fade-in">
-          <div className="p-4 h-full flex flex-col">
+      {/* Compact slide-up panels */}
+      {activePanel && <div className="fixed bottom-16 left-0 right-0 bg-card border-t-2 border-primary/20 shadow-xl z-40 animate-fade-in">
+          <div className="p-3">
             {/* Panel header */}
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-primary">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-sm font-bold text-primary">
                 {activePanel === 'character' && '📋 Character'}
                 {activePanel === 'moves' && '⚔️ Moves'}
                 {activePanel === 'inventory' && '🎒 Inventory'}
               </h2>
-              <Button variant="ghost" size="sm" onClick={() => setActivePanel(null)}>✕</Button>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setActivePanel(null)}>✕</Button>
             </div>
             
-            <ScrollArea className="flex-1">
-              {/* Character Panel */}
-              {activePanel === 'character' && <div className="space-y-4">
-                  {/* Monster info */}
-                  <Card className="p-4">
-                    <div className="flex items-center gap-3 mb-3">
-                      <MonsterSprite species={monster.species} element={monster.element} classType={monster.class} size={64} />
-                      <div>
-                        <h3 className="font-bold">{monster.name}</h3>
-                        <p className="text-sm text-muted-foreground">{speciesData.name}</p>
-                        <div className="flex gap-1 mt-1">
-                          <span className={`element-badge element-${monster.element} text-[10px] px-2 py-0.5`}>
-                            {monster.element}
-                          </span>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted">
-                            {monster.class}
-                          </span>
-                        </div>
-                      </div>
+            {/* Character Panel - Compact Grid */}
+            {activePanel === 'character' && <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {/* Monster Identity */}
+                <div className="bg-muted/30 rounded-lg p-2 flex items-center gap-2">
+                  <MonsterSprite species={monster.species} element={monster.element} classType={monster.class} size={40} />
+                  <div className="min-w-0">
+                    <p className="font-bold text-xs truncate">{monster.name}</p>
+                    <div className="flex gap-1 flex-wrap">
+                      <span className={`element-badge element-${monster.element} text-[8px] px-1 py-0`}>{monster.element}</span>
+                      <span className="text-[8px] px-1 py-0 rounded-full bg-muted">{monster.class}</span>
                     </div>
-                    
-                    {/* HP & Stamina Bars */}
-                    <div className="space-y-2 mb-3">
-                      <div>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-muted-foreground">HP</span>
-                          <span className="font-mono">{currentHp}/{maxHp}</span>
-                        </div>
-                        <Progress value={hpPercent} className="h-2" />
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-muted-foreground">Stamina</span>
-                          <span className="font-mono">{currentStamina}/{maxStamina}</span>
-                        </div>
-                        <Progress value={staminaPercent} className="h-2 [&>div]:bg-stat-special" />
-                      </div>
-                    </div>
-                    
-                    {/* XP Bar */}
-                    <div className="mb-3">
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-muted-foreground">Experience</span>
-                        <span className="font-mono">{experience}/{experienceToNext}</span>
-                      </div>
-                      <Progress value={xpPercent} className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-secondary [&>div]:to-accent" />
-                    </div>
-                    
-                    {/* Passive */}
-                    <div className="bg-muted/50 rounded p-2 text-xs">
-                      <p className="font-semibold text-primary">{speciesData.passiveAbility}</p>
-                      <p className="text-muted-foreground">{speciesData.passiveDescription}</p>
-                    </div>
-                  </Card>
-                  
-                  {/* Stats - Corrected Layout */}
-                  <Card className="p-4 space-y-3">
-                    <h4 className="font-semibold text-sm mb-2">Combat Stats</h4>
-                    
-                    {/* Attack Stats */}
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-muted-foreground uppercase">Attack Power</p>
-                      <StatRow icon={<Swords className="w-4 h-4 text-orange-500" />} label="Melee" value={expandedStats?.melee ?? monster.stats.attack} description="Power for melee-type attacks" />
-                      <StatRow icon={<Target className="w-4 h-4 text-yellow-500" />} label="Ranged" value={expandedStats?.ranged ?? monster.stats.special} description="Power for ranged-type attacks" />
-                    </div>
-                    
-                    {/* Defense Stats */}
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-muted-foreground uppercase">Defense</p>
-                      <StatRow icon={<Shield className="w-4 h-4 text-stat-defense" />} label="Defense" value={expandedStats?.defense ?? monster.stats.defense} description="Reduces incoming damage" />
-                      <StatRow icon={<Footprints className="w-4 h-4 text-emerald-500" />} label="Dodge" value={expandedStats?.dodge ?? Math.floor(monster.stats.speed * 0.5)} description="Chance to evade attacks" />
-                    </div>
-                    
-                    {/* Speed */}
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-muted-foreground uppercase">Turn Order</p>
-                      <StatRow icon={<Wind className="w-4 h-4 text-stat-speed" />} label="Speed" value={expandedStats?.speed ?? monster.stats.speed} description="Determines who attacks first" />
-                    </div>
-                  </Card>
-                </div>}
-              
-              {/* Moves Panel */}
-              {activePanel === 'moves' && <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Attacks use 1-3 of your aspects (Species, Element, Class)
-                  </p>
-                  {moves.map(move => <MoveCard key={move.id} move={move} monster={monster} expandedStats={expandedStats} />)}
-                </div>}
-              
-              {/* Inventory Panel */}
-              {activePanel === 'inventory' && <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">
-                    Inventory coming soon! Use items during battle.
-                  </p>
-                  <Card className="p-4 text-center text-muted-foreground">
-                    <Backpack className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">Your bag is empty</p>
-                  </Card>
-                </div>}
-            </ScrollArea>
+                  </div>
+                </div>
+                
+                {/* Bars */}
+                <div className="bg-muted/30 rounded-lg p-2 space-y-1">
+                  <div className="flex justify-between text-[10px]">
+                    <span>HP</span>
+                    <span className="font-mono">{currentHp}/{maxHp}</span>
+                  </div>
+                  <Progress value={hpPercent} className="h-1.5" />
+                  <div className="flex justify-between text-[10px]">
+                    <span>STA</span>
+                    <span className="font-mono">{currentStamina}/{maxStamina}</span>
+                  </div>
+                  <Progress value={staminaPercent} className="h-1.5 [&>div]:bg-stat-special" />
+                  <div className="flex justify-between text-[10px]">
+                    <span>XP</span>
+                    <span className="font-mono">{experience}/{experienceToNext}</span>
+                  </div>
+                  <Progress value={xpPercent} className="h-1.5 [&>div]:bg-secondary" />
+                </div>
+                
+                {/* Attack Stats */}
+                <div className="bg-muted/30 rounded-lg p-2">
+                  <p className="text-[9px] text-muted-foreground uppercase mb-1">Attack</p>
+                  <div className="grid grid-cols-2 gap-x-2 text-[10px]">
+                    <span className="flex items-center gap-1"><Swords className="w-3 h-3 text-orange-500" /> Melee</span>
+                    <span className="font-mono font-bold text-right">{expandedStats?.melee ?? monster.stats.attack}</span>
+                    <span className="flex items-center gap-1"><Target className="w-3 h-3 text-yellow-500" /> Ranged</span>
+                    <span className="font-mono font-bold text-right">{expandedStats?.ranged ?? monster.stats.special}</span>
+                  </div>
+                </div>
+                
+                {/* Defense & Speed Stats */}
+                <div className="bg-muted/30 rounded-lg p-2">
+                  <p className="text-[9px] text-muted-foreground uppercase mb-1">Defense / Speed</p>
+                  <div className="grid grid-cols-2 gap-x-2 text-[10px]">
+                    <span className="flex items-center gap-1"><Shield className="w-3 h-3 text-stat-defense" /> Def</span>
+                    <span className="font-mono font-bold text-right">{expandedStats?.defense ?? monster.stats.defense}</span>
+                    <span className="flex items-center gap-1"><Footprints className="w-3 h-3 text-emerald-500" /> Dodge</span>
+                    <span className="font-mono font-bold text-right">{expandedStats?.dodge ?? Math.floor(monster.stats.speed * 0.5)}</span>
+                    <span className="flex items-center gap-1"><Wind className="w-3 h-3 text-stat-speed" /> Spd</span>
+                    <span className="font-mono font-bold text-right">{expandedStats?.speed ?? monster.stats.speed}</span>
+                  </div>
+                </div>
+              </div>}
+            
+            {/* Moves Panel - Compact Grid */}
+            {activePanel === 'moves' && <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                {moves.map(move => <CompactMoveCard key={move.id} move={move} monster={monster} expandedStats={expandedStats} />)}
+              </div>}
+            
+            {/* Inventory Panel */}
+            {activePanel === 'inventory' && <div className="text-center py-4 text-muted-foreground">
+                <Backpack className="w-8 h-8 mx-auto mb-1 opacity-30" />
+                <p className="text-xs">Inventory empty - Use items in battle</p>
+              </div>}
           </div>
         </div>}
     </>;
 });
 GameSidebar.displayName = 'GameSidebar';
-function StatRow({
-  icon,
-  label,
-  value,
-  description
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string | number;
-  description?: string;
-}) {
-  return <div className="flex items-center justify-between" title={description}>
-      <div className="flex items-center gap-2">
-        {icon}
-        <span className="text-sm">{label}</span>
-      </div>
-      <span className="font-mono text-sm font-bold">{value}</span>
-    </div>;
-}
-interface MoveCardProps {
+
+interface CompactMoveCardProps {
   move: Move;
   monster: Monster;
   expandedStats?: ExpandedStats;
 }
-function MoveCard({
-  move,
-  monster,
-  expandedStats
-}: MoveCardProps) {
+
+function CompactMoveCard({ move, monster, expandedStats }: CompactMoveCardProps) {
   const typeColors: Record<Move['type'], string> = {
     melee: 'bg-orange-500/20 text-orange-600',
     ranged: 'bg-blue-500/20 text-blue-600',
     status: 'bg-purple-500/20 text-purple-600',
     heal: 'bg-green-500/20 text-green-600'
   };
-  const aspectBadges = getAspectBadges(move);
+  
+  const attackStat = move.type === 'melee' 
+    ? (expandedStats?.melee ?? monster.stats.attack) 
+    : move.type === 'ranged' 
+      ? (expandedStats?.ranged ?? monster.stats.special) 
+      : 0;
 
-  // Calculate effective power based on attack type and stats
-  const attackStat = move.type === 'melee' ? expandedStats?.melee ?? monster.stats.attack : move.type === 'ranged' ? expandedStats?.ranged ?? monster.stats.special : 0;
-
-  // Speed modifier display
-  const speedDisplay = move.speedMod === 0 ? null : move.speedMod > 0 ? `+${move.speedMod} priority` : `${move.speedMod} priority`;
-  return <Card className="p-3">
-      <div className="flex items-start justify-between mb-1">
-        <h4 className="font-semibold text-sm">{move.name}</h4>
-        <span className={`text-[10px] px-2 py-0.5 rounded-full ${typeColors[move.type]}`}>
+  return (
+    <Card className="p-2">
+      <div className="flex items-center justify-between mb-1">
+        <h4 className="font-semibold text-[11px] truncate">{move.name}</h4>
+        <span className={`text-[8px] px-1.5 py-0.5 rounded-full ${typeColors[move.type]}`}>
           {move.type}
         </span>
       </div>
       
-      {/* Aspect badges */}
-      <div className="flex gap-1 mb-2">
-        {aspectBadges.map((badge, i) => <span key={i} className={`text-[9px] px-1.5 py-0.5 rounded ${badge.colorClass}`}>
-            {badge.label}
-          </span>)}
-        {move.element && <span className={`element-badge element-${move.element} text-[9px] px-1.5 py-0.5`}>
-            {move.element}
-          </span>}
-        {move.classBonus && <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-600">
-            {move.classBonus}
-          </span>}
+      <p className="text-[9px] text-muted-foreground line-clamp-1 mb-1">{move.description}</p>
+      
+      <div className="flex flex-wrap gap-1.5 text-[9px]">
+        {move.power > 0 && <span>⚔️{move.power}{attackStat > 0 && <span className="text-muted-foreground">+{Math.floor(attackStat / 2)}</span>}</span>}
+        <span>🎯{move.accuracy}%</span>
+        <span>⚡{move.staminaCost}</span>
       </div>
       
-      <p className="text-xs text-muted-foreground mb-2">{move.description}</p>
-      
-      <div className="flex flex-wrap gap-2 text-[10px]">
-        {move.power > 0 && <span title={`Base power + ${move.type === 'melee' ? 'Melee' : 'Ranged'} stat`}>
-            ⚔️ {move.power} {attackStat > 0 && <span className="text-muted-foreground">(+{Math.floor(attackStat / 2)})</span>}
-          </span>}
-        <span title="Base accuracy">🎯 {move.accuracy}%</span>
-        <span title="Stamina cost">⚡ {move.staminaCost}</span>
-        {speedDisplay && <span title="Turn order modifier" className="text-stat-speed">🏃 {speedDisplay}</span>}
-      </div>
-      
-      {move.effect && <div className="mt-1 text-[10px] text-accent">
-          ✨ {move.effect.replace(/_/g, ' ')}
-        </div>}
-    </Card>;
+      {move.effect && <div className="mt-0.5 text-[8px] text-accent truncate">
+        ✨ {move.effect.replace(/_/g, ' ')}
+      </div>}
+    </Card>
+  );
 }

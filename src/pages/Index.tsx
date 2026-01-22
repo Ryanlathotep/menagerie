@@ -831,6 +831,8 @@ function BattleView() {
         
         {/* Main bottom bar content */}
         <div className="p-3">
+          {/* Moves header */}
+          <h3 className="font-semibold text-sm mb-2">Move Set</h3>
           {/* Moves grid + action buttons in one row */}
           <div className="grid grid-cols-[1fr_auto] gap-3 items-start">
             {/* Move selection - horizontal scroll */}

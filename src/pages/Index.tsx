@@ -174,6 +174,7 @@ function DungeonView() {
   } = useGame();
   const dungeon = state.run?.dungeon;
   const [showShop, setShowShop] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!dungeon) {
@@ -322,12 +323,23 @@ function DungeonView() {
     }
   };
   if (!dungeon) return <div className="game-container">Loading...</div>;
+  
+  // Bottom offset: 64px for menu bar + 160px for controls + ~200px when panel is open
+  const bottomOffset = menuOpen ? 'bottom-[420px]' : 'bottom-[224px]';
+  const controlsOffset = menuOpen ? 'bottom-16' : 'bottom-0';
+  
   return <>
-      <GameSidebar monster={state.run?.currentMonster || null} gold={state.run?.gold || 0} floor={dungeon.floor} onFlee={handleFlee} />
+      <GameSidebar 
+        monster={state.run?.currentMonster || null} 
+        gold={state.run?.gold || 0} 
+        floor={dungeon.floor} 
+        onFlee={handleFlee} 
+        onPanelChange={setMenuOpen}
+      />
       
       {showShop && <ShopView gold={state.run?.gold || 0} onBuy={handleBuyItem} onClose={() => setShowShop(false)} />}
       
-      <div className="fixed inset-0 bottom-[160px] overflow-hidden">
+      <div className={`fixed inset-0 ${bottomOffset} overflow-hidden transition-all duration-300`}>
         <div className="h-full flex flex-col">
           {/* Scrollable dungeon viewport - fills available space */}
           <div ref={containerRef} className="flex-1 overflow-auto bg-card border-b-2 border-primary/20">
@@ -335,7 +347,7 @@ function DungeonView() {
           </div>
 
           {/* Bottom bar with controls and legend */}
-          <div className="fixed bottom-0 left-0 right-0 h-[160px] bg-card border-t-2 border-primary/20 p-4 z-50">
+          <div className={`fixed ${controlsOffset} left-0 right-0 h-[160px] bg-card border-t-2 border-primary/20 p-4 z-40 transition-all duration-300`}>
             {/* Mobile controls */}
             <div className="grid grid-cols-3 gap-2 w-32 mx-auto sm:hidden mb-3">
               <div />

@@ -719,7 +719,7 @@ function BattleView() {
   const inventory = state.run.inventory || [];
 
   return (
-    <div className="fixed inset-0 flex flex-col" style={{ height: 'calc(100vh - 120px)' }}>
+    <div className="fixed inset-0 flex flex-col" style={{ height: 'calc(100vh - 180px)' }}>
       {/* Main battle area - fills available space */}
       <div className="flex-1 flex flex-col p-4 overflow-auto">
         {/* Header */}
@@ -799,16 +799,16 @@ function BattleView() {
             </div>
           </Card>
         </div>
-
-        {/* Battle log - at bottom of battle area */}
-        <div className="bg-muted rounded-lg p-3 text-sm mt-4 max-h-24 overflow-y-auto">
-          <p className="text-xs text-muted-foreground mb-1 font-semibold">Battle Log</p>
-          {battle.log.slice(-4).map((msg, i) => <p key={i} className="py-0.5">{msg}</p>)}
-        </div>
       </div>
 
       {/* Bottom action bar - fixed at bottom, full width like GameSidebar */}
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t-2 border-primary/20 shadow-lg z-50">
+        {/* Battle log - above menu items */}
+        <div className="bg-muted/50 border-b border-primary/10 p-2 text-sm max-h-20 overflow-y-auto">
+          <p className="text-xs text-muted-foreground mb-1 font-semibold">Battle Log</p>
+          {battle.log.slice(-3).map((msg, i) => <p key={i} className="py-0.5 text-xs">{msg}</p>)}
+        </div>
+        
         {/* Expandable panel for inventory */}
         {showInventory && (
           <div className="border-b border-primary/10 p-3">

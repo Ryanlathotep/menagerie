@@ -719,84 +719,91 @@ function BattleView() {
   const inventory = state.run.inventory || [];
 
   return (
-    <div className="fixed inset-0 bottom-auto pb-0 flex flex-col" style={{ height: 'calc(100vh - 120px)' }}>
+    <div className="fixed inset-0 flex flex-col" style={{ height: 'calc(100vh - 120px)' }}>
       {/* Main battle area - fills available space */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-4 max-w-2xl w-full mx-auto p-4 overflow-auto">
-        <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-primary to-destructive bg-clip-text text-transparent">
+      <div className="flex-1 flex flex-col p-4 overflow-auto">
+        {/* Header */}
+        <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-primary to-destructive bg-clip-text text-transparent mb-4">
           ⚔️ Battle!
         </h2>
         
-        {/* Enemy */}
-        <Card className="p-4 w-full">
-          <div className="flex items-center gap-4 mb-2">
-            <MonsterSprite 
-              species={battle.enemyMonster.species}
-              element={battle.enemyMonster.element}
-              classType={battle.enemyMonster.class}
-              size={64}
-            />
-            <div className="flex-1">
-              <div className="flex justify-between items-center mb-1">
-                <span className="font-semibold">{battle.enemyMonster.name}</span>
-                <div className="flex gap-1">
-                  <span className={`element-badge element-${battle.enemyMonster.element} text-xs`}>
-                    {battle.enemyMonster.element}
-                  </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-muted">
-                    {battle.enemyMonster.class}
+        {/* Battle grid - enemy on left/top, player on right/bottom */}
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Enemy */}
+          <Card className="p-4 flex flex-col">
+            <div className="flex items-center gap-4 mb-3">
+              <MonsterSprite 
+                species={battle.enemyMonster.species}
+                element={battle.enemyMonster.element}
+                classType={battle.enemyMonster.class}
+                size={80}
+              />
+              <div className="flex-1">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="font-semibold text-lg">{battle.enemyMonster.name}</span>
+                  <div className="flex gap-1">
+                    <span className={`element-badge element-${battle.enemyMonster.element} text-xs`}>
+                      {battle.enemyMonster.element}
+                    </span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-muted">
+                      {battle.enemyMonster.class}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mb-2">Enemy • Lv.{battle.enemyMonster.level}</p>
+                <div className="health-bar h-3">
+                  <div 
+                    className="health-bar-fill" 
+                    style={{ width: `${(battle.enemyMonster.stats.currentHp / battle.enemyMonster.stats.maxHp) * 100}%` }}
+                  />
+                </div>
+                <p className="text-sm mt-1 font-mono">{battle.enemyMonster.stats.currentHp} / {battle.enemyMonster.stats.maxHp} HP</p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Player */}
+          <Card className="p-4 border-2 border-primary/50 flex flex-col">
+            <div className="flex items-center gap-4 mb-3">
+              <MonsterSprite 
+                species={battle.playerMonster.species}
+                element={battle.playerMonster.element}
+                classType={battle.playerMonster.class}
+                size={80}
+              />
+              <div className="flex-1">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="font-semibold text-lg">{battle.playerMonster.name}</span>
+                  <span className={`element-badge element-${battle.playerMonster.element} text-xs`}>
+                    {battle.playerMonster.element}
                   </span>
                 </div>
+                <p className="text-xs text-muted-foreground mb-2">You • Lv.{battle.playerMonster.level}</p>
+                {/* HP Bar */}
+                <div className="health-bar h-3">
+                  <div 
+                    className="health-bar-fill" 
+                    style={{ width: `${(battle.playerMonster.stats.currentHp / battle.playerMonster.stats.maxHp) * 100}%` }}
+                  />
+                </div>
+                <p className="text-sm mt-1 font-mono">{battle.playerMonster.stats.currentHp} / {battle.playerMonster.stats.maxHp} HP</p>
+                {/* Stamina Bar */}
+                <div className="h-3 bg-muted rounded-full overflow-hidden mt-2">
+                  <div 
+                    className="h-full bg-stat-special transition-all"
+                    style={{ width: `${(currentStamina / maxStamina) * 100}%` }}
+                  />
+                </div>
+                <p className="text-sm mt-1 font-mono">{currentStamina} / {maxStamina} Stamina</p>
               </div>
-              <div className="health-bar">
-                <div 
-                  className="health-bar-fill" 
-                  style={{ width: `${(battle.enemyMonster.stats.currentHp / battle.enemyMonster.stats.maxHp) * 100}%` }}
-                />
-              </div>
-              <p className="text-xs mt-1">{battle.enemyMonster.stats.currentHp} / {battle.enemyMonster.stats.maxHp}</p>
             </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
 
-        {/* Player */}
-        <Card className="p-4 border-2 border-primary/50 w-full">
-          <div className="flex items-center gap-4 mb-2">
-            <MonsterSprite 
-              species={battle.playerMonster.species}
-              element={battle.playerMonster.element}
-              classType={battle.playerMonster.class}
-              size={64}
-            />
-            <div className="flex-1">
-              <div className="flex justify-between items-center mb-1">
-                <span className="font-semibold">{battle.playerMonster.name}</span>
-                <span className={`element-badge element-${battle.playerMonster.element} text-xs`}>
-                  {battle.playerMonster.element}
-                </span>
-              </div>
-              {/* HP Bar */}
-              <div className="health-bar">
-                <div 
-                  className="health-bar-fill" 
-                  style={{ width: `${(battle.playerMonster.stats.currentHp / battle.playerMonster.stats.maxHp) * 100}%` }}
-                />
-              </div>
-              <p className="text-xs mt-1">HP: {battle.playerMonster.stats.currentHp} / {battle.playerMonster.stats.maxHp}</p>
-              {/* Stamina Bar */}
-              <div className="h-2 bg-muted rounded-full overflow-hidden mt-1">
-                <div 
-                  className="h-full bg-stat-special transition-all"
-                  style={{ width: `${(currentStamina / maxStamina) * 100}%` }}
-                />
-              </div>
-              <p className="text-xs mt-1">Stamina: {currentStamina} / {maxStamina}</p>
-            </div>
-          </div>
-        </Card>
-
-        {/* Battle log */}
-        <div className="bg-muted rounded-lg p-3 text-xs max-h-20 overflow-y-auto w-full">
-          {battle.log.slice(-3).map((msg, i) => <p key={i}>{msg}</p>)}
+        {/* Battle log - at bottom of battle area */}
+        <div className="bg-muted rounded-lg p-3 text-sm mt-4 max-h-24 overflow-y-auto">
+          <p className="text-xs text-muted-foreground mb-1 font-semibold">Battle Log</p>
+          {battle.log.slice(-4).map((msg, i) => <p key={i} className="py-0.5">{msg}</p>)}
         </div>
       </div>
 

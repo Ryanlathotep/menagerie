@@ -154,7 +154,7 @@ export function DungeonRenderer({
   playerElement,
   playerSpecies
 }: DungeonRendererProps) {
-  return <div className="w-full h-full flex-col justify-center flex items-center">
+  return <div className="w-full h-full flex flex-col">
       {/* Floor header - anime style */}
       <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-2">

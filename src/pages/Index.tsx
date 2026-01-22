@@ -982,6 +982,23 @@ function BattleView() {
 
       // Check for level up
       const levelUpResult = checkLevelUp(battle.playerMonster, newXp);
+      
+      // Remove enemy from dungeon
+      if (state.run?.dungeon) {
+        const updatedDungeon = removeEnemy(state.run.dungeon, battle.enemyMonster.id);
+        dispatch({
+          type: 'SET_DUNGEON',
+          dungeon: updatedDungeon
+        });
+      }
+      
+      // Base gold reward
+      const baseGold = 5 + battle.enemyMonster.level * 3;
+      dispatch({
+        type: 'ADD_GOLD',
+        amount: baseGold
+      });
+      
       if (levelUpResult.leveled) {
         // Level up! Store previous stats for comparison
         const previousStats = { ...battle.playerMonster.stats };
@@ -1001,7 +1018,17 @@ function BattleView() {
         // Check for new moves (moves that require higher level - for now, all moves are available)
         const newMoves: Move[] = []; // Could implement level-gated moves in the future
         
-        // Show level up screen
+        dispatch({
+          type: 'UPDATE_PLAYER_MONSTER',
+          monster: leveledMonster
+        });
+        // Set XP to remainder after level up
+        dispatch({ type: 'ADD_XP', amount: levelUpResult.xpRemaining - experience });
+        
+        toast.success(`🎉 LEVEL UP! Now level ${levelUpResult.newLevel}!`);
+        toast.success(`+${xpGained} XP!`);
+        
+        // Show level up screen - DON'T end battle yet, let user see level up first
         setLevelUpData({
           previousStats,
           previousLevel,
@@ -1009,12 +1036,8 @@ function BattleView() {
           monster: leveledMonster
         });
         
-        dispatch({
-          type: 'UPDATE_PLAYER_MONSTER',
-          monster: leveledMonster
-        });
-        // Set XP to remainder after level up
-        dispatch({ type: 'ADD_XP', amount: levelUpResult.xpRemaining - experience });
+        // Battle will be ended when user clicks "Continue" on level up screen
+        return;
       } else {
         // Add XP to global state
         dispatch({ type: 'ADD_XP', amount: xpGained });
@@ -1030,27 +1053,13 @@ function BattleView() {
             }
           }
         });
+        toast.success(`+${xpGained} XP!`);
       }
-      toast.success(`+${xpGained} XP!`);
-      if (state.run?.dungeon) {
-        const updatedDungeon = removeEnemy(state.run.dungeon, battle.enemyMonster.id);
-        dispatch({
-          type: 'SET_DUNGEON',
-          dungeon: updatedDungeon
-        });
-      }
+      
       dispatch({
         type: 'END_BATTLE',
         victory: true
       });
-      
-      // Base gold reward
-      const baseGold = 5 + battle.enemyMonster.level * 3;
-      dispatch({
-        type: 'ADD_GOLD',
-        amount: baseGold
-      });
-      
       // Rat's Scavenger passive: Find extra items after battle
       const isRat = battle.playerMonster.species === 'rat';
       if (isRat && Math.random() < 0.5) { // 50% chance
@@ -1258,6 +1267,11 @@ function BattleView() {
   // Handle level up screen dismissal
   const handleLevelUpContinue = () => {
     setLevelUpData(null);
+    // End the battle now that user has seen level up screen
+    dispatch({
+      type: 'END_BATTLE',
+      victory: true
+    });
   };
 
   return (

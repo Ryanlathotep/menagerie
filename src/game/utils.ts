@@ -17,11 +17,12 @@ export function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
 }
 
-// Calculate combined stats for a monster
+// Calculate combined stats for a monster at a given level
 export function calculateStats(species: SpeciesType, classType: ClassType, level: number): MonsterStats {
   const speciesStats = SPECIES_DATA[species].baseStats;
   const classStats = CLASS_STATS[classType];
   
+  // Each level adds a percentage of base stats (10% per level after 1)
   const levelMultiplier = 1 + (level - 1) * 0.1;
   
   const baseHp = Math.floor((speciesStats.hp + classStats.hp) * levelMultiplier);
@@ -37,6 +38,27 @@ export function calculateStats(species: SpeciesType, classType: ClassType, level
     special: Math.floor((speciesStats.special + classStats.special) * levelMultiplier),
     stamina: baseStamina,
     currentStamina: baseStamina,
+  };
+}
+
+// Calculate stat gains when leveling up - returns the difference between new and old stats
+export function calculateStatGains(
+  species: SpeciesType, 
+  classType: ClassType, 
+  fromLevel: number, 
+  toLevel: number
+): Partial<MonsterStats> {
+  const oldStats = calculateStats(species, classType, fromLevel);
+  const newStats = calculateStats(species, classType, toLevel);
+  
+  return {
+    maxHp: newStats.maxHp - oldStats.maxHp,
+    attack: newStats.attack - oldStats.attack,
+    defense: newStats.defense - oldStats.defense,
+    speed: newStats.speed - oldStats.speed,
+    dodge: newStats.dodge - oldStats.dodge,
+    special: newStats.special - oldStats.special,
+    stamina: newStats.stamina - oldStats.stamina,
   };
 }
 

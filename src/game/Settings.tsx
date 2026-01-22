@@ -11,7 +11,7 @@ import { Settings as SettingsIcon, X } from 'lucide-react';
 export interface GameSettings {
   autoRunDelay: number;      // ms for double-tap detection (100-500)
   autoRunSpeed: number;      // ms between auto-run steps (50-200)
-  dungeonZoom: number;       // zoom level for dungeon tiles (50-150, 100 = default)
+  dungeonZoom: number;       // zoom level for dungeon tiles (50-400, 100 = default)
   showDamageNumbers: boolean;
   soundEnabled: boolean;
 }
@@ -112,8 +112,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               value={[settings.dungeonZoom]}
               onValueChange={([value]) => updateSetting('dungeonZoom', value)}
               min={50}
-              max={200}
-              step={10}
+              max={400}
+              step={25}
               className="w-full"
             />
             <p className="text-xs text-muted-foreground">

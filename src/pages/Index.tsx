@@ -2,7 +2,7 @@ import { GameProvider, useGame } from '@/game/state';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SPECIES_DATA, getComboId, UnlockedMonster, InventoryItem, MonsterStats } from '@/game/types';
+import { getComboId, UnlockedMonster, InventoryItem, MonsterStats } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
 import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, LOOT_TABLE } from '@/game/dungeon';
 import { useEffect, useCallback, useState, useRef } from 'react';
@@ -18,6 +18,19 @@ import { toast } from 'sonner';
 import { SettingsProvider, SettingsButton, useSettings } from '@/game/Settings';
 import { MonsterStatsPreview } from '@/game/MonsterStatsPreview';
 import { LevelUpScreen } from '@/game/LevelUpScreen';
+import { 
+  CombatEffects, 
+  EMPTY_COMBAT_EFFECTS, 
+  getMoveEffectResult, 
+  applyStatusEffect, 
+  applyStatModifier, 
+  processStartOfTurn, 
+  tickEffects,
+  cureStatusEffect,
+  cureAllStatusEffects,
+  StatusEffectType,
+} from '@/game/statusEffects';
+import { StatusIcons } from '@/game/StatusEffectDisplay';
 
 // Main Menu Component
 function MainMenu() {
@@ -707,6 +720,14 @@ function BattleView() {
     monster: typeof battle.playerMonster;
   } | null>(null);
   
+  // Combat effects tracking (local state synced with battle)
+  const [playerEffects, setPlayerEffects] = useState<CombatEffects>(
+    battle?.playerEffects as CombatEffects || EMPTY_COMBAT_EFFECTS
+  );
+  const [enemyEffects, setEnemyEffects] = useState<CombatEffects>(
+    battle?.enemyEffects as CombatEffects || EMPTY_COMBAT_EFFECTS
+  );
+  
   if (!battle || !state.run) return null;
   const playerMoves = getMonsterMoves(battle.playerMonster.species, battle.playerMonster.element, battle.playerMonster.class);
   const experienceToNext = xpToNextLevel(battle.playerMonster.level);
@@ -786,9 +807,44 @@ function BattleView() {
       newStats.currentStamina = Math.min(newStats.stamina || 50, (newStats.currentStamina || 0) + healAmount);
       message = `Restored ${actualHeal} Stamina!`;
     } else if (item.effect === 'cure_poison') {
-      message = 'Cured poison!';
-    } else if (item.effect === 'boost_attack' || item.effect === 'boost_defense' || item.effect === 'boost_speed') {
-      message = `${item.name} activated! Buff ready for next battle.`;
+      const result = cureStatusEffect(playerEffects, 'poison');
+      if (result.cured) {
+        setPlayerEffects(result.effects);
+        message = '🟣 Cured poison!';
+      } else {
+        message = 'Not poisoned!';
+      }
+    } else if (item.effect === 'cure_burn') {
+      const result = cureStatusEffect(playerEffects, 'burn');
+      if (result.cured) {
+        setPlayerEffects(result.effects);
+        message = '🔥 Cured burn!';
+      } else {
+        message = 'Not burned!';
+      }
+    } else if (item.effect === 'cure_freeze') {
+      const result = cureStatusEffect(playerEffects, 'freeze');
+      if (result.cured) {
+        setPlayerEffects(result.effects);
+        message = '❄️ Cured freeze!';
+      } else {
+        message = 'Not frozen!';
+      }
+    } else if (item.effect === 'cure_all') {
+      setPlayerEffects(cureAllStatusEffects(playerEffects));
+      message = '✨ Cured all status effects!';
+    } else if (item.effect === 'boost_attack') {
+      const result = applyStatModifier(playerEffects, 'attack', 'buff', 25, 5, item.name);
+      setPlayerEffects(result.effects);
+      message = '⚔️ Attack boosted!';
+    } else if (item.effect === 'boost_defense') {
+      const result = applyStatModifier(playerEffects, 'defense', 'buff', 25, 5, item.name);
+      setPlayerEffects(result.effects);
+      message = '🛡️ Defense boosted!';
+    } else if (item.effect === 'boost_speed') {
+      const result = applyStatModifier(playerEffects, 'speed', 'buff', 25, 5, item.name);
+      setPlayerEffects(result.effects);
+      message = '💨 Speed boosted!';
     } else {
       message = `Used ${item.name}!`;
     }
@@ -977,6 +1033,52 @@ function BattleView() {
           temporaryResistances: [...currentResistances, { element: result.elementHit, turnsRemaining: 3 }]
         };
         newLog.push(`🦁 Chimera adapts! Gained ${result.elementHit} resistance!`);
+      }
+    }
+
+    // === APPLY STATUS EFFECTS FROM PLAYER'S MOVE ===
+    let updatedEnemyEffects = { ...enemyEffects };
+    let updatedPlayerEffects = { ...playerEffects };
+    
+    if (result.hit && move.effect) {
+      const effectResult = getMoveEffectResult(move.effect);
+      if (effectResult) {
+        if (effectResult.statusEffect) {
+          const targetEffects = effectResult.self ? updatedPlayerEffects : updatedEnemyEffects;
+          const statusResult = applyStatusEffect(
+            targetEffects, 
+            effectResult.statusEffect.type, 
+            effectResult.statusEffect.duration, 
+            move.name
+          );
+          if (effectResult.self) {
+            updatedPlayerEffects = statusResult.effects;
+          } else {
+            updatedEnemyEffects = statusResult.effects;
+          }
+          if (statusResult.applied) {
+            newLog.push(statusResult.message);
+          }
+        }
+        if (effectResult.statModifier) {
+          const targetEffects = effectResult.self ? updatedPlayerEffects : updatedEnemyEffects;
+          const modResult = applyStatModifier(
+            targetEffects,
+            effectResult.statModifier.stat,
+            effectResult.statModifier.direction,
+            effectResult.statModifier.percentage,
+            effectResult.statModifier.duration,
+            move.name
+          );
+          if (effectResult.self) {
+            updatedPlayerEffects = modResult.effects;
+          } else {
+            updatedEnemyEffects = modResult.effects;
+          }
+          if (modResult.applied) {
+            newLog.push(modResult.message);
+          }
+        }
       }
     }
 
@@ -1170,6 +1272,49 @@ function BattleView() {
         newLog.push(...enemyResult.passiveMessages);
       }
       
+      // === APPLY STATUS EFFECTS FROM ENEMY'S MOVE ===
+      if (enemyResult.hit && enemyMove.effect) {
+        const effectResult = getMoveEffectResult(enemyMove.effect);
+        if (effectResult) {
+          if (effectResult.statusEffect) {
+            const targetEffects = effectResult.self ? updatedEnemyEffects : updatedPlayerEffects;
+            const statusResult = applyStatusEffect(
+              targetEffects, 
+              effectResult.statusEffect.type, 
+              effectResult.statusEffect.duration, 
+              enemyMove.name
+            );
+            if (effectResult.self) {
+              updatedEnemyEffects = statusResult.effects;
+            } else {
+              updatedPlayerEffects = statusResult.effects;
+            }
+            if (statusResult.applied) {
+              newLog.push(statusResult.message);
+            }
+          }
+          if (effectResult.statModifier) {
+            const targetEffects = effectResult.self ? updatedEnemyEffects : updatedPlayerEffects;
+            const modResult = applyStatModifier(
+              targetEffects,
+              effectResult.statModifier.stat,
+              effectResult.statModifier.direction,
+              effectResult.statModifier.percentage,
+              effectResult.statModifier.duration,
+              enemyMove.name
+            );
+            if (effectResult.self) {
+              updatedEnemyEffects = modResult.effects;
+            } else {
+              updatedPlayerEffects = modResult.effects;
+            }
+            if (modResult.applied) {
+              newLog.push(modResult.message);
+            }
+          }
+        }
+      }
+      
       // Player's Skeleton survival: 10% chance to survive fatal hit
       if (newPlayerHp <= 0 && checkSkeletonSurvival(battle.playerMonster, enemyResult.damage)) {
         newPlayerHp = 1;
@@ -1196,6 +1341,21 @@ function BattleView() {
         }
       }
       
+      // === PROCESS END-OF-TURN STATUS EFFECTS ===
+      // Player status damage (poison, burn)
+      const playerStatusResult = processStartOfTurn(battle.playerMonster, updatedPlayerEffects);
+      if (playerStatusResult.damage > 0) {
+        newPlayerHp = Math.max(0, newPlayerHp - playerStatusResult.damage);
+        newLog.push(...playerStatusResult.messages);
+      }
+      
+      // Enemy status damage
+      const enemyStatusResult = processStartOfTurn(updatedEnemyMonster, updatedEnemyEffects);
+      if (enemyStatusResult.damage > 0 && newEnemyHp > 0) {
+        newEnemyHp = Math.max(0, newEnemyHp - enemyStatusResult.damage);
+        newLog.push(...enemyStatusResult.messages.map(m => `Enemy: ${m}`));
+      }
+      
       // Mushroom's Spore Cloud: Regenerate 5% HP at end of turn
       const mushroomRegen = applyMushroomRegen(battle.playerMonster);
       if (mushroomRegen > 0) {
@@ -1211,6 +1371,23 @@ function BattleView() {
         newEnemyHp = Math.min(updatedEnemyMonster.stats.maxHp, newEnemyHp + enemyMushroomRegen);
         newLog.push(`🍄 Enemy regenerates ${actualRegen} HP!`);
       }
+      
+      // === TICK EFFECT TIMERS ===
+      const playerTickResult = tickEffects(updatedPlayerEffects);
+      updatedPlayerEffects = playerTickResult.effects;
+      if (playerTickResult.expiredMessages.length > 0) {
+        newLog.push(...playerTickResult.expiredMessages);
+      }
+      
+      const enemyTickResult = tickEffects(updatedEnemyEffects);
+      updatedEnemyEffects = enemyTickResult.effects;
+      if (enemyTickResult.expiredMessages.length > 0) {
+        newLog.push(...enemyTickResult.expiredMessages.map(m => `Enemy: ${m}`));
+      }
+      
+      // Update effect state
+      setPlayerEffects(updatedPlayerEffects);
+      setEnemyEffects(updatedEnemyEffects);
       
       // Decrement temporary resistances
       if (updatedPlayerMonster.temporaryResistances) {
@@ -1363,6 +1540,12 @@ function BattleView() {
                   }} />
                 </div>
                 <p className="text-sm mt-1 font-mono">{battle.enemyMonster.stats.currentHp} / {battle.enemyMonster.stats.maxHp} HP</p>
+                {/* Status Effects */}
+                {(enemyEffects.statusEffects.length > 0 || enemyEffects.statModifiers.length > 0) && (
+                  <div className="mt-1">
+                    <StatusIcons effects={enemyEffects} />
+                  </div>
+                )}
               </div>
             </div>
           </Card>
@@ -1393,6 +1576,12 @@ function BattleView() {
                   }} />
                 </div>
                 <p className="text-sm mt-1 font-mono">{currentStamina} / {maxStamina} Stamina</p>
+                {/* Status Effects */}
+                {(playerEffects.statusEffects.length > 0 || playerEffects.statModifiers.length > 0) && (
+                  <div className="mt-2">
+                    <StatusIcons effects={playerEffects} />
+                  </div>
+                )}
               </div>
             </div>
           </Card>

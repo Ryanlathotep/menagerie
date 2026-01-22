@@ -350,7 +350,7 @@ function DungeonView() {
         />
       )}
       
-      <div className="game-container pl-20">
+      <div className="game-container pb-20">
         <div className="flex flex-col items-center gap-4">
           {/* Scrollable dungeon viewport */}
           <div 

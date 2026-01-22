@@ -2,7 +2,7 @@ import { GameProvider, useGame } from '@/game/state';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SPECIES_DATA, getComboId, UnlockedMonster, InventoryItem } from '@/game/types';
+import { SPECIES_DATA, getComboId, UnlockedMonster, InventoryItem, MonsterStats } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
 import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, LOOT_TABLE } from '@/game/dungeon';
 import { useEffect, useCallback, useState, useRef } from 'react';
@@ -15,6 +15,8 @@ import { ShopView } from '@/game/ShopView';
 import { executeCombat, calculateXpReward, xpToNextLevel, checkLevelUp, getEffectiveness, hasPassive, checkSkeletonSurvival, applyMushroomRegen, checkImpSteal } from '@/game/combat';
 import { toast } from 'sonner';
 import { SettingsProvider, SettingsButton, useSettings } from '@/game/Settings';
+import { MonsterStatsPreview } from '@/game/MonsterStatsPreview';
+import { LevelUpScreen } from '@/game/LevelUpScreen';
 
 // Main Menu Component
 function MainMenu() {
@@ -118,73 +120,88 @@ function CharacterSelect() {
           </ScrollArea>
         </div>
         
-        {/* Preview */}
-        {selectedMonster && <Card className="p-4">
-            <div className="flex items-center gap-4">
-              <MonsterSprite species={selectedMonster.species} element={selectedMonster.element} classType={selectedMonster.classType} size={80} />
-              <div className="flex-1">
-                <h3 className="font-bold text-lg capitalize">
+        {/* Preview with Stats */}
+        {selectedMonster && (
+          <Card className="p-4">
+            <div className="flex gap-4">
+              {/* Left: Monster identity */}
+              <div className="flex flex-col items-center gap-2">
+                <MonsterSprite 
+                  species={selectedMonster.species} 
+                  element={selectedMonster.element} 
+                  classType={selectedMonster.classType} 
+                  size={100} 
+                />
+                <h3 className="font-bold text-lg capitalize text-center">
                   {selectedMonster.species}
                 </h3>
-                <p className="text-sm text-muted-foreground mb-2">
-                  {SPECIES_DATA[selectedMonster.species].passiveDescription}
-                </p>
-                <div className="flex gap-2 flex-wrap items-center">
+                <div className="flex gap-1 flex-wrap justify-center">
                   <span className={`element-badge element-${selectedMonster.element} text-xs`}>
                     {selectedMonster.element}
                   </span>
                   <span className="px-2 py-0.5 rounded-full bg-muted text-xs font-medium">
                     {selectedMonster.classType}
                   </span>
-                  <span className="text-xs text-muted-foreground">
-                    Level {selectedMonster.level}
-                  </span>
                 </div>
+                <span className="text-sm text-muted-foreground">
+                  Level {selectedMonster.level}
+                </span>
+              </div>
+              
+              {/* Right: Stats and moves */}
+              <div className="flex-1 min-w-0">
+                <MonsterStatsPreview
+                  species={selectedMonster.species}
+                  classType={selectedMonster.classType}
+                  element={selectedMonster.element}
+                  level={selectedMonster.level}
+                />
                 
-                {/* Class type info */}
-                <div className="mt-2 text-xs text-muted-foreground">
-                  <span className="font-medium">Class: </span>
-                  {selectedMonster.classType === 'normal' && 'No strengths or weaknesses'}
-                  {selectedMonster.classType === 'kinetic' && (
-                    <><span className="text-green-600">Strong vs Energy & Biological</span> · <span className="text-red-500">Weak vs Chemical & Political</span></>
-                  )}
-                  {selectedMonster.classType === 'energy' && (
-                    <><span className="text-green-600">Strong vs Biological & Chemical</span> · <span className="text-red-500">Weak vs Political & Kinetic</span></>
-                  )}
-                  {selectedMonster.classType === 'biological' && (
-                    <><span className="text-green-600">Strong vs Chemical & Political</span> · <span className="text-red-500">Weak vs Kinetic & Energy</span></>
-                  )}
-                  {selectedMonster.classType === 'chemical' && (
-                    <><span className="text-green-600">Strong vs Political & Kinetic</span> · <span className="text-red-500">Weak vs Energy & Biological</span></>
-                  )}
-                  {selectedMonster.classType === 'political' && (
-                    <><span className="text-green-600">Strong vs Kinetic & Energy</span> · <span className="text-red-500">Weak vs Biological & Chemical</span></>
-                  )}
-                </div>
-                
-                {/* Element info */}
-                <div className="mt-1 text-xs text-muted-foreground">
-                  <span className="font-medium">Element: </span>
-                  {selectedMonster.element === 'normal' && 'No strengths or weaknesses'}
-                  {selectedMonster.element === 'fire' && (
-                    <><span className="text-green-600">Strong vs Air & Earth</span> · <span className="text-red-500">Weak vs Water & Void</span></>
-                  )}
-                  {selectedMonster.element === 'water' && (
-                    <><span className="text-green-600">Strong vs Fire & Void</span> · <span className="text-red-500">Weak vs Earth & Air</span></>
-                  )}
-                  {selectedMonster.element === 'earth' && (
-                    <><span className="text-green-600">Strong vs Water & Air</span> · <span className="text-red-500">Weak vs Fire & Void</span></>
-                  )}
-                  {selectedMonster.element === 'air' && (
-                    <><span className="text-green-600">Strong vs Void & Water</span> · <span className="text-red-500">Weak vs Fire & Earth</span></>
-                  )}
-                  {selectedMonster.element === 'void' && (
-                    <><span className="text-green-600">Strong vs Fire & Earth</span> · <span className="text-red-500">Weak vs Water & Air</span></>
-                  )}
+                {/* Type matchups - compact */}
+                <div className="mt-3 p-2 bg-muted/50 rounded text-[10px] space-y-1">
+                  <div>
+                    <span className="font-medium">Class: </span>
+                    {selectedMonster.classType === 'normal' && 'No strengths or weaknesses'}
+                    {selectedMonster.classType === 'kinetic' && (
+                      <><span className="text-green-600">Strong vs Energy/Bio</span> · <span className="text-red-500">Weak vs Chem/Pol</span></>
+                    )}
+                    {selectedMonster.classType === 'energy' && (
+                      <><span className="text-green-600">Strong vs Bio/Chem</span> · <span className="text-red-500">Weak vs Pol/Kin</span></>
+                    )}
+                    {selectedMonster.classType === 'biological' && (
+                      <><span className="text-green-600">Strong vs Chem/Pol</span> · <span className="text-red-500">Weak vs Kin/Energy</span></>
+                    )}
+                    {selectedMonster.classType === 'chemical' && (
+                      <><span className="text-green-600">Strong vs Pol/Kin</span> · <span className="text-red-500">Weak vs Energy/Bio</span></>
+                    )}
+                    {selectedMonster.classType === 'political' && (
+                      <><span className="text-green-600">Strong vs Kin/Energy</span> · <span className="text-red-500">Weak vs Bio/Chem</span></>
+                    )}
+                  </div>
+                  <div>
+                    <span className="font-medium">Element: </span>
+                    {selectedMonster.element === 'normal' && 'No strengths or weaknesses'}
+                    {selectedMonster.element === 'fire' && (
+                      <><span className="text-green-600">Strong vs Air/Earth</span> · <span className="text-red-500">Weak vs Water/Void</span></>
+                    )}
+                    {selectedMonster.element === 'water' && (
+                      <><span className="text-green-600">Strong vs Fire/Void</span> · <span className="text-red-500">Weak vs Earth/Air</span></>
+                    )}
+                    {selectedMonster.element === 'earth' && (
+                      <><span className="text-green-600">Strong vs Water/Air</span> · <span className="text-red-500">Weak vs Fire/Void</span></>
+                    )}
+                    {selectedMonster.element === 'air' && (
+                      <><span className="text-green-600">Strong vs Void/Water</span> · <span className="text-red-500">Weak vs Fire/Earth</span></>
+                    )}
+                    {selectedMonster.element === 'void' && (
+                      <><span className="text-green-600">Strong vs Fire/Earth</span> · <span className="text-red-500">Weak vs Water/Air</span></>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </Card>}
+          </Card>
+        )}
 
         <div className="flex gap-3">
           <Button variant="outline" onClick={() => dispatch({
@@ -584,6 +601,15 @@ function BattleView() {
   const battle = state.run?.battle;
   const experience = state.run?.experience || 0;
   const [menuOpen, setMenuOpen] = useState(false);
+  
+  // Level up screen state
+  const [levelUpData, setLevelUpData] = useState<{
+    previousStats: MonsterStats;
+    previousLevel: number;
+    newMoves: Move[];
+    monster: typeof battle.playerMonster;
+  } | null>(null);
+  
   if (!battle || !state.run) return null;
   const playerMoves = getMonsterMoves(battle.playerMonster.species, battle.playerMonster.element, battle.playerMonster.class);
   const experienceToNext = xpToNextLevel(battle.playerMonster.level);
@@ -903,24 +929,38 @@ function BattleView() {
       // Check for level up
       const levelUpResult = checkLevelUp(battle.playerMonster, newXp);
       if (levelUpResult.leveled) {
-        // Level up!
+        // Level up! Store previous stats for comparison
+        const previousStats = { ...battle.playerMonster.stats };
+        const previousLevel = battle.playerMonster.level;
+        
         const newStats = calculateStats(battle.playerMonster.species, battle.playerMonster.class, levelUpResult.newLevel);
         const leveledMonster = {
           ...battle.playerMonster,
           level: levelUpResult.newLevel,
           stats: {
             ...newStats,
-            currentHp: newPlayerHp,
-            currentStamina: newPlayerStamina
+            currentHp: Math.min(newPlayerHp + 10, newStats.maxHp), // Small HP boost on level up
+            currentStamina: newStats.stamina // Full stamina restore on level up
           }
         };
+        
+        // Check for new moves (moves that require higher level - for now, all moves are available)
+        const newMoves: Move[] = []; // Could implement level-gated moves in the future
+        
+        // Show level up screen
+        setLevelUpData({
+          previousStats,
+          previousLevel,
+          newMoves,
+          monster: leveledMonster
+        });
+        
         dispatch({
           type: 'UPDATE_PLAYER_MONSTER',
           monster: leveledMonster
         });
         // Set XP to remainder after level up
         dispatch({ type: 'ADD_XP', amount: levelUpResult.xpRemaining - experience });
-        toast.success(`🎉 Level Up! Now level ${levelUpResult.newLevel}!`);
       } else {
         // Add XP to global state
         dispatch({ type: 'ADD_XP', amount: xpGained });
@@ -1143,14 +1183,31 @@ function BattleView() {
   // Bottom offset based on menu state
   const bottomOffset = menuOpen ? 'pb-[280px]' : 'pb-[180px]';
 
+  // Handle level up screen dismissal
+  const handleLevelUpContinue = () => {
+    setLevelUpData(null);
+  };
+
   return (
-    <div className={`fixed inset-0 flex flex-col overflow-auto ${bottomOffset}`}>
-      {/* Main battle area */}
-      <div className="flex-1 flex flex-col p-4">
-        {/* Header */}
-        <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-primary to-destructive bg-clip-text text-transparent mb-4">
-          ⚔️ Battle!
-        </h2>
+    <>
+      {/* Level up celebration screen */}
+      {levelUpData && (
+        <LevelUpScreen
+          monster={levelUpData.monster}
+          previousStats={levelUpData.previousStats}
+          previousLevel={levelUpData.previousLevel}
+          newMoves={levelUpData.newMoves}
+          onContinue={handleLevelUpContinue}
+        />
+      )}
+      
+      <div className={`fixed inset-0 flex flex-col overflow-auto ${bottomOffset}`}>
+        {/* Main battle area */}
+        <div className="flex-1 flex flex-col p-4">
+          {/* Header */}
+          <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-primary to-destructive bg-clip-text text-transparent mb-4">
+            ⚔️ Battle!
+          </h2>
         
         {/* Battle grid - enemy on left/top, player on right/bottom */}
         <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1288,6 +1345,7 @@ function BattleView() {
         }}
       />
     </div>
+    </>
   );
 }
 

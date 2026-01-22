@@ -249,7 +249,7 @@ export interface Move {
 }
 
 // ============= DUNGEON =============
-export type TileType = 'floor' | 'wall' | 'door' | 'stairs' | 'trap' | 'treasure' | 'enemy' | 'player' | 'shop';
+export type TileType = 'floor' | 'wall' | 'door' | 'stairs' | 'trap' | 'treasure' | 'enemy' | 'player' | 'shop' | 'water';
 export type TrapType = 'spike' | 'poison' | 'alarm';
 
 export interface DungeonTile {
@@ -260,6 +260,7 @@ export interface DungeonTile {
   lootId?: string;
   trapType?: TrapType;
   triggered?: boolean; // For traps that have been triggered
+  isShallowWater?: boolean; // For water tiles - shallow can be walked through with damage
 }
 
 export interface Position {

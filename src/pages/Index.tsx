@@ -2,9 +2,9 @@ import { GameProvider, useGame } from '@/game/state';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SPECIES_DATA, getComboId, UnlockedMonster, InventoryItem, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED } from '@/game/types';
+import { SPECIES_DATA, getComboId, UnlockedMonster, InventoryItem } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
-import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun } from '@/game/dungeon';
+import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, LOOT_TABLE } from '@/game/dungeon';
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { MonsterSprite } from '@/game/sprites';
 import { DungeonRenderer } from '@/game/DungeonRenderer';
@@ -296,6 +296,37 @@ function DungeonView() {
       } else if (result.trap.type === 'alarm') {
         toast.error('Alarm trap! Enemies alerted!');
         // Could spawn additional enemies
+      }
+    } else if (result.water) {
+      // Water hazard - Frogs are immune (Amphibious passive)
+      const isFrog = state.run.currentMonster.species === 'frog';
+      if (isFrog) {
+        toast.success('Your Amphibious nature lets you swim through unharmed! 🐸');
+      } else {
+        const damage = result.water.damage;
+        const newHp = Math.max(0, state.run.currentMonster.stats.currentHp - damage);
+        const updatedMonster = {
+          ...state.run.currentMonster,
+          stats: {
+            ...state.run.currentMonster.stats,
+            currentHp: newHp
+          }
+        };
+        dispatch({
+          type: 'UPDATE_PLAYER_MONSTER',
+          monster: updatedMonster
+        });
+        toast.error(`Waded through water! Took ${damage} damage! 🌊`);
+        if (newHp <= 0) {
+          dispatch({
+            type: 'END_RUN',
+            victory: false
+          });
+          dispatch({
+            type: 'SET_PHASE',
+            phase: 'run_summary'
+          });
+        }
       }
     } else if (result.shop) {
       setShowShop(true);
@@ -828,10 +859,40 @@ function BattleView() {
         type: 'END_BATTLE',
         victory: true
       });
+      
+      // Base gold reward
+      const baseGold = 5 + battle.enemyMonster.level * 3;
       dispatch({
         type: 'ADD_GOLD',
-        amount: 5 + battle.enemyMonster.level * 3
+        amount: baseGold
       });
+      
+      // Rat's Scavenger passive: Find extra items after battle
+      const isRat = battle.playerMonster.species === 'rat';
+      if (isRat && Math.random() < 0.5) { // 50% chance
+        const extraLoot = LOOT_TABLE[Math.floor(Math.random() * LOOT_TABLE.length)];
+        if (extraLoot.type === 'gold') {
+          dispatch({
+            type: 'ADD_GOLD',
+            amount: extraLoot.value
+          });
+          toast.success(`🐀 Scavenger: Found ${extraLoot.value} extra gold!`);
+        } else {
+          const lootItem: InventoryItem = {
+            id: extraLoot.id,
+            name: extraLoot.name,
+            type: extraLoot.type,
+            value: extraLoot.value,
+            effect: extraLoot.effect,
+            quantity: 1
+          };
+          dispatch({
+            type: 'ADD_ITEM',
+            item: lootItem
+          });
+          toast.success(`🐀 Scavenger: Found a ${extraLoot.name}!`);
+        }
+      }
     } else {
       // Enemy turn - use random enemy move
       const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class);

@@ -1,8 +1,10 @@
 // Layered Monster Sprite System
 // Species = base shape/outline, Element = color palette, Class = equipment overlay
+// Equipment = visual overlays for equipped items
 
 import React, { forwardRef } from 'react';
 import { SpeciesType, ElementType, ClassType, ELEMENT_COLORS } from './types';
+import { MonsterEquipment, EquipmentSlot, Rarity, RARITY_COLORS } from './equipment';
 
 // SVG path data for each species - centered bodies with standardized positions
 // All bodies centered at x=50, legs at y=75-90, arms at x=25-35 and x=65-75
@@ -118,6 +120,51 @@ const SPECIES_PATHS: Record<SpeciesType, { body: string; detail: string; face: s
   },
 };
 
+// Equipment visual overlays - SVG paths for equipped items
+// Each slot has a visual representation that renders on top of the monster
+const EQUIPMENT_VISUALS: Record<EquipmentSlot, { path: string; position: 'top' | 'body' | 'hands' | 'feet' }> = {
+  helmet: {
+    path: 'M30,6 L35,2 L50,0 L65,2 L70,6 L68,14 L32,14 Z',
+    position: 'top',
+  },
+  armor: {
+    path: 'M35,35 L38,30 L62,30 L65,35 L68,50 L65,58 L35,58 L32,50 Z',
+    position: 'body',
+  },
+  gloves: {
+    path: 'M20,52 L28,48 L32,54 L26,60 Z M80,52 L72,48 L68,54 L74,60 Z',
+    position: 'hands',
+  },
+  boots: {
+    path: 'M36,82 L44,80 L46,90 L34,92 Z M64,82 L56,80 L54,90 L66,92 Z',
+    position: 'feet',
+  },
+  mainHand: {
+    path: 'M18,35 L12,25 L8,40 L14,50 L22,45 Z',
+    position: 'hands',
+  },
+  offHand: {
+    path: 'M82,35 L88,25 L92,40 L86,50 L78,45 Z',
+    position: 'hands',
+  },
+  accessory: {
+    path: 'M45,60 A6,6 0 1,1 55,60 A6,6 0 1,1 45,60',
+    position: 'body',
+  },
+};
+
+// Get color for equipment based on rarity
+function getEquipmentColor(rarity: Rarity): string {
+  const colorMap: Record<Rarity, string> = {
+    common: '0 0% 60%',
+    uncommon: '120 50% 45%',
+    rare: '210 70% 50%',
+    epic: '280 60% 55%',
+    legendary: '40 90% 55%',
+  };
+  return colorMap[rarity];
+}
+
 // Class equipment overlays - improved with requested designs
 // Kinetic: Boxing gloves, Biological: Camo pattern (clipped), Energy: Eye lasers, Chemical: Bubbles, Political: Crown
 const CLASS_OVERLAYS: Record<ClassType, { weapon?: string; armor?: string; accessory?: string; camoPattern?: boolean; color: string; secondaryColor?: string }> = {
@@ -175,6 +222,7 @@ interface MonsterSpriteProps {
   size?: number;
   className?: string;
   animated?: boolean;
+  equipment?: MonsterEquipment | null; // Optional equipment to display
 }
 
 export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({ 
@@ -184,6 +232,7 @@ export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({
   size = 64,
   className = '',
   animated = true,
+  equipment = null,
 }, ref) => {
   const colors = ELEMENT_COLORS[element];
   const paths = SPECIES_PATHS[species];
@@ -309,6 +358,88 @@ export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({
           strokeLinecap="round"
           strokeLinejoin="round"
         />
+      )}
+      
+      {/* Equipped items - render on top of everything */}
+      {equipment && (
+        <>
+          {/* Helmet */}
+          {equipment.helmet && (
+            <path
+              d={EQUIPMENT_VISUALS.helmet.path}
+              fill={`hsl(${getEquipmentColor(equipment.helmet.rarity)} / 0.85)`}
+              stroke={`hsl(${getEquipmentColor(equipment.helmet.rarity)})`}
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          )}
+          
+          {/* Armor - chest piece */}
+          {equipment.armor && (
+            <path
+              d={EQUIPMENT_VISUALS.armor.path}
+              fill={`hsl(${getEquipmentColor(equipment.armor.rarity)} / 0.75)`}
+              stroke={`hsl(${getEquipmentColor(equipment.armor.rarity)})`}
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          )}
+          
+          {/* Main hand weapon */}
+          {equipment.mainHand && (
+            <path
+              d={EQUIPMENT_VISUALS.mainHand.path}
+              fill={`hsl(${getEquipmentColor(equipment.mainHand.rarity)} / 0.9)`}
+              stroke={`hsl(${getEquipmentColor(equipment.mainHand.rarity)})`}
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+          )}
+          
+          {/* Off hand */}
+          {equipment.offHand && (
+            <path
+              d={EQUIPMENT_VISUALS.offHand.path}
+              fill={`hsl(${getEquipmentColor(equipment.offHand.rarity)} / 0.9)`}
+              stroke={`hsl(${getEquipmentColor(equipment.offHand.rarity)})`}
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+          )}
+          
+          {/* Gloves */}
+          {equipment.gloves && (
+            <path
+              d={EQUIPMENT_VISUALS.gloves.path}
+              fill={`hsl(${getEquipmentColor(equipment.gloves.rarity)} / 0.85)`}
+              stroke={`hsl(${getEquipmentColor(equipment.gloves.rarity)})`}
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          )}
+          
+          {/* Boots */}
+          {equipment.boots && (
+            <path
+              d={EQUIPMENT_VISUALS.boots.path}
+              fill={`hsl(${getEquipmentColor(equipment.boots.rarity)} / 0.85)`}
+              stroke={`hsl(${getEquipmentColor(equipment.boots.rarity)})`}
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          )}
+          
+          {/* Accessory - glowing ring/amulet */}
+          {equipment.accessory && (
+            <path
+              d={EQUIPMENT_VISUALS.accessory.path}
+              fill={`hsl(${getEquipmentColor(equipment.accessory.rarity)} / 0.8)`}
+              stroke={`hsl(${getEquipmentColor(equipment.accessory.rarity)})`}
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          )}
+        </>
       )}
     </svg>
   );

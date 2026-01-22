@@ -18,7 +18,8 @@ import { toast } from 'sonner';
 import { SettingsProvider, SettingsButton, useSettings } from '@/game/Settings';
 import { MonsterStatsPreview } from '@/game/MonsterStatsPreview';
 import { LevelUpScreen } from '@/game/LevelUpScreen';
-import { EquipmentItem } from '@/game/equipment';
+import { EquipmentItem, EquipmentSlot } from '@/game/equipment';
+import { EquipmentView } from '@/game/EquipmentView';
 import { 
   CombatEffects, 
   EMPTY_COMBAT_EFFECTS, 
@@ -327,6 +328,7 @@ function DungeonView() {
   const { settings } = useSettings();
   const dungeon = state.run?.dungeon;
   const [showShop, setShowShop] = useState(false);
+  const [showEquipment, setShowEquipment] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAutoRunning, setIsAutoRunning] = useState(false);
   const autoRunDirection = useRef<'up' | 'down' | 'left' | 'right' | null>(null);
@@ -677,6 +679,8 @@ function DungeonView() {
         gold={state.run?.gold || 0} 
         floor={dungeon.floor} 
         inventory={state.run?.inventory || []} 
+        equipmentInventory={state.run?.equipmentInventory || []}
+        equipment={state.run?.equipment}
         moveOrder={state.run?.moveOrder || []} 
         hiddenMoves={state.run?.hiddenMoves || []} 
         experience={state.run?.experience || 0} 
@@ -685,7 +689,8 @@ function DungeonView() {
         onDropItem={handleDropItem} 
         onUseItem={handleUseItemOutOfCombat} 
         onReorderMoves={order => dispatch({ type: 'SET_MOVE_ORDER', order })} 
-        onToggleHideMove={moveId => dispatch({ type: 'TOGGLE_HIDE_MOVE', moveId })} 
+        onToggleHideMove={moveId => dispatch({ type: 'TOGGLE_HIDE_MOVE', moveId })}
+        onOpenEquipment={() => setShowEquipment(true)}
         onPanelChange={setMenuOpen}
         expandedStats={state.run?.currentMonster ? {
           currentHp: state.run.currentMonster.stats.currentHp,
@@ -707,6 +712,18 @@ function DungeonView() {
         onBuyEquipment={handleBuyEquipment}
         onClose={() => setShowShop(false)} 
       />}
+      
+      {showEquipment && state.run && (
+        <EquipmentView
+          monster={state.run.currentMonster}
+          equipment={state.run.equipment}
+          inventory={state.run.equipmentInventory}
+          onEquip={(item) => dispatch({ type: 'EQUIP_ITEM', item })}
+          onUnequip={(slot) => dispatch({ type: 'UNEQUIP_ITEM', slot })}
+          onDrop={(itemId) => dispatch({ type: 'DROP_EQUIPMENT', itemId })}
+          onClose={() => setShowEquipment(false)}
+        />
+      )}
       
       <div className={`fixed inset-0 ${bottomOffset} overflow-hidden transition-all duration-300`}>
         <div className="h-full flex flex-col">
@@ -1724,6 +1741,8 @@ function BattleView() {
         gold={state.run.gold}
         floor={state.run.dungeon?.floor || 1}
         inventory={inventory}
+        equipmentInventory={state.run.equipmentInventory}
+        equipment={state.run.equipment}
         moveOrder={state.run.moveOrder}
         hiddenMoves={state.run.hiddenMoves}
         onFlee={handleFlee}

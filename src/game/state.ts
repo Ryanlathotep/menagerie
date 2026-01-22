@@ -59,6 +59,8 @@ type GameAction =
   | { type: 'ADD_ITEM'; item: InventoryItem }
   | { type: 'USE_ITEM'; itemId: string }
   | { type: 'DROP_ITEM'; itemId: string; quantity?: number }
+  | { type: 'SET_MOVE_ORDER'; order: string[] }
+  | { type: 'TOGGLE_HIDE_MOVE'; moveId: string }
   | { type: 'LOAD_SAVE'; saveData: SaveData }
   | { type: 'RESET_SAVE' };
 
@@ -83,6 +85,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             { id: 'stamina_tonic', name: 'Stamina Tonic', type: 'potion', value: 20, effect: 'heal_stamina', quantity: 1 },
           ],
           enemiesDefeated: 0,
+          moveOrder: [],
+          hiddenMoves: [],
         },
         saveData: {
           ...state.saveData,
@@ -293,7 +297,26 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         run: { ...state.run, inventory: droppedInventory },
       };
-      
+    
+    case 'SET_MOVE_ORDER':
+      if (!state.run) return state;
+      return {
+        ...state,
+        run: { ...state.run, moveOrder: action.order },
+      };
+    
+    case 'TOGGLE_HIDE_MOVE':
+      if (!state.run) return state;
+      const isHidden = state.run.hiddenMoves.includes(action.moveId);
+      return {
+        ...state,
+        run: {
+          ...state.run,
+          hiddenMoves: isHidden
+            ? state.run.hiddenMoves.filter(id => id !== action.moveId)
+            : [...state.run.hiddenMoves, action.moveId],
+        },
+      };
       
     case 'LOAD_SAVE':
       return {

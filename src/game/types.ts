@@ -304,6 +304,8 @@ export interface RunState {
   itemsCollected: string[];
   inventory: InventoryItem[];
   enemiesDefeated: number;
+  moveOrder: string[];      // Order of move IDs
+  hiddenMoves: string[];    // IDs of hidden moves
 }
 
 // Monster combo identifier (for unlock tracking)

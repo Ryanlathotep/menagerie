@@ -12,6 +12,7 @@ import { MonsterSprite } from './sprites';
 import { getMonsterMoves, Move } from './moves';
 import { ExpandedStats } from './CharacterSheet';
 import { ITEMS } from './Inventory';
+import { MovePanel } from './MovePanel';
 
 // Helper functions to get item info when not in ITEMS database
 function getItemDescription(item: InventoryItem): string {
@@ -30,13 +31,18 @@ function getItemIcon(item: InventoryItem): string {
   if (item.type === 'gold') return '💰';
   return '📦';
 }
+
 interface GameSidebarProps {
   monster: Monster | null;
   gold: number;
   floor: number;
   inventory?: InventoryItem[];
+  moveOrder?: string[];
+  hiddenMoves?: string[];
   onFlee?: () => void;
   onDropItem?: (itemId: string) => void;
+  onReorderMoves?: (newOrder: string[]) => void;
+  onToggleHideMove?: (moveId: string) => void;
   inBattle?: boolean;
   experience?: number;
   experienceToNext?: number;
@@ -48,8 +54,12 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   gold,
   floor,
   inventory = [],
+  moveOrder = [],
+  hiddenMoves = [],
   onFlee,
   onDropItem,
+  onReorderMoves,
+  onToggleHideMove,
   inBattle = false,
   experience = 0,
   experienceToNext = 100,
@@ -202,10 +212,18 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 </div>
               </div>}
             
-            {/* Moves Panel - Compact Grid */}
-            {activePanel === 'moves' && <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                {moves.map(move => <CompactMoveCard key={move.id} move={move} monster={monster} expandedStats={expandedStats} />)}
-              </div>}
+            {/* Moves Panel with drag-and-drop */}
+            {activePanel === 'moves' && (
+              <MovePanel
+                moves={moves}
+                monster={monster}
+                expandedStats={expandedStats}
+                moveOrder={moveOrder}
+                hiddenMoves={hiddenMoves}
+                onReorder={onReorderMoves || (() => {})}
+                onToggleHide={onToggleHideMove || (() => {})}
+              />
+            )}
             
             {/* Inventory Panel */}
             {activePanel === 'inventory' && (
@@ -273,47 +291,3 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
     </>;
 });
 GameSidebar.displayName = 'GameSidebar';
-
-interface CompactMoveCardProps {
-  move: Move;
-  monster: Monster;
-  expandedStats?: ExpandedStats;
-}
-
-function CompactMoveCard({ move, monster, expandedStats }: CompactMoveCardProps) {
-  const typeColors: Record<Move['type'], string> = {
-    melee: 'bg-orange-500/20 text-orange-600',
-    ranged: 'bg-blue-500/20 text-blue-600',
-    status: 'bg-purple-500/20 text-purple-600',
-    heal: 'bg-green-500/20 text-green-600'
-  };
-  
-  const attackStat = move.type === 'melee' 
-    ? (expandedStats?.melee ?? monster.stats.attack) 
-    : move.type === 'ranged' 
-      ? (expandedStats?.ranged ?? monster.stats.special) 
-      : 0;
-
-  return (
-    <Card className="p-2">
-      <div className="flex items-center justify-between mb-1">
-        <h4 className="font-semibold text-[11px] truncate">{move.name}</h4>
-        <span className={`text-[8px] px-1.5 py-0.5 rounded-full ${typeColors[move.type]}`}>
-          {move.type}
-        </span>
-      </div>
-      
-      <p className="text-[9px] text-muted-foreground line-clamp-1 mb-1">{move.description}</p>
-      
-      <div className="flex flex-wrap gap-1.5 text-[9px]">
-        {move.power > 0 && <span>⚔️{move.power}{attackStat > 0 && <span className="text-muted-foreground">+{Math.floor(attackStat / 2)}</span>}</span>}
-        <span>🎯{move.accuracy}%</span>
-        <span>⚡{move.staminaCost}</span>
-      </div>
-      
-      {move.effect && <div className="mt-0.5 text-[8px] text-accent truncate">
-        ✨ {move.effect.replace(/_/g, ' ')}
-      </div>}
-    </Card>
-  );
-}

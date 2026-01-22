@@ -339,8 +339,12 @@ function DungeonView() {
         gold={state.run?.gold || 0} 
         floor={dungeon.floor}
         inventory={state.run?.inventory || []}
+        moveOrder={state.run?.moveOrder || []}
+        hiddenMoves={state.run?.hiddenMoves || []}
         onFlee={handleFlee}
         onDropItem={handleDropItem}
+        onReorderMoves={(order) => dispatch({ type: 'SET_MOVE_ORDER', order })}
+        onToggleHideMove={(moveId) => dispatch({ type: 'TOGGLE_HIDE_MOVE', moveId })}
         onPanelChange={setMenuOpen}
       />
       

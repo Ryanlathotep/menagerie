@@ -1,4 +1,4 @@
-// Game Sidebar - Always visible menu with panels
+// Game Sidebar - Always visible menu with panels (works in both dungeon and battle)
 
 import { useState, forwardRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -6,13 +6,14 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-import { User, Backpack, Map, DoorOpen, Swords, Shield, Wind, Target, Footprints, Trash2 } from 'lucide-react';
+import { User, Backpack, Map, DoorOpen, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, ScrollText } from 'lucide-react';
 import { Monster, InventoryItem } from './types';
 import { MonsterSprite } from './sprites';
 import { getMonsterMoves, Move } from './moves';
 import { ExpandedStats } from './CharacterSheet';
 import { ITEMS } from './Inventory';
 import { MovePanel } from './MovePanel';
+import { SettingsPanel } from './Settings';
 
 // Helper functions to get item info when not in ITEMS database
 function getItemDescription(item: InventoryItem): string {
@@ -48,6 +49,9 @@ interface GameSidebarProps {
   experienceToNext?: number;
   expandedStats?: ExpandedStats;
   onPanelChange?: (isOpen: boolean) => void;
+  // Battle-specific props
+  battleLog?: string[];
+  onUseItem?: (item: InventoryItem) => void;
 }
 export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   monster,
@@ -64,9 +68,12 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   experience = 0,
   experienceToNext = 100,
   expandedStats,
-  onPanelChange
+  onPanelChange,
+  battleLog = [],
+  onUseItem
 }, ref) => {
-  const [activePanel, setActivePanel] = useState<'character' | 'inventory' | 'moves' | null>(null);
+  const [activePanel, setActivePanel] = useState<'character' | 'inventory' | 'moves' | 'log' | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
   
   const handlePanelChange = (panel: typeof activePanel) => {
     const newPanel = activePanel === panel ? null : panel;
@@ -112,17 +119,29 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
         </div>
         
         {/* Menu buttons */}
-        <div className="flex gap-2">
-          <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="w-10 h-10" onClick={() => handlePanelChange('character')} title="Character Sheet">
-            <User className="w-5 h-5" />
+        <div className="flex gap-1">
+          <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="w-9 h-9" onClick={() => handlePanelChange('character')} title="Character Sheet">
+            <User className="w-4 h-4" />
           </Button>
           
-          <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-10 h-10" onClick={() => handlePanelChange('moves')} title="Moves">
-            <Swords className="w-5 h-5" />
+          <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-9 h-9" onClick={() => handlePanelChange('moves')} title="Moves">
+            <Swords className="w-4 h-4" />
           </Button>
           
-          <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className="w-10 h-10" onClick={() => handlePanelChange('inventory')} title="Inventory">
-            <Backpack className="w-5 h-5" />
+          <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className="w-9 h-9" onClick={() => handlePanelChange('inventory')} title="Inventory">
+            <Backpack className="w-4 h-4" />
+          </Button>
+          
+          {/* Battle log button - only in battle */}
+          {inBattle && (
+            <Button variant={activePanel === 'log' ? 'default' : 'ghost'} size="icon" className="w-9 h-9" onClick={() => handlePanelChange('log')} title="Battle Log">
+              <ScrollText className="w-4 h-4" />
+            </Button>
+          )}
+          
+          {/* Settings button */}
+          <Button variant="ghost" size="icon" className="w-9 h-9" onClick={() => setShowSettings(true)} title="Settings">
+            <Settings className="w-4 h-4" />
           </Button>
         </div>
         
@@ -136,9 +155,11 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
         </div>
         
         {/* Flee button */}
-        {onFlee && !inBattle && <Button variant="destructive" size="icon" className="w-10 h-10" onClick={onFlee} title="Flee from dungeon">
-            <DoorOpen className="w-5 h-5" />
-          </Button>}
+        {onFlee && (
+          <Button variant="destructive" size="icon" className="w-9 h-9" onClick={onFlee} title={inBattle ? "Flee from battle" : "Flee from dungeon"}>
+            <DoorOpen className="w-4 h-4" />
+          </Button>
+        )}
       </div>
       
       {/* Compact slide-up panels */}
@@ -150,6 +171,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 {activePanel === 'character' && '📋 Character'}
                 {activePanel === 'moves' && '⚔️ Moves'}
                 {activePanel === 'inventory' && '🎒 Inventory'}
+                {activePanel === 'log' && '📜 Battle Log'}
               </h2>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handlePanelChange(null)}>✕</Button>
             </div>
@@ -242,7 +264,10 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                     return (
                       <Tooltip key={item.id}>
                         <TooltipTrigger asChild>
-                          <Card className="p-2 cursor-default hover:bg-muted/50 transition-all">
+                          <Card 
+                            className={`p-2 transition-all ${onUseItem ? 'cursor-pointer hover:bg-primary/10 hover:border-primary' : 'cursor-default hover:bg-muted/50'}`}
+                            onClick={() => onUseItem?.(item)}
+                          >
                             <div className="flex items-center gap-2">
                               <span className="text-lg">{icon}</span>
                               <div className="flex-1 min-w-0">
@@ -252,8 +277,9 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                                     <span className="text-[10px] text-muted-foreground">x{item.quantity}</span>
                                   )}
                                 </div>
+                                {onUseItem && <p className="text-[9px] text-primary">Click to use</p>}
                               </div>
-                              {onDropItem && (
+                              {onDropItem && !inBattle && (
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -286,8 +312,24 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 </div>
               )
             )}
+            
+            {/* Battle Log Panel */}
+            {activePanel === 'log' && (
+              <div className="max-h-40 overflow-y-auto space-y-1">
+                {battleLog.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">No battle events yet</p>
+                ) : (
+                  battleLog.slice().reverse().map((msg, i) => (
+                    <p key={i} className="text-xs py-1 border-b border-muted/30 last:border-0">{msg}</p>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </div>}
+      
+      {/* Settings Panel */}
+      <SettingsPanel isOpen={showSettings} onClose={() => setShowSettings(false)} />
     </>;
 });
 GameSidebar.displayName = 'GameSidebar';

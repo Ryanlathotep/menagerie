@@ -14,7 +14,6 @@ import { MoveTooltip } from '@/game/BattleTooltip';
 import { ShopView } from '@/game/ShopView';
 import { executeCombat, calculateXpReward, xpToNextLevel, checkLevelUp, getEffectiveness } from '@/game/combat';
 import { toast } from 'sonner';
-import { Backpack, DoorOpen } from 'lucide-react';
 import { SettingsProvider, SettingsButton, useSettings } from '@/game/Settings';
 
 // Main Menu Component
@@ -441,7 +440,7 @@ function BattleView() {
   } = useGame();
   const battle = state.run?.battle;
   const experience = state.run?.experience || 0;
-  const [showInventory, setShowInventory] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   if (!battle || !state.run) return null;
   const playerMoves = getMonsterMoves(battle.playerMonster.species, battle.playerMonster.element, battle.playerMonster.class);
   const experienceToNext = xpToNextLevel(battle.playerMonster.level);
@@ -536,7 +535,7 @@ function BattleView() {
       }
     });
     toast.success(message);
-    setShowInventory(false);
+    // Inventory panel will close automatically via GameSidebar
 
     // Enemy gets a turn after using item
     const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class);
@@ -817,11 +816,14 @@ function BattleView() {
   // Moves to show - include struggle if out of stamina for visible moves
   const availableMoves = canAffordAnyMove ? orderedMoves : [...orderedMoves, STRUGGLE_MOVE];
   const inventory = state.run.inventory || [];
-  return <div className="fixed inset-0 flex flex-col" style={{
-    height: 'calc(100vh - 180px)'
-  }}>
-      {/* Main battle area - fills available space */}
-      <div className="flex-1 flex flex-col p-4 overflow-auto">
+  
+  // Bottom offset based on menu state
+  const bottomOffset = menuOpen ? 'pb-[280px]' : 'pb-[180px]';
+
+  return (
+    <div className={`fixed inset-0 flex flex-col overflow-auto ${bottomOffset}`}>
+      {/* Main battle area */}
+      <div className="flex-1 flex flex-col p-4">
         {/* Header */}
         <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-primary to-destructive bg-clip-text text-transparent mb-4">
           ⚔️ Battle!
@@ -848,8 +850,8 @@ function BattleView() {
                 <p className="text-xs text-muted-foreground mb-2">Enemy • Lv.{battle.enemyMonster.level}</p>
                 <div className="health-bar h-3">
                   <div className="health-bar-fill" style={{
-                  width: `${battle.enemyMonster.stats.currentHp / battle.enemyMonster.stats.maxHp * 100}%`
-                }} />
+                    width: `${battle.enemyMonster.stats.currentHp / battle.enemyMonster.stats.maxHp * 100}%`
+                  }} />
                 </div>
                 <p className="text-sm mt-1 font-mono">{battle.enemyMonster.stats.currentHp} / {battle.enemyMonster.stats.maxHp} HP</p>
               </div>
@@ -871,90 +873,76 @@ function BattleView() {
                 {/* HP Bar */}
                 <div className="health-bar h-3">
                   <div className="health-bar-fill" style={{
-                  width: `${battle.playerMonster.stats.currentHp / battle.playerMonster.stats.maxHp * 100}%`
-                }} />
+                    width: `${battle.playerMonster.stats.currentHp / battle.playerMonster.stats.maxHp * 100}%`
+                  }} />
                 </div>
                 <p className="text-sm mt-1 font-mono">{battle.playerMonster.stats.currentHp} / {battle.playerMonster.stats.maxHp} HP</p>
                 {/* Stamina Bar */}
                 <div className="h-3 bg-muted rounded-full overflow-hidden mt-2">
                   <div className="h-full bg-stat-special transition-all" style={{
-                  width: `${currentStamina / maxStamina * 100}%`
-                }} />
+                    width: `${currentStamina / maxStamina * 100}%`
+                  }} />
                 </div>
                 <p className="text-sm mt-1 font-mono">{currentStamina} / {maxStamina} Stamina</p>
               </div>
             </div>
           </Card>
         </div>
-      </div>
-
-      {/* Bottom action bar - fixed at bottom, full width like GameSidebar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-card border-t-2 border-primary/20 shadow-lg z-50">
-        {/* Battle log - above menu items */}
-        <div className="bg-muted/50 border-b border-primary/10 p-3 text-sm max-h-32 overflow-y-auto my-0">
-          <p className="text-xs text-muted-foreground mb-2 font-semibold">Battle Log</p>
-          {battle.log.slice(-5).map((msg, i) => <p key={i} className="py-1 text-sm">{msg}</p>)}
-        </div>
         
-        {/* Expandable panel for inventory */}
-        {showInventory && <div className="border-b border-primary/10 p-3">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-semibold text-sm">Items</h3>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowInventory(false)}>✕</Button>
-            </div>
-            {inventory.length === 0 ? <p className="text-xs text-muted-foreground">No items in inventory</p> : <div className="flex gap-2 flex-wrap">
-                {inventory.map((item, i) => <Button key={i} variant="outline" size="sm" className="text-xs" onClick={() => handleUseItem(item)}>
-                    {item.name} x{item.quantity}
-                  </Button>)}
-              </div>}
-          </div>}
-        
-        {/* Main bottom bar content */}
-        <div className="p-4">
-          {/* Moves header */}
-          <h3 className="font-semibold text-base mb-3">Move Set</h3>
-          {/* Moves grid + action buttons in one row */}
-          <div className="grid grid-cols-[1fr_auto] gap-3 items-start">
-            {/* Move selection - horizontal scroll */}
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {availableMoves.map(move => {
+        {/* Move selection area - above the sidebar */}
+        <div className="mt-4 p-3 bg-card rounded-lg border-2 border-primary/20">
+          <h3 className="font-semibold text-sm mb-2">Choose Your Move</h3>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {availableMoves.map(move => {
               const canAfford = (move.staminaCost || 0) <= currentStamina;
               const effectiveness = getMoveEffectiveness(move);
-              return <MoveTooltip key={move.id} move={move} attacker={battle.playerMonster} defender={battle.enemyMonster}>
-                    <Button variant={canAfford ? "outline" : "ghost"} className={`h-auto py-2 px-3 text-left flex-shrink-0 transition-all ${!canAfford && move.id !== 'struggle' ? 'opacity-50' : ''} ${move.id === 'struggle' ? 'border-destructive text-destructive' : ''} ${canAfford ? effectiveness.auraClass : ''}`} onClick={() => executeMove(move)} disabled={!canAfford && move.id !== 'struggle'}>
-                      <div>
-                        <p className="font-semibold text-xs">
-                          {effectiveness.indicator && <span className="mr-1">{effectiveness.indicator}</span>}
-                          {move.name}
-                        </p>
-                        <p className="text-[9px] opacity-70">
-                          {move.power > 0 ? `⚔️${move.power} ` : ''} 
-                          🎯{move.accuracy}% 
-                          ⚡{move.staminaCost}
-                          {move.type === 'heal' ? ' 💚' : ''}
-                          {move.effect?.includes('stamina') ? ' ⚡+' : ''}
-                        </p>
-                      </div>
-                    </Button>
-                  </MoveTooltip>;
+              return (
+                <MoveTooltip key={move.id} move={move} attacker={battle.playerMonster} defender={battle.enemyMonster}>
+                  <Button 
+                    variant={canAfford ? "outline" : "ghost"} 
+                    className={`h-auto py-2 px-3 text-left flex-shrink-0 transition-all ${!canAfford && move.id !== 'struggle' ? 'opacity-50' : ''} ${move.id === 'struggle' ? 'border-destructive text-destructive' : ''} ${canAfford ? effectiveness.auraClass : ''}`} 
+                    onClick={() => executeMove(move)} 
+                    disabled={!canAfford && move.id !== 'struggle'}
+                  >
+                    <div>
+                      <p className="font-semibold text-xs">
+                        {effectiveness.indicator && <span className="mr-1">{effectiveness.indicator}</span>}
+                        {move.name}
+                      </p>
+                      <p className="text-[9px] opacity-70">
+                        {move.power > 0 ? `⚔️${move.power} ` : ''} 
+                        🎯{move.accuracy}% 
+                        ⚡{move.staminaCost}
+                        {move.type === 'heal' ? ' 💚' : ''}
+                        {move.effect?.includes('stamina') ? ' ⚡+' : ''}
+                      </p>
+                    </div>
+                  </Button>
+                </MoveTooltip>
+              );
             })}
-            </div>
-            
-            {/* Action buttons - right side */}
-            <div className="flex gap-2 flex-shrink-0">
-              <Button variant={showInventory ? "default" : "outline"} size="sm" onClick={() => setShowInventory(!showInventory)} className="flex items-center gap-1">
-                <Backpack className="w-4 h-4" />
-                <span className="hidden sm:inline">Items</span> ({inventory.length})
-              </Button>
-              <Button variant="destructive" size="sm" onClick={handleFlee} className="flex items-center gap-1">
-                <DoorOpen className="w-4 h-4" />
-                <span className="hidden sm:inline">Flee</span> ({Math.min(95, Math.max(5, 50 + (battle.playerMonster.stats.speed - battle.enemyMonster.stats.speed) * 2))}%)
-              </Button>
-            </div>
           </div>
         </div>
       </div>
-    </div>;
+
+      {/* Unified GameSidebar for battle */}
+      <GameSidebar 
+        monster={battle.playerMonster}
+        gold={state.run.gold}
+        floor={state.run.dungeon?.floor || 1}
+        inventory={inventory}
+        moveOrder={state.run.moveOrder}
+        hiddenMoves={state.run.hiddenMoves}
+        onFlee={handleFlee}
+        inBattle={true}
+        experience={experience}
+        experienceToNext={experienceToNext}
+        battleLog={battle.log}
+        onUseItem={handleUseItem}
+        onPanelChange={setMenuOpen}
+      />
+    </div>
+  );
 }
 
 // Run Summary Component

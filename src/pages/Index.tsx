@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getComboId, UnlockedMonster, InventoryItem, MonsterStats } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
-import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, LOOT_TABLE } from '@/game/dungeon';
+import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, LOOT_TABLE, generateLoot } from '@/game/dungeon';
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { ScrollText } from 'lucide-react';
 import { MonsterSprite } from '@/game/sprites';
@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { SettingsProvider, SettingsButton, useSettings } from '@/game/Settings';
 import { MonsterStatsPreview } from '@/game/MonsterStatsPreview';
 import { LevelUpScreen } from '@/game/LevelUpScreen';
+import { EquipmentItem } from '@/game/equipment';
 import { 
   CombatEffects, 
   EMPTY_COMBAT_EFFECTS, 
@@ -32,12 +33,17 @@ import {
 } from '@/game/statusEffects';
 import { StatusIcons } from '@/game/StatusEffectDisplay';
 
+import { CraftingWorkshop } from '@/game/CraftingWorkshop';
+import { CraftingRecipe } from '@/game/equipment';
+
 // Main Menu Component
 function MainMenu() {
   const {
     state,
     dispatch
   } = useGame();
+  const [showCrafting, setShowCrafting] = useState(false);
+  
   const handleResetSave = () => {
     if (confirm('Are you sure you want to reset all progress? This cannot be undone.')) {
       dispatch({
@@ -46,7 +52,23 @@ function MainMenu() {
       toast.success('Save data reset!');
     }
   };
-  return <div className="game-container text-7xl font-serif text-center">
+  
+  const handleCraft = (recipe: CraftingRecipe, result: import('@/game/equipment').EquipmentItem) => {
+    // Deduct materials
+    dispatch({
+      type: 'USE_MATERIALS',
+      materials: recipe.materials
+    });
+    // Store the crafted equipment
+    dispatch({
+      type: 'STORE_EQUIPMENT',
+      item: result
+    });
+    toast.success(`Crafted ${result.name}!`);
+  };
+  
+  return (
+    <div className="game-container text-7xl font-serif text-center">
       <div className="text-center space-y-8">
         <h1 className="text-7xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
           Menagerie
@@ -55,17 +77,29 @@ function MainMenu() {
         
         <div className="space-y-4">
           <Button size="lg" className="w-64 bg-gradient-to-r from-primary to-secondary hover:opacity-90" onClick={() => dispatch({
-          type: 'SET_PHASE',
-          phase: 'character_select'
-        })}>
+            type: 'SET_PHASE',
+            phase: 'character_select'
+          })}>
             ✨ Start Run
           </Button>
+          
+          <div className="flex gap-2 justify-center">
+            <Button 
+              variant="outline" 
+              className="w-32"
+              onClick={() => setShowCrafting(true)}
+            >
+              🔨 Crafting
+            </Button>
+          </div>
         </div>
 
         <div className="text-sm text-muted-foreground mt-8 space-y-1">
           <p>🔓 Unlocked: {state.saveData.unlockedMonsters?.length || 1} / 720 monsters</p>
           <p>🏔️ Highest Floor: {state.saveData.highestFloor}</p>
           <p>🎮 Total Runs: {state.saveData.totalRuns}</p>
+          <p>📦 Materials: {Object.keys(state.saveData.materials || {}).length} types</p>
+          <p>🗃️ Stored Equipment: {state.saveData.storedEquipment?.length || 0} items</p>
         </div>
 
         <div className="flex gap-2 justify-center">
@@ -75,7 +109,17 @@ function MainMenu() {
           <SettingsButton />
         </div>
       </div>
-    </div>;
+      
+      {showCrafting && (
+        <CraftingWorkshop
+          materials={state.saveData.materials || {}}
+          playerLevel={1}
+          onCraft={handleCraft}
+          onClose={() => setShowCrafting(false)}
+        />
+      )}
+    </div>
+  );
 }
 
 // Character Select Component - Now uses unlocked monster combos
@@ -337,14 +381,28 @@ function DungeonView() {
         enemy: result.encounter
       });
     } else if (result.treasure && result.loot) {
+      // Handle different loot types
       if (result.loot.type === 'gold') {
         dispatch({
           type: 'ADD_GOLD',
           amount: result.loot.value
         });
         toast.success(`Found ${result.loot.value} gold!`);
+      } else if (result.loot.type === 'equipment' && result.loot.equipmentData) {
+        dispatch({
+          type: 'ADD_EQUIPMENT',
+          item: result.loot.equipmentData
+        });
+        toast.success(`Found ${result.loot.name}!`);
+      } else if (result.loot.type === 'material' && result.loot.materialData) {
+        dispatch({
+          type: 'ADD_MATERIAL',
+          materialId: result.loot.materialData.id,
+          quantity: 1
+        });
+        toast.success(`Found ${result.loot.name}!`);
       } else {
-        // Add loot to real inventory
+        // Regular consumables
         const lootItem: InventoryItem = {
           id: result.loot.id,
           name: result.loot.name,
@@ -536,6 +594,20 @@ function DungeonView() {
       toast.success(`Bought ${item.name}!`);
     }
   };
+  
+  const handleBuyEquipment = (item: EquipmentItem, price: number) => {
+    if (state.run && state.run.gold >= price) {
+      dispatch({
+        type: 'ADD_GOLD',
+        amount: -price
+      });
+      dispatch({
+        type: 'ADD_EQUIPMENT',
+        item
+      });
+      toast.success(`Bought ${item.name}!`);
+    }
+  };
   if (!dungeon) return <div className="game-container">Loading...</div>;
 
   // Bottom offset: 64px for menu bar + 160px for controls + ~200px when panel is open
@@ -628,7 +700,13 @@ function DungeonView() {
         } : undefined}
       />
       
-      {showShop && <ShopView gold={state.run?.gold || 0} onBuy={handleBuyItem} onClose={() => setShowShop(false)} />}
+      {showShop && <ShopView 
+        gold={state.run?.gold || 0} 
+        floor={dungeon.floor}
+        onBuy={handleBuyItem} 
+        onBuyEquipment={handleBuyEquipment}
+        onClose={() => setShowShop(false)} 
+      />}
       
       <div className={`fixed inset-0 ${bottomOffset} overflow-hidden transition-all duration-300`}>
         <div className="h-full flex flex-col">

@@ -2,6 +2,7 @@
 
 import { DungeonState, DungeonTile, Position, Monster, SpeciesType, TrapType } from './types';
 import { generateRandomMonster } from './utils';
+import { generateEquipment, generateMaterialDrop, CraftingMaterial, EquipmentItem } from './equipment';
 
 // Larger dungeons with scrolling viewport
 const DUNGEON_WIDTH = 30;
@@ -11,9 +12,11 @@ const DUNGEON_HEIGHT = 25;
 export interface LootItem {
   id: string;
   name: string;
-  type: 'potion' | 'equipment' | 'gold';
+  type: 'potion' | 'equipment' | 'gold' | 'material';
   value: number;
   effect?: string;
+  equipmentData?: EquipmentItem;
+  materialData?: CraftingMaterial;
 }
 
 export const LOOT_TABLE: LootItem[] = [
@@ -24,6 +27,40 @@ export const LOOT_TABLE: LootItem[] = [
   { id: 'gold_coin', name: 'Gold Coins', type: 'gold', value: 15 },
   { id: 'gold_pile', name: 'Gold Pile', type: 'gold', value: 30 },
 ];
+
+// Generate random loot based on floor (includes equipment and materials)
+export function generateLoot(floor: number): LootItem {
+  const roll = Math.random();
+  
+  // 25% chance for equipment
+  if (roll < 0.25) {
+    const equipment = generateEquipment(undefined, floor);
+    return {
+      id: equipment.id,
+      name: equipment.name,
+      type: 'equipment',
+      value: Math.floor(equipment.level * 10 * (equipment.rarity === 'common' ? 1 : equipment.rarity === 'uncommon' ? 2 : equipment.rarity === 'rare' ? 4 : equipment.rarity === 'epic' ? 8 : 15)),
+      equipmentData: equipment,
+    };
+  }
+  
+  // 30% chance for material
+  if (roll < 0.55) {
+    const material = generateMaterialDrop(floor);
+    if (material) {
+      return {
+        id: `mat_${material.id}_${Date.now()}`,
+        name: material.name,
+        type: 'material',
+        value: material.value,
+        materialData: material,
+      };
+    }
+  }
+  
+  // Otherwise regular loot
+  return LOOT_TABLE[Math.floor(Math.random() * LOOT_TABLE.length)];
+}
 
 // Simple room-based dungeon generation
 export function generateDungeon(floor: number): DungeonState {
@@ -156,8 +193,10 @@ export function generateDungeon(floor: number): DungeonState {
 
       if (tiles[ty][tx].type === 'floor') {
         tiles[ty][tx].type = 'treasure';
-        // Assign random loot
-        tiles[ty][tx].lootId = LOOT_TABLE[Math.floor(Math.random() * LOOT_TABLE.length)].id;
+        // Generate dynamic loot (includes equipment and materials)
+        const loot = generateLoot(floor);
+        tiles[ty][tx].lootId = loot.id;
+        tiles[ty][tx].lootData = loot;
         placed = true;
       }
       attempts++;
@@ -350,7 +389,10 @@ export function movePlayer(
     encounter = enemies.find(e => e.id === targetTile.enemyId) || null;
   } else if (targetTile.type === 'treasure') {
     treasure = true;
-    if (targetTile.lootId) {
+    // Use stored loot data if available, otherwise fall back to LOOT_TABLE
+    if (targetTile.lootData) {
+      loot = targetTile.lootData;
+    } else if (targetTile.lootId) {
       loot = LOOT_TABLE.find(l => l.id === targetTile.lootId) || null;
     }
   } else if (targetTile.type === 'stairs') {

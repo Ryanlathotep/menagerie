@@ -11,8 +11,10 @@ import {
   SpeciesType,
   UnlockedMonster,
   InventoryItem,
+  MaterialInventory,
   getComboId 
 } from './types';
+import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot, CraftingRecipe } from './equipment';
 
 // Starting monster - Normal Normal Slime
 const STARTER_MONSTER = {
@@ -31,6 +33,8 @@ const DEFAULT_SAVE_DATA: SaveData = {
   highestFloor: 0,
   totalRuns: 0,
   totalEnemiesDefeated: 0,
+  materials: {},              // Crafting materials
+  storedEquipment: [],        // Equipment storage
 };
 
 // Initial game state
@@ -62,6 +66,14 @@ type GameAction =
   | { type: 'DROP_ITEM'; itemId: string; quantity?: number }
   | { type: 'SET_MOVE_ORDER'; order: string[] }
   | { type: 'TOGGLE_HIDE_MOVE'; moveId: string }
+  | { type: 'ADD_EQUIPMENT'; item: EquipmentItem }
+  | { type: 'EQUIP_ITEM'; item: EquipmentItem }
+  | { type: 'UNEQUIP_ITEM'; slot: EquipmentSlot }
+  | { type: 'DROP_EQUIPMENT'; itemId: string }
+  | { type: 'ADD_MATERIAL'; materialId: string; quantity: number }
+  | { type: 'USE_MATERIALS'; materials: { materialId: string; quantity: number }[] }
+  | { type: 'STORE_EQUIPMENT'; item: EquipmentItem }
+  | { type: 'WITHDRAW_EQUIPMENT'; itemId: string }
   | { type: 'LOAD_SAVE'; saveData: SaveData }
   | { type: 'RESET_SAVE' };
 
@@ -86,6 +98,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             { id: 'small_potion', name: 'Small Potion', type: 'potion', value: 30, effect: 'heal_hp', quantity: 2 },
             { id: 'stamina_tonic', name: 'Stamina Tonic', type: 'potion', value: 20, effect: 'heal_stamina', quantity: 1 },
           ],
+          equipmentInventory: [],
+          equipment: createEmptyEquipment(),
           enemiesDefeated: 0,
           moveOrder: [],
           hiddenMoves: [],
@@ -350,7 +364,120 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             : [...state.run.hiddenMoves, action.moveId],
         },
       };
-      
+    
+    // Equipment management
+    case 'ADD_EQUIPMENT':
+      if (!state.run) return state;
+      return {
+        ...state,
+        run: { 
+          ...state.run, 
+          equipmentInventory: [...state.run.equipmentInventory, action.item] 
+        },
+      };
+    
+    case 'EQUIP_ITEM':
+      if (!state.run) return state;
+      const slot = action.item.slot;
+      const previouslyEquipped = state.run.equipment[slot];
+      const newEquipmentInv = state.run.equipmentInventory.filter(i => i.id !== action.item.id);
+      // Add previously equipped item back to inventory
+      if (previouslyEquipped) {
+        newEquipmentInv.push(previouslyEquipped);
+      }
+      return {
+        ...state,
+        run: {
+          ...state.run,
+          equipmentInventory: newEquipmentInv,
+          equipment: {
+            ...state.run.equipment,
+            [slot]: action.item,
+          },
+        },
+      };
+    
+    case 'UNEQUIP_ITEM':
+      if (!state.run) return state;
+      const unequipSlot = action.slot;
+      const itemToUnequip = state.run.equipment[unequipSlot];
+      if (!itemToUnequip) return state;
+      return {
+        ...state,
+        run: {
+          ...state.run,
+          equipmentInventory: [...state.run.equipmentInventory, itemToUnequip],
+          equipment: {
+            ...state.run.equipment,
+            [unequipSlot]: null,
+          },
+        },
+      };
+    
+    case 'DROP_EQUIPMENT':
+      if (!state.run) return state;
+      return {
+        ...state,
+        run: {
+          ...state.run,
+          equipmentInventory: state.run.equipmentInventory.filter(i => i.id !== action.itemId),
+        },
+      };
+    
+    // Material management (persisted in save data)
+    case 'ADD_MATERIAL':
+      return {
+        ...state,
+        saveData: {
+          ...state.saveData,
+          materials: {
+            ...state.saveData.materials,
+            [action.materialId]: (state.saveData.materials[action.materialId] || 0) + action.quantity,
+          },
+        },
+      };
+    
+    case 'USE_MATERIALS':
+      const updatedMaterials = { ...state.saveData.materials };
+      for (const mat of action.materials) {
+        updatedMaterials[mat.materialId] = (updatedMaterials[mat.materialId] || 0) - mat.quantity;
+        if (updatedMaterials[mat.materialId] <= 0) {
+          delete updatedMaterials[mat.materialId];
+        }
+      }
+      return {
+        ...state,
+        saveData: {
+          ...state.saveData,
+          materials: updatedMaterials,
+        },
+      };
+    
+    case 'STORE_EQUIPMENT':
+      return {
+        ...state,
+        saveData: {
+          ...state.saveData,
+          storedEquipment: [...state.saveData.storedEquipment, action.item],
+        },
+      };
+    
+    case 'WITHDRAW_EQUIPMENT':
+      if (!state.run) return state;
+      const withdrawItem = state.saveData.storedEquipment.find(i => i.id === action.itemId);
+      if (!withdrawItem) return state;
+      return {
+        ...state,
+        run: {
+          ...state.run,
+          equipmentInventory: [...state.run.equipmentInventory, withdrawItem],
+        },
+        saveData: {
+          ...state.saveData,
+          storedEquipment: state.saveData.storedEquipment.filter(i => i.id !== action.itemId),
+        },
+      };
+       
     case 'LOAD_SAVE':
       return {
         ...state,
@@ -391,10 +518,16 @@ export function GameProvider({ children }: GameProviderProps) {
     if (saved) {
       try {
         const saveData = JSON.parse(saved) as SaveData;
-        // Ensure unlockedMonsters exists (migration from old saves)
+        // Migration from old saves
         if (!saveData.unlockedMonsters || saveData.unlockedMonsters.length === 0) {
-          // Add starter monster for old saves
           saveData.unlockedMonsters = [STARTER_MONSTER];
+        }
+        // Ensure materials and storedEquipment exist
+        if (!saveData.materials) {
+          saveData.materials = {};
+        }
+        if (!saveData.storedEquipment) {
+          saveData.storedEquipment = [];
         }
         dispatch({ type: 'LOAD_SAVE', saveData });
       } catch (e) {

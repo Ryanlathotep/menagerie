@@ -235,7 +235,7 @@ export interface Monster {
   carriedItem?: {
     id: string;
     name: string;
-    type: 'potion' | 'equipment' | 'gold';
+    type: 'potion' | 'equipment' | 'gold' | 'material';
     value: number;
     effect?: string;
   };
@@ -265,12 +265,16 @@ export interface Move {
 export type TileType = 'floor' | 'wall' | 'door' | 'stairs' | 'trap' | 'treasure' | 'enemy' | 'player' | 'shop' | 'water';
 export type TrapType = 'spike' | 'poison' | 'alarm';
 
+// Re-export equipment types for convenience
+export type { EquipmentItem, EquipmentSlot, MonsterEquipment, Rarity, CraftingMaterial } from '../game/equipment';
+
 export interface DungeonTile {
   type: TileType;
   explored: boolean;
   visible: boolean;
   enemyId?: string;
   lootId?: string;
+  lootData?: import('./dungeon').LootItem; // Full loot data for equipment/materials
   trapType?: TrapType;
   triggered?: boolean; // For traps that have been triggered
   isShallowWater?: boolean; // For water tiles - shallow can be walked through with damage
@@ -316,10 +320,11 @@ export interface DungeonState {
 export interface InventoryItem {
   id: string;
   name: string;
-  type: 'potion' | 'equipment' | 'gold';
+  type: 'potion' | 'equipment' | 'gold' | 'material';
   value: number;
   effect?: string;
   quantity: number;
+  materialId?: string; // For crafting materials
 }
 
 export interface RunState {
@@ -330,9 +335,16 @@ export interface RunState {
   experience: number;       // Current XP toward next level
   itemsCollected: string[];
   inventory: InventoryItem[];
+  equipmentInventory: import('./equipment').EquipmentItem[];  // Equipment items found
+  equipment: import('./equipment').MonsterEquipment;          // Currently equipped items
   enemiesDefeated: number;
   moveOrder: string[];      // Order of move IDs
   hiddenMoves: string[];    // IDs of hidden moves
+}
+
+// Material inventory - persisted across runs (kept when fleeing)
+export interface MaterialInventory {
+  [materialId: string]: number;
 }
 
 // Monster combo identifier (for unlock tracking)
@@ -361,6 +373,8 @@ export interface SaveData {
   highestFloor: number;
   totalRuns: number;
   totalEnemiesDefeated: number;
+  materials: MaterialInventory;   // Crafting materials (persisted across runs)
+  storedEquipment: import('./equipment').EquipmentItem[]; // Equipment storage (persisted)
 }
 
 export interface GameState {

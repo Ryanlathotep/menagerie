@@ -58,6 +58,7 @@ type GameAction =
   | { type: 'ADD_XP'; amount: number }
   | { type: 'ADD_ITEM'; item: InventoryItem }
   | { type: 'USE_ITEM'; itemId: string }
+  | { type: 'DROP_ITEM'; itemId: string; quantity?: number }
   | { type: 'LOAD_SAVE'; saveData: SaveData }
   | { type: 'RESET_SAVE' };
 
@@ -268,6 +269,31 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         run: { ...state.run, inventory: updatedInventory },
       };
+    
+    case 'DROP_ITEM':
+      if (!state.run) return state;
+      const dropIndex = state.run.inventory.findIndex(i => i.id === action.itemId);
+      if (dropIndex === -1) return state;
+      const dropItem = state.run.inventory[dropIndex];
+      const dropQuantity = action.quantity ?? dropItem.quantity; // Drop all by default
+      if (dropQuantity >= dropItem.quantity) {
+        // Remove entire item
+        return {
+          ...state,
+          run: { 
+            ...state.run, 
+            inventory: state.run.inventory.filter((_, i) => i !== dropIndex),
+          },
+        };
+      }
+      // Reduce quantity
+      const droppedInventory = [...state.run.inventory];
+      droppedInventory[dropIndex] = { ...dropItem, quantity: dropItem.quantity - dropQuantity };
+      return {
+        ...state,
+        run: { ...state.run, inventory: droppedInventory },
+      };
+      
       
     case 'LOAD_SAVE':
       return {

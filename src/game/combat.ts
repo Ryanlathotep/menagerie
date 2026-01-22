@@ -1,6 +1,6 @@
 // Combat system - damage calculations, hit chances, effectiveness
 
-import { Monster, ElementType, ClassType, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED } from './types';
+import { Monster, ElementType, ClassType, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED, SpeciesType } from './types';
 import { Move } from './moves';
 
 export interface CombatResult {
@@ -11,6 +11,23 @@ export interface CombatResult {
   elementMultiplier: number;
   classMultiplier: number;
   message: string;
+  passiveTriggered?: string; // Message about passive ability triggering
+  reflectDamage?: number; // Damage reflected back to attacker (Jellyfish)
+}
+
+// Check if a species has a specific passive
+export function hasPassive(species: SpeciesType, passive: string): boolean {
+  const passiveMap: Record<string, SpeciesType[]> = {
+    'amorphous': ['slime'],      // 20% less physical damage
+    'cunning': ['goblin'],        // +25% crit chance
+    'ethereal': ['ghost'],        // 30% phase through attacks
+    'draconic_pride': ['dragon'], // Damage scales with missing HP
+    'blood_frenzy': ['shark'],    // +30% damage vs wounded
+    'carapace': ['beetle'],       // First hit each turn reduced
+    'stinging': ['jellyfish'],    // Reflect damage when hit
+    'amphibious': ['frog'],       // +20% water damage
+  };
+  return passiveMap[passive]?.includes(species) || false;
 }
 
 // Get element effectiveness multiplier
@@ -35,32 +52,78 @@ export function getClassMultiplier(attackerClass: ClassType, defenderClass: Clas
   return 1.0;
 }
 
-// Calculate actual hit chance after dodge
 // Calculate actual hit chance after dodge (uses DODGE stat, not speed)
+// Ghost's Ethereal passive adds 30% extra dodge chance
 export function calculateHitChance(move: Move, attacker: Monster, defender: Monster): number {
   const baseAccuracy = move.accuracy;
   const defenderDodge = defender.stats.dodge; // Use dodge stat directly
   
   // Each point of dodge reduces hit chance by 0.5%, max 40% reduction
-  const dodgeReduction = Math.min(40, Math.floor(defenderDodge * 0.5));
+  let dodgeReduction = Math.min(40, Math.floor(defenderDodge * 0.5));
+  
+  // Ghost's Ethereal: 30% chance to phase through attacks (adds to dodge)
+  if (hasPassive(defender.species, 'ethereal')) {
+    dodgeReduction += 30;
+  }
+  
   const actualHitChance = Math.max(5, baseAccuracy - dodgeReduction); // Min 5% hit chance
   
   return actualHitChance;
 }
 
 // Calculate expected damage after defense
-export function calculateExpectedDamage(move: Move, attacker: Monster, defender: Monster): number {
+// Includes passive ability modifiers
+export function calculateExpectedDamage(
+  move: Move, 
+  attacker: Monster, 
+  defender: Monster,
+  isFirstHitThisTurn: boolean = true
+): number {
   if (move.power === 0) return 0;
   
   const attackStat = move.type === 'melee' ? attacker.stats.attack : attacker.stats.special;
   const defenseStat = defender.stats.defense;
   
   // Base damage calculation
-  const baseDamage = Math.floor(move.power * (attackStat / 20));
+  let baseDamage = Math.floor(move.power * (attackStat / 20));
+  
+  // === ATTACKER PASSIVES ===
+  
+  // Dragon's Draconic Pride: Damage increases as HP decreases (up to +50% at 1 HP)
+  if (hasPassive(attacker.species, 'draconic_pride')) {
+    const hpPercent = attacker.stats.currentHp / attacker.stats.maxHp;
+    const prideBonus = 1 + (0.5 * (1 - hpPercent)); // 1.0 at full HP, 1.5 at 0 HP
+    baseDamage = Math.floor(baseDamage * prideBonus);
+  }
+  
+  // Shark's Blood Frenzy: +30% damage against wounded enemies (below 50% HP)
+  if (hasPassive(attacker.species, 'blood_frenzy')) {
+    const targetHpPercent = defender.stats.currentHp / defender.stats.maxHp;
+    if (targetHpPercent < 0.5) {
+      baseDamage = Math.floor(baseDamage * 1.3);
+    }
+  }
+  
+  // Frog's Amphibious: +20% water damage
+  if (hasPassive(attacker.species, 'amphibious') && move.element === 'water') {
+    baseDamage = Math.floor(baseDamage * 1.2);
+  }
   
   // Defense reduces damage (never to 0)
   const defenseReduction = Math.floor(defenseStat / 2);
-  const damageAfterDefense = Math.max(1, baseDamage - defenseReduction);
+  let damageAfterDefense = Math.max(1, baseDamage - defenseReduction);
+  
+  // === DEFENDER PASSIVES ===
+  
+  // Slime's Amorphous: Takes 20% less physical (melee) damage
+  if (hasPassive(defender.species, 'amorphous') && move.type === 'melee') {
+    damageAfterDefense = Math.floor(damageAfterDefense * 0.8);
+  }
+  
+  // Beetle's Carapace: First hit each turn deals 30% reduced damage
+  if (hasPassive(defender.species, 'carapace') && isFirstHitThisTurn) {
+    damageAfterDefense = Math.floor(damageAfterDefense * 0.7);
+  }
   
   // Apply element and class multipliers
   const elementMult = move.element ? getElementMultiplier(move.element, defender.element) : 1.0;
@@ -124,10 +187,24 @@ export function getEffectiveness(move: Move, attacker: Monster, defender: Monste
 }
 
 // Full combat calculation
-export function executeCombat(move: Move, attacker: Monster, defender: Monster): CombatResult {
+// isFirstHitThisTurn is used for Beetle's Carapace passive
+export function executeCombat(
+  move: Move, 
+  attacker: Monster, 
+  defender: Monster,
+  isFirstHitThisTurn: boolean = true
+): CombatResult {
   const hitChance = calculateHitChance(move, attacker, defender);
   const hitRoll = Math.random() * 100;
   const hit = hitRoll <= hitChance;
+  
+  // Track passive messages
+  let passiveTriggered: string | undefined;
+  
+  // Ghost's Ethereal: Check if phased through
+  if (!hit && hasPassive(defender.species, 'ethereal') && hitRoll > hitChance - 30) {
+    passiveTriggered = `${defender.name} phased through the attack! 👻`;
+  }
   
   if (!hit) {
     return {
@@ -138,26 +215,58 @@ export function executeCombat(move: Move, attacker: Monster, defender: Monster):
       elementMultiplier: 1,
       classMultiplier: 1,
       message: `${move.name} missed!`,
+      passiveTriggered,
     };
   }
   
-  // Calculate damage
-  const damage = calculateExpectedDamage(move, attacker, defender);
+  // Calculate damage with passive modifiers
+  const damage = calculateExpectedDamage(move, attacker, defender, isFirstHitThisTurn);
   const effectiveness = getEffectiveness(move, attacker, defender);
   const elementMult = move.element ? getElementMultiplier(move.element, defender.element) : 1.0;
   const classMult = move.classBonus ? getClassMultiplier(move.classBonus, defender.class) : 1.0;
   
-  // Critical hit chance (10% base)
-  const critRoll = Math.random() * 100;
-  const critical = critRoll < 10;
-  const finalDamage = critical ? Math.floor(damage * 1.5) : damage;
+  // Critical hit chance (10% base, +25% for Goblin's Cunning)
+  let critChance = 10;
+  if (hasPassive(attacker.species, 'cunning')) {
+    critChance += 25;
+  }
   
-  // Build message
+  const critRoll = Math.random() * 100;
+  const critical = critRoll < critChance;
+  let finalDamage = critical ? Math.floor(damage * 1.5) : damage;
+  
+  // Build message with passive info
   let message = `${move.name} dealt ${finalDamage} damage!`;
-  if (critical) message += ' Critical hit!';
+  if (critical) {
+    message += ' Critical hit!';
+    if (hasPassive(attacker.species, 'cunning')) {
+      passiveTriggered = `Cunning strike! 🗡️`;
+    }
+  }
   if (effectiveness.overall === 'super-effective') message += ' Super effective!';
   if (effectiveness.overall === 'effective') message += ' Effective!';
   if (effectiveness.overall === 'weak') message += ' Not very effective...';
+  
+  // Add passive messages for damage modifiers
+  if (hasPassive(attacker.species, 'draconic_pride') && attacker.stats.currentHp < attacker.stats.maxHp * 0.5) {
+    passiveTriggered = `Draconic Pride surges! 🐉`;
+  }
+  if (hasPassive(attacker.species, 'blood_frenzy') && defender.stats.currentHp < defender.stats.maxHp * 0.5) {
+    passiveTriggered = `Blood Frenzy activated! 🦈`;
+  }
+  if (hasPassive(defender.species, 'amorphous') && move.type === 'melee') {
+    passiveTriggered = `Amorphous body absorbs impact! 🟢`;
+  }
+  if (hasPassive(defender.species, 'carapace') && isFirstHitThisTurn) {
+    passiveTriggered = `Carapace deflects the blow! 🪲`;
+  }
+  
+  // Jellyfish's Stinging Tendrils: Reflect 20% damage back to attacker
+  let reflectDamage: number | undefined;
+  if (hasPassive(defender.species, 'stinging') && finalDamage > 0) {
+    reflectDamage = Math.max(1, Math.floor(finalDamage * 0.2));
+    passiveTriggered = `Stinging tendrils lash back for ${reflectDamage} damage! 🎐`;
+  }
   
   return {
     damage: finalDamage,
@@ -167,6 +276,8 @@ export function executeCombat(move: Move, attacker: Monster, defender: Monster):
     elementMultiplier: elementMult,
     classMultiplier: classMult,
     message,
+    passiveTriggered,
+    reflectDamage,
   };
 }
 

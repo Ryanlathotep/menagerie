@@ -747,6 +747,12 @@ function BattleView() {
     // Execute combat with proper calculations
     const result = executeCombat(move, battle.playerMonster, battle.enemyMonster);
     const newLog = [...battle.log, result.message];
+    
+    // Add passive ability message if triggered
+    if (result.passiveTriggered) {
+      newLog.push(result.passiveTriggered);
+    }
+    
     if (staminaCost > 0) {
       newLog.push(`Used ${staminaCost} stamina`);
     }
@@ -765,7 +771,13 @@ function BattleView() {
       newPlayerStamina = Math.min(maxStamina, newPlayerStamina + staminaRecovery);
       newLog.push(`Recovered ${actualRecovery} stamina!`);
     }
-    const newEnemyHp = Math.max(0, battle.enemyMonster.stats.currentHp - result.damage);
+    let newEnemyHp = Math.max(0, battle.enemyMonster.stats.currentHp - result.damage);
+    
+    // Jellyfish's Stinging Tendrils: Apply reflect damage to player
+    if (result.reflectDamage && result.reflectDamage > 0) {
+      newPlayerHp = Math.max(0, newPlayerHp - result.reflectDamage);
+      newLog.push(`Took ${result.reflectDamage} reflect damage from stinging tendrils!`);
+    }
 
     // Apply drain heal (after damage)
     if (move.effect === 'heal_self' && result.damage > 0) {
@@ -906,6 +918,17 @@ function BattleView() {
       }, battle.playerMonster);
       newPlayerHp = Math.max(0, newPlayerHp - enemyResult.damage);
       newLog.push(enemyResult.message);
+      
+      // Add passive ability message if triggered
+      if (enemyResult.passiveTriggered) {
+        newLog.push(enemyResult.passiveTriggered);
+      }
+      
+      // Player's Jellyfish reflects damage back to enemy
+      if (enemyResult.reflectDamage && enemyResult.reflectDamage > 0) {
+        newEnemyHp = Math.max(0, newEnemyHp - enemyResult.reflectDamage);
+        newLog.push(`Stinging tendrils reflect ${enemyResult.reflectDamage} damage back!`);
+      }
       if (newPlayerHp <= 0) {
         dispatch({
           type: 'END_BATTLE',

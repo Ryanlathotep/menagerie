@@ -6,6 +6,7 @@ import { SPECIES_DATA, getComboId, UnlockedMonster, InventoryItem, MonsterStats 
 import { createMonster, calculateStats } from '@/game/utils';
 import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, LOOT_TABLE } from '@/game/dungeon';
 import { useEffect, useCallback, useState, useRef } from 'react';
+import { ScrollText } from 'lucide-react';
 import { MonsterSprite } from '@/game/sprites';
 import { DungeonRenderer } from '@/game/DungeonRenderer';
 import { GameSidebar } from '@/game/GameSidebar';
@@ -1353,6 +1354,21 @@ function BattleView() {
               </div>
             </div>
           </Card>
+        </div>
+        
+        {/* Battle Log - visible scrolling area */}
+        <div className="mt-3 p-2 bg-muted/30 rounded-lg border border-border/50 max-h-24 overflow-y-auto">
+          <div className="flex items-center gap-1 mb-1">
+            <ScrollText className="w-3 h-3 text-muted-foreground" />
+            <span className="text-xs font-semibold text-muted-foreground">Battle Log</span>
+          </div>
+          <div className="space-y-0.5">
+            {battle.log.slice(-5).map((msg, i) => (
+              <p key={i} className={`text-xs ${i === battle.log.slice(-5).length - 1 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                {msg}
+              </p>
+            ))}
+          </div>
         </div>
         
         {/* Move selection area - above the sidebar */}

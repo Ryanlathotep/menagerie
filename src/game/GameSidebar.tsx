@@ -189,10 +189,21 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             <Backpack className="w-4 h-4" />
           </Button>
           
-          {/* Battle log button - only in battle */}
+          {/* Battle log button - only in battle, with indicator for new entries */}
           {inBattle && (
-            <Button variant={activePanel === 'log' ? 'default' : 'ghost'} size="icon" className="w-8 h-8" onClick={() => handlePanelChange('log')} title="Battle Log">
+            <Button 
+              variant={activePanel === 'log' ? 'default' : 'secondary'} 
+              size="icon" 
+              className={`w-8 h-8 relative ${battleLog.length > 0 ? 'animate-pulse' : ''}`} 
+              onClick={() => handlePanelChange('log')} 
+              title="Battle Log"
+            >
               <ScrollText className="w-4 h-4" />
+              {battleLog.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  {battleLog.length}
+                </span>
+              )}
             </Button>
           )}
           

@@ -107,6 +107,15 @@ export function calculateDamage(
   return Math.max(1, finalDamage);
 }
 
+// Items that enemies can carry
+const ENEMY_ITEM_TABLE = [
+  { id: 'health_potion', name: 'Health Potion', type: 'potion' as const, value: 20, effect: 'heal_30' },
+  { id: 'stamina_potion', name: 'Stamina Potion', type: 'potion' as const, value: 15, effect: 'stamina_20' },
+  { id: 'power_berry', name: 'Power Berry', type: 'potion' as const, value: 25, effect: 'boost_attack' },
+  { id: 'gold_coin', name: 'Gold Coins', type: 'gold' as const, value: 15 },
+  { id: 'gold_pile', name: 'Gold Pile', type: 'gold' as const, value: 30 },
+];
+
 // Generate a random monster for dungeon
 export function generateRandomMonster(
   allowedSpecies: SpeciesType[],
@@ -121,7 +130,15 @@ export function generateRandomMonster(
   const classType = Math.random() < 0.1 ? 'normal' : classes[1 + Math.floor(Math.random() * 5)] as ClassType;
   const element = Math.random() < 0.1 ? 'normal' : elements[1 + Math.floor(Math.random() * 5)] as ElementType;
   
-  return createMonster(species, classType, element, level);
+  const monster = createMonster(species, classType, element, level);
+  
+  // 30% chance enemy carries an item (can be stolen by Crow)
+  if (Math.random() < 0.3) {
+    const item = ENEMY_ITEM_TABLE[Math.floor(Math.random() * ENEMY_ITEM_TABLE.length)];
+    monster.carriedItem = { ...item };
+  }
+  
+  return monster;
 }
 
 // Get monster display name with class

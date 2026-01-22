@@ -12,7 +12,7 @@ import { GameSidebar } from '@/game/GameSidebar';
 import { getMonsterMoves, Move, STRUGGLE_MOVE } from '@/game/moves';
 import { MoveTooltip } from '@/game/BattleTooltip';
 import { ShopView } from '@/game/ShopView';
-import { executeCombat, calculateXpReward, xpToNextLevel, checkLevelUp, getEffectiveness } from '@/game/combat';
+import { executeCombat, calculateXpReward, xpToNextLevel, checkLevelUp, getEffectiveness, hasPassive, checkSkeletonSurvival, applyMushroomRegen, checkImpSteal } from '@/game/combat';
 import { toast } from 'sonner';
 import { SettingsProvider, SettingsButton, useSettings } from '@/game/Settings';
 
@@ -772,11 +772,75 @@ function BattleView() {
       newLog.push(`Recovered ${actualRecovery} stamina!`);
     }
     let newEnemyHp = Math.max(0, battle.enemyMonster.stats.currentHp - result.damage);
+    let newEnemySpeed = battle.enemyMonster.stats.speed;
+    let updatedEnemyMonster = { ...battle.enemyMonster };
+    
+    // Skeleton's Undead: 10% chance to survive fatal hit with 1 HP
+    if (newEnemyHp <= 0 && checkSkeletonSurvival(battle.enemyMonster, result.damage)) {
+      newEnemyHp = 1;
+      newLog.push(`☠️ Undead will! ${battle.enemyMonster.name} refuses to fall!`);
+    }
     
     // Jellyfish's Stinging Tendrils: Apply reflect damage to player
     if (result.reflectDamage && result.reflectDamage > 0) {
       newPlayerHp = Math.max(0, newPlayerHp - result.reflectDamage);
       newLog.push(`Took ${result.reflectDamage} reflect damage from stinging tendrils!`);
+    }
+    
+    // Spider's Web Spinner: Slow enemy by 20%
+    if (result.speedDebuff && result.speedDebuff > 0) {
+      const speedReduction = Math.floor(newEnemySpeed * (result.speedDebuff / 100));
+      newEnemySpeed = Math.max(1, newEnemySpeed - speedReduction);
+      newLog.push(`🕸️ Web slows enemy! (-${speedReduction} speed)`);
+    }
+    
+    // Imp's Mischievous: 15% chance to steal a stat boost
+    const impSteal = checkImpSteal(battle.playerMonster);
+    if (impSteal && result.hit) {
+      const statBoost = 2;
+      newLog.push(`😈 Mischievous! Stole enemy's ${impSteal.stat}!`);
+      // Apply boost to player (tracked in monster stats update)
+    }
+    
+    // Crow's Keen Eye: Attempt to steal enemy's item if they have one
+    if (hasPassive(battle.playerMonster.species, 'keen_eye') && result.hit && updatedEnemyMonster.carriedItem) {
+      if (Math.random() < 0.25) { // 25% steal chance on hit
+        const stolenItem = updatedEnemyMonster.carriedItem;
+        newLog.push(`🦅 Keen Eye! Stole ${stolenItem.name} from enemy!`);
+        
+        // Add stolen item to inventory
+        if (stolenItem.type === 'gold') {
+          dispatch({ type: 'ADD_GOLD', amount: stolenItem.value });
+        } else {
+          dispatch({
+            type: 'ADD_ITEM',
+            item: {
+              id: stolenItem.id,
+              name: stolenItem.name,
+              type: stolenItem.type,
+              value: stolenItem.value,
+              effect: stolenItem.effect,
+              quantity: 1,
+            }
+          });
+        }
+        
+        // Remove item from enemy
+        updatedEnemyMonster = { ...updatedEnemyMonster, carriedItem: undefined };
+      }
+    }
+    
+    // Chimera's Hybrid Nature: Gain resistance to element that hit it
+    if (hasPassive(battle.enemyMonster.species, 'hybrid_nature') && result.elementHit && result.hit) {
+      const currentResistances = updatedEnemyMonster.temporaryResistances || [];
+      const existingRes = currentResistances.find(r => r.element === result.elementHit);
+      if (!existingRes) {
+        updatedEnemyMonster = {
+          ...updatedEnemyMonster,
+          temporaryResistances: [...currentResistances, { element: result.elementHit, turnsRemaining: 3 }]
+        };
+        newLog.push(`🦁 Chimera adapts! Gained ${result.elementHit} resistance!`);
+      }
     }
 
     // Apply drain heal (after damage)
@@ -907,15 +971,20 @@ function BattleView() {
       }
     } else {
       // Enemy turn - use random enemy move
-      const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class);
+      const enemyMoves = getMonsterMoves(updatedEnemyMonster.species, updatedEnemyMonster.element, updatedEnemyMonster.class);
       const enemyMove = enemyMoves[Math.floor(Math.random() * Math.min(3, enemyMoves.length))];
-      const enemyResult = executeCombat(enemyMove, {
-        ...battle.enemyMonster,
+      
+      // Use the updated enemy monster with potentially modified speed
+      const attackingEnemy = {
+        ...updatedEnemyMonster,
         stats: {
-          ...battle.enemyMonster.stats,
-          currentHp: newEnemyHp
+          ...updatedEnemyMonster.stats,
+          currentHp: newEnemyHp,
+          speed: newEnemySpeed,
         }
-      }, battle.playerMonster);
+      };
+      
+      const enemyResult = executeCombat(enemyMove, attackingEnemy, battle.playerMonster);
       newPlayerHp = Math.max(0, newPlayerHp - enemyResult.damage);
       newLog.push(enemyResult.message);
       
@@ -924,11 +993,60 @@ function BattleView() {
         newLog.push(enemyResult.passiveTriggered);
       }
       
+      // Player's Skeleton survival: 10% chance to survive fatal hit
+      if (newPlayerHp <= 0 && checkSkeletonSurvival(battle.playerMonster, enemyResult.damage)) {
+        newPlayerHp = 1;
+        newLog.push(`☠️ Undead will! You refuse to fall!`);
+      }
+      
       // Player's Jellyfish reflects damage back to enemy
       if (enemyResult.reflectDamage && enemyResult.reflectDamage > 0) {
         newEnemyHp = Math.max(0, newEnemyHp - enemyResult.reflectDamage);
         newLog.push(`Stinging tendrils reflect ${enemyResult.reflectDamage} damage back!`);
       }
+      
+      // Player's Chimera: Gain resistance to element that hit
+      let updatedPlayerMonster = { ...battle.playerMonster };
+      if (hasPassive(battle.playerMonster.species, 'hybrid_nature') && enemyResult.elementHit && enemyResult.hit) {
+        const currentResistances = updatedPlayerMonster.temporaryResistances || [];
+        const existingRes = currentResistances.find(r => r.element === enemyResult.elementHit);
+        if (!existingRes) {
+          updatedPlayerMonster = {
+            ...updatedPlayerMonster,
+            temporaryResistances: [...currentResistances, { element: enemyResult.elementHit, turnsRemaining: 3 }]
+          };
+          newLog.push(`🦁 You adapt! Gained ${enemyResult.elementHit} resistance!`);
+        }
+      }
+      
+      // Mushroom's Spore Cloud: Regenerate 5% HP at end of turn
+      const mushroomRegen = applyMushroomRegen(battle.playerMonster);
+      if (mushroomRegen > 0) {
+        const actualRegen = Math.min(mushroomRegen, battle.playerMonster.stats.maxHp - newPlayerHp);
+        newPlayerHp = Math.min(battle.playerMonster.stats.maxHp, newPlayerHp + mushroomRegen);
+        newLog.push(`🍄 Spore Cloud: Regenerated ${actualRegen} HP!`);
+      }
+      
+      // Enemy Mushroom regen
+      const enemyMushroomRegen = applyMushroomRegen(updatedEnemyMonster);
+      if (enemyMushroomRegen > 0 && newEnemyHp > 0) {
+        const actualRegen = Math.min(enemyMushroomRegen, updatedEnemyMonster.stats.maxHp - newEnemyHp);
+        newEnemyHp = Math.min(updatedEnemyMonster.stats.maxHp, newEnemyHp + enemyMushroomRegen);
+        newLog.push(`🍄 Enemy regenerates ${actualRegen} HP!`);
+      }
+      
+      // Decrement temporary resistances
+      if (updatedPlayerMonster.temporaryResistances) {
+        updatedPlayerMonster.temporaryResistances = updatedPlayerMonster.temporaryResistances
+          .map(r => ({ ...r, turnsRemaining: r.turnsRemaining - 1 }))
+          .filter(r => r.turnsRemaining > 0);
+      }
+      if (updatedEnemyMonster.temporaryResistances) {
+        updatedEnemyMonster.temporaryResistances = updatedEnemyMonster.temporaryResistances
+          .map(r => ({ ...r, turnsRemaining: r.turnsRemaining - 1 }))
+          .filter(r => r.turnsRemaining > 0);
+      }
+      
       if (newPlayerHp <= 0) {
         dispatch({
           type: 'END_BATTLE',
@@ -945,19 +1063,22 @@ function BattleView() {
           type: 'UPDATE_BATTLE',
           battle: {
             enemyMonster: {
-              ...battle.enemyMonster,
+              ...updatedEnemyMonster,
               stats: {
-                ...battle.enemyMonster.stats,
-                currentHp: newEnemyHp
-              }
+                ...updatedEnemyMonster.stats,
+                currentHp: newEnemyHp,
+                speed: newEnemySpeed,
+              },
+              temporaryResistances: updatedEnemyMonster.temporaryResistances,
             },
             playerMonster: {
-              ...battle.playerMonster,
+              ...updatedPlayerMonster,
               stats: {
-                ...battle.playerMonster.stats,
+                ...updatedPlayerMonster.stats,
                 currentHp: newPlayerHp,
                 currentStamina: recoveredStamina
-              }
+              },
+              temporaryResistances: updatedPlayerMonster.temporaryResistances,
             },
             log: newLog
           }

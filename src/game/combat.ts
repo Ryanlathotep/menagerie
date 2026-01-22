@@ -13,19 +13,43 @@ export interface CombatResult {
   message: string;
   passiveTriggered?: string; // Message about passive ability triggering
   reflectDamage?: number; // Damage reflected back to attacker (Jellyfish)
+  speedDebuff?: number; // Speed debuff to apply to target (Spider)
+  survivedFatal?: boolean; // Skeleton survived a fatal hit
+  elementHit?: ElementType; // Element of the move that hit (for Chimera resistance)
+  stolenItem?: { id: string; name: string }; // Item stolen by Crow
+}
+
+// Track temporary resistances (for Chimera)
+export interface TemporaryResistance {
+  element: ElementType;
+  turnsRemaining: number;
 }
 
 // Check if a species has a specific passive
 export function hasPassive(species: SpeciesType, passive: string): boolean {
   const passiveMap: Record<string, SpeciesType[]> = {
-    'amorphous': ['slime'],      // 20% less physical damage
-    'cunning': ['goblin'],        // +25% crit chance
-    'ethereal': ['ghost'],        // 30% phase through attacks
-    'draconic_pride': ['dragon'], // Damage scales with missing HP
-    'blood_frenzy': ['shark'],    // +30% damage vs wounded
-    'carapace': ['beetle'],       // First hit each turn reduced
-    'stinging': ['jellyfish'],    // Reflect damage when hit
-    'amphibious': ['frog'],       // +20% water damage
+    // Already implemented
+    'amorphous': ['slime'],        // 20% less physical damage
+    'cunning': ['goblin'],          // +25% crit chance
+    'ethereal': ['ghost'],          // 30% phase through attacks
+    'draconic_pride': ['dragon'],   // Damage scales with missing HP
+    'blood_frenzy': ['shark'],      // +30% damage vs wounded
+    'carapace': ['beetle'],         // First hit each turn reduced
+    'stinging': ['jellyfish'],      // Reflect damage when hit
+    'amphibious': ['frog'],         // +20% water damage
+    // Newly implemented
+    'undead': ['skeleton'],         // 10% chance to survive fatal hit
+    'venomous': ['snake'],          // +15% damage vs full HP enemies
+    'web_spinner': ['spider'],      // -20% enemy speed after hit
+    'spore_cloud': ['mushroom'],    // Regenerate 5% HP per turn
+    'echolocation': ['bat'],        // +15% accuracy
+    'pack_hunter': ['wolf'],        // +10% damage (flat, since no party)
+    'luminous': ['wisp'],           // +10% ally healing effectiveness
+    'mischievous': ['imp'],         // 15% chance to steal stat boost on hit
+    'stone_body': ['golem'],        // Cannot take more than 25% max HP damage per hit
+    'scavenger': ['rat'],           // Extra loot (handled in Index.tsx)
+    'keen_eye': ['crow'],           // Can steal enemy items
+    'hybrid_nature': ['chimera'],   // Gains resistance after being hit by element
   };
   return passiveMap[passive]?.includes(species) || false;
 }
@@ -54,9 +78,15 @@ export function getClassMultiplier(attackerClass: ClassType, defenderClass: Clas
 
 // Calculate actual hit chance after dodge (uses DODGE stat, not speed)
 // Ghost's Ethereal passive adds 30% extra dodge chance
+// Bat's Echolocation adds +15% accuracy
 export function calculateHitChance(move: Move, attacker: Monster, defender: Monster): number {
-  const baseAccuracy = move.accuracy;
+  let baseAccuracy = move.accuracy;
   const defenderDodge = defender.stats.dodge; // Use dodge stat directly
+  
+  // Bat's Echolocation: +15% accuracy
+  if (hasPassive(attacker.species, 'echolocation')) {
+    baseAccuracy = Math.min(100, baseAccuracy + 15);
+  }
   
   // Each point of dodge reduces hit chance by 0.5%, max 40% reduction
   let dodgeReduction = Math.min(40, Math.floor(defenderDodge * 0.5));
@@ -77,7 +107,8 @@ export function calculateExpectedDamage(
   move: Move, 
   attacker: Monster, 
   defender: Monster,
-  isFirstHitThisTurn: boolean = true
+  isFirstHitThisTurn: boolean = true,
+  temporaryResistances: TemporaryResistance[] = []
 ): number {
   if (move.power === 0) return 0;
   
@@ -109,6 +140,18 @@ export function calculateExpectedDamage(
     baseDamage = Math.floor(baseDamage * 1.2);
   }
   
+  // Snake's Venomous: +15% damage vs full HP enemies
+  if (hasPassive(attacker.species, 'venomous')) {
+    if (defender.stats.currentHp >= defender.stats.maxHp) {
+      baseDamage = Math.floor(baseDamage * 1.15);
+    }
+  }
+  
+  // Wolf's Pack Hunter: +10% damage (flat bonus since no party system)
+  if (hasPassive(attacker.species, 'pack_hunter')) {
+    baseDamage = Math.floor(baseDamage * 1.1);
+  }
+  
   // Defense reduces damage (never to 0)
   const defenseReduction = Math.floor(defenseStat / 2);
   let damageAfterDefense = Math.max(1, baseDamage - defenseReduction);
@@ -123,6 +166,20 @@ export function calculateExpectedDamage(
   // Beetle's Carapace: First hit each turn deals 30% reduced damage
   if (hasPassive(defender.species, 'carapace') && isFirstHitThisTurn) {
     damageAfterDefense = Math.floor(damageAfterDefense * 0.7);
+  }
+  
+  // Golem's Stone Body: Cannot take more than 25% max HP per hit
+  if (hasPassive(defender.species, 'stone_body')) {
+    const maxDamage = Math.floor(defender.stats.maxHp * 0.25);
+    damageAfterDefense = Math.min(damageAfterDefense, maxDamage);
+  }
+  
+  // Chimera's Hybrid Nature: Check for temporary element resistance
+  if (hasPassive(defender.species, 'hybrid_nature') && move.element) {
+    const hasResistance = temporaryResistances.some(r => r.element === move.element && r.turnsRemaining > 0);
+    if (hasResistance) {
+      damageAfterDefense = Math.floor(damageAfterDefense * 0.5); // 50% resistance
+    }
   }
   
   // Apply element and class multipliers
@@ -254,11 +311,23 @@ export function executeCombat(
   if (hasPassive(attacker.species, 'blood_frenzy') && defender.stats.currentHp < defender.stats.maxHp * 0.5) {
     passiveTriggered = `Blood Frenzy activated! 🦈`;
   }
+  if (hasPassive(attacker.species, 'venomous') && defender.stats.currentHp >= defender.stats.maxHp) {
+    passiveTriggered = `Venomous strike! 🐍`;
+  }
+  if (hasPassive(attacker.species, 'pack_hunter')) {
+    passiveTriggered = `Pack Hunter bonus! 🐺`;
+  }
+  if (hasPassive(attacker.species, 'echolocation')) {
+    passiveTriggered = `Echolocation precision! 🦇`;
+  }
   if (hasPassive(defender.species, 'amorphous') && move.type === 'melee') {
     passiveTriggered = `Amorphous body absorbs impact! 🟢`;
   }
   if (hasPassive(defender.species, 'carapace') && isFirstHitThisTurn) {
     passiveTriggered = `Carapace deflects the blow! 🪲`;
+  }
+  if (hasPassive(defender.species, 'stone_body')) {
+    passiveTriggered = `Stone Body limits damage! 🗿`;
   }
   
   // Jellyfish's Stinging Tendrils: Reflect 20% damage back to attacker
@@ -267,6 +336,16 @@ export function executeCombat(
     reflectDamage = Math.max(1, Math.floor(finalDamage * 0.2));
     passiveTriggered = `Stinging tendrils lash back for ${reflectDamage} damage! 🎐`;
   }
+  
+  // Spider's Web Spinner: Reduce enemy speed by 20% after successful hit
+  let speedDebuff: number | undefined;
+  if (hasPassive(attacker.species, 'web_spinner') && finalDamage > 0) {
+    speedDebuff = 20; // 20% speed reduction
+    passiveTriggered = `Web slows the target! 🕷️`;
+  }
+  
+  // Track element for Chimera's adaptive resistance
+  const elementHit = move.element;
   
   return {
     damage: finalDamage,
@@ -278,7 +357,37 @@ export function executeCombat(
     message,
     passiveTriggered,
     reflectDamage,
+    speedDebuff,
+    elementHit,
   };
+}
+
+// Check if Skeleton survives a fatal hit (10% chance)
+export function checkSkeletonSurvival(defender: Monster, damage: number): boolean {
+  if (!hasPassive(defender.species, 'undead')) return false;
+  if (defender.stats.currentHp - damage > 0) return false; // Not fatal
+  return Math.random() < 0.1; // 10% survival chance
+}
+
+// Apply Mushroom's regeneration at start of turn (5% max HP)
+export function applyMushroomRegen(monster: Monster): number {
+  if (!hasPassive(monster.species, 'spore_cloud')) return 0;
+  const regenAmount = Math.max(1, Math.floor(monster.stats.maxHp * 0.05));
+  return regenAmount;
+}
+
+// Wisp's healing boost (10% more effective)
+export function applyWispHealingBonus(healer: Monster, healAmount: number): number {
+  if (!hasPassive(healer.species, 'luminous')) return healAmount;
+  return Math.floor(healAmount * 1.1);
+}
+
+// Imp's chance to steal stat boost (15% on successful hit)
+export function checkImpSteal(attacker: Monster): { stolen: boolean; stat: string } | null {
+  if (!hasPassive(attacker.species, 'mischievous')) return null;
+  if (Math.random() >= 0.15) return null;
+  const stats = ['attack', 'defense', 'speed', 'special'];
+  return { stolen: true, stat: stats[Math.floor(Math.random() * stats.length)] };
 }
 
 // Calculate XP awarded for defeating an enemy

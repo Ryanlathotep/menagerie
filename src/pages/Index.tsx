@@ -719,9 +719,9 @@ function BattleView() {
   const inventory = state.run.inventory || [];
 
   return (
-    <div className="game-container pb-24 flex flex-col min-h-screen">
-      {/* Main battle area */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-4 max-w-2xl w-full mx-auto p-4">
+    <div className="fixed inset-0 bottom-auto pb-0 flex flex-col" style={{ height: 'calc(100vh - 120px)' }}>
+      {/* Main battle area - fills available space */}
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 max-w-2xl w-full mx-auto p-4 overflow-auto">
         <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-primary to-destructive bg-clip-text text-transparent">
           ⚔️ Battle!
         </h2>

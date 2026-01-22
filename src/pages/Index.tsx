@@ -327,34 +327,39 @@ function DungeonView() {
       
       {showShop && <ShopView gold={state.run?.gold || 0} onBuy={handleBuyItem} onClose={() => setShowShop(false)} />}
       
-      <div className="game-container pb-20">
-        <div className="flex flex-col items-center gap-4">
-          {/* Scrollable dungeon viewport */}
-          <div ref={containerRef} className="w-full max-w-[600px] h-[400px] overflow-auto bg-card rounded-2xl p-4 border-2 border-primary/20 shadow-xl">
-            <DungeonRenderer dungeon={dungeon} playerElement={state.run?.currentMonster.element || 'fire'} playerSpecies={state.run?.currentMonster.species} />
+      <div className="fixed inset-0 pb-48 overflow-hidden">
+        <div className="h-full flex flex-col">
+          {/* Scrollable dungeon viewport - fills available space */}
+          <div ref={containerRef} className="flex-1 overflow-auto bg-card border-b-2 border-primary/20">
+            <div className="min-h-full flex items-center justify-center p-4">
+              <DungeonRenderer dungeon={dungeon} playerElement={state.run?.currentMonster.element || 'fire'} playerSpecies={state.run?.currentMonster.species} />
+            </div>
           </div>
 
-          {/* Mobile controls */}
-          <div className="grid grid-cols-3 gap-2 w-32 sm:hidden">
-            <div />
-            <Button size="sm" onClick={() => handleMove('up')}>↑</Button>
-            <div />
-            <Button size="sm" onClick={() => handleMove('left')}>←</Button>
-            <div />
-            <Button size="sm" onClick={() => handleMove('right')}>→</Button>
-            <div />
-            <Button size="sm" onClick={() => handleMove('down')}>↓</Button>
-            <div />
-          </div>
+          {/* Bottom bar with controls and legend */}
+          <div className="fixed bottom-0 left-0 right-0 bg-card border-t-2 border-primary/20 p-4 z-50">
+            {/* Mobile controls */}
+            <div className="grid grid-cols-3 gap-2 w-32 mx-auto sm:hidden mb-3">
+              <div />
+              <Button size="sm" onClick={() => handleMove('up')}>↑</Button>
+              <div />
+              <Button size="sm" onClick={() => handleMove('left')}>←</Button>
+              <div />
+              <Button size="sm" onClick={() => handleMove('right')}>→</Button>
+              <div />
+              <Button size="sm" onClick={() => handleMove('down')}>↓</Button>
+              <div />
+            </div>
 
-          <p className="text-muted-foreground text-sm hidden sm:block">Use WASD or Arrow keys to move</p>
-          
-          {/* Legend */}
-          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground justify-center">
-            <span>💎 Treasure</span>
-            <span>⬇️ Stairs</span>
-            <span>⚠️ Trap</span>
-            <span>🏪 Shop</span>
+            <p className="text-muted-foreground text-sm hidden sm:block text-center mb-2">Use WASD or Arrow keys to move</p>
+            
+            {/* Legend */}
+            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground justify-center">
+              <span>💎 Treasure</span>
+              <span>⬇️ Stairs</span>
+              <span>⚠️ Trap</span>
+              <span>🏪 Shop</span>
+            </div>
           </div>
         </div>
       </div>

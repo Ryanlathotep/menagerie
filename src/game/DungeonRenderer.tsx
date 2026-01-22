@@ -137,7 +137,7 @@ function Tile({ tile, x, y, tiles, enemies, isPlayer, playerElement, playerSpeci
 
 export function DungeonRenderer({ dungeon, playerElement, playerSpecies }: DungeonRendererProps) {
   return (
-    <div className="bg-card rounded-2xl p-4 border-2 border-primary/20 shadow-xl shadow-primary/10">
+    <div className="w-full h-full flex flex-col">
       {/* Floor header - anime style */}
       <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-2">
@@ -158,8 +158,8 @@ export function DungeonRenderer({ dungeon, playerElement, playerSpecies }: Dunge
         </div>
       </div>
       
-      {/* Dungeon grid - softer borders */}
-      <div className="inline-block rounded-xl overflow-hidden border-2 border-border/30 bg-tile-floor/50">
+      {/* Dungeon grid - fills available space */}
+      <div className="flex-1 flex items-center justify-center overflow-auto rounded-xl border-2 border-border/30 bg-tile-floor/50">
         {dungeon.tiles.map((row, y) => (
           <div key={y} className="flex">
             {row.map((tile, x) => (
@@ -180,7 +180,7 @@ export function DungeonRenderer({ dungeon, playerElement, playerSpecies }: Dunge
       </div>
       
       {/* Minimap legend */}
-      <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground justify-center">
+      <div className="flex items-center gap-3 mt-3 text-[10px] text-muted-foreground justify-center">
         <span>💎 Treasure</span>
         <span>⬇️ Stairs</span>
         <span>⚠️ Trap</span>

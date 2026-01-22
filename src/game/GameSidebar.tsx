@@ -106,13 +106,13 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   const enemyStaminaPercent = enemyCurrentStamina / enemyMaxStamina * 100;
   return <>
       {/* Always visible bottom bar */}
-      <div ref={ref} className="fixed bottom-0 left-0 right-0 h-20 bg-card border-t-2 border-primary/20 flex items-center px-3 gap-3 z-50 shadow-lg">
+      <div ref={ref} className="fixed bottom-0 left-0 right-0 h-24 bg-card border-t-2 border-primary/20 flex items-center px-3 gap-4 z-50 shadow-lg">
         {/* Player section */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-3 flex-shrink-0">
           {/* Monster portrait */}
           <div className="relative flex-shrink-0">
-            <MonsterSprite species={monster.species} element={monster.element} classType={monster.class} size={40} animated={false} />
-            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] font-bold px-1.5 rounded-full">
+            <MonsterSprite species={monster.species} element={monster.element} classType={monster.class} size={64} animated={false} />
+            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
               {monster.level}
             </div>
           </div>
@@ -216,7 +216,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
       </div>
       
       {/* Compact slide-up panels */}
-      {activePanel && <div className="fixed bottom-20 left-0 right-0 bg-card border-t-2 border-primary/20 shadow-xl z-40 animate-fade-in">
+      {activePanel && <div className="fixed bottom-24 left-0 right-0 bg-card border-t-2 border-primary/20 shadow-xl z-40 animate-fade-in">
           <div className="p-3">
             {/* Panel header */}
             <div className="flex items-center justify-between mb-2">

@@ -8,6 +8,7 @@ interface DungeonRendererProps {
   dungeon: DungeonState;
   playerElement: ElementType;
   playerSpecies?: SpeciesType;
+  zoom?: number; // 50-200, 100 = default
 }
 
 export interface DungeonRendererHandle {
@@ -108,6 +109,8 @@ interface TileProps {
   isPlayer: boolean;
   playerElement?: ElementType;
   playerSpecies?: SpeciesType;
+  tileSize: number;
+  spriteSize: number;
 }
 function Tile({
   tile,
@@ -117,23 +120,32 @@ function Tile({
   enemies,
   isPlayer,
   playerElement,
-  playerSpecies
+  playerSpecies,
+  tileSize,
+  spriteSize
 }: TileProps) {
+  const tileStyle = {
+    width: `${tileSize}px`,
+    height: `${tileSize}px`,
+    minWidth: `${tileSize}px`,
+    minHeight: `${tileSize}px`,
+  };
+
   if (!tile.explored) {
-    return <div className="dungeon-tile bg-background" />;
+    return <div className="flex items-center justify-center bg-background" style={tileStyle} />;
   }
 
   // Wall tiles
   if (tile.type === 'wall') {
-    return <div className={`dungeon-tile ${getWallVariant(x, y, tiles)}`}>
-        {tile.visible && <span className="text-muted-foreground/30 text-[8px]">▓</span>}
+    return <div className={`flex items-center justify-center ${getWallVariant(x, y, tiles)}`} style={tileStyle}>
+        {tile.visible && <span className="text-muted-foreground/30" style={{ fontSize: `${Math.max(6, tileSize * 0.3)}px` }}>▓</span>}
       </div>;
   }
 
   // Player tile - show player's monster sprite
   if (isPlayer && playerElement && playerSpecies) {
-    return <div className={`dungeon-tile bg-gradient-to-br from-pink-100 to-primary/20 ${tile.visible ? 'ring-2 ring-primary shadow-lg shadow-primary/30' : ''}`}>
-        <MonsterSpriteSmall species={playerSpecies} element={playerElement} size={22} />
+    return <div className={`flex items-center justify-center bg-gradient-to-br from-pink-100 to-primary/20 ${tile.visible ? 'ring-2 ring-primary shadow-lg shadow-primary/30' : ''}`} style={tileStyle}>
+        <MonsterSpriteSmall species={playerSpecies} element={playerElement} size={spriteSize} />
       </div>;
   }
 
@@ -141,8 +153,8 @@ function Tile({
   if (tile.type === 'enemy' && tile.enemyId && tile.visible) {
     const enemy = enemies.find(e => e.id === tile.enemyId);
     if (enemy) {
-      return <div className={`dungeon-tile ${getFloorVariant(x, y, true)} relative hover:scale-110 transition-transform`}>
-          <MonsterSpriteSmall species={enemy.species} element={enemy.element} size={22} />
+      return <div className={`flex items-center justify-center ${getFloorVariant(x, y, true)} relative hover:scale-110 transition-transform`} style={tileStyle}>
+          <MonsterSpriteSmall species={enemy.species} element={enemy.element} size={spriteSize} />
         </div>;
     }
   }
@@ -150,23 +162,28 @@ function Tile({
   // Special tiles
   const visual = TILE_VISUALS[tile.type];
   const floorClass = getFloorVariant(x, y, tile.visible);
-  return <div className={`dungeon-tile ${tile.type === 'floor' ? floorClass : visual.bg} ${visual.glow || ''}`}>
-      {tile.visible && visual.content && <span className="text-sm">{visual.content}</span>}
-      {tile.visible && tile.type === 'floor' && <span className="text-muted-foreground/20 text-[6px]">·</span>}
+  return <div className={`flex items-center justify-center ${tile.type === 'floor' ? floorClass : visual.bg} ${visual.glow || ''}`} style={tileStyle}>
+      {tile.visible && visual.content && <span style={{ fontSize: `${Math.max(10, tileSize * 0.5)}px` }}>{visual.content}</span>}
+      {tile.visible && tile.type === 'floor' && <span className="text-muted-foreground/20" style={{ fontSize: `${Math.max(4, tileSize * 0.2)}px` }}>·</span>}
     </div>;
 }
 export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRendererProps>(({
   dungeon,
   playerElement,
-  playerSpecies
+  playerSpecies,
+  zoom = 100
 }, ref) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Calculate tile size based on zoom (base size is 28px at 100%)
+  const baseTileSize = 28;
+  const tileSize = Math.round(baseTileSize * (zoom / 100));
+  const spriteSize = Math.round(22 * (zoom / 100));
   
   // Expose scroll method to parent
   useImperativeHandle(ref, () => ({
     scrollToPlayer: () => {
       if (scrollRef.current) {
-        const tileSize = 28;
         const scrollContainer = scrollRef.current;
         const playerPixelX = dungeon.playerPosition.x * tileSize + tileSize / 2;
         const playerPixelY = dungeon.playerPosition.y * tileSize + tileSize / 2;
@@ -179,12 +196,11 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
         });
       }
     }
-  }), [dungeon.playerPosition.x, dungeon.playerPosition.y]);
+  }), [dungeon.playerPosition.x, dungeon.playerPosition.y, tileSize]);
   
-  // Auto-scroll when player moves
+  // Auto-scroll when player moves or zoom changes
   useEffect(() => {
     if (scrollRef.current) {
-      const tileSize = 28;
       const scrollContainer = scrollRef.current;
       const scrollContent = scrollContainer.firstElementChild as HTMLElement;
       
@@ -204,7 +220,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
         behavior: 'smooth'
       });
     }
-  }, [dungeon.playerPosition.x, dungeon.playerPosition.y]);
+  }, [dungeon.playerPosition.x, dungeon.playerPosition.y, tileSize]);
   
   return (
     <div className="w-full h-full flex flex-col">
@@ -243,7 +259,9 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                   enemies={dungeon.enemies} 
                   isPlayer={dungeon.playerPosition.x === x && dungeon.playerPosition.y === y} 
                   playerElement={playerElement} 
-                  playerSpecies={playerSpecies} 
+                  playerSpecies={playerSpecies}
+                  tileSize={tileSize}
+                  spriteSize={spriteSize}
                 />
               ))}
             </div>

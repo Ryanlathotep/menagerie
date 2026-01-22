@@ -436,7 +436,7 @@ function DungeonView() {
         <div className="h-full flex flex-col">
           {/* Scrollable dungeon viewport - fills available space */}
           <div className="flex-1 overflow-hidden bg-card border-b-2 border-primary/20">
-            <DungeonRenderer dungeon={dungeon} playerElement={state.run?.currentMonster.element || 'fire'} playerSpecies={state.run?.currentMonster.species} />
+            <DungeonRenderer dungeon={dungeon} playerElement={state.run?.currentMonster.element || 'fire'} playerSpecies={state.run?.currentMonster.species} zoom={settings.dungeonZoom} />
           </div>
 
           {/* Bottom bar with controls and legend */}

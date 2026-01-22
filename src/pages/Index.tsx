@@ -842,13 +842,13 @@ function BattleView() {
     const result = executeCombat(move, battle.playerMonster, battle.enemyMonster);
     const newLog = [...battle.log, result.message];
     
-    // Add passive ability message if triggered
-    if (result.passiveTriggered) {
-      newLog.push(result.passiveTriggered);
+    // Add all passive ability messages
+    if (result.passiveMessages && result.passiveMessages.length > 0) {
+      newLog.push(...result.passiveMessages);
     }
     
     if (staminaCost > 0) {
-      newLog.push(`Used ${staminaCost} stamina`);
+      newLog.push(`⚡ Used ${staminaCost} stamina`);
     }
 
     // Apply heal if it's a heal move
@@ -1113,9 +1113,9 @@ function BattleView() {
       newPlayerHp = Math.max(0, newPlayerHp - enemyResult.damage);
       newLog.push(enemyResult.message);
       
-      // Add passive ability message if triggered
-      if (enemyResult.passiveTriggered) {
-        newLog.push(enemyResult.passiveTriggered);
+      // Add all passive ability messages from enemy's attack
+      if (enemyResult.passiveMessages && enemyResult.passiveMessages.length > 0) {
+        newLog.push(...enemyResult.passiveMessages);
       }
       
       // Player's Skeleton survival: 10% chance to survive fatal hit

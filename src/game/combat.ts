@@ -11,12 +11,15 @@ export interface CombatResult {
   elementMultiplier: number;
   classMultiplier: number;
   message: string;
-  passiveTriggered?: string; // Message about passive ability triggering
+  passiveTriggered?: string; // Primary passive message (for backwards compat)
+  passiveMessages: string[]; // All passive messages that triggered
   reflectDamage?: number; // Damage reflected back to attacker (Jellyfish)
   speedDebuff?: number; // Speed debuff to apply to target (Spider)
   survivedFatal?: boolean; // Skeleton survived a fatal hit
   elementHit?: ElementType; // Element of the move that hit (for Chimera resistance)
   stolenItem?: { id: string; name: string }; // Item stolen by Crow
+  moveUsed: string; // Name of the move used
+  attackerName: string; // Name of the attacker
 }
 
 // Track temporary resistances (for Chimera)
@@ -255,12 +258,12 @@ export function executeCombat(
   const hitRoll = Math.random() * 100;
   const hit = hitRoll <= hitChance;
   
-  // Track passive messages
-  let passiveTriggered: string | undefined;
+  // Track all passive messages
+  const passiveMessages: string[] = [];
   
   // Ghost's Ethereal: Check if phased through
   if (!hit && hasPassive(defender.species, 'ethereal') && hitRoll > hitChance - 30) {
-    passiveTriggered = `${defender.name} phased through the attack! 👻`;
+    passiveMessages.push(`👻 ${defender.name}'s Ethereal: Phased through the attack!`);
   }
   
   if (!hit) {
@@ -271,8 +274,11 @@ export function executeCombat(
       effectiveness: 'normal',
       elementMultiplier: 1,
       classMultiplier: 1,
-      message: `${move.name} missed!`,
-      passiveTriggered,
+      message: `${attacker.name} used ${move.name}... but it missed!`,
+      passiveTriggered: passiveMessages[0],
+      passiveMessages,
+      moveUsed: move.name,
+      attackerName: attacker.name,
     };
   }
   
@@ -292,56 +298,66 @@ export function executeCombat(
   const critical = critRoll < critChance;
   let finalDamage = critical ? Math.floor(damage * 1.5) : damage;
   
-  // Build message with passive info
-  let message = `${move.name} dealt ${finalDamage} damage!`;
-  if (critical) {
-    message += ' Critical hit!';
-    if (hasPassive(attacker.species, 'cunning')) {
-      passiveTriggered = `Cunning strike! 🗡️`;
+  // Build detailed message
+  let message = `${attacker.name} used ${move.name}!`;
+  
+  // Add damage info
+  if (finalDamage > 0) {
+    message += ` Dealt ${finalDamage} damage`;
+    if (critical) {
+      message += ' (CRIT!)';
     }
+    message += '.';
   }
-  if (effectiveness.overall === 'super-effective') message += ' Super effective!';
-  if (effectiveness.overall === 'effective') message += ' Effective!';
-  if (effectiveness.overall === 'weak') message += ' Not very effective...';
+  
+  // Add effectiveness info
+  if (effectiveness.overall === 'super-effective') message += ' 💥 Super effective!';
+  else if (effectiveness.overall === 'effective') message += ' ✨ Effective!';
+  else if (effectiveness.overall === 'weak') message += ' ⬇️ Not very effective...';
+  
+  // Track all triggered passives
+  if (critical && hasPassive(attacker.species, 'cunning')) {
+    passiveMessages.push(`🗡️ ${attacker.name}'s Cunning: Critical hit bonus!`);
+  }
   
   // Add passive messages for damage modifiers
   if (hasPassive(attacker.species, 'draconic_pride') && attacker.stats.currentHp < attacker.stats.maxHp * 0.5) {
-    passiveTriggered = `Draconic Pride surges! 🐉`;
+    passiveMessages.push(`🐉 ${attacker.name}'s Draconic Pride: Low HP damage boost!`);
   }
   if (hasPassive(attacker.species, 'blood_frenzy') && defender.stats.currentHp < defender.stats.maxHp * 0.5) {
-    passiveTriggered = `Blood Frenzy activated! 🦈`;
+    passiveMessages.push(`🦈 ${attacker.name}'s Blood Frenzy: +30% vs wounded!`);
   }
   if (hasPassive(attacker.species, 'venomous') && defender.stats.currentHp >= defender.stats.maxHp) {
-    passiveTriggered = `Venomous strike! 🐍`;
+    passiveMessages.push(`🐍 ${attacker.name}'s Venomous: +15% vs full HP!`);
   }
   if (hasPassive(attacker.species, 'pack_hunter')) {
-    passiveTriggered = `Pack Hunter bonus! 🐺`;
+    passiveMessages.push(`🐺 ${attacker.name}'s Pack Hunter: +10% damage!`);
   }
   if (hasPassive(attacker.species, 'echolocation')) {
-    passiveTriggered = `Echolocation precision! 🦇`;
+    passiveMessages.push(`🦇 ${attacker.name}'s Echolocation: +15% accuracy!`);
   }
   if (hasPassive(defender.species, 'amorphous') && move.type === 'melee') {
-    passiveTriggered = `Amorphous body absorbs impact! 🟢`;
+    passiveMessages.push(`🟢 ${defender.name}'s Amorphous: -20% melee damage!`);
   }
   if (hasPassive(defender.species, 'carapace') && isFirstHitThisTurn) {
-    passiveTriggered = `Carapace deflects the blow! 🪲`;
+    passiveMessages.push(`🪲 ${defender.name}'s Carapace: First hit reduced!`);
   }
   if (hasPassive(defender.species, 'stone_body')) {
-    passiveTriggered = `Stone Body limits damage! 🗿`;
+    passiveMessages.push(`🗿 ${defender.name}'s Stone Body: Damage capped at 25% HP!`);
   }
   
   // Jellyfish's Stinging Tendrils: Reflect 20% damage back to attacker
   let reflectDamage: number | undefined;
   if (hasPassive(defender.species, 'stinging') && finalDamage > 0) {
     reflectDamage = Math.max(1, Math.floor(finalDamage * 0.2));
-    passiveTriggered = `Stinging tendrils lash back for ${reflectDamage} damage! 🎐`;
+    passiveMessages.push(`🎐 ${defender.name}'s Stinging Tendrils: Reflects ${reflectDamage} damage!`);
   }
   
   // Spider's Web Spinner: Reduce enemy speed by 20% after successful hit
   let speedDebuff: number | undefined;
   if (hasPassive(attacker.species, 'web_spinner') && finalDamage > 0) {
     speedDebuff = 20; // 20% speed reduction
-    passiveTriggered = `Web slows the target! 🕷️`;
+    passiveMessages.push(`🕷️ ${attacker.name}'s Web Spinner: Target slowed -20% speed!`);
   }
   
   // Track element for Chimera's adaptive resistance
@@ -355,10 +371,13 @@ export function executeCombat(
     elementMultiplier: elementMult,
     classMultiplier: classMult,
     message,
-    passiveTriggered,
+    passiveTriggered: passiveMessages[0],
+    passiveMessages,
     reflectDamage,
     speedDebuff,
     elementHit,
+    moveUsed: move.name,
+    attackerName: attacker.name,
   };
 }
 

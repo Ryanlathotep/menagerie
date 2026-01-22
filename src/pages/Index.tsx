@@ -719,7 +719,7 @@ function BattleView() {
   const inventory = state.run.inventory || [];
 
   return (
-    <div className="game-container pl-20 flex flex-col h-screen">
+    <div className="game-container pb-24 flex flex-col min-h-screen">
       {/* Main battle area */}
       <div className="flex-1 flex flex-col items-center justify-center gap-4 max-w-2xl w-full mx-auto p-4">
         <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-primary to-destructive bg-clip-text text-transparent">
@@ -800,39 +800,41 @@ function BattleView() {
         </div>
       </div>
 
-      {/* Bottom action bar - fixed at bottom */}
-      <div className="bg-card border-t-2 border-primary/20 p-4 shadow-lg">
-        <div className="max-w-2xl mx-auto">
-          {/* Inventory panel */}
-          {showInventory && (
-            <div className="mb-4 bg-muted/50 rounded-lg p-3">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="font-semibold text-sm">Items</h3>
-                <Button variant="ghost" size="sm" onClick={() => setShowInventory(false)}>✕</Button>
-              </div>
-              {inventory.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No items in inventory</p>
-              ) : (
-                <div className="flex gap-2 flex-wrap">
-                  {inventory.map((item, i) => (
-                    <Button 
-                      key={i}
-                      variant="outline"
-                      size="sm"
-                      className="text-xs"
-                      onClick={() => handleUseItem(item)}
-                    >
-                      {item.name} x{item.quantity}
-                    </Button>
-                  ))}
-                </div>
-              )}
+      {/* Bottom action bar - fixed at bottom, full width like GameSidebar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-card border-t-2 border-primary/20 shadow-lg z-50">
+        {/* Expandable panel for inventory */}
+        {showInventory && (
+          <div className="border-b border-primary/10 p-3">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-semibold text-sm">Items</h3>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowInventory(false)}>✕</Button>
             </div>
-          )}
-          
-          {/* Move selection */}
-          <ScrollArea className="h-32 mb-3">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pr-4">
+            {inventory.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No items in inventory</p>
+            ) : (
+              <div className="flex gap-2 flex-wrap">
+                {inventory.map((item, i) => (
+                  <Button 
+                    key={i}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => handleUseItem(item)}
+                  >
+                    {item.name} x{item.quantity}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Main bottom bar content */}
+        <div className="p-3">
+          {/* Moves grid + action buttons in one row */}
+          <div className="grid grid-cols-[1fr_auto] gap-3 items-start">
+            {/* Move selection - horizontal scroll */}
+            <div className="flex gap-2 overflow-x-auto pb-1">
               {availableMoves.map((move) => {
                 const canAfford = (move.staminaCost || 0) <= currentStamina;
                 return (
@@ -844,18 +846,16 @@ function BattleView() {
                   >
                     <Button 
                       variant={canAfford ? "outline" : "ghost"}
-                      className={`h-auto py-2 px-3 text-left justify-start hover:bg-primary/10 ${
+                      className={`h-auto py-2 px-3 text-left flex-shrink-0 ${
                         !canAfford && move.id !== 'struggle' ? 'opacity-50' : ''
                       } ${move.id === 'struggle' ? 'border-destructive text-destructive' : ''}`}
                       onClick={() => executeMove(move)}
                       disabled={!canAfford && move.id !== 'struggle'}
                     >
-                      <div className="w-full">
-                        <div className="flex justify-between items-center">
-                          <p className="font-semibold text-sm">{move.name}</p>
-                          <span>{getMoveEffectivenessIndicator(move)}</span>
-                        </div>
-                        <p className="text-[10px] opacity-70">
+                      <div>
+                        <p className="font-semibold text-xs">{move.name}</p>
+                        <p className="text-[9px] opacity-70">
+                          {getMoveEffectivenessIndicator(move)}
                           {move.power > 0 ? `⚔️${move.power} ` : ''} 
                           🎯{move.accuracy}% 
                           ⚡{move.staminaCost}
@@ -868,28 +868,28 @@ function BattleView() {
                 );
               })}
             </div>
-          </ScrollArea>
-          
-          {/* Action buttons */}
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowInventory(!showInventory)}
-              className="flex items-center gap-1"
-            >
-              <Backpack className="w-4 h-4" />
-              Items ({inventory.length})
-            </Button>
-            <Button 
-              variant="destructive" 
-              size="sm"
-              onClick={handleFlee}
-              className="flex items-center gap-1"
-            >
-              <DoorOpen className="w-4 h-4" />
-              Flee ({Math.min(95, Math.max(5, 50 + (battle.playerMonster.stats.speed - battle.enemyMonster.stats.speed) * 2))}%)
-            </Button>
+            
+            {/* Action buttons - right side */}
+            <div className="flex gap-2 flex-shrink-0">
+              <Button 
+                variant={showInventory ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowInventory(!showInventory)}
+                className="flex items-center gap-1"
+              >
+                <Backpack className="w-4 h-4" />
+                <span className="hidden sm:inline">Items</span> ({inventory.length})
+              </Button>
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={handleFlee}
+                className="flex items-center gap-1"
+              >
+                <DoorOpen className="w-4 h-4" />
+                <span className="hidden sm:inline">Flee</span> ({Math.min(95, Math.max(5, 50 + (battle.playerMonster.stats.speed - battle.enemyMonster.stats.speed) * 2))}%)
+              </Button>
+            </div>
           </div>
         </div>
       </div>

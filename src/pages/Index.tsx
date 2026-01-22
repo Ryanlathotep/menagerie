@@ -384,8 +384,45 @@ function DungeonView() {
     });
     toast.success('Item dropped');
   };
+
+  const handleUseItemOutOfCombat = (item: InventoryItem) => {
+    if (!state.run) return;
+    
+    const monster = state.run.currentMonster;
+    let message = '';
+    let updatedMonster = { ...monster };
+    
+    if (item.effect === 'heal_hp') {
+      const hpBefore = monster.stats.currentHp;
+      const newHp = Math.min(monster.stats.maxHp, monster.stats.currentHp + (item.value || 0));
+      const healed = newHp - hpBefore;
+      if (healed <= 0) return toast.info('Already at full HP!');
+      updatedMonster = {
+        ...monster,
+        stats: { ...monster.stats, currentHp: newHp }
+      };
+      message = `Restored ${healed} HP!`;
+    } else if (item.effect === 'heal_stamina') {
+      // Stamina restores outside combat - just inform user it will apply next battle
+      message = `${item.name} will restore stamina in battle!`;
+      toast.info(message);
+      return; // Don't consume outside combat
+    } else if (item.effect === 'cure_poison' || item.effect === 'cure_burn' || item.effect === 'cure_freeze' || item.effect === 'cure_all') {
+      message = `Used ${item.name}!`;
+    } else if (item.effect === 'boost_attack' || item.effect === 'boost_defense' || item.effect === 'boost_speed') {
+      toast.info(`${item.name} can only be used in battle.`);
+      return;
+    } else {
+      message = `Used ${item.name}!`;
+    }
+    
+    dispatch({ type: 'UPDATE_PLAYER_MONSTER', monster: updatedMonster });
+    dispatch({ type: 'USE_ITEM', itemId: item.id });
+    toast.success(message);
+  };
+
   return <>
-      <GameSidebar monster={state.run?.currentMonster || null} gold={state.run?.gold || 0} floor={dungeon.floor} inventory={state.run?.inventory || []} moveOrder={state.run?.moveOrder || []} hiddenMoves={state.run?.hiddenMoves || []} experience={state.run?.experience || 0} experienceToNext={xpToNextLevel(state.run?.currentMonster?.level || 1)} onFlee={handleFlee} onDropItem={handleDropItem} onReorderMoves={order => dispatch({
+      <GameSidebar monster={state.run?.currentMonster || null} gold={state.run?.gold || 0} floor={dungeon.floor} inventory={state.run?.inventory || []} moveOrder={state.run?.moveOrder || []} hiddenMoves={state.run?.hiddenMoves || []} experience={state.run?.experience || 0} experienceToNext={xpToNextLevel(state.run?.currentMonster?.level || 1)} onFlee={handleFlee} onDropItem={handleDropItem} onUseItem={handleUseItemOutOfCombat} onReorderMoves={order => dispatch({
       type: 'SET_MOVE_ORDER',
       order
     })} onToggleHideMove={moveId => dispatch({

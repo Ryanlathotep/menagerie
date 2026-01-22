@@ -19,6 +19,7 @@ interface GameSidebarProps {
   experience?: number;
   experienceToNext?: number;
   expandedStats?: ExpandedStats;
+  onPanelChange?: (isOpen: boolean) => void;
 }
 export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   monster,
@@ -28,9 +29,17 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   inBattle = false,
   experience = 0,
   experienceToNext = 100,
-  expandedStats
+  expandedStats,
+  onPanelChange
 }, ref) => {
   const [activePanel, setActivePanel] = useState<'character' | 'inventory' | 'moves' | null>(null);
+  
+  const handlePanelChange = (panel: typeof activePanel) => {
+    const newPanel = activePanel === panel ? null : panel;
+    setActivePanel(newPanel);
+    onPanelChange?.(newPanel !== null);
+  };
+  
   if (!monster) return null;
   const moves = getMonsterMoves(monster.species, monster.element, monster.class);
 
@@ -70,15 +79,15 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
         
         {/* Menu buttons */}
         <div className="flex gap-2">
-          <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="w-10 h-10" onClick={() => setActivePanel(activePanel === 'character' ? null : 'character')} title="Character Sheet">
+          <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="w-10 h-10" onClick={() => handlePanelChange('character')} title="Character Sheet">
             <User className="w-5 h-5" />
           </Button>
           
-          <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-10 h-10" onClick={() => setActivePanel(activePanel === 'moves' ? null : 'moves')} title="Moves">
+          <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-10 h-10" onClick={() => handlePanelChange('moves')} title="Moves">
             <Swords className="w-5 h-5" />
           </Button>
           
-          <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className="w-10 h-10" onClick={() => setActivePanel(activePanel === 'inventory' ? null : 'inventory')} title="Inventory">
+          <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className="w-10 h-10" onClick={() => handlePanelChange('inventory')} title="Inventory">
             <Backpack className="w-5 h-5" />
           </Button>
         </div>
@@ -108,7 +117,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 {activePanel === 'moves' && '⚔️ Moves'}
                 {activePanel === 'inventory' && '🎒 Inventory'}
               </h2>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setActivePanel(null)}>✕</Button>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handlePanelChange(null)}>✕</Button>
             </div>
             
             {/* Character Panel - Compact Grid */}

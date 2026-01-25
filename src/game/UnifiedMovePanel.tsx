@@ -1,7 +1,7 @@
 // Unified Move Panel - Works in both combat and exploration
-// Supports tier selection, move usage, and drag-and-drop reordering
+// Supports tier selection, move usage, sorting, filtering, and drag-and-drop reordering
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,6 @@ import { Move } from './moves';
 import { Monster } from './types';
 import { ExpandedStats } from './CharacterSheet';
 import { 
-  MoveTier, 
   getAvailableTiers, 
   hasAoEUnlocked, 
   createEvolvedMove, 
@@ -21,9 +20,15 @@ import {
   TIER_COLORS,
   TIER_BG_COLORS,
   getTierDisplayName,
-  MoveMastery,
   EvolvedMove,
 } from './moveMastery';
+import { 
+  MoveSortFilter, 
+  MoveSortOption, 
+  MoveFilterOption, 
+  sortMoves, 
+  filterMoves 
+} from './MoveSortFilter';
 
 interface UnifiedMovePanelProps {
   moves: Move[];
@@ -60,18 +65,18 @@ export function UnifiedMovePanel({
   const [dragOverSection, setDragOverSection] = useState<'visible' | 'hidden' | null>(null);
   const [selectedMoveForTier, setSelectedMoveForTier] = useState<Move | null>(null);
   
-  // Sort moves by order
-  const sortedMoves = [...moves].sort((a, b) => {
-    const aIndex = moveOrder.indexOf(a.id);
-    const bIndex = moveOrder.indexOf(b.id);
-    if (aIndex === -1 && bIndex === -1) return 0;
-    if (aIndex === -1) return 1;
-    if (bIndex === -1) return -1;
-    return aIndex - bIndex;
-  });
+  // Sorting and filtering state
+  const [sortOption, setSortOption] = useState<MoveSortOption>('custom');
+  const [filters, setFilters] = useState<MoveFilterOption[]>(['all']);
   
-  const visibleMoves = sortedMoves.filter(m => !hiddenMoves.includes(m.id));
-  const hiddenMovesList = sortedMoves.filter(m => hiddenMoves.includes(m.id));
+  // Apply sorting and filtering
+  const processedMoves = useMemo(() => {
+    const filtered = filterMoves(moves, filters);
+    return sortMoves(filtered, sortOption, monster, moveOrder);
+  }, [moves, filters, sortOption, monster, moveOrder]);
+  
+  const visibleMoves = processedMoves.filter(m => !hiddenMoves.includes(m.id));
+  const hiddenMovesList = processedMoves.filter(m => hiddenMoves.includes(m.id));
   
   // Drag handlers
   const handleDragStart = (e: React.DragEvent, moveId: string) => {
@@ -293,6 +298,14 @@ export function UnifiedMovePanel({
 
   return (
     <div className="space-y-3">
+      {/* Sort and Filter Controls */}
+      <MoveSortFilter
+        sortOption={sortOption}
+        filters={filters}
+        onSortChange={setSortOption}
+        onFilterChange={setFilters}
+      />
+      
       {/* Visible Moves */}
       <div 
         className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 min-h-[60px] p-1 rounded-lg transition-colors ${

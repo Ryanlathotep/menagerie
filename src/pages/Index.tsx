@@ -41,6 +41,7 @@ import { PartyPanel } from '@/game/PartyPanel';
 import { RecruitmentModal, calculateRecruitChance } from '@/game/RecruitmentModal';
 import { PartySwitchModal } from '@/game/PartySwitchModal';
 import { ReviveTargetModal } from '@/game/ReviveTargetModal';
+import { CombatSwitchPanel } from '@/game/CombatSwitchPanel';
 
 // Main Menu Component
 function MainMenu() {
@@ -943,6 +944,9 @@ function BattleView() {
   const [showReviveModal, setShowReviveModal] = useState(false);
   const [pendingReviveItem, setPendingReviveItem] = useState<InventoryItem | null>(null);
   
+  // Combat switch mode state
+  const [showCombatSwitch, setShowCombatSwitch] = useState(false);
+  
   // Battle stats tracking (local, synced to state at end)
   const [battleStats, setBattleStats] = useState({
     turnsUsed: 0,
@@ -1011,6 +1015,42 @@ function BattleView() {
     setShowPartySwitchModal(false);
     dispatch({ type: 'END_BATTLE', victory: false });
     dispatch({ type: 'END_RUN', victory: false });
+  };
+  
+  // Handle voluntary party switch during combat (uses a turn)
+  const handleCombatSwitch = (newIndex: number) => {
+    if (!state.run || !battle) return;
+    
+    setShowCombatSwitch(false);
+    dispatch({ type: 'SWITCH_ACTIVE_IN_BATTLE', index: newIndex });
+    setPlayerEffects(EMPTY_COMBAT_EFFECTS);
+    toast.success(`Go, ${state.run.party[newIndex].species}!`);
+    
+    // Enemy gets a free attack when you switch
+    const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class);
+    const enemyMove = enemyMoves[Math.floor(Math.random() * Math.min(3, enemyMoves.length))];
+    const newMonster = state.run.party[newIndex];
+    const enemyResult = executeCombat(enemyMove, battle.enemyMonster, newMonster);
+    const newPlayerHp = Math.max(0, newMonster.stats.currentHp - enemyResult.damage);
+    
+    if (newPlayerHp <= 0) {
+      const defeatedMonster = {
+        ...newMonster,
+        stats: { ...newMonster.stats, currentHp: 0 }
+      };
+      handleActiveMonsterDefeated(defeatedMonster, [...battle.log, `Switched to ${newMonster.name}!`, enemyResult.message]);
+    } else {
+      dispatch({
+        type: 'UPDATE_BATTLE',
+        battle: {
+          playerMonster: {
+            ...newMonster,
+            stats: { ...newMonster.stats, currentHp: newPlayerHp }
+          },
+          log: [...battle.log, `Switched to ${newMonster.name}!`, enemyResult.message]
+        }
+      });
+    }
   };
   
   // Handle revive target selection
@@ -2077,37 +2117,61 @@ function BattleView() {
         
         {/* Move selection area - above the sidebar */}
         <div className="mt-4 p-3 bg-card rounded-lg border-2 border-primary/20">
-          <h3 className="font-semibold text-sm mb-2">Choose Your Move</h3>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {availableMoves.map(move => {
-              const canAfford = (move.staminaCost || 0) <= currentStamina;
-              const effectiveness = getMoveEffectiveness(move);
-              return (
-                <MoveTooltip key={move.id} move={move} attacker={battle.playerMonster} defender={battle.enemyMonster}>
-                  <Button 
-                    variant={canAfford ? "outline" : "ghost"} 
-                    className={`h-auto py-2 px-3 text-left flex-shrink-0 transition-all ${!canAfford && move.id !== 'struggle' ? 'opacity-50' : ''} ${move.id === 'struggle' ? 'border-destructive text-destructive' : ''} ${canAfford ? effectiveness.auraClass : ''}`} 
-                    onClick={() => executeMove(move)} 
-                    disabled={!canAfford && move.id !== 'struggle'}
-                  >
-                    <div>
-                      <p className="font-semibold text-xs">
-                        {effectiveness.indicator && <span className="mr-1">{effectiveness.indicator}</span>}
-                        {move.name}
-                      </p>
-                      <p className="text-[9px] opacity-70">
-                        {move.power > 0 ? `⚔️${move.power} ` : ''} 
-                        🎯{move.accuracy}% 
-                        ⚡{move.staminaCost}
-                        {move.type === 'heal' ? ' 💚' : ''}
-                        {move.effect?.includes('stamina') ? ' ⚡+' : ''}
-                      </p>
-                    </div>
-                  </Button>
-                </MoveTooltip>
-              );
-            })}
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold text-sm">Choose Your Move</h3>
+            {/* Party switch button - only show if more than 1 alive party member */}
+            {state.run.party.filter((m, i) => i !== state.run.activePartyIndex && m.stats.currentHp > 0).length > 0 && (
+              <Button
+                variant={showCombatSwitch ? "default" : "outline"}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setShowCombatSwitch(!showCombatSwitch)}
+              >
+                🔄 Switch
+              </Button>
+            )}
           </div>
+          
+          {/* Combat switch panel */}
+          {showCombatSwitch ? (
+            <CombatSwitchPanel
+              party={state.run.party}
+              activeIndex={state.run.activePartyIndex}
+              onSwitch={handleCombatSwitch}
+              onCancel={() => setShowCombatSwitch(false)}
+            />
+          ) : (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {availableMoves.map(move => {
+                const canAfford = (move.staminaCost || 0) <= currentStamina;
+                const effectiveness = getMoveEffectiveness(move);
+                return (
+                  <MoveTooltip key={move.id} move={move} attacker={battle.playerMonster} defender={battle.enemyMonster}>
+                    <Button 
+                      variant={canAfford ? "outline" : "ghost"} 
+                      className={`h-auto py-2 px-3 text-left flex-shrink-0 transition-all ${!canAfford && move.id !== 'struggle' ? 'opacity-50' : ''} ${move.id === 'struggle' ? 'border-destructive text-destructive' : ''} ${canAfford ? effectiveness.auraClass : ''}`} 
+                      onClick={() => executeMove(move)} 
+                      disabled={!canAfford && move.id !== 'struggle'}
+                    >
+                      <div>
+                        <p className="font-semibold text-xs">
+                          {effectiveness.indicator && <span className="mr-1">{effectiveness.indicator}</span>}
+                          {move.name}
+                        </p>
+                        <p className="text-[9px] opacity-70">
+                          {move.power > 0 ? `⚔️${move.power} ` : ''} 
+                          🎯{move.accuracy}% 
+                          ⚡{move.staminaCost}
+                          {move.type === 'heal' ? ' 💚' : ''}
+                          {move.effect?.includes('stamina') ? ' ⚡+' : ''}
+                        </p>
+                      </div>
+                    </Button>
+                  </MoveTooltip>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

@@ -122,7 +122,7 @@ const SPECIES_PATHS: Record<SpeciesType, { body: string; detail: string; face: s
 
 // Equipment visual overlays - SVG paths for equipped items
 // Each slot has a visual representation that renders on top of the monster
-const EQUIPMENT_VISUALS: Record<EquipmentSlot, { path: string; position: 'top' | 'body' | 'hands' | 'feet' }> = {
+const EQUIPMENT_VISUALS: Record<EquipmentSlot, { path: string; position: 'top' | 'body' | 'hands' | 'feet' | 'back' }> = {
   helmet: {
     path: 'M30,6 L35,2 L50,0 L65,2 L70,6 L68,14 L32,14 Z',
     position: 'top',
@@ -150,6 +150,11 @@ const EQUIPMENT_VISUALS: Record<EquipmentSlot, { path: string; position: 'top' |
   accessory: {
     path: 'M45,60 A6,6 0 1,1 55,60 A6,6 0 1,1 45,60',
     position: 'body',
+  },
+  back: {
+    // Cape/cloak flowing behind the monster
+    path: 'M35,30 Q30,45 28,70 Q50,75 72,70 Q70,45 65,30 Z',
+    position: 'back',
   },
 };
 

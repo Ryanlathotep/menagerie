@@ -136,7 +136,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       // On death (victory=false), return equipped items to town storage
       const equipmentToStore: EquipmentItem[] = [];
       if (!action.victory && state.run?.equipment) {
-        const slots: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory'];
+        const slots: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory', 'back'];
         for (const slot of slots) {
           const item = state.run.equipment[slot];
           if (item) {
@@ -185,7 +185,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       
       // Collect all equipment to store (equipped + inventory)
       const equipmentToStore: EquipmentItem[] = [...state.run.equipmentInventory];
-      const slots: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory'];
+      const slots: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory', 'back'];
       for (const slot of slots) {
         const item = state.run.equipment[slot];
         if (item) {

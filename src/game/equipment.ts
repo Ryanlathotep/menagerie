@@ -3,7 +3,7 @@
 import { ElementType, ClassType, SpeciesType } from './types';
 
 // ============= EQUIPMENT SLOTS =============
-export type EquipmentSlot = 'helmet' | 'armor' | 'gloves' | 'boots' | 'mainHand' | 'offHand' | 'accessory';
+export type EquipmentSlot = 'helmet' | 'armor' | 'gloves' | 'boots' | 'mainHand' | 'offHand' | 'accessory' | 'back';
 
 // ============= RARITY SYSTEM =============
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
@@ -128,6 +128,20 @@ const ACCESSORY_TEMPLATES: EquipmentTemplate[] = [
   { name: 'Stamina Band', slot: 'accessory', baseStats: { stamina: 5 }, icon: '⚡' },
 ];
 
+// Back slot items: cloaks, capes, wings, backpacks, tails
+const BACK_TEMPLATES: EquipmentTemplate[] = [
+  { name: 'Travel Cloak', slot: 'back', baseStats: { defense: 2, dodge: 2 }, icon: '🧥' },
+  { name: 'Shadow Cape', slot: 'back', baseStats: { dodge: 5, speed: 2 }, icon: '🦇' },
+  { name: 'Battle Cape', slot: 'back', baseStats: { attack: 2, defense: 3 }, icon: '🎭' },
+  { name: 'Wings of Speed', slot: 'back', baseStats: { speed: 6, dodge: 3 }, icon: '🪽' },
+  { name: 'Feathered Wings', slot: 'back', baseStats: { speed: 4, dodge: 4 }, icon: '🕊️' },
+  { name: 'Adventurer Pack', slot: 'back', baseStats: { maxHp: 8, stamina: 4 }, icon: '🎒' },
+  { name: 'Supply Satchel', slot: 'back', baseStats: { stamina: 6, defense: 1 }, icon: '👝' },
+  { name: 'Demon Tail', slot: 'back', baseStats: { attack: 4, special: 3 }, icon: '👹' },
+  { name: 'Serpent Tail', slot: 'back', baseStats: { speed: 3, attack: 3 }, icon: '🐍' },
+  { name: 'Fox Tail', slot: 'back', baseStats: { dodge: 5, special: 2 }, icon: '🦊' },
+];
+
 const ALL_TEMPLATES: Record<EquipmentSlot, EquipmentTemplate[]> = {
   helmet: HELMET_TEMPLATES,
   armor: ARMOR_TEMPLATES,
@@ -136,6 +150,7 @@ const ALL_TEMPLATES: Record<EquipmentSlot, EquipmentTemplate[]> = {
   mainHand: WEAPON_TEMPLATES,
   offHand: OFFHAND_TEMPLATES,
   accessory: ACCESSORY_TEMPLATES,
+  back: BACK_TEMPLATES,
 };
 
 // Slot display info
@@ -147,6 +162,7 @@ export const SLOT_INFO: Record<EquipmentSlot, { label: string; icon: string }> =
   mainHand: { label: 'Main Hand', icon: '⚔️' },
   offHand: { label: 'Off Hand', icon: '🔰' },
   accessory: { label: 'Accessory', icon: '💍' },
+  back: { label: 'Back', icon: '🧥' },
 };
 
 // ============= ELEMENTAL PREFIXES =============
@@ -283,6 +299,7 @@ export interface MonsterEquipment {
   mainHand: EquipmentItem | null;
   offHand: EquipmentItem | null;
   accessory: EquipmentItem | null;
+  back: EquipmentItem | null;
 }
 
 export function createEmptyEquipment(): MonsterEquipment {
@@ -294,6 +311,7 @@ export function createEmptyEquipment(): MonsterEquipment {
     mainHand: null,
     offHand: null,
     accessory: null,
+    back: null,
   };
 }
 

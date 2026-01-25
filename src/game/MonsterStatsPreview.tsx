@@ -30,7 +30,7 @@ export function MonsterStatsPreview({
 }: MonsterStatsPreviewProps) {
   const stats = calculateStats(species, classType, level);
   const speciesData = SPECIES_DATA[species];
-  const moves = getMonsterMoves(species, element, classType);
+  const moves = getMonsterMoves(species, element, classType, level);
 
   // Calculate max values for bars (rough scaling)
   const maxStat = 80; // Reasonable max for level 1-10

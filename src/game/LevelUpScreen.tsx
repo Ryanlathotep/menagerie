@@ -21,6 +21,7 @@ interface LevelUpScreenProps {
   previousLevel: number;
   newMoves: Move[];
   onContinue: () => void;
+  isPassive?: boolean; // True if this is a passive party member (not the active fighter)
 }
 
 export function LevelUpScreen({
@@ -29,6 +30,7 @@ export function LevelUpScreen({
   previousLevel,
   newMoves,
   onContinue,
+  isPassive = false,
 }: LevelUpScreenProps) {
   const [showStats, setShowStats] = useState(false);
   const [showMoves, setShowMoves] = useState(false);
@@ -79,6 +81,11 @@ export function LevelUpScreen({
             <p className="text-lg text-muted-foreground">
               {speciesData.name} reached Level {monster.level}!
             </p>
+            {isPassive && (
+              <p className="text-xs text-secondary mt-1">
+                ✨ Gained experience from battle support
+              </p>
+            )}
           </div>
         </div>
 

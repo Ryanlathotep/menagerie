@@ -107,7 +107,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   };
   
   if (!monster) return null;
-  const moves = getMonsterMoves(monster.species, monster.element, monster.class);
+  const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
 
   // Use expanded stats if provided, otherwise fall back to basic stats
   const currentHp = expandedStats?.currentHp ?? monster.stats.currentHp;

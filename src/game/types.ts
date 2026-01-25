@@ -386,6 +386,7 @@ export interface SaveData {
   totalEnemiesDefeated: number;
   materials: MaterialInventory;   // Crafting materials (persisted across runs)
   storedEquipment: import('./equipment').EquipmentItem[]; // Equipment storage (persisted)
+  unlockedRecipes: string[];      // Recipe IDs unlocked by bringing equipment back
 }
 
 export interface GameState {

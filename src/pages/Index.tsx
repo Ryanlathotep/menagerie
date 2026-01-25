@@ -360,7 +360,13 @@ function CharacterSelect() {
 }
 
 // Dungeon View Component with scrolling viewport
-function DungeonView() {
+function DungeonView({
+  gameLog,
+  addLog,
+}: {
+  gameLog: LogMessage[];
+  addLog: (text: string, type?: LogMessage['type']) => void;
+}) {
   const {
     state,
     dispatch
@@ -373,14 +379,6 @@ function DungeonView() {
   const [isAutoRunning, setIsAutoRunning] = useState(false);
   const autoRunDirection = useRef<'up' | 'down' | 'left' | 'right' | null>(null);
   const lastKeyPress = useRef<{ key: string; time: number } | null>(null);
-  
-  // Unified game log state
-  const [gameLog, setGameLog] = useState<LogMessage[]>([]);
-  
-  // Helper to add log messages
-  const addLog = useCallback((text: string, type: LogMessage['type'] = 'info') => {
-    setGameLog(prev => [...prev.slice(-99), createLogMessage(text, type)]); // Keep last 100 messages
-  }, []);
   
   // Click-to-move state
   const [targetPath, setTargetPath] = useState<Position[]>([]);
@@ -862,6 +860,7 @@ function DungeonView() {
           onUnequip={(slot, partyIndex) => dispatch({ type: 'UNEQUIP_ITEM', slot, partyIndex })}
           onDrop={(itemId) => dispatch({ type: 'DROP_EQUIPMENT', itemId })}
           onBulkEquip={(partyIndex, equipment, usedIds) => dispatch({ type: 'BULK_EQUIP', partyIndex, equipment, usedIds })}
+          onLog={(text) => addLog(text, 'system')}
           onClose={() => setShowEquipment(false)}
         />
       )}
@@ -964,7 +963,13 @@ function DungeonView() {
 }
 
 // Battle View Component with proper combat calculations
-function BattleView() {
+function BattleView({
+  gameLog,
+  addLog,
+}: {
+  gameLog: LogMessage[];
+  addLog: (text: string, type?: LogMessage['type']) => void;
+}) {
   const {
     state,
     dispatch
@@ -996,6 +1001,27 @@ function BattleView() {
   
   // Combat switch mode state
   const [showCombatSwitch, setShowCombatSwitch] = useState(false);
+
+  // Sync battle.log into the unified run log
+  const lastBattleLogLen = useRef(0);
+  useEffect(() => {
+    if (!battle) {
+      lastBattleLogLen.current = 0;
+      return;
+    }
+
+    const current = battle.log ?? [];
+    if (current.length < lastBattleLogLen.current) {
+      lastBattleLogLen.current = 0;
+    }
+
+    const start = lastBattleLogLen.current;
+    for (let i = start; i < current.length; i++) {
+      const parsed = parseLogMessage(current[i]);
+      addLog(parsed.text, parsed.type);
+    }
+    lastBattleLogLen.current = current.length;
+  }, [battle, addLog]);
   
   // Battle stats tracking (local, synced to state at end)
   const [battleStats, setBattleStats] = useState({
@@ -2150,18 +2176,21 @@ function BattleView() {
           </Card>
         </div>
         
-        {/* Battle Log - visible scrolling area */}
+        {/* Unified Log - visible scrolling area */}
         <div className="mt-3 p-2 bg-muted/30 rounded-lg border border-border/50 max-h-24 overflow-y-auto">
           <div className="flex items-center gap-1 mb-1">
             <ScrollText className="w-3 h-3 text-muted-foreground" />
-            <span className="text-xs font-semibold text-muted-foreground">Battle Log</span>
+            <span className="text-xs font-semibold text-muted-foreground">Log</span>
           </div>
           <div className="space-y-0.5">
-            {battle.log.slice(-5).map((msg, i) => (
-              <p key={i} className={`text-xs ${i === battle.log.slice(-5).length - 1 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
-                {msg}
+            {gameLog.slice(-5).map((msg, i) => (
+              <p key={msg.id} className={`text-xs ${i === gameLog.slice(-5).length - 1 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                {msg.text}
               </p>
             ))}
+            {gameLog.length === 0 && (
+              <p className="text-xs text-muted-foreground italic">No events yet...</p>
+            )}
           </div>
         </div>
         
@@ -2240,7 +2269,7 @@ function BattleView() {
         inBattle={true}
         experience={experience}
         experienceToNext={experienceToNext}
-        battleLog={battle.log}
+        gameLog={gameLog}
         onUseItem={handleUseItem}
         onPanelChange={setMenuOpen}
         expandedStats={{
@@ -2301,18 +2330,58 @@ function RunSummary() {
 
 // Game Component
 function Game() {
-  const {
-    state
-  } = useGame();
+  const { state } = useGame();
+
+  // Unified run log (dungeon + battle + notable UI events)
+  const [gameLog, setGameLog] = useState<LogMessage[]>([]);
+  const addLog = useCallback((text: string, type: LogMessage['type'] = 'info') => {
+    setGameLog(prev => [...prev.slice(-199), createLogMessage(text, type)]);
+  }, []);
+
+  // Mirror Sonner toasts into the unified log
+  useEffect(() => {
+    const originalSuccess = toast.success;
+    const originalError = toast.error;
+    const originalInfo = (toast as any).info;
+
+    toast.success = ((message: any, options?: any) => {
+      const parsed = parseLogMessage(String(message));
+      addLog(parsed.text, parsed.type);
+      return originalSuccess(message, options);
+    }) as any;
+
+    toast.error = ((message: any, options?: any) => {
+      const parsed = parseLogMessage(String(message));
+      addLog(parsed.text, parsed.type);
+      return originalError(message, options);
+    }) as any;
+
+    if (typeof originalInfo === 'function') {
+      (toast as any).info = (message: any, options?: any) => {
+        const parsed = parseLogMessage(String(message));
+        addLog(parsed.text, parsed.type);
+        return originalInfo(message, options);
+      };
+    }
+
+    return () => {
+      toast.success = originalSuccess;
+      toast.error = originalError;
+      if (typeof originalInfo === 'function') {
+        (toast as any).info = originalInfo;
+      }
+    };
+  }, [addLog]);
+
   switch (state.phase) {
     case 'main_menu':
       return <MainMenu />;
     case 'character_select':
       return <CharacterSelect />;
     case 'dungeon':
-      return <DungeonView />;
+      return <DungeonView gameLog={gameLog} addLog={addLog} />;
     case 'battle':
-      return <BattleView />;
+      return <BattleView gameLog={gameLog} addLog={addLog} />;
     case 'defeat':
     case 'run_summary':
       return <RunSummary />;

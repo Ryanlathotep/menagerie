@@ -469,6 +469,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
               <PartyPanel
                 party={party}
                 activeIndex={activePartyIndex}
+                activeXp={experience}
                 onSwitch={(index) => {
                   onPartySwitch(index);
                   handlePanelChange(null);

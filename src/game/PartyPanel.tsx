@@ -2,8 +2,8 @@
 
 import { Monster } from './types';
 import { MonsterSprite } from './sprites';
-import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { xpToNextLevel } from './combat';
 import {
   Tooltip,
   TooltipContent,
@@ -14,6 +14,7 @@ import {
 interface PartyPanelProps {
   party: Monster[];
   activeIndex: number;
+  activeXp?: number; // Current XP of the active monster (from run.experience)
   onSwitch: (index: number) => void;
   maxPartySize?: number;
 }
@@ -21,6 +22,7 @@ interface PartyPanelProps {
 export function PartyPanel({
   party,
   activeIndex,
+  activeXp = 0,
   onSwitch,
   maxPartySize = 6,
 }: PartyPanelProps) {
@@ -34,10 +36,15 @@ export function PartyPanel({
       
       <ScrollArea className="h-[180px]">
         <div className="space-y-1">
-          {party.map((monster, index) => {
+        {party.map((monster, index) => {
             const isActive = index === activeIndex;
             const isDead = monster.stats.currentHp <= 0;
             const hpPercent = (monster.stats.currentHp / monster.stats.maxHp) * 100;
+            
+            // XP: use activeXp for active monster, monster.experience for others
+            const currentXp = isActive ? activeXp : (monster.experience || 0);
+            const xpNeeded = xpToNextLevel(monster.level);
+            const xpPercent = Math.min((currentXp / xpNeeded) * 100, 100);
             
             return (
               <TooltipProvider key={monster.id}>
@@ -80,18 +87,30 @@ export function PartyPanel({
                         </p>
                       </div>
                       
-                      {/* HP bar */}
-                      <div className="w-12">
-                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full transition-all ${
-                              hpPercent > 50 ? 'bg-green-500' : 
-                              hpPercent > 25 ? 'bg-yellow-500' : 'bg-red-500'
-                            }`}
-                            style={{ width: `${hpPercent}%` }}
-                          />
+                      {/* HP + XP bars */}
+                      <div className="w-14 space-y-0.5">
+                        {/* HP bar */}
+                        <div>
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full transition-all ${
+                                hpPercent > 50 ? 'bg-green-500' : 
+                                hpPercent > 25 ? 'bg-yellow-500' : 'bg-red-500'
+                              }`}
+                              style={{ width: `${hpPercent}%` }}
+                            />
+                          </div>
                         </div>
-                        <p className="text-[8px] text-muted-foreground text-center mt-0.5">
+                        {/* XP bar */}
+                        <div>
+                          <div className="h-1 bg-muted rounded-full overflow-hidden" title={`XP: ${currentXp}/${xpNeeded}`}>
+                            <div 
+                              className="h-full bg-secondary transition-all"
+                              style={{ width: `${xpPercent}%` }}
+                            />
+                          </div>
+                        </div>
+                        <p className="text-[8px] text-muted-foreground text-center">
                           {monster.stats.currentHp}/{monster.stats.maxHp}
                         </p>
                       </div>
@@ -111,6 +130,7 @@ export function PartyPanel({
                       <div className="text-[10px] text-muted-foreground space-y-0.5">
                         <p>HP: {monster.stats.currentHp}/{monster.stats.maxHp}</p>
                         <p>ST: {monster.stats.currentStamina}/{monster.stats.stamina}</p>
+                        <p>XP: {currentXp}/{xpNeeded}</p>
                         <p>ATK: {monster.stats.attack} | DEF: {monster.stats.defense}</p>
                         <p>SPD: {monster.stats.speed} | DOD: {monster.stats.dodge}</p>
                       </div>

@@ -32,7 +32,7 @@ export function PartyPanel({
         </h3>
       </div>
       
-      <ScrollArea className="max-h-[180px]">
+      <ScrollArea className="h-[180px]">
         <div className="space-y-1">
           {party.map((monster, index) => {
             const isActive = index === activeIndex;

@@ -81,6 +81,7 @@ type GameAction =
   | { type: 'SWITCH_ACTIVE_MONSTER'; index: number }
   | { type: 'ADD_TO_PARTY'; monster: Monster }
   | { type: 'UPDATE_PARTY_MONSTER'; index: number; monster: Monster }
+  | { type: 'ADD_PARTY_XP'; xpGained: number; excludeActiveIndex: number }
   // Battle tracking
   | { type: 'UPDATE_BATTLE_STATS'; stats: Partial<{ turnsUsed: number; overkillDamage: number; statusEffectsApplied: number; criticalHits: number }> }
   | { type: 'RESET_BATTLE_STATS' };
@@ -142,6 +143,24 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         }
       }
       
+      // Update unlocked monsters if party members are at higher levels
+      let updatedUnlockedMonsters = [...state.saveData.unlockedMonsters];
+      if (state.run) {
+        for (const partyMember of state.run.party) {
+          const comboId = `${partyMember.species}_${partyMember.element}_${partyMember.class}`;
+          const existingIdx = updatedUnlockedMonsters.findIndex(m => m.comboId === comboId);
+          if (existingIdx !== -1) {
+            // Update level if party member is higher level
+            if (partyMember.level > updatedUnlockedMonsters[existingIdx].level) {
+              updatedUnlockedMonsters[existingIdx] = {
+                ...updatedUnlockedMonsters[existingIdx],
+                level: partyMember.level,
+              };
+            }
+          }
+        }
+      }
+      
       return {
         ...state,
         phase: 'run_summary',
@@ -153,6 +172,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           totalEnemiesDefeated: state.saveData.totalEnemiesDefeated + (state.run?.enemiesDefeated || 0),
           // Return equipped items to storage on death
           storedEquipment: [...state.saveData.storedEquipment, ...equipmentToStore],
+          unlockedMonsters: updatedUnlockedMonsters,
         },
       };
     }
@@ -177,6 +197,22 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         mergedMaterials[materialId] = (mergedMaterials[materialId] || 0) + quantity;
       }
       
+      // Update unlocked monsters if party members are at higher levels
+      let updatedUnlockedMonsters = [...state.saveData.unlockedMonsters];
+      for (const partyMember of state.run.party) {
+        const comboId = `${partyMember.species}_${partyMember.element}_${partyMember.class}`;
+        const existingIdx = updatedUnlockedMonsters.findIndex(m => m.comboId === comboId);
+        if (existingIdx !== -1) {
+          // Update level if party member is higher level
+          if (partyMember.level > updatedUnlockedMonsters[existingIdx].level) {
+            updatedUnlockedMonsters[existingIdx] = {
+              ...updatedUnlockedMonsters[existingIdx],
+              level: partyMember.level,
+            };
+          }
+        }
+      }
+      
       return {
         ...state,
         phase: 'run_summary',
@@ -188,6 +224,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           totalEnemiesDefeated: state.saveData.totalEnemiesDefeated + state.run.enemiesDefeated,
           storedEquipment: [...state.saveData.storedEquipment, ...equipmentToStore],
           materials: mergedMaterials,
+          unlockedMonsters: updatedUnlockedMonsters,
         },
       };
     }
@@ -601,6 +638,35 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             : state.run.currentMonster,
         },
       };
+    
+    // Award XP to non-active party members (passive gain)
+    case 'ADD_PARTY_XP': {
+      if (!state.run) return state;
+      const passiveXp = Math.floor(action.xpGained / 2); // Half XP for passive members
+      if (passiveXp <= 0) return state;
+      
+      const xpUpdatedParty = state.run.party.map((monster, index) => {
+        if (index === action.excludeActiveIndex) return monster; // Skip active monster
+        if (monster.stats.currentHp <= 0) return monster; // Skip fainted monsters
+        
+        // Calculate new XP total for this monster
+        const currentXp = monster.experience || 0;
+        const newXp = currentXp + passiveXp;
+        
+        return {
+          ...monster,
+          experience: newXp,
+        };
+      });
+      
+      return {
+        ...state,
+        run: {
+          ...state.run,
+          party: xpUpdatedParty,
+        },
+      };
+    }
     
     // Battle tracking for recruitment
     case 'UPDATE_BATTLE_STATS':

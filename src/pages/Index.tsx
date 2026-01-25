@@ -1358,9 +1358,16 @@ function BattleView() {
       });
       toast.success(`Unlocked ${battle.enemyMonster.species} (Lv.${battle.enemyMonster.level})!`);
 
-      // Award XP
+      // Award XP to active monster
       const xpGained = calculateXpReward(battle.enemyMonster.level, battle.playerMonster.level);
       const newXp = experience + xpGained;
+      
+      // Award half XP to passive party members
+      dispatch({
+        type: 'ADD_PARTY_XP',
+        xpGained: xpGained,
+        excludeActiveIndex: state.run.activePartyIndex,
+      });
 
       // Check for level up
       const levelUpResult = checkLevelUp(battle.playerMonster, newXp);

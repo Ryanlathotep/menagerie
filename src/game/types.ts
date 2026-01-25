@@ -231,6 +231,7 @@ export interface Monster {
   level: number;
   stats: MonsterStats;
   name: string;
+  experience?: number; // Current XP for party members (passive leveling)
   // Item the monster is carrying (can be stolen by Crow)
   carriedItem?: {
     id: string;

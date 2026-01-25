@@ -912,29 +912,50 @@ function DungeonView() {
             />
           </div>
 
-          {/* Bottom bar with controls and legend */}
-          <div className={`fixed ${controlsOffset} left-0 right-0 h-[160px] bg-card border-t-2 border-primary/20 p-4 z-40 transition-all duration-300`}>
-            {/* Mobile controls */}
-            <div className="grid grid-cols-3 gap-2 w-32 mx-auto sm:hidden mb-3">
-              <div />
-              <Button size="sm" onClick={() => handleMove('up')}>↑</Button>
-              <div />
-              <Button size="sm" onClick={() => handleMove('left')}>←</Button>
-              <div />
-              <Button size="sm" onClick={() => handleMove('right')}>→</Button>
-              <div />
-              <Button size="sm" onClick={() => handleMove('down')}>↓</Button>
-              <div />
-            </div>
+          {/* Bottom bar with controls, legend, and game log */}
+          <div className={`fixed ${controlsOffset} left-0 right-0 h-[160px] bg-card border-t-2 border-primary/20 p-3 z-40 transition-all duration-300`}>
+            <div className="flex h-full gap-4">
+              {/* Left side: Controls and legend */}
+              <div className="flex flex-col justify-center items-center flex-shrink-0">
+                {/* Mobile controls */}
+                <div className="grid grid-cols-3 gap-2 w-32 sm:hidden mb-2">
+                  <div />
+                  <Button size="sm" onClick={() => handleMove('up')}>↑</Button>
+                  <div />
+                  <Button size="sm" onClick={() => handleMove('left')}>←</Button>
+                  <div />
+                  <Button size="sm" onClick={() => handleMove('right')}>→</Button>
+                  <div />
+                  <Button size="sm" onClick={() => handleMove('down')}>↓</Button>
+                  <div />
+                </div>
+                <p className="text-muted-foreground text-sm hidden sm:block text-center mb-2">Use WASD or Arrow keys to move</p>
+                {/* Legend */}
+                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground justify-center">
+                  <span>💎 Treasure</span>
+                  <span>⬇️ Stairs</span>
+                  <span>⚠️ Trap</span>
+                  <span>🏪 Shop</span>
+                </div>
+              </div>
 
-            <p className="text-muted-foreground text-sm hidden sm:block text-center mb-2">Use WASD or Arrow keys to move</p>
-            
-            {/* Legend */}
-            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground justify-center">
-              <span>💎 Treasure</span>
-              <span>⬇️ Stairs</span>
-              <span>⚠️ Trap</span>
-              <span>🏪 Shop</span>
+              {/* Right side: Always-visible game log */}
+              <div className="flex-1 p-2 bg-muted/30 rounded-lg border border-border/50 overflow-hidden">
+                <div className="flex items-center gap-1 mb-1">
+                  <ScrollText className="w-3 h-3 text-muted-foreground" />
+                  <span className="text-xs font-semibold text-muted-foreground">Game Log</span>
+                </div>
+                <div className="h-[calc(100%-20px)] overflow-y-auto space-y-0.5">
+                  {gameLog.slice(-8).map((msg, i) => (
+                    <p key={msg.id} className={`text-xs ${i === gameLog.slice(-8).length - 1 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                      {msg.text}
+                    </p>
+                  ))}
+                  {gameLog.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic">No events yet...</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>

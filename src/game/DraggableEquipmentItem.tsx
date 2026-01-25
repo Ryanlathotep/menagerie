@@ -8,7 +8,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { EquipmentItem, EquipmentSlot, SLOT_INFO, RARITY_COLORS, EQUIPMENT_SETS, SetId } from './equipment';
+import { EquipmentItem, EquipmentSlot, SLOT_INFO, RARITY_COLORS, EQUIPMENT_SETS, SetId, canEquipItem, getAffinityDescription, getAffinityBonusStats } from './equipment';
+import { Monster } from './types';
 import { EquipmentIcon } from './EquipmentIcon';
 import { SetBadge } from './SetBonusDisplay';
 import { GripVertical, Layers } from 'lucide-react';
@@ -24,6 +25,7 @@ interface DraggableEquipmentItemProps {
   onEquip: () => void;
   onDrop: () => void;
   currentLevel: number;
+  monster?: Monster; // For affinity checking
   isDragging?: boolean;
   onDragStart?: (data: DragData) => void;
   onDragEnd?: () => void;
@@ -37,6 +39,7 @@ export function DraggableEquipmentItem({
   onEquip, 
   onDrop, 
   currentLevel,
+  monster,
   isDragging = false,
   onDragStart,
   onDragEnd,
@@ -46,13 +49,27 @@ export function DraggableEquipmentItem({
 }: DraggableEquipmentItemProps) {
   const [isHovered, setIsHovered] = useState(false);
   const rarityStyle = RARITY_COLORS[item.rarity];
-  const canEquip = currentLevel >= item.level;
+  
+  // Check equip requirements (level + affinity)
+  const levelOk = currentLevel >= item.level;
+  const affinityCheck = monster ? canEquipItem(item, monster) : { canEquip: true };
+  const canEquip = levelOk && affinityCheck.canEquip;
+  const affinityDescription = getAffinityDescription(item);
+  const hasAffinityBonus = monster && getAffinityBonusStats(item, monster);
   
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('application/json', JSON.stringify({ itemId: item.id }));
     onDragStart?.({ item, sourceType: 'inventory' });
   };
+  
+  // Determine why item can't be equipped
+  const getEquipReason = () => {
+    if (!levelOk) return `Req. Lv.${item.level}`;
+    if (!affinityCheck.canEquip) return affinityCheck.reason || 'Cannot equip';
+    return 'Equip';
+  };
+  
   
   return (
     <div 
@@ -97,6 +114,12 @@ export function DraggableEquipmentItem({
               )
             ))}
           </div>
+          {/* Affinity indicator */}
+          {affinityDescription && (
+            <p className={`text-[10px] mt-1 ${hasAffinityBonus ? 'text-green-400' : 'text-amber-400'}`}>
+              {affinityDescription}
+            </p>
+          )}
         </div>
         
         {/* Layer control (for visual customization) */}
@@ -133,7 +156,7 @@ export function DraggableEquipmentItem({
           disabled={!canEquip}
           onClick={onEquip}
         >
-          {canEquip ? 'Equip' : `Req. Lv.${item.level}`}
+          {getEquipReason()}
         </Button>
         <Button 
           size="sm" 

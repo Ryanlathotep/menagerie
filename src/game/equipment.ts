@@ -43,6 +43,21 @@ export interface EquipmentStats {
   stamina?: number;
 }
 
+// ============= AFFINITY REQUIREMENTS =============
+export interface AffinityRequirement {
+  species?: import('./types').SpeciesType;   // Required species to equip
+  classType?: import('./types').ClassType;   // Required class to equip
+  element?: import('./types').ElementType;   // Required element to equip
+}
+
+export interface AffinityBonus {
+  species?: import('./types').SpeciesType;   // Species that gets bonus
+  classType?: import('./types').ClassType;   // Class that gets bonus
+  element?: import('./types').ElementType;   // Element that gets bonus
+  bonusStats: EquipmentStats;                 // Bonus stats when matching
+  bonusDescription?: string;                  // Description of bonus effect
+}
+
 // ============= EQUIPMENT ITEM =============
 export interface EquipmentItem {
   id: string;
@@ -51,10 +66,13 @@ export interface EquipmentItem {
   rarity: Rarity;
   level: number; // Required level to equip
   stats: EquipmentStats;
-  element?: ElementType; // Elemental affinity (bonus damage/resistance)
+  element?: import('./types').ElementType; // Elemental affinity (bonus damage/resistance)
   setId?: string; // For set bonuses
   description?: string;
   icon: string; // Emoji icon
+  // Affinity system
+  affinityRequired?: AffinityRequirement;  // Must match to equip (exclusive items)
+  affinityBonus?: AffinityBonus;           // Bonus when matching (any can equip)
 }
 
 // ============= EQUIPMENT SETS =============
@@ -688,6 +706,9 @@ export interface CraftingRecipe {
   element?: ElementType;
   icon: string;
   description: string;
+  // Affinity system for recipes
+  affinityRequired?: AffinityRequirement;  // Resulting item requires this to equip
+  affinityBonus?: AffinityBonus;           // Resulting item gives bonus to this
 }
 
 export const CRAFTING_RECIPES: CraftingRecipe[] = [
@@ -1078,6 +1099,233 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     icon: '🐉',
     description: 'Wings that grant the power of flight.',
   },
+  
+  // ============= CLASS-SPECIFIC RECIPES =============
+  // Kinetic class items
+  {
+    id: 'craft_kinetic_fists',
+    name: 'Force Knuckles',
+    resultSlot: 'gloves',
+    resultRarity: 'rare',
+    materials: [{ materialId: 'iron_ore', quantity: 4 }, { materialId: 'earth_essence', quantity: 3 }],
+    icon: '👊',
+    description: 'Gloves that amplify physical force.',
+    affinityBonus: { classType: 'kinetic', bonusStats: { attack: 8, speed: 4 }, bonusDescription: '+8 ATK, +4 SPD for Kinetic users' },
+  },
+  {
+    id: 'craft_kinetic_armor',
+    name: 'Impact Plate',
+    resultSlot: 'armor',
+    resultRarity: 'rare',
+    materials: [{ materialId: 'iron_ore', quantity: 5 }, { materialId: 'tough_hide', quantity: 3 }],
+    icon: '🛡️',
+    description: 'Armor designed to redirect kinetic energy.',
+    affinityRequired: { classType: 'kinetic' },
+  },
+  // Energy class items
+  {
+    id: 'craft_energy_staff',
+    name: 'Conductor Staff',
+    resultSlot: 'mainHand',
+    resultRarity: 'rare',
+    materials: [{ materialId: 'silver_ore', quantity: 3 }, { materialId: 'fire_essence', quantity: 2 }, { materialId: 'water_essence', quantity: 2 }],
+    icon: '⚡',
+    description: 'A staff that channels pure energy.',
+    affinityBonus: { classType: 'energy', bonusStats: { special: 10, stamina: 5 }, bonusDescription: '+10 SPC, +5 STA for Energy users' },
+  },
+  {
+    id: 'craft_energy_circlet',
+    name: 'Spark Crown',
+    resultSlot: 'helmet',
+    resultRarity: 'rare',
+    materials: [{ materialId: 'gold_ore', quantity: 2 }, { materialId: 'air_essence', quantity: 3 }],
+    icon: '👑',
+    description: 'A circlet crackling with energy.',
+    affinityRequired: { classType: 'energy' },
+  },
+  // Biological class items
+  {
+    id: 'craft_bio_mask',
+    name: 'Symbiote Mask',
+    resultSlot: 'helmet',
+    resultRarity: 'rare',
+    materials: [{ materialId: 'soft_hide', quantity: 4 }, { materialId: 'water_essence', quantity: 2 }],
+    icon: '🎭',
+    description: 'A living mask that bonds with the wearer.',
+    affinityBonus: { classType: 'biological', bonusStats: { maxHp: 15, defense: 3 }, bonusDescription: '+15 HP, +3 DEF for Biological users' },
+  },
+  {
+    id: 'craft_bio_claws',
+    name: 'Venom Claws',
+    resultSlot: 'gloves',
+    resultRarity: 'rare',
+    materials: [{ materialId: 'tough_hide', quantity: 3 }, { materialId: 'void_essence', quantity: 2 }],
+    icon: '🦎',
+    description: 'Claws dripping with natural toxins.',
+    affinityRequired: { classType: 'biological' },
+  },
+  // Chemical class items
+  {
+    id: 'craft_chem_vials',
+    name: 'Alchemist Belt',
+    resultSlot: 'accessory',
+    resultRarity: 'rare',
+    materials: [{ materialId: 'silk', quantity: 3 }, { materialId: 'fire_essence', quantity: 1 }, { materialId: 'water_essence', quantity: 1 }],
+    icon: '🧪',
+    description: 'A belt with vials of reactive substances.',
+    affinityBonus: { classType: 'chemical', bonusStats: { special: 6, attack: 6 }, bonusDescription: '+6 SPC, +6 ATK for Chemical users' },
+  },
+  {
+    id: 'craft_chem_coat',
+    name: 'Reactive Coat',
+    resultSlot: 'back',
+    resultRarity: 'rare',
+    materials: [{ materialId: 'enchanted_cloth', quantity: 3 }, { materialId: 'void_essence', quantity: 2 }],
+    icon: '🧥',
+    description: 'A coat that reacts to damage with chemical bursts.',
+    affinityRequired: { classType: 'chemical' },
+  },
+  // Political class items
+  {
+    id: 'craft_diplomat_ring',
+    name: 'Ring of Authority',
+    resultSlot: 'accessory',
+    resultRarity: 'rare',
+    materials: [{ materialId: 'gold_ore', quantity: 4 }, { materialId: 'diamond', quantity: 1 }],
+    icon: '💍',
+    description: 'A ring that commands respect.',
+    affinityBonus: { classType: 'political', bonusStats: { speed: 5, dodge: 5 }, bonusDescription: '+5 SPD, +5 DDG for Political users' },
+  },
+  {
+    id: 'craft_diplomat_cape',
+    name: 'Envoy\'s Mantle',
+    resultSlot: 'back',
+    resultRarity: 'rare',
+    materials: [{ materialId: 'silk', quantity: 5 }, { materialId: 'gold_ore', quantity: 2 }],
+    icon: '👔',
+    description: 'A mantle worn by master negotiators.',
+    affinityRequired: { classType: 'political' },
+  },
+  
+  // ============= SPECIES-SPECIFIC RECIPES =============
+  // Popular species items
+  {
+    id: 'craft_slime_core',
+    name: 'Slime Core',
+    resultSlot: 'accessory',
+    resultRarity: 'epic',
+    materials: [{ materialId: 'water_essence', quantity: 4 }, { materialId: 'void_essence', quantity: 2 }],
+    icon: '💧',
+    description: 'A crystallized slime essence.',
+    affinityBonus: { species: 'slime', bonusStats: { maxHp: 25, defense: 8 }, bonusDescription: '+25 HP, +8 DEF for Slimes' },
+  },
+  {
+    id: 'craft_dragon_scale_armor',
+    name: 'Dragonkin Plate',
+    resultSlot: 'armor',
+    resultRarity: 'legendary',
+    materials: [{ materialId: 'dragon_scale', quantity: 8 }, { materialId: 'adamant_ore', quantity: 4 }],
+    icon: '🐲',
+    description: 'Armor only a true dragon can wear.',
+    affinityRequired: { species: 'dragon' },
+  },
+  {
+    id: 'craft_ghost_shroud',
+    name: 'Ethereal Shroud',
+    resultSlot: 'back',
+    resultRarity: 'epic',
+    materials: [{ materialId: 'void_essence', quantity: 5 }, { materialId: 'enchanted_cloth', quantity: 3 }],
+    icon: '👻',
+    description: 'A shroud that phases between realities.',
+    affinityBonus: { species: 'ghost', bonusStats: { dodge: 12, speed: 6 }, bonusDescription: '+12 DDG, +6 SPD for Ghosts' },
+  },
+  {
+    id: 'craft_wolf_fangs',
+    name: 'Alpha Fangs',
+    resultSlot: 'accessory',
+    resultRarity: 'rare',
+    materials: [{ materialId: 'tough_hide', quantity: 4 }, { materialId: 'iron_ore', quantity: 3 }],
+    icon: '🐺',
+    description: 'Fangs that enhance pack instincts.',
+    affinityBonus: { species: 'wolf', bonusStats: { attack: 10, speed: 5 }, bonusDescription: '+10 ATK, +5 SPD for Wolves' },
+  },
+  {
+    id: 'craft_crow_mask',
+    name: 'Thief\'s Mask',
+    resultSlot: 'helmet',
+    resultRarity: 'rare',
+    materials: [{ materialId: 'soft_hide', quantity: 3 }, { materialId: 'silk', quantity: 2 }],
+    icon: '🐦‍⬛',
+    description: 'A mask that sharpens thieving instincts.',
+    affinityBonus: { species: 'crow', bonusStats: { speed: 8, dodge: 6 }, bonusDescription: '+8 SPD, +6 DDG for Crows' },
+  },
+  {
+    id: 'craft_golem_core',
+    name: 'Stone Heart',
+    resultSlot: 'accessory',
+    resultRarity: 'epic',
+    materials: [{ materialId: 'earth_essence', quantity: 5 }, { materialId: 'mythril_ore', quantity: 2 }],
+    icon: '🗿',
+    description: 'A core of living stone.',
+    affinityRequired: { species: 'golem' },
+  },
+  
+  // ============= COMBINATION RECIPES (Species + Element or Class + Element) =============
+  {
+    id: 'craft_fire_dragon_crown',
+    name: 'Inferno Crown',
+    resultSlot: 'helmet',
+    resultRarity: 'legendary',
+    materials: [{ materialId: 'dragon_scale', quantity: 6 }, { materialId: 'fire_essence', quantity: 6 }, { materialId: 'ruby', quantity: 2 }],
+    element: 'fire',
+    icon: '🔥',
+    description: 'A crown blazing with dragon fire.',
+    affinityBonus: { species: 'dragon', element: 'fire', bonusStats: { attack: 15, special: 15 }, bonusDescription: '+15 ATK, +15 SPC for Fire Dragons' },
+  },
+  {
+    id: 'craft_void_ghost_chains',
+    name: 'Phantom Chains',
+    resultSlot: 'accessory',
+    resultRarity: 'epic',
+    materials: [{ materialId: 'void_essence', quantity: 4 }, { materialId: 'mythril_ore', quantity: 2 }],
+    element: 'void',
+    icon: '⛓️',
+    description: 'Chains that bind souls to the void.',
+    affinityBonus: { species: 'ghost', element: 'void', bonusStats: { special: 12, dodge: 10 }, bonusDescription: '+12 SPC, +10 DDG for Void Ghosts' },
+  },
+  {
+    id: 'craft_kinetic_earth_gauntlets',
+    name: 'Seismic Gauntlets',
+    resultSlot: 'gloves',
+    resultRarity: 'epic',
+    materials: [{ materialId: 'earth_essence', quantity: 5 }, { materialId: 'iron_ore', quantity: 4 }, { materialId: 'mythril_ore', quantity: 1 }],
+    element: 'earth',
+    icon: '🌍',
+    description: 'Gauntlets that cause earthquakes on impact.',
+    affinityBonus: { classType: 'kinetic', element: 'earth', bonusStats: { attack: 15, defense: 8 }, bonusDescription: '+15 ATK, +8 DEF for Earth Kinetics' },
+  },
+  {
+    id: 'craft_energy_fire_core',
+    name: 'Plasma Core',
+    resultSlot: 'accessory',
+    resultRarity: 'epic',
+    materials: [{ materialId: 'fire_essence', quantity: 4 }, { materialId: 'air_essence', quantity: 4 }, { materialId: 'ruby', quantity: 1 }],
+    element: 'fire',
+    icon: '☀️',
+    description: 'A core of superheated plasma.',
+    affinityBonus: { classType: 'energy', element: 'fire', bonusStats: { special: 18, stamina: 8 }, bonusDescription: '+18 SPC, +8 STA for Fire Energy types' },
+  },
+  {
+    id: 'craft_water_shark_fins',
+    name: 'Predator Fins',
+    resultSlot: 'back',
+    resultRarity: 'rare',
+    materials: [{ materialId: 'water_essence', quantity: 4 }, { materialId: 'tough_hide', quantity: 3 }],
+    element: 'water',
+    icon: '🦈',
+    description: 'Fins that cut through any current.',
+    affinityBonus: { species: 'shark', element: 'water', bonusStats: { speed: 12, attack: 8 }, bonusDescription: '+12 SPD, +8 ATK for Water Sharks' },
+  },
 ];
 
 // ============= CONSUMABLE/POTION RECIPES =============
@@ -1309,12 +1557,22 @@ export const CONSUMABLE_RECIPES: ConsumableRecipe[] = [
 
 // Generate equipment from recipe
 export function craftEquipment(recipe: CraftingRecipe, playerLevel: number): EquipmentItem {
-  return generateEquipment(
+  const item = generateEquipment(
     recipe.resultSlot,
     Math.max(1, playerLevel),
     recipe.resultRarity,
     recipe.element
   );
+  
+  // Add affinity info from recipe
+  if (recipe.affinityRequired) {
+    item.affinityRequired = recipe.affinityRequired;
+  }
+  if (recipe.affinityBonus) {
+    item.affinityBonus = recipe.affinityBonus;
+  }
+  
+  return item;
 }
 
 // Get matching recipe for an equipment item (for recipe unlocking)
@@ -1398,4 +1656,64 @@ export function generateMaterialDrop(floor: number): CraftingMaterial | null {
   if (validMaterials.length === 0) return null;
   
   return validMaterials[Math.floor(Math.random() * validMaterials.length)];
+}
+
+// ============= AFFINITY SYSTEM HELPERS =============
+import type { Monster } from './types';
+
+// Check if a monster can equip an item (considering affinity requirements)
+export function canEquipItem(item: EquipmentItem, monster: Monster): { canEquip: boolean; reason?: string } {
+  // Check level requirement
+  if (monster.level < item.level) {
+    return { canEquip: false, reason: `Requires level ${item.level}` };
+  }
+  
+  // Check affinity requirements (exclusive items)
+  if (item.affinityRequired) {
+    const req = item.affinityRequired;
+    
+    if (req.species && monster.species !== req.species) {
+      return { canEquip: false, reason: `Only ${req.species} can equip` };
+    }
+    if (req.classType && monster.class !== req.classType) {
+      return { canEquip: false, reason: `Only ${req.classType} class can equip` };
+    }
+    if (req.element && monster.element !== req.element) {
+      return { canEquip: false, reason: `Only ${req.element} element can equip` };
+    }
+  }
+  
+  return { canEquip: true };
+}
+
+// Calculate bonus stats from affinity (for items with affinityBonus)
+export function getAffinityBonusStats(item: EquipmentItem, monster: Monster): EquipmentStats | null {
+  if (!item.affinityBonus) return null;
+  
+  const bonus = item.affinityBonus;
+  let matches = true;
+  
+  // Check if monster matches all required affinities
+  if (bonus.species && monster.species !== bonus.species) matches = false;
+  if (bonus.classType && monster.class !== bonus.classType) matches = false;
+  if (bonus.element && monster.element !== bonus.element) matches = false;
+  
+  return matches ? bonus.bonusStats : null;
+}
+
+// Get affinity description for display
+export function getAffinityDescription(item: EquipmentItem): string | null {
+  if (item.affinityRequired) {
+    const parts: string[] = [];
+    if (item.affinityRequired.species) parts.push(item.affinityRequired.species);
+    if (item.affinityRequired.classType) parts.push(item.affinityRequired.classType);
+    if (item.affinityRequired.element) parts.push(item.affinityRequired.element);
+    return `🔒 ${parts.join(' + ')} only`;
+  }
+  
+  if (item.affinityBonus?.bonusDescription) {
+    return `✨ ${item.affinityBonus.bonusDescription}`;
+  }
+  
+  return null;
 }

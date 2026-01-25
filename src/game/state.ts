@@ -33,8 +33,10 @@ const DEFAULT_SAVE_DATA: SaveData = {
   highestFloor: 0,
   totalRuns: 0,
   totalEnemiesDefeated: 0,
+  gold: 0,                    // Town gold
   materials: {},              // Crafting materials
   storedEquipment: [],        // Equipment storage
+  storedItems: [],            // Town item storage
   unlockedRecipes: [],        // Unlocked crafting recipes
 };
 
@@ -77,8 +79,12 @@ type GameAction =
   | { type: 'USE_MATERIALS'; materials: { materialId: string; quantity: number }[] }
   | { type: 'STORE_EQUIPMENT'; item: EquipmentItem }
   | { type: 'WITHDRAW_EQUIPMENT'; itemId: string }
+  | { type: 'SELL_EQUIPMENT'; itemId: string; price: number }  // Sell equipment for gold
   | { type: 'DISMANTLE_EQUIPMENT'; itemId: string }  // Break equipment into materials
   | { type: 'UNLOCK_RECIPE'; recipeId: string }      // Unlock a crafting recipe
+  | { type: 'ADD_TOWN_GOLD'; amount: number }        // Add gold to town storage
+  | { type: 'SPEND_TOWN_GOLD'; amount: number }      // Spend town gold
+  | { type: 'STORE_ITEM'; item: InventoryItem }      // Store item in town
   | { type: 'LOAD_SAVE'; saveData: SaveData }
   | { type: 'RESET_SAVE' }
   // Party management
@@ -187,7 +193,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
     
     case 'FLEE_DUNGEON': {
-      // Flee safely - keep materials and equipment by storing them
+      // Flee safely - keep materials, equipment, gold, and items by storing them
       if (!state.run) return state;
       
       // Collect all equipment to store (equipped from all party members + inventory)
@@ -207,6 +213,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       for (const [materialId, quantity] of Object.entries(state.run.runMaterials)) {
         mergedMaterials[materialId] = (mergedMaterials[materialId] || 0) + quantity;
       }
+      
+      // Add run gold to town gold
+      const newTownGold = (state.saveData.gold || 0) + state.run.gold;
+      
+      // Store run items in town
+      const storedItems = [...(state.saveData.storedItems || []), ...state.run.inventory];
       
       // Update unlocked monsters if party members are at higher levels
       let updatedUnlockedMonsters = [...state.saveData.unlockedMonsters];
@@ -242,7 +254,9 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             ? Math.max(state.saveData.highestFloor, state.run.dungeon.floor)
             : state.saveData.highestFloor,
           totalEnemiesDefeated: state.saveData.totalEnemiesDefeated + state.run.enemiesDefeated,
+          gold: newTownGold,
           storedEquipment: [...state.saveData.storedEquipment, ...equipmentToStore],
+          storedItems: storedItems,
           materials: mergedMaterials,
           unlockedMonsters: updatedUnlockedMonsters,
           unlockedRecipes: newUnlockedRecipes,
@@ -653,6 +667,21 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         },
       };
     
+    case 'SELL_EQUIPMENT': {
+      // Sell stored equipment for gold
+      const itemToSell = state.saveData.storedEquipment.find(i => i.id === action.itemId);
+      if (!itemToSell) return state;
+      
+      return {
+        ...state,
+        saveData: {
+          ...state.saveData,
+          storedEquipment: state.saveData.storedEquipment.filter(i => i.id !== action.itemId),
+          gold: (state.saveData.gold || 0) + action.price,
+        },
+      };
+    }
+    
     case 'DISMANTLE_EQUIPMENT': {
       // Break stored equipment into materials
       const itemToDismantle = state.saveData.storedEquipment.find(i => i.id === action.itemId);
@@ -671,6 +700,54 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           ...state.saveData,
           storedEquipment: state.saveData.storedEquipment.filter(i => i.id !== action.itemId),
           materials: updatedMaterials,
+        },
+      };
+    }
+    
+    case 'ADD_TOWN_GOLD':
+      return {
+        ...state,
+        saveData: {
+          ...state.saveData,
+          gold: (state.saveData.gold || 0) + action.amount,
+        },
+      };
+    
+    case 'SPEND_TOWN_GOLD': {
+      const currentGold = state.saveData.gold || 0;
+      if (currentGold < action.amount) return state;
+      return {
+        ...state,
+        saveData: {
+          ...state.saveData,
+          gold: currentGold - action.amount,
+        },
+      };
+    }
+    
+    case 'STORE_ITEM': {
+      const existingItems = state.saveData.storedItems || [];
+      // Check if item already exists and stack it
+      const existingIdx = existingItems.findIndex(i => i.id === action.item.id);
+      if (existingIdx !== -1) {
+        const updated = [...existingItems];
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          quantity: updated[existingIdx].quantity + action.item.quantity,
+        };
+        return {
+          ...state,
+          saveData: {
+            ...state.saveData,
+            storedItems: updated,
+          },
+        };
+      }
+      return {
+        ...state,
+        saveData: {
+          ...state.saveData,
+          storedItems: [...existingItems, action.item],
         },
       };
     }

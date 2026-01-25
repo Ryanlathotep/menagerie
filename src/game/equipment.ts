@@ -1061,12 +1061,20 @@ export function craftEquipment(recipe: CraftingRecipe, playerLevel: number): Equ
 
 // Get matching recipe for an equipment item (for recipe unlocking)
 export function getRecipeFromEquipment(item: EquipmentItem): CraftingRecipe | null {
-  // Find a recipe that matches the item's slot, rarity, and element
-  return CRAFTING_RECIPES.find(recipe => 
-    recipe.resultSlot === item.slot &&
-    recipe.resultRarity === item.rarity &&
-    recipe.element === item.element
-  ) || null;
+  // Find a recipe that matches the item's slot and rarity
+  // Also check element if the recipe has one, otherwise match any
+  return CRAFTING_RECIPES.find(recipe => {
+    // Must match slot and rarity
+    if (recipe.resultSlot !== item.slot || recipe.resultRarity !== item.rarity) {
+      return false;
+    }
+    // If recipe has element, it must match item element
+    if (recipe.element && recipe.element !== item.element) {
+      return false;
+    }
+    // If recipe has no element, it's a generic recipe for that slot/rarity
+    return true;
+  }) || null;
 }
 
 // Dismantle equipment into materials

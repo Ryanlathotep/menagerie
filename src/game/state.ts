@@ -11,10 +11,10 @@ import {
   SpeciesType,
   UnlockedMonster,
   InventoryItem,
-  MaterialInventory,
-  getComboId 
 } from './types';
-import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot, CraftingRecipe } from './equipment';
+import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot } from './equipment';
+import { xpToNextLevel } from './combat';
+import { calculateStats } from './utils';
 
 // Starting monster - Normal Normal Slime
 const STARTER_MONSTER = {
@@ -365,9 +365,17 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       
     case 'UPDATE_PLAYER_MONSTER':
       if (!state.run) return state;
+      // Also update the party array to keep stats in sync
+      const syncedParty = state.run.party.map((member, idx) => 
+        idx === state.run!.activePartyIndex ? action.monster : member
+      );
       return {
         ...state,
-        run: { ...state.run, currentMonster: action.monster },
+        run: { 
+          ...state.run, 
+          currentMonster: action.monster,
+          party: syncedParty,
+        },
       };
       
     case 'ADD_GOLD':
@@ -639,7 +647,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         },
       };
     
-    // Award XP to non-active party members (passive gain)
+    // Award XP to non-active party members (passive gain) and level them up if appropriate
     case 'ADD_PARTY_XP': {
       if (!state.run) return state;
       const passiveXp = Math.floor(action.xpGained / 2); // Half XP for passive members
@@ -651,10 +659,36 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         
         // Calculate new XP total for this monster
         const currentXp = monster.experience || 0;
-        const newXp = currentXp + passiveXp;
+        let newXp = currentXp + passiveXp;
+        let newLevel = monster.level;
+        let updatedStats = monster.stats;
+        
+        // Check for level up(s)
+        let xpNeeded = xpToNextLevel(newLevel);
+        while (newXp >= xpNeeded) {
+          newXp -= xpNeeded;
+          newLevel += 1;
+          
+          // Calculate new stats for the level
+          const newBaseStats = calculateStats(monster.species, monster.class, newLevel);
+          
+          // Preserve HP/Stamina percentages when leveling
+          const hpPercent = updatedStats.currentHp / updatedStats.maxHp;
+          const staminaPercent = updatedStats.currentStamina / updatedStats.stamina;
+          
+          updatedStats = {
+            ...newBaseStats,
+            currentHp: Math.ceil(newBaseStats.maxHp * hpPercent),
+            currentStamina: Math.ceil(newBaseStats.stamina * staminaPercent),
+          };
+          
+          xpNeeded = xpToNextLevel(newLevel);
+        }
         
         return {
           ...monster,
+          level: newLevel,
+          stats: updatedStats,
           experience: newXp,
         };
       });

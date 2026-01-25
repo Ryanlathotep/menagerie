@@ -12,7 +12,7 @@ import {
   UnlockedMonster,
   InventoryItem,
 } from './types';
-import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot, dismantleEquipment, getRecipeFromEquipment } from './equipment';
+import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot, dismantleEquipment, getRecipeFromEquipment, getConsumableRecipeFromItem } from './equipment';
 import { xpToNextLevel } from './combat';
 import { calculateStats } from './utils';
 
@@ -242,6 +242,18 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         const matchingRecipe = getRecipeFromEquipment(item);
         if (matchingRecipe && !newUnlockedRecipes.includes(matchingRecipe.id)) {
           newUnlockedRecipes.push(matchingRecipe.id);
+          console.log('[Recipe Unlock] Equipment:', item.name, '->', matchingRecipe.id);
+        }
+      }
+      
+      // Unlock consumable recipes for potions/items brought back
+      for (const item of state.run.inventory) {
+        if (item.type === 'potion') {
+          const matchingRecipe = getConsumableRecipeFromItem(item);
+          if (matchingRecipe && !newUnlockedRecipes.includes(matchingRecipe.id)) {
+            newUnlockedRecipes.push(matchingRecipe.id);
+            console.log('[Recipe Unlock] Consumable:', item.name, '->', matchingRecipe.id);
+          }
         }
       }
       

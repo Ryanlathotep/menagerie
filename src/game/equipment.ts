@@ -1077,6 +1077,20 @@ export function getRecipeFromEquipment(item: EquipmentItem): CraftingRecipe | nu
   }) || null;
 }
 
+// Get matching consumable recipe for an inventory item (for recipe unlocking)
+export function getConsumableRecipeFromItem(item: { id?: string; name?: string; effect?: string }): ConsumableRecipe | null {
+  // Match by resultId or by name/effect
+  return CONSUMABLE_RECIPES.find(recipe => {
+    // First try to match by resultId
+    if (item.id && recipe.resultId === item.id) return true;
+    // Fallback: match by name (case insensitive)
+    if (item.name && recipe.name.toLowerCase() === item.name.toLowerCase()) return true;
+    // Fallback: match by effect
+    if (item.effect && recipe.effect === item.effect) return true;
+    return false;
+  }) || null;
+}
+
 // Dismantle equipment into materials
 export interface DismantleResult {
   materials: { materialId: string; quantity: number }[];

@@ -35,6 +35,7 @@ interface CraftingWorkshopProps {
   storedEquipment: EquipmentItem[];
   unlockedRecipes: string[];
   onCraft: (recipe: CraftingRecipe, result: EquipmentItem) => void;
+  onCraftConsumable?: (recipe: ConsumableRecipe) => void;
   onDismantle: (itemId: string, materialsGained: { materialId: string; quantity: number }[]) => void;
   onClose: () => void;
 }
@@ -45,27 +46,31 @@ export function CraftingWorkshop({
   storedEquipment,
   unlockedRecipes,
   onCraft,
+  onCraftConsumable,
   onDismantle,
   onClose,
 }: CraftingWorkshopProps) {
   const [selectedRecipe, setSelectedRecipe] = useState<CraftingRecipe | null>(null);
+  const [selectedConsumable, setSelectedConsumable] = useState<ConsumableRecipe | null>(null);
   const [craftedItem, setCraftedItem] = useState<EquipmentItem | null>(null);
-  const [activeTab, setActiveTab] = useState<'craft' | 'dismantle'>('craft');
+  const [craftedConsumable, setCraftedConsumable] = useState<ConsumableRecipe | null>(null);
+  const [activeTab, setActiveTab] = useState<'craft' | 'consumables' | 'dismantle'>('craft');
   const [selectedDismantle, setSelectedDismantle] = useState<EquipmentItem | null>(null);
   
   // Check if player has materials for recipe
-  const canCraft = (recipe: CraftingRecipe): boolean => {
+  const canCraft = (recipe: CraftingRecipe | ConsumableRecipe): boolean => {
     return recipe.materials.every(req => (materials[req.materialId] || 0) >= req.quantity);
   };
   
-  // Check if recipe is unlocked
-  const isUnlocked = (recipe: CraftingRecipe): boolean => {
+  // Check if recipe is unlocked (works for both equipment and consumables)
+  const isUnlocked = (recipe: CraftingRecipe | ConsumableRecipe): boolean => {
     // Common recipes are always unlocked
-    if (recipe.resultRarity === 'common') return true;
+    const rarity = 'resultRarity' in recipe ? recipe.resultRarity : recipe.rarity;
+    if (rarity === 'common') return true;
     return unlockedRecipes.includes(recipe.id);
   };
   
-  // Group recipes by rarity
+  // Group equipment recipes by rarity
   const recipesByRarity = {
     common: CRAFTING_RECIPES.filter(r => r.resultRarity === 'common'),
     uncommon: CRAFTING_RECIPES.filter(r => r.resultRarity === 'uncommon'),
@@ -74,12 +79,26 @@ export function CraftingWorkshop({
     legendary: CRAFTING_RECIPES.filter(r => r.resultRarity === 'legendary'),
   };
   
+  // Group consumable recipes by type
+  const consumablesByType = {
+    healing: CONSUMABLE_RECIPES.filter(r => r.effect === 'heal_hp' || r.effect === 'heal_stamina' || r.effect === 'heal_full'),
+    status: CONSUMABLE_RECIPES.filter(r => r.effect.startsWith('cure_')),
+    buffs: CONSUMABLE_RECIPES.filter(r => r.effect.startsWith('boost_')),
+    revive: CONSUMABLE_RECIPES.filter(r => r.effect.startsWith('revive')),
+  };
+  
   const handleCraft = () => {
     if (!selectedRecipe || !canCraft(selectedRecipe) || !isUnlocked(selectedRecipe)) return;
     
     const result = craftEquipment(selectedRecipe, playerLevel);
     setCraftedItem(result);
     onCraft(selectedRecipe, result);
+  };
+  
+  const handleCraftConsumable = () => {
+    if (!selectedConsumable || !canCraft(selectedConsumable) || !isUnlocked(selectedConsumable)) return;
+    setCraftedConsumable(selectedConsumable);
+    onCraftConsumable?.(selectedConsumable);
   };
   
   const handleDismantle = () => {
@@ -104,7 +123,14 @@ export function CraftingWorkshop({
               size="sm"
               onClick={() => setActiveTab('craft')}
             >
-              ⚒️ Craft
+              ⚒️ Equipment
+            </Button>
+            <Button
+              variant={activeTab === 'consumables' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('consumables')}
+            >
+              🧪 Potions
             </Button>
             <Button
               variant={activeTab === 'dismantle' ? 'default' : 'ghost'}
@@ -128,6 +154,18 @@ export function CraftingWorkshop({
             canCraft={canCraft}
             isUnlocked={isUnlocked}
             handleCraft={handleCraft}
+          />
+        ) : activeTab === 'consumables' ? (
+          <ConsumablesTab
+            consumablesByType={consumablesByType}
+            selectedConsumable={selectedConsumable}
+            setSelectedConsumable={setSelectedConsumable}
+            craftedConsumable={craftedConsumable}
+            setCraftedConsumable={setCraftedConsumable}
+            materials={materials}
+            canCraft={canCraft}
+            isUnlocked={isUnlocked}
+            handleCraftConsumable={handleCraftConsumable}
           />
         ) : (
           <DismantleTab
@@ -346,6 +384,216 @@ function CraftingTab({
               </p>
               <p className="text-xs mt-1 text-amber-400">
                 💡 Bring back equipment to unlock new recipes
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {/* Material inventory summary */}
+        <MaterialSummary materials={materials} />
+      </div>
+    </div>
+  );
+}
+
+// Consumables tab component
+function ConsumablesTab({
+  consumablesByType,
+  selectedConsumable,
+  setSelectedConsumable,
+  craftedConsumable,
+  setCraftedConsumable,
+  materials,
+  canCraft,
+  isUnlocked,
+  handleCraftConsumable,
+}: {
+  consumablesByType: Record<string, ConsumableRecipe[]>;
+  selectedConsumable: ConsumableRecipe | null;
+  setSelectedConsumable: (r: ConsumableRecipe | null) => void;
+  craftedConsumable: ConsumableRecipe | null;
+  setCraftedConsumable: (r: ConsumableRecipe | null) => void;
+  materials: MaterialInventory;
+  canCraft: (r: ConsumableRecipe) => boolean;
+  isUnlocked: (r: ConsumableRecipe) => boolean;
+  handleCraftConsumable: () => void;
+}) {
+  const typeLabels: Record<string, { label: string; icon: string }> = {
+    healing: { label: 'Healing', icon: '❤️' },
+    status: { label: 'Status Cures', icon: '💊' },
+    buffs: { label: 'Buffs', icon: '⚡' },
+    revive: { label: 'Revives', icon: '✨' },
+  };
+
+  return (
+    <div className="flex-1 overflow-hidden flex">
+      {/* Recipe List */}
+      <div className="w-1/2 border-r flex flex-col">
+        <Tabs defaultValue="healing" className="flex-1 flex flex-col">
+          <TabsList className="w-full grid grid-cols-4 m-2 mr-4">
+            {Object.entries(typeLabels).map(([type, { label, icon }]) => (
+              <TabsTrigger key={type} value={type} className="text-xs">
+                {icon} {label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          
+          {Object.entries(consumablesByType).map(([type, recipes]) => (
+            <TabsContent key={type} value={type} className="flex-1 m-0">
+              <ScrollArea className="h-full">
+                <div className="p-2 space-y-2">
+                  {recipes.length > 0 ? recipes.map(recipe => {
+                    const craftable = canCraft(recipe);
+                    const unlocked = isUnlocked(recipe);
+                    const rarityStyle = RARITY_COLORS[recipe.rarity];
+                    
+                    return (
+                      <button
+                        key={recipe.id}
+                        onClick={() => {
+                          setSelectedConsumable(recipe);
+                          setCraftedConsumable(null);
+                        }}
+                        className={`
+                          w-full p-3 rounded-lg border text-left transition-all
+                          ${selectedConsumable?.id === recipe.id 
+                            ? 'ring-2 ring-primary' 
+                            : 'hover:bg-muted/50'
+                          }
+                          ${!unlocked 
+                            ? 'border-muted opacity-40 grayscale' 
+                            : craftable 
+                              ? rarityStyle.border 
+                              : 'border-muted opacity-60'
+                          }
+                        `}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">{unlocked ? recipe.icon : '❓'}</span>
+                          <div className="flex-1">
+                            <p className={`font-semibold ${unlocked ? rarityStyle.text : 'text-muted-foreground'}`}>
+                              {unlocked ? recipe.name : '???'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {unlocked ? recipe.description : 'Find this item in the dungeon to unlock'}
+                            </p>
+                          </div>
+                          {!unlocked ? (
+                            <span className="text-muted-foreground text-xs">🔒</span>
+                          ) : craftable ? (
+                            <span className="text-green-400 text-xs">✓ Ready</span>
+                          ) : null}
+                        </div>
+                      </button>
+                    );
+                  }) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>No {type} recipes available</p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+          ))}
+        </Tabs>
+      </div>
+      
+      {/* Recipe Details & Crafting */}
+      <div className="w-1/2 p-4 flex flex-col">
+        {selectedConsumable ? (
+          <>
+            <div className="flex-1 space-y-4">
+              {/* Recipe header */}
+              <div className="flex items-center gap-3">
+                <span className="text-4xl">{isUnlocked(selectedConsumable) ? selectedConsumable.icon : '❓'}</span>
+                <div>
+                  <h3 className={`text-lg font-bold ${isUnlocked(selectedConsumable) ? RARITY_COLORS[selectedConsumable.rarity].text : 'text-muted-foreground'}`}>
+                    {isUnlocked(selectedConsumable) ? selectedConsumable.name : '???'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground capitalize">
+                    {selectedConsumable.rarity} consumable
+                  </p>
+                </div>
+              </div>
+              
+              {!isUnlocked(selectedConsumable) ? (
+                <div className="p-4 bg-muted/50 rounded-lg border border-dashed border-muted-foreground/30">
+                  <p className="text-sm text-muted-foreground text-center">
+                    🔒 Recipe Locked
+                  </p>
+                  <p className="text-xs text-muted-foreground text-center mt-2">
+                    Bring back this potion from the dungeon to unlock the recipe!
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm">{selectedConsumable.description}</p>
+                  
+                  {/* Required materials */}
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm">Required Materials</h4>
+                    <div className="space-y-1">
+                      {selectedConsumable.materials.map(req => {
+                        const have = materials[req.materialId] || 0;
+                        const enough = have >= req.quantity;
+                        
+                        return (
+                          <div 
+                            key={req.materialId}
+                            className={`
+                              flex items-center justify-between p-2 rounded
+                              ${enough ? 'bg-green-500/10' : 'bg-red-500/10'}
+                            `}
+                          >
+                            <span className="text-sm">
+                              {req.materialId.split('_').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}
+                            </span>
+                            <span className={`text-sm font-mono ${enough ? 'text-green-400' : 'text-red-400'}`}>
+                              {have}/{req.quantity}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+              
+              {/* Crafted consumable confirmation */}
+              {craftedConsumable && (
+                <div className={`p-3 rounded-lg border ${RARITY_COLORS[craftedConsumable.rarity].border} ${RARITY_COLORS[craftedConsumable.rarity].bg}`}>
+                  <p className="text-xs text-muted-foreground mb-1">Crafted:</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{craftedConsumable.icon}</span>
+                    <div>
+                      <p className={`font-semibold ${RARITY_COLORS[craftedConsumable.rarity].text}`}>
+                        {craftedConsumable.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{craftedConsumable.description}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <Button
+              className="w-full mt-4 bg-gradient-to-r from-green-500 to-emerald-500"
+              disabled={!canCraft(selectedConsumable) || !isUnlocked(selectedConsumable)}
+              onClick={handleCraftConsumable}
+            >
+              {!isUnlocked(selectedConsumable) ? '🔒 Locked' : canCraft(selectedConsumable) ? '🧪 Brew' : '❌ Missing Materials'}
+            </Button>
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-center">
+            <div className="text-muted-foreground">
+              <p className="text-4xl mb-2">🧪</p>
+              <p>Select a consumable to craft</p>
+              <p className="text-xs mt-2">
+                Potions, cures, and buffs to aid your adventure!
+              </p>
+              <p className="text-xs mt-1 text-green-400">
+                💡 Bring back potions to unlock new recipes
               </p>
             </div>
           </div>

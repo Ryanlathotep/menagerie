@@ -35,7 +35,7 @@ import {
 } from '@/game/statusEffects';
 import { StatusIcons } from '@/game/StatusEffectDisplay';
 import { CraftingWorkshop } from '@/game/CraftingWorkshop';
-import { CraftingRecipe } from '@/game/equipment';
+import { CraftingRecipe, ConsumableRecipe } from '@/game/equipment';
 import { findPath, getDirection } from '@/game/pathfinding';
 import { PartyPanel } from '@/game/PartyPanel';
 import { RecruitmentModal, calculateRecruitChance } from '@/game/RecruitmentModal';
@@ -75,6 +75,25 @@ function MainMenu() {
       item: result
     });
     toast.success(`Crafted ${result.name}!`);
+  };
+  
+  const handleCraftConsumable = (recipe: ConsumableRecipe) => {
+    // Deduct materials
+    dispatch({
+      type: 'USE_MATERIALS',
+      materials: recipe.materials
+    });
+    // Create the consumable item and store it
+    const consumableItem: InventoryItem = {
+      id: recipe.resultId,
+      name: recipe.name,
+      type: 'potion',
+      value: 0,
+      effect: recipe.effect,
+      quantity: 1,
+    };
+    dispatch({ type: 'STORE_ITEM', item: consumableItem });
+    toast.success(`Brewed ${recipe.name}!`);
   };
   
   const handleDismantle = (itemId: string, materialsGained: { materialId: string; quantity: number }[]) => {
@@ -171,6 +190,7 @@ function MainMenu() {
           storedEquipment={state.saveData.storedEquipment || []}
           unlockedRecipes={state.saveData.unlockedRecipes || []}
           onCraft={handleCraft}
+          onCraftConsumable={handleCraftConsumable}
           onDismantle={handleDismantle}
           onClose={() => setShowCrafting(false)}
         />

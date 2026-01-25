@@ -44,6 +44,7 @@ import { ReviveTargetModal } from '@/game/ReviveTargetModal';
 import { CombatSwitchPanel } from '@/game/CombatSwitchPanel';
 import { LogMessage, createLogMessage, parseLogMessage } from '@/game/GameLog';
 import { TownShop } from '@/game/TownShop';
+import { ElevatorModal } from '@/game/ElevatorModal';
 
 // Main Menu Component
 function MainMenu() {
@@ -436,6 +437,7 @@ function DungeonView({
   const dungeon = state.run?.dungeon;
   const [showShop, setShowShop] = useState(false);
   const [showEquipment, setShowEquipment] = useState(false);
+  const [showElevator, setShowElevator] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAutoRunning, setIsAutoRunning] = useState(false);
   const autoRunDirection = useRef<'up' | 'down' | 'left' | 'right' | null>(null);
@@ -632,6 +634,8 @@ function DungeonView({
       }
     } else if (result.shop) {
       setShowShop(true);
+    } else if (result.elevator) {
+      setShowElevator(true);
     } else if (result.plant) {
       // Harvest plant - add material to run materials
       dispatch({
@@ -948,6 +952,34 @@ function DungeonView({
         onBuyEquipment={handleBuyEquipment}
         onClose={() => setShowShop(false)} 
       />}
+      
+      {showElevator && state.run && (
+        <ElevatorModal
+          party={state.run.party}
+          partyEquipment={state.run.partyEquipment}
+          activeIndex={state.run.activePartyIndex}
+          unlockedMonsters={state.saveData.unlockedMonsters}
+          onSend={(partyIndex) => {
+            const monster = state.run!.party[partyIndex];
+            const comboId = `${monster.species}_${monster.element}_${monster.class}`;
+            const existing = state.saveData.unlockedMonsters.find(m => m.comboId === comboId);
+            
+            dispatch({ type: 'SEND_PARTY_MEMBER_TO_TOWN', partyIndex });
+            setShowElevator(false);
+            
+            if (!existing) {
+              addLog(`🛗 ${monster.name} sent to town! ✨ New monster unlocked!`, 'system');
+              toast.success(`${monster.name} is now available in your roster!`);
+            } else if (monster.level > existing.level) {
+              addLog(`🛗 ${monster.name} sent to town! 📈 Level updated to ${monster.level}!`, 'system');
+              toast.success(`${monster.name} level updated to ${monster.level}!`);
+            } else {
+              addLog(`🛗 ${monster.name} sent safely back to town.`, 'system');
+            }
+          }}
+          onClose={() => setShowElevator(false)}
+        />
+      )}
       
       {showEquipment && state.run && (
         <EquipmentView

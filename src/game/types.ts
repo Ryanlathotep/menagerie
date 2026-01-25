@@ -263,7 +263,7 @@ export interface Move {
 }
 
 // ============= DUNGEON =============
-export type TileType = 'floor' | 'wall' | 'door' | 'stairs' | 'trap' | 'treasure' | 'enemy' | 'player' | 'shop' | 'water' | 'plant';
+export type TileType = 'floor' | 'wall' | 'door' | 'stairs' | 'trap' | 'treasure' | 'enemy' | 'player' | 'shop' | 'water' | 'plant' | 'elevator';
 export type TrapType = 'spike' | 'poison' | 'alarm';
 export type PlantType = 'healing_herb' | 'stamina_root' | 'antidote_leaf' | 'mana_blossom' | 'fire_pepper' | 'ice_mint' | 'revive_moss' | 'golden_ginseng' | 'phoenix_flower' | 'panacea_petal' | 'miracle_lotus';
 

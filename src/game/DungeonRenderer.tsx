@@ -121,6 +121,11 @@ const TILE_VISUALS: Record<TileType, {
     bg: 'bg-gradient-to-br from-green-100 to-emerald-200',
     content: '🌿',
     glow: 'shadow-md shadow-green-300/40'
+  },
+  elevator: {
+    bg: 'bg-gradient-to-br from-indigo-200 to-violet-300',
+    content: '🛗',
+    glow: 'shadow-lg shadow-violet-400/50'
   }
 };
 

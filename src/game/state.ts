@@ -94,6 +94,8 @@ type GameAction =
   | { type: 'UPDATE_PARTY_MONSTER'; index: number; monster: Monster }
   | { type: 'ADD_PARTY_XP'; xpGained: number; excludeActiveIndex: number }
   | { type: 'REVIVE_PARTY_MEMBER'; index: number; hpPercent: number }  // Revive a fainted party member
+  // Elevator - send party member back to town
+  | { type: 'SEND_PARTY_MEMBER_TO_TOWN'; partyIndex: number }
   // Battle tracking
   | { type: 'UPDATE_BATTLE_STATS'; stats: Partial<{ turnsUsed: number; overkillDamage: number; statusEffectsApplied: number; criticalHits: number }> }
   | { type: 'RESET_BATTLE_STATS' };
@@ -992,6 +994,85 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           battleStats: undefined,
         },
       };
+    
+    // Send a party member back to town via elevator
+    case 'SEND_PARTY_MEMBER_TO_TOWN': {
+      if (!state.run) return state;
+      const { partyIndex } = action;
+      if (partyIndex < 0 || partyIndex >= state.run.party.length) return state;
+      if (state.run.party.length <= 1) return state; // Can't send last party member
+      
+      const monsterToSend = state.run.party[partyIndex];
+      const equipmentToSend = state.run.partyEquipment[partyIndex];
+      
+      // Unlock/update the monster in save data
+      let updatedUnlockedMonsters = [...state.saveData.unlockedMonsters];
+      const comboId = `${monsterToSend.species}_${monsterToSend.element}_${monsterToSend.class}`;
+      const existingIdx = updatedUnlockedMonsters.findIndex(m => m.comboId === comboId);
+      
+      if (existingIdx === -1) {
+        // New unlock
+        updatedUnlockedMonsters.push({
+          comboId,
+          species: monsterToSend.species,
+          element: monsterToSend.element,
+          classType: monsterToSend.class,
+          level: monsterToSend.level,
+        });
+      } else if (monsterToSend.level > updatedUnlockedMonsters[existingIdx].level) {
+        // Update level if higher
+        updatedUnlockedMonsters[existingIdx] = {
+          ...updatedUnlockedMonsters[existingIdx],
+          level: monsterToSend.level,
+        };
+      }
+      
+      // Unlock recipes from equipped items
+      const slots: import('./equipment').EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory', 'back'];
+      const equipmentToStore: import('./equipment').EquipmentItem[] = [];
+      const newUnlockedRecipes = [...(state.saveData.unlockedRecipes || [])];
+      
+      for (const slot of slots) {
+        const item = equipmentToSend[slot];
+        if (item) {
+          equipmentToStore.push(item);
+          const matchingRecipe = getRecipeFromEquipment(item);
+          if (matchingRecipe && !newUnlockedRecipes.includes(matchingRecipe.id)) {
+            newUnlockedRecipes.push(matchingRecipe.id);
+            console.log('[Elevator Recipe Unlock]', item.name, '->', matchingRecipe.id);
+          }
+        }
+      }
+      
+      // Remove from party
+      const newParty = state.run.party.filter((_, i) => i !== partyIndex);
+      const newPartyEquipment = state.run.partyEquipment.filter((_, i) => i !== partyIndex);
+      
+      // Adjust activePartyIndex if needed
+      let newActiveIndex = state.run.activePartyIndex;
+      if (partyIndex === state.run.activePartyIndex) {
+        newActiveIndex = 0; // Switch to first party member
+      } else if (partyIndex < state.run.activePartyIndex) {
+        newActiveIndex = state.run.activePartyIndex - 1;
+      }
+      
+      return {
+        ...state,
+        run: {
+          ...state.run,
+          party: newParty,
+          partyEquipment: newPartyEquipment,
+          activePartyIndex: newActiveIndex,
+          currentMonster: newParty[newActiveIndex],
+        },
+        saveData: {
+          ...state.saveData,
+          unlockedMonsters: updatedUnlockedMonsters,
+          storedEquipment: [...state.saveData.storedEquipment, ...equipmentToStore],
+          unlockedRecipes: newUnlockedRecipes,
+        },
+      };
+    }
       
     default:
       return state;

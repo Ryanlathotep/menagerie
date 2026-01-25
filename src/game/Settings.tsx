@@ -1,11 +1,12 @@
 // Game Settings Component and Hook
 
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { useState, useEffect, createContext, useContext, ReactNode, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
-import { Settings as SettingsIcon, X } from 'lucide-react';
+import { Settings as SettingsIcon, X, Download, Upload } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 // Settings interface
 export interface GameSettings {
@@ -85,12 +86,71 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { settings, updateSetting, resetSettings } = useSettings();
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExportSave = () => {
+    try {
+      const saveData = localStorage.getItem('monster-roguelike-save');
+      const settingsData = localStorage.getItem('monster-roguelike-settings');
+      
+      const backup = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        saveData: saveData ? JSON.parse(saveData) : null,
+        settings: settingsData ? JSON.parse(settingsData) : null,
+      };
+      
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `monster-roguelike-backup-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({ title: 'Backup exported!', description: 'Save file downloaded to your device.' });
+    } catch (e) {
+      toast({ title: 'Export failed', description: 'Could not export save data.', variant: 'destructive' });
+    }
+  };
+
+  const handleImportSave = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const backup = JSON.parse(event.target?.result as string);
+        
+        if (!backup.version || !backup.saveData) {
+          throw new Error('Invalid backup file');
+        }
+        
+        localStorage.setItem('monster-roguelike-save', JSON.stringify(backup.saveData));
+        if (backup.settings) {
+          localStorage.setItem('monster-roguelike-settings', JSON.stringify(backup.settings));
+        }
+        
+        toast({ title: 'Backup restored!', description: 'Refresh the page to load your save.' });
+      } catch (e) {
+        toast({ title: 'Import failed', description: 'Invalid or corrupted backup file.', variant: 'destructive' });
+      }
+    };
+    reader.readAsText(file);
+    
+    // Reset input so same file can be selected again
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
-      <Card className="w-full max-w-md p-6 m-4 animate-scale-in">
+      <Card className="w-full max-w-md p-6 m-4 animate-scale-in max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <SettingsIcon className="w-5 h-5" />
@@ -156,6 +216,31 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             />
             <p className="text-xs text-muted-foreground">
               Time between steps when auto-running (lower = faster)
+            </p>
+          </div>
+
+          {/* Backup/Restore Section */}
+          <div className="space-y-3 pt-4 border-t">
+            <Label className="text-base">Save Data</Label>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleExportSave} className="flex-1">
+                <Download className="w-4 h-4 mr-1" />
+                Export Backup
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="flex-1">
+                <Upload className="w-4 h-4 mr-1" />
+                Import Backup
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleImportSave}
+                className="hidden"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Export your save to a file or restore from a backup. Refresh after importing.
             </p>
           </div>
         </div>

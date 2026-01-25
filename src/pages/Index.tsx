@@ -125,7 +125,7 @@ function MainMenu() {
   return (
     <div className="game-container text-7xl font-serif text-center">
       <div className="text-center space-y-8">
-        <h1 className="text-7xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+        <h1 className="text-7xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent pb-2">
           Menagerie
         </h1>
         <p className="text-muted-foreground text-lg">Play as the monsters. Unlock them all.</p>

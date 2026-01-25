@@ -1,7 +1,7 @@
 // Equipment Utilities - Sorting, Auto-Equip, and SVG Icons
 
-import { EquipmentItem, EquipmentSlot, Rarity, EquipmentStats, MonsterEquipment, createEmptyEquipment, RARITY_MULTIPLIERS } from './equipment';
-import { ClassType } from './types';
+import { EquipmentItem, EquipmentSlot, Rarity, EquipmentStats, MonsterEquipment, createEmptyEquipment, RARITY_MULTIPLIERS, canEquipItem, getAffinityBonusStats } from './equipment';
+import { ClassType, Monster } from './types';
 
 // ============= SORTING OPTIONS =============
 export type SortOption = 'rarity' | 'stat' | 'slot' | 'level' | 'set';
@@ -79,27 +79,53 @@ const CLASS_STAT_PRIORITY: Record<ClassType, (keyof EquipmentStats)[]> = {
   political: ['special', 'defense', 'dodge', 'maxHp', 'stamina', 'speed', 'attack'],
 };
 
-function calculateItemScore(item: EquipmentItem, priorities: (keyof EquipmentStats)[]): number {
+function calculateItemScore(item: EquipmentItem, priorities: (keyof EquipmentStats)[], monster?: Monster): number {
   let score = 0;
+  
+  // Base stats scoring
   priorities.forEach((stat, index) => {
     const value = item.stats[stat] || 0;
     const weight = (priorities.length - index) / priorities.length; // Higher priority = higher weight
     score += value * weight * RARITY_MULTIPLIERS[item.rarity];
   });
+  
+  // Add affinity bonus stats if monster matches
+  if (monster) {
+    const bonusStats = getAffinityBonusStats(item, monster);
+    if (bonusStats) {
+      priorities.forEach((stat, index) => {
+        const value = bonusStats[stat] || 0;
+        const weight = (priorities.length - index) / priorities.length;
+        score += value * weight * 1.5; // Bonus stats are weighted extra
+      });
+    }
+  }
+  
   return score;
 }
 
 export function autoEquip(
   inventory: EquipmentItem[],
   classType: ClassType,
-  monsterLevel: number
+  monsterLevel: number,
+  monster?: Monster
 ): { equipment: MonsterEquipment; usedItemIds: string[] } {
   const equipment = createEmptyEquipment();
   const usedItemIds: string[] = [];
   const priorities = CLASS_STAT_PRIORITY[classType];
   
-  // Filter equippable items
-  const equippable = inventory.filter(item => item.level <= monsterLevel);
+  // Filter equippable items (level + affinity requirements)
+  const equippable = inventory.filter(item => {
+    if (item.level > monsterLevel) return false;
+    
+    // Check affinity requirements if monster is provided
+    if (monster && item.affinityRequired) {
+      const result = canEquipItem(item, monster);
+      if (!result.canEquip) return false;
+    }
+    
+    return true;
+  });
   
   // Group by slot
   const bySlot: Record<EquipmentSlot, EquipmentItem[]> = {
@@ -120,10 +146,10 @@ export function autoEquip(
     const items = bySlot[slot];
     if (items.length === 0) return;
     
-    // Score each item
+    // Score each item (consider affinity bonuses if monster provided)
     const scored = items.map(item => ({
       item,
-      score: calculateItemScore(item, priorities),
+      score: calculateItemScore(item, priorities, monster),
     }));
     
     // Sort by score descending

@@ -263,8 +263,9 @@ export interface Move {
 }
 
 // ============= DUNGEON =============
-export type TileType = 'floor' | 'wall' | 'door' | 'stairs' | 'trap' | 'treasure' | 'enemy' | 'player' | 'shop' | 'water';
+export type TileType = 'floor' | 'wall' | 'door' | 'stairs' | 'trap' | 'treasure' | 'enemy' | 'player' | 'shop' | 'water' | 'plant';
 export type TrapType = 'spike' | 'poison' | 'alarm';
+export type PlantType = 'healing_herb' | 'stamina_root' | 'antidote_leaf' | 'mana_blossom' | 'fire_pepper' | 'ice_mint' | 'revive_moss' | 'golden_ginseng' | 'phoenix_flower' | 'panacea_petal' | 'miracle_lotus';
 
 // Re-export equipment types for convenience
 export type { EquipmentItem, EquipmentSlot, MonsterEquipment, Rarity, CraftingMaterial } from '../game/equipment';
@@ -279,6 +280,8 @@ export interface DungeonTile {
   trapType?: TrapType;
   triggered?: boolean; // For traps that have been triggered
   isShallowWater?: boolean; // For water tiles - shallow can be walked through with damage
+  plantType?: PlantType; // For harvestable plant tiles
+  harvested?: boolean; // Whether the plant has been harvested
 }
 
 export interface Position {

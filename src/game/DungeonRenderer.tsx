@@ -1,7 +1,8 @@
 // Enhanced Dungeon Renderer with visual tiles - Bright Anime Style
 
 import { forwardRef, useEffect, useRef, useImperativeHandle } from 'react';
-import { DungeonState, DungeonTile, TileType, ElementType, ClassType, Monster, SpeciesType, SPECIES_DATA, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED, TrapType, UnlockedMonster } from './types';
+import { DungeonState, DungeonTile, TileType, ElementType, ClassType, Monster, SpeciesType, SPECIES_DATA, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED, TrapType, PlantType, UnlockedMonster } from './types';
+import { CRAFTING_MATERIALS } from './equipment';
 import { MonsterSprite } from './sprites';
 import {
   Tooltip,
@@ -125,6 +126,11 @@ const TILE_VISUALS: Record<TileType, {
     bg: 'bg-gradient-to-br from-blue-300 to-cyan-400',
     content: '🌊',
     glow: 'shadow-md shadow-blue-400/40'
+  },
+  plant: {
+    bg: 'bg-gradient-to-br from-green-100 to-emerald-200',
+    content: '🌿',
+    glow: 'shadow-md shadow-green-300/40'
   }
 };
 
@@ -150,7 +156,24 @@ const TRAP_INFO: Record<TrapType, { name: string; icon: string; description: str
   },
 };
 
-// Wall texture patterns - softer anime style
+// Plant info for tooltips and visuals
+function getPlantInfo(plantType: PlantType): { name: string; icon: string; description: string; rarity: string; color: string } {
+  const material = CRAFTING_MATERIALS.find(m => m.id === plantType);
+  const rarityColors: Record<string, string> = {
+    common: 'from-green-100 to-green-200',
+    uncommon: 'from-emerald-100 to-teal-200',
+    rare: 'from-amber-100 to-yellow-200',
+    epic: 'from-purple-100 to-violet-200',
+  };
+  
+  return {
+    name: material?.name || plantType,
+    icon: material?.icon || '🌿',
+    description: material?.description || 'A harvestable plant.',
+    rarity: material?.rarity || 'common',
+    color: rarityColors[material?.rarity || 'common'] || rarityColors.common,
+  };
+}
 function getWallVariant(x: number, y: number, tiles: DungeonTile[][]): string {
   const hash = (x * 7 + y * 13) % 4;
   const baseClasses = 'bg-tile-wall';

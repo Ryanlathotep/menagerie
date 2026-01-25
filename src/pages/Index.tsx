@@ -298,8 +298,8 @@ function CharacterSelect() {
         )}
         
         {/* Unlocked monster selection */}
-        <div className="flex flex-col min-h-0 max-h-[40vh]">
-          <div className="flex items-center justify-between mb-2">
+        <div className="flex flex-col min-h-0 max-h-[40vh] overflow-hidden">
+          <div className="flex items-center justify-between mb-2 flex-shrink-0">
             <h3 className="text-sm font-semibold text-muted-foreground">
               Unlocked Monsters ({unlockedMonsters.length})
             </h3>
@@ -322,7 +322,7 @@ function CharacterSelect() {
             </div>
           </div>
           
-          <ScrollArea className="flex-1">
+          <div className="flex-1 overflow-y-auto scrollbar-none">
             <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
               {sortedMonsters.map(monster => <Card key={monster.comboId} className={`p-2 cursor-pointer transition-all ${selectedMonster?.comboId === monster.comboId ? 'ring-2 ring-primary bg-primary/10' : 'hover:border-primary/50'}`} onClick={() => setSelectedMonster(monster)}>
                   <div className="text-center">
@@ -341,7 +341,7 @@ function CharacterSelect() {
                   </div>
                 </Card>)}
             </div>
-          </ScrollArea>
+          </div>
         </div>
 
         <div className="flex gap-3">

@@ -467,6 +467,27 @@ function DungeonView({
   const [targetingTiles, setTargetingTiles] = useState<Position[]>([]);
   const [affectedTiles, setAffectedTiles] = useState<Position[]>([]);
   
+  // Level up screen queue state - supports multiple level-ups (active + passive party members)
+  interface LevelUpEntry {
+    previousStats: MonsterStats;
+    previousLevel: number;
+    newMoves: Move[];
+    monster: Monster;
+    isPassive?: boolean;
+  }
+  const [levelUpQueue, setLevelUpQueue] = useState<LevelUpEntry[]>([]);
+  
+  // Recruitment modal state
+  const [showRecruitment, setShowRecruitment] = useState(false);
+  const [defeatedEnemy, setDefeatedEnemy] = useState<Monster | null>(null);
+  const [recruitChance, setRecruitChance] = useState(0);
+  const [battleStats, setBattleStats] = useState({
+    turnsUsed: 1, // Map kills are instant
+    overkillDamage: 0,
+    statusEffectsApplied: 0,
+    criticalHits: 0,
+  });
+  
   // Ref for enemy processing to avoid circular dependency
   const processEnemyTurnsRef = useRef<((dungeon: import('@/game/types').DungeonState | null) => void) | null>(null);
   
@@ -676,12 +697,19 @@ function DungeonView({
       }, 100);
     }
   }, [dungeon, dispatch, state.run]);
+  // Use a ref to always have fresh dungeon state for auto-run
+  const dungeonRef = useRef(dungeon);
+  useEffect(() => {
+    dungeonRef.current = dungeon;
+  }, [dungeon]);
+
   // Auto-run logic - runs in intervals when active
   useEffect(() => {
-    if (!isAutoRunning || !autoRunDirection.current || !dungeon) return;
+    if (!isAutoRunning || !autoRunDirection.current) return;
     
     const interval = setInterval(() => {
-      if (!autoRunDirection.current || !dungeon) {
+      const currentDungeon = dungeonRef.current;
+      if (!autoRunDirection.current || !currentDungeon) {
         setIsAutoRunning(false);
         return;
       }
@@ -689,11 +717,11 @@ function DungeonView({
       const direction = autoRunDirection.current;
       const dx = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
       const dy = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
-      const nextX = dungeon.playerPosition.x + dx;
-      const nextY = dungeon.playerPosition.y + dy;
+      const nextX = currentDungeon.playerPosition.x + dx;
+      const nextY = currentDungeon.playerPosition.y + dy;
       
       // Check if we should stop before moving
-      if (shouldStopAutoRun(dungeon.tiles, nextX, nextY, dungeon.width, dungeon.height)) {
+      if (shouldStopAutoRun(currentDungeon.tiles, nextX, nextY, currentDungeon.width, currentDungeon.height)) {
         setIsAutoRunning(false);
         autoRunDirection.current = null;
         return;
@@ -703,7 +731,7 @@ function DungeonView({
     }, settings.autoRunSpeed); // Use settings for speed
     
     return () => clearInterval(interval);
-  }, [isAutoRunning, dungeon, handleMove, settings.autoRunSpeed]);
+  }, [isAutoRunning, handleMove, settings.autoRunSpeed]);
 
   // Keyboard input with double-tap detection
   useEffect(() => {
@@ -782,24 +810,27 @@ function DungeonView({
     }
   }, [dungeon, isPathWalking, isAutoRunning]);
   
-  // Path walking effect - walk one step at a time
+  // Path walking effect - walk one step at a time (uses dungeonRef for fresh state)
   useEffect(() => {
-    if (!isPathWalking || pathWalkRef.current.length === 0 || !dungeon) {
-      setIsPathWalking(false);
-      setTargetPath([]);
+    if (!isPathWalking || pathWalkRef.current.length === 0) {
+      if (isPathWalking) {
+        setIsPathWalking(false);
+        setTargetPath([]);
+      }
       return;
     }
     
     const walkInterval = setInterval(() => {
+      const currentDungeon = dungeonRef.current;
       const currentPath = pathWalkRef.current;
-      if (currentPath.length === 0) {
+      if (currentPath.length === 0 || !currentDungeon) {
         setIsPathWalking(false);
         setTargetPath([]);
         return;
       }
       
       const nextPos = currentPath[0];
-      const direction = getDirection(dungeon.playerPosition, nextPos);
+      const direction = getDirection(currentDungeon.playerPosition, nextPos);
       
       if (!direction) {
         setIsPathWalking(false);
@@ -809,7 +840,7 @@ function DungeonView({
       }
       
       // Check if we should stop (enemy, trap, etc.)
-      if (shouldStopAutoRun(dungeon.tiles, nextPos.x, nextPos.y, dungeon.width, dungeon.height)) {
+      if (shouldStopAutoRun(currentDungeon.tiles, nextPos.x, nextPos.y, currentDungeon.width, currentDungeon.height)) {
         // Still move to this tile, but stop after
         handleMove(direction);
         setIsPathWalking(false);
@@ -824,7 +855,7 @@ function DungeonView({
     }, settings.autoRunSpeed);
     
     return () => clearInterval(walkInterval);
-  }, [isPathWalking, dungeon, handleMove, settings.autoRunSpeed]);
+  }, [isPathWalking, handleMove, settings.autoRunSpeed]);
   
   // Party switch handler
   const handlePartySwitch = useCallback((index: number) => {
@@ -1137,27 +1168,87 @@ function DungeonView({
             // Enemy defeated - remove from dungeon and award XP
             newDungeon = removeEnemy(newDungeon, enemy.id);
             
+            // Track overkill for recruitment
+            const overkill = Math.abs(newEnemyHp);
+            
             // Calculate and award XP
             const xpGained = calculateXpReward(enemy.level, monster.level);
+            const currentXp = state.run.experience || 0;
+            const newTotalXp = currentXp + xpGained;
+            const xpNeeded = xpToNextLevel(monster.level);
+            
+            // Check for level up
+            if (newTotalXp >= xpNeeded) {
+              const previousStats = { ...monster.stats };
+              const previousLevel = monster.level;
+              const newMoves = getNewMovesAtLevel(monster.species, monster.element, monster.class, monster.level + 1);
+              
+              setLevelUpQueue(prev => [...prev, {
+                previousStats,
+                previousLevel,
+                newMoves,
+                monster: { ...monster, level: monster.level + 1 },
+                isPassive: false,
+              }]);
+            }
             
             // Award XP to active monster
             dispatch({ type: 'ADD_XP', amount: xpGained });
             
-            // Award 50% XP to conscious inactive party members
+            // Award 50% XP to conscious inactive party members and check their level-ups
             state.run.party.forEach((member, index) => {
               if (index === state.run!.activePartyIndex) return;
               if (member.stats.currentHp <= 0) return;
               
               const passiveXp = Math.floor(xpGained * 0.5);
               const memberCurrentXp = member.experience || 0;
+              const memberNewXp = memberCurrentXp + passiveXp;
+              const memberXpNeeded = xpToNextLevel(member.level);
+              
+              // Check for passive level up
+              if (memberNewXp >= memberXpNeeded) {
+                const previousStats = { ...member.stats };
+                const previousLevel = member.level;
+                const newMoves = getNewMovesAtLevel(member.species, member.element, member.class, member.level + 1);
+                
+                setLevelUpQueue(prev => [...prev, {
+                  previousStats,
+                  previousLevel,
+                  newMoves,
+                  monster: { ...member, level: member.level + 1 },
+                  isPassive: true,
+                }]);
+              }
+              
               dispatch({
                 type: 'UPDATE_PARTY_MONSTER',
                 index,
-                monster: { ...member, experience: memberCurrentXp + passiveXp }
+                monster: { ...member, experience: memberNewXp }
               });
             });
             
             addLog(`💥 ${targetingMove.name} defeated ${enemy.name}! (+${damage} dmg, +${xpGained} XP)`, 'damage');
+            
+            // Set up recruitment (only for last enemy killed)
+            const playerHpPercent = Math.floor((monster.stats.currentHp / monster.stats.maxHp) * 100);
+            const chance = calculateRecruitChance({
+              turnsUsed: 1,
+              overkillDamage: overkill,
+              statusEffectsApplied: 0,
+              criticalHits: 0,
+              playerHpPercent,
+              enemyLevel: enemy.level,
+              playerLevel: monster.level,
+            });
+            setDefeatedEnemy(enemy);
+            setRecruitChance(chance);
+            setBattleStats({
+              turnsUsed: 1,
+              overkillDamage: overkill,
+              statusEffectsApplied: 0,
+              criticalHits: 0,
+            });
+            setShowRecruitment(true);
           } else {
             // Update enemy HP
             const updatedEnemies = newDungeon.enemies.map(e => 
@@ -1285,9 +1376,46 @@ function DungeonView({
     if (targetingMove) {
       handleTargetingClick(x, y);
     } else {
+      // Check if clicking on an enemy - auto-enter targeting mode with first attack move
+      const tile = dungeon?.tiles[y]?.[x];
+      if (tile?.type === 'enemy' && tile.enemyId && state.run) {
+        const monster = state.run.currentMonster;
+        const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
+        const attackMove = moves.find(m => m.type === 'melee' || m.type === 'ranged');
+        
+        if (attackMove) {
+          const config = getAttackConfig(attackMove);
+          const playerPos = dungeon!.playerPosition;
+          const distance = Math.abs(x - playerPos.x) + Math.abs(y - playerPos.y);
+          
+          // Check if in range
+          if (distance <= config.range) {
+            // Enter targeting mode and immediately click on this tile
+            const validTargets = getValidTargets(
+              playerPos, 
+              config, 
+              dungeon!.tiles, 
+              dungeon!.width, 
+              dungeon!.height, 
+              true
+            );
+            
+            if (validTargets.some(t => t.x === x && t.y === y)) {
+              setTargetingMove(attackMove);
+              setTargetingTiles(validTargets);
+              // Execute the attack immediately
+              setTimeout(() => handleTargetingClick(x, y), 0);
+              return;
+            }
+          } else {
+            addLog(`❌ Enemy out of range! Get closer.`, 'info');
+            return;
+          }
+        }
+      }
       handleTileClick(x, y);
     }
-  }, [targetingMove, handleTargetingClick, handleTileClick]);
+  }, [targetingMove, handleTargetingClick, handleTileClick, dungeon, state.run]);
   
   // ESC to cancel targeting
   useEffect(() => {
@@ -1389,6 +1517,80 @@ function DungeonView({
           onBulkEquip={(partyIndex, equipment, usedIds) => dispatch({ type: 'BULK_EQUIP', partyIndex, equipment, usedIds })}
           onLog={(text) => addLog(text, 'system')}
           onClose={() => setShowEquipment(false)}
+        />
+      )}
+      
+      {/* Level Up Screen for dungeon map kills */}
+      {levelUpQueue.length > 0 && levelUpQueue[0] && (
+        <LevelUpScreen
+          monster={levelUpQueue[0].monster}
+          previousStats={levelUpQueue[0].previousStats}
+          previousLevel={levelUpQueue[0].previousLevel}
+          newMoves={levelUpQueue[0].newMoves}
+          isPassive={levelUpQueue[0].isPassive}
+          onContinue={() => {
+            // Apply the level up
+            const entry = levelUpQueue[0];
+            const newStats = calculateStats(entry.monster.species, entry.monster.class, entry.monster.level + 1);
+            const hpPercent = entry.previousStats.currentHp / entry.previousStats.maxHp;
+            const staminaPercent = (entry.previousStats.currentStamina || entry.previousStats.stamina || 50) / (entry.previousStats.stamina || 50);
+            
+            const updatedMonster = {
+              ...entry.monster,
+              level: entry.previousLevel + 1,
+              stats: {
+                ...newStats,
+                currentHp: Math.ceil(newStats.maxHp * hpPercent),
+                currentStamina: Math.ceil((newStats.stamina || 50) * staminaPercent),
+              },
+            };
+            
+            if (entry.isPassive) {
+              // Find the party index for this passive monster
+              const partyIndex = state.run?.party.findIndex(m => 
+                m.species === entry.monster.species && 
+                m.element === entry.monster.element && 
+                m.class === entry.monster.class
+              );
+              if (partyIndex !== undefined && partyIndex >= 0) {
+                dispatch({ type: 'UPDATE_PARTY_MONSTER', index: partyIndex, monster: updatedMonster });
+              }
+            } else {
+              dispatch({ type: 'UPDATE_PLAYER_MONSTER', monster: updatedMonster });
+            }
+            
+            // Remove from queue
+            setLevelUpQueue(prev => prev.slice(1));
+            addLog(`🎉 ${updatedMonster.name} leveled up to ${updatedMonster.level}!`, 'system');
+          }}
+        />
+      )}
+      
+      {/* Recruitment Modal for dungeon map kills */}
+      {showRecruitment && defeatedEnemy && (
+        <RecruitmentModal
+          enemy={defeatedEnemy}
+          recruitChance={recruitChance}
+          impressiveStats={battleStats}
+          partyFull={(state.run?.party.length || 0) >= 6}
+          onRecruit={() => {
+            // Attempt recruitment
+            const roll = Math.random() * 100;
+            if (roll < recruitChance) {
+              // Success!
+              dispatch({ type: 'ADD_TO_PARTY', monster: defeatedEnemy });
+              addLog(`🎉 ${defeatedEnemy.name} joined your party!`, 'system');
+              toast.success(`${defeatedEnemy.species} joined your team!`);
+            } else {
+              addLog(`😔 ${defeatedEnemy.name} declined to join...`, 'info');
+            }
+            setShowRecruitment(false);
+            setDefeatedEnemy(null);
+          }}
+          onDismiss={() => {
+            setShowRecruitment(false);
+            setDefeatedEnemy(null);
+          }}
         />
       )}
       

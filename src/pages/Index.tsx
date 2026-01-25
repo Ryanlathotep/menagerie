@@ -204,8 +204,8 @@ function CharacterSelect() {
       />
     );
   }
-  return <div className="game-container">
-      <div className="space-y-6 max-w-4xl">
+  return <div className="min-h-screen w-full bg-background flex flex-col p-4">
+      <div className="flex-1 flex flex-col w-full max-w-7xl mx-auto space-y-4">
         <h2 className="text-3xl font-bold text-center bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
           Choose Your Monster
         </h2>
@@ -215,7 +215,7 @@ function CharacterSelect() {
         </p>
         
         {/* Unlocked monster selection */}
-        <div>
+        <div className="flex-1 flex flex-col min-h-0">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-muted-foreground">
               Unlocked Monsters ({unlockedMonsters.length})
@@ -239,12 +239,12 @@ function CharacterSelect() {
             </div>
           </div>
           
-          <ScrollArea className="h-48">
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+          <ScrollArea className="flex-1">
+            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
               {sortedMonsters.map(monster => <Card key={monster.comboId} className={`p-3 cursor-pointer transition-all ${selectedMonster?.comboId === monster.comboId ? 'ring-2 ring-primary bg-primary/10' : 'hover:border-primary/50'}`} onClick={() => setSelectedMonster(monster)}>
                   <div className="text-center">
                     <div className="flex justify-center mb-1">
-                      <MonsterSprite species={monster.species} element={monster.element} classType={monster.classType} size={48} animated={false} />
+                      <MonsterSprite species={monster.species} element={monster.element} classType={monster.classType} size={56} animated={false} />
                     </div>
                     <p className="text-xs font-medium capitalize">{monster.species}</p>
                     <div className="flex gap-1 justify-center mt-1 flex-wrap">

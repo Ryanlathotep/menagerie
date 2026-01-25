@@ -928,6 +928,19 @@ function BattleView() {
     monster: typeof battle.playerMonster;
   } | null>(null);
   
+  // Recruitment modal state
+  const [showRecruitment, setShowRecruitment] = useState(false);
+  const [defeatedEnemy, setDefeatedEnemy] = useState<Monster | null>(null);
+  const [recruitChance, setRecruitChance] = useState(0);
+  
+  // Battle stats tracking (local, synced to state at end)
+  const [battleStats, setBattleStats] = useState({
+    turnsUsed: 0,
+    overkillDamage: 0,
+    statusEffectsApplied: 0,
+    criticalHits: 0,
+  });
+  
   // Combat effects tracking (local state synced with battle)
   const [playerEffects, setPlayerEffects] = useState<CombatEffects>(
     battle?.playerEffects as CombatEffects || EMPTY_COMBAT_EFFECTS
@@ -1299,7 +1312,23 @@ function BattleView() {
         newLog.push(`Drained ${actualDrainHeal} HP!`);
       }
     }
+    // Track battle stats for recruitment
+    const updatedBattleStats = {
+      turnsUsed: battleStats.turnsUsed + 1,
+      overkillDamage: battleStats.overkillDamage,
+      statusEffectsApplied: battleStats.statusEffectsApplied + (result.hit && move.effect && getMoveEffectResult(move.effect)?.statusEffect ? 1 : 0),
+      criticalHits: battleStats.criticalHits + (result.critical ? 1 : 0),
+    };
+    setBattleStats(updatedBattleStats);
+    
     if (newEnemyHp <= 0) {
+      // Calculate overkill damage
+      const overkill = Math.abs(newEnemyHp);
+      const finalBattleStats = {
+        ...updatedBattleStats,
+        overkillDamage: overkill,
+      };
+      
       // Victory - unlock this specific monster combo with its level
       const comboId = getComboId({
         species: battle.enemyMonster.species,
@@ -1352,6 +1381,18 @@ function BattleView() {
         amount: baseGold
       });
       
+      // Calculate recruitment chance
+      const playerHpPercent = (newPlayerHp / battle.playerMonster.stats.maxHp) * 100;
+      const calculatedRecruitChance = calculateRecruitChance({
+        turnsUsed: finalBattleStats.turnsUsed,
+        overkillDamage: finalBattleStats.overkillDamage,
+        statusEffectsApplied: finalBattleStats.statusEffectsApplied,
+        criticalHits: finalBattleStats.criticalHits,
+        playerHpPercent,
+        enemyLevel: battle.enemyMonster.level,
+        playerLevel: battle.playerMonster.level,
+      });
+      
       if (levelUpResult.leveled) {
         // Level up! Store previous stats for comparison
         const previousStats = { ...battle.playerMonster.stats };
@@ -1389,6 +1430,10 @@ function BattleView() {
           monster: leveledMonster
         });
         
+        // Store recruitment data for after level up
+        setDefeatedEnemy(battle.enemyMonster);
+        setRecruitChance(calculatedRecruitChance);
+        
         // Battle will be ended when user clicks "Continue" on level up screen
         return;
       } else {
@@ -1407,6 +1452,16 @@ function BattleView() {
           }
         });
         toast.success(`+${xpGained} XP!`);
+      }
+      
+      // Show recruitment modal if party not full
+      const partySize = state.run?.party.length || 1;
+      if (partySize < 6) {
+        setDefeatedEnemy(battle.enemyMonster);
+        setRecruitChance(calculatedRecruitChance);
+        setShowRecruitment(true);
+        // Don't end battle yet - wait for recruitment decision
+        return;
       }
       
       dispatch({
@@ -1695,7 +1750,62 @@ function BattleView() {
   // Handle level up screen dismissal
   const handleLevelUpContinue = () => {
     setLevelUpData(null);
-    // End the battle now that user has seen level up screen
+    // Check if we should show recruitment after level up
+    if (defeatedEnemy && state.run && state.run.party.length < 6) {
+      setShowRecruitment(true);
+    } else {
+      // End the battle now that user has seen level up screen
+      dispatch({
+        type: 'END_BATTLE',
+        victory: true
+      });
+      // Reset battle stats
+      setBattleStats({ turnsUsed: 0, overkillDamage: 0, statusEffectsApplied: 0, criticalHits: 0 });
+    }
+  };
+  
+  // Handle recruitment attempt
+  const handleRecruit = () => {
+    if (!defeatedEnemy || !state.run) return;
+    
+    // Roll for recruitment
+    const roll = Math.random() * 100;
+    const success = roll < recruitChance;
+    
+    if (success) {
+      // Create a fresh copy of the defeated enemy for the party
+      const recruitedMonster: Monster = {
+        ...defeatedEnemy,
+        id: `party_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        stats: {
+          ...defeatedEnemy.stats,
+          currentHp: Math.floor(defeatedEnemy.stats.maxHp * 0.5), // Joins at 50% HP
+          currentStamina: Math.floor((defeatedEnemy.stats.stamina || 50) * 0.5),
+        }
+      };
+      
+      dispatch({ type: 'ADD_TO_PARTY', monster: recruitedMonster });
+      toast.success(`🎉 ${defeatedEnemy.name} joined your party!`);
+    } else {
+      toast.error(`${defeatedEnemy.name} wasn't impressed enough to join...`);
+    }
+    
+    setShowRecruitment(false);
+    setDefeatedEnemy(null);
+    setBattleStats({ turnsUsed: 0, overkillDamage: 0, statusEffectsApplied: 0, criticalHits: 0 });
+    
+    dispatch({
+      type: 'END_BATTLE',
+      victory: true
+    });
+  };
+  
+  // Handle dismissing recruitment
+  const handleDismissRecruitment = () => {
+    setShowRecruitment(false);
+    setDefeatedEnemy(null);
+    setBattleStats({ turnsUsed: 0, overkillDamage: 0, statusEffectsApplied: 0, criticalHits: 0 });
+    
     dispatch({
       type: 'END_BATTLE',
       victory: true
@@ -1704,6 +1814,18 @@ function BattleView() {
 
   return (
     <>
+      {/* Recruitment modal */}
+      {showRecruitment && defeatedEnemy && (
+        <RecruitmentModal
+          enemy={defeatedEnemy}
+          recruitChance={recruitChance}
+          impressiveStats={battleStats}
+          partyFull={(state.run?.party.length || 0) >= 6}
+          onRecruit={handleRecruit}
+          onDismiss={handleDismissRecruitment}
+        />
+      )}
+      
       {/* Level up celebration screen */}
       {levelUpData && (
         <LevelUpScreen

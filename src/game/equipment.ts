@@ -52,9 +52,216 @@ export interface EquipmentItem {
   level: number; // Required level to equip
   stats: EquipmentStats;
   element?: ElementType; // Elemental affinity (bonus damage/resistance)
-  setId?: string; // For set bonuses (future)
+  setId?: string; // For set bonuses
   description?: string;
   icon: string; // Emoji icon
+}
+
+// ============= EQUIPMENT SETS =============
+export type SetId = 
+  | 'warrior' | 'mage' | 'rogue' | 'guardian' | 'berserker'
+  | 'fire_lord' | 'frost_mage' | 'earth_warden' | 'wind_dancer' | 'void_walker';
+
+export interface SetBonus {
+  pieces: number; // 2, 3, or 4
+  stats?: EquipmentStats;
+  special?: string; // Description of special effect
+  effect?: string; // Effect ID for special bonuses
+}
+
+export interface EquipmentSet {
+  id: SetId;
+  name: string;
+  description: string;
+  color: string; // HSL color for set items
+  bonuses: SetBonus[];
+}
+
+export const EQUIPMENT_SETS: Record<SetId, EquipmentSet> = {
+  // Class-themed sets
+  warrior: {
+    id: 'warrior',
+    name: "Warrior's Might",
+    description: 'Forged for those who fight on the front lines.',
+    color: '30 80% 50%', // Orange
+    bonuses: [
+      { pieces: 2, stats: { attack: 5, defense: 3 } },
+      { pieces: 3, stats: { attack: 10, maxHp: 15 }, special: '+10% physical damage' },
+      { pieces: 4, stats: { attack: 18, defense: 8, maxHp: 25 }, special: '15% chance to stun on hit', effect: 'warrior_stun' },
+    ],
+  },
+  mage: {
+    id: 'mage',
+    name: 'Arcane Wisdom',
+    description: 'Channeling the raw power of magic.',
+    color: '270 70% 60%', // Purple
+    bonuses: [
+      { pieces: 2, stats: { special: 5, stamina: 5 } },
+      { pieces: 3, stats: { special: 12, stamina: 10 }, special: '+15% special damage' },
+      { pieces: 4, stats: { special: 20, stamina: 15, speed: 5 }, special: 'Spells cost 20% less stamina', effect: 'mage_efficiency' },
+    ],
+  },
+  rogue: {
+    id: 'rogue',
+    name: 'Shadow Strike',
+    description: 'Swift and deadly, striking from the shadows.',
+    color: '180 50% 40%', // Teal
+    bonuses: [
+      { pieces: 2, stats: { speed: 4, dodge: 4 } },
+      { pieces: 3, stats: { speed: 8, dodge: 8, attack: 5 }, special: '+20% critical hit chance' },
+      { pieces: 4, stats: { speed: 12, dodge: 15, attack: 10 }, special: 'First attack each battle deals double damage', effect: 'rogue_ambush' },
+    ],
+  },
+  guardian: {
+    id: 'guardian',
+    name: "Guardian's Resolve",
+    description: 'Unbreakable defense for the protector.',
+    color: '210 60% 50%', // Blue
+    bonuses: [
+      { pieces: 2, stats: { defense: 6, maxHp: 10 } },
+      { pieces: 3, stats: { defense: 12, maxHp: 25 }, special: 'Reduces incoming damage by 10%' },
+      { pieces: 4, stats: { defense: 20, maxHp: 40, dodge: 5 }, special: '25% chance to block all damage', effect: 'guardian_block' },
+    ],
+  },
+  berserker: {
+    id: 'berserker',
+    name: "Berserker's Fury",
+    description: 'Power that grows with rage and wounds.',
+    color: '0 70% 50%', // Red
+    bonuses: [
+      { pieces: 2, stats: { attack: 8 } },
+      { pieces: 3, stats: { attack: 15, speed: 4 }, special: '+5% damage per 10% HP missing' },
+      { pieces: 4, stats: { attack: 25, speed: 8 }, special: 'Below 30% HP: +50% attack speed', effect: 'berserker_rage' },
+    ],
+  },
+  // Elemental sets
+  fire_lord: {
+    id: 'fire_lord',
+    name: 'Infernal Dominion',
+    description: 'Command the flames of destruction.',
+    color: '15 90% 55%', // Fire orange
+    bonuses: [
+      { pieces: 2, stats: { attack: 4, special: 4 } },
+      { pieces: 3, stats: { attack: 8, special: 8 }, special: '+25% fire damage' },
+      { pieces: 4, stats: { attack: 12, special: 15 }, special: 'Attacks have 20% chance to burn', effect: 'fire_burn' },
+    ],
+  },
+  frost_mage: {
+    id: 'frost_mage',
+    name: 'Frozen Heart',
+    description: 'The cold embrace of winter.',
+    color: '200 85% 60%', // Ice blue
+    bonuses: [
+      { pieces: 2, stats: { special: 5, defense: 3 } },
+      { pieces: 3, stats: { special: 10, defense: 6 }, special: '+25% water damage' },
+      { pieces: 4, stats: { special: 18, defense: 10 }, special: '15% chance to freeze enemies', effect: 'frost_freeze' },
+    ],
+  },
+  earth_warden: {
+    id: 'earth_warden',
+    name: "Earth's Embrace",
+    description: 'Solid as stone, immovable as mountains.',
+    color: '35 70% 45%', // Earth brown
+    bonuses: [
+      { pieces: 2, stats: { defense: 5, maxHp: 8 } },
+      { pieces: 3, stats: { defense: 10, maxHp: 20 }, special: '+25% earth damage' },
+      { pieces: 4, stats: { defense: 18, maxHp: 35 }, special: 'Regenerate 3% HP per turn', effect: 'earth_regen' },
+    ],
+  },
+  wind_dancer: {
+    id: 'wind_dancer',
+    name: 'Zephyr Grace',
+    description: 'Swift as the wind, untouchable.',
+    color: '180 50% 65%', // Air cyan
+    bonuses: [
+      { pieces: 2, stats: { speed: 5, dodge: 4 } },
+      { pieces: 3, stats: { speed: 10, dodge: 10 }, special: '+25% air damage' },
+      { pieces: 4, stats: { speed: 15, dodge: 18 }, special: '30% chance to dodge any attack', effect: 'wind_evasion' },
+    ],
+  },
+  void_walker: {
+    id: 'void_walker',
+    name: 'Abyssal Hunger',
+    description: 'Draw power from the endless void.',
+    color: '270 50% 35%', // Void purple
+    bonuses: [
+      { pieces: 2, stats: { special: 4, stamina: 4 } },
+      { pieces: 3, stats: { special: 10, stamina: 8 }, special: '+25% void damage' },
+      { pieces: 4, stats: { special: 18, stamina: 12, attack: 8 }, special: 'Heal 10% of damage dealt', effect: 'void_lifesteal' },
+    ],
+  },
+};
+
+// Helper to get set info
+export function getSetInfo(setId: SetId): EquipmentSet {
+  return EQUIPMENT_SETS[setId];
+}
+
+// Calculate active set bonuses from equipment
+export interface ActiveSetBonus {
+  set: EquipmentSet;
+  equippedCount: number;
+  activeBonuses: SetBonus[];
+  totalStats: EquipmentStats;
+}
+
+export function calculateSetBonuses(equipment: MonsterEquipment): ActiveSetBonus[] {
+  // Count pieces per set
+  const setCounts: Record<string, number> = {};
+  
+  for (const item of Object.values(equipment)) {
+    if (item?.setId) {
+      setCounts[item.setId] = (setCounts[item.setId] || 0) + 1;
+    }
+  }
+  
+  // Calculate active bonuses
+  const activeSetBonuses: ActiveSetBonus[] = [];
+  
+  for (const [setId, count] of Object.entries(setCounts)) {
+    if (count >= 2) {
+      const set = EQUIPMENT_SETS[setId as SetId];
+      if (!set) continue;
+      
+      const activeBonuses = set.bonuses.filter(b => count >= b.pieces);
+      const totalStats: EquipmentStats = {
+        maxHp: 0, attack: 0, defense: 0, speed: 0, dodge: 0, special: 0, stamina: 0
+      };
+      
+      for (const bonus of activeBonuses) {
+        if (bonus.stats) {
+          for (const [stat, value] of Object.entries(bonus.stats) as [keyof EquipmentStats, number][]) {
+            if (value) totalStats[stat] = (totalStats[stat] || 0) + value;
+          }
+        }
+      }
+      
+      activeSetBonuses.push({
+        set,
+        equippedCount: count,
+        activeBonuses,
+        totalStats,
+      });
+    }
+  }
+  
+  return activeSetBonuses;
+}
+
+// Get total stats from set bonuses
+export function calculateSetBonusStats(equipment: MonsterEquipment): EquipmentStats {
+  const activeSetBonuses = calculateSetBonuses(equipment);
+  const totals: EquipmentStats = {
+    maxHp: 0, attack: 0, defense: 0, speed: 0, dodge: 0, special: 0, stamina: 0
+  };
+  
+  for (const setBonus of activeSetBonuses) {
+    for (const [stat, value] of Object.entries(setBonus.totalStats) as [keyof EquipmentStats, number][]) {
+      if (value) totals[stat] = (totals[stat] || 0) + value;
+    }
+  }
+  
+  return totals;
 }
 
 // ============= EQUIPMENT TEMPLATES =============
@@ -207,11 +414,62 @@ export function generateRandomRarity(floorBonus: number = 0): Rarity {
   return 'common';
 }
 
+// Mapping of elements to their corresponding sets
+const ELEMENT_SET_MAPPING: Partial<Record<ElementType, SetId>> = {
+  fire: 'fire_lord',
+  water: 'frost_mage',
+  earth: 'earth_warden',
+  air: 'wind_dancer',
+  void: 'void_walker',
+};
+
+// Class-themed sets assigned by stat focus
+function determineSetFromStats(stats: EquipmentStats, rarity: Rarity, element?: ElementType): SetId | undefined {
+  // Only rare+ items can be part of sets
+  if (rarity === 'common' || rarity === 'uncommon') {
+    return undefined;
+  }
+  
+  // 70% chance for rare+ items to be part of a set
+  if (Math.random() > 0.7) {
+    return undefined;
+  }
+  
+  // If elemental, prefer elemental set
+  if (element && ELEMENT_SET_MAPPING[element] && Math.random() < 0.6) {
+    return ELEMENT_SET_MAPPING[element];
+  }
+  
+  // Otherwise, assign based on primary stat
+  const statValues = Object.entries(stats).filter(([_, v]) => v && v > 0);
+  if (statValues.length === 0) return undefined;
+  
+  const primaryStat = statValues.sort(([, a], [, b]) => (b || 0) - (a || 0))[0][0];
+  
+  const statSetMapping: Record<string, SetId[]> = {
+    attack: ['warrior', 'berserker'],
+    defense: ['guardian', 'earth_warden'],
+    speed: ['rogue', 'wind_dancer'],
+    dodge: ['rogue', 'wind_dancer'],
+    special: ['mage', 'void_walker'],
+    stamina: ['mage'],
+    maxHp: ['guardian', 'warrior'],
+  };
+  
+  const possibleSets = statSetMapping[primaryStat];
+  if (possibleSets && possibleSets.length > 0) {
+    return possibleSets[Math.floor(Math.random() * possibleSets.length)];
+  }
+  
+  return undefined;
+}
+
 export function generateEquipment(
   slot?: EquipmentSlot,
   level: number = 1,
   rarity?: Rarity,
-  element?: ElementType
+  element?: ElementType,
+  forceSetId?: SetId
 ): EquipmentItem {
   // Pick random slot if not specified
   const slots: EquipmentSlot[] = ['helmet', 'armor', 'gloves', 'boots', 'mainHand', 'offHand', 'accessory'];
@@ -238,14 +496,19 @@ export function generateEquipment(
     scaledStats[stat] = Math.round(value * levelMult * rarityMult);
   }
   
-  // Build name
-  const elementPrefix = actualElement ? 
+  // Determine set membership
+  const setId = forceSetId || determineSetFromStats(scaledStats, actualRarity, actualElement);
+  
+  // Build name - include set name if part of a set
+  const setInfo = setId ? EQUIPMENT_SETS[setId] : null;
+  const setPrefix = setInfo ? `${setInfo.name.split(' ')[0]} ` : '';
+  const elementPrefix = (!setInfo && actualElement) ? 
     ELEMENT_PREFIXES[actualElement][Math.floor(Math.random() * ELEMENT_PREFIXES[actualElement].length)] + ' ' : 
     '';
   const raritySuffix = RARITY_SUFFIXES[actualRarity][
     Math.floor(Math.random() * RARITY_SUFFIXES[actualRarity].length)
   ];
-  const name = `${elementPrefix}${template.name}${raritySuffix}`;
+  const name = `${setPrefix}${elementPrefix}${template.name}${raritySuffix}`;
   
   return {
     id: `equip_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -255,13 +518,18 @@ export function generateEquipment(
     level,
     stats: scaledStats,
     element: actualElement,
+    setId,
     icon: template.icon,
-    description: generateEquipmentDescription(scaledStats, actualElement),
+    description: generateEquipmentDescription(scaledStats, actualElement, setInfo?.name),
   };
 }
 
-function generateEquipmentDescription(stats: EquipmentStats, element?: ElementType): string {
+function generateEquipmentDescription(stats: EquipmentStats, element?: ElementType, setName?: string): string {
   const parts: string[] = [];
+  
+  if (setName) {
+    parts.push(`Part of the ${setName} set.`);
+  }
   
   if (element) {
     parts.push(`Imbued with ${element} energy.`);

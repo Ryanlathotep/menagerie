@@ -11,6 +11,7 @@ import {
   MonsterEquipment, 
   SLOT_INFO, 
   calculateEquipmentBonuses,
+  calculateSetBonusStats,
   createEmptyEquipment,
 } from './equipment';
 import { Monster } from './types';
@@ -18,6 +19,7 @@ import { MonsterSprite } from './sprites';
 import { EquippedSlotDisplay, DraggableEquipmentItem, DragData } from './DraggableEquipmentItem';
 import { EquipmentSortControls } from './EquipmentSortControls';
 import { sortEquipment, autoEquip, SortConfig } from './equipmentUtils';
+import { SetBonusDisplay, SetBonusSummary } from './SetBonusDisplay';
 import { toast } from '@/hooks/use-toast';
 
 // ============= PARTY MEMBER SELECTOR =============
@@ -285,19 +287,29 @@ export function EquipmentView({
             </div>
             
             {/* Total bonuses */}
-            <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-              <p className="text-xs font-semibold text-muted-foreground mb-2">Equipment Bonuses</p>
-              <div className="grid grid-cols-4 gap-2 text-xs">
-                {Object.entries(totalBonuses).map(([stat, value]) => (
-                  value !== 0 && (
-                    <div key={stat} className="flex items-center gap-1">
-                      <span className="text-muted-foreground">{stat.replace('max', '').slice(0, 3).toUpperCase()}:</span>
-                      <span className={value > 0 ? 'text-green-400' : 'text-red-400'}>
-                        {value > 0 ? '+' : ''}{value}
-                      </span>
-                    </div>
-                  )
-                ))}
+            <div className="mt-4 p-3 bg-muted/50 rounded-lg space-y-3">
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-2">Equipment Bonuses</p>
+                <div className="grid grid-cols-4 gap-2 text-xs">
+                  {Object.entries(totalBonuses).map(([stat, value]) => (
+                    value !== 0 && (
+                      <div key={stat} className="flex items-center gap-1">
+                        <span className="text-muted-foreground">{stat.replace('max', '').slice(0, 3).toUpperCase()}:</span>
+                        <span className={value > 0 ? 'text-green-400' : 'text-red-400'}>
+                          {value > 0 ? '+' : ''}{value}
+                        </span>
+                      </div>
+                    )
+                  ))}
+                </div>
+                {/* Set bonus summary */}
+                <SetBonusSummary equipment={equipment} />
+              </div>
+              
+              {/* Set Bonuses Display */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-2">Set Bonuses</p>
+                <SetBonusDisplay equipment={equipment} />
               </div>
             </div>
             

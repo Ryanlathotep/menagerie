@@ -8,8 +8,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { EquipmentItem, EquipmentSlot, SLOT_INFO, RARITY_COLORS } from './equipment';
+import { EquipmentItem, EquipmentSlot, SLOT_INFO, RARITY_COLORS, EQUIPMENT_SETS, SetId } from './equipment';
 import { EquipmentIcon } from './EquipmentIcon';
+import { SetBadge } from './SetBonusDisplay';
 import { GripVertical, Layers } from 'lucide-react';
 
 export interface DragData {
@@ -75,9 +76,12 @@ export function DraggableEquipmentItem({
         </div>
         
         <div className="flex-1 min-w-0">
-          <p className={`font-semibold text-sm truncate ${rarityStyle.text}`}>
-            {item.name}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className={`font-semibold text-sm truncate ${rarityStyle.text}`}>
+              {item.name}
+            </p>
+            {item.setId && <SetBadge setId={item.setId as SetId} size="sm" />}
+          </div>
           <p className="text-xs text-muted-foreground capitalize">
             {SLOT_INFO[item.slot].label} • Lv.{item.level}
           </p>
@@ -208,7 +212,10 @@ export function EquippedSlotDisplay({
           {item ? (
             <div className="space-y-1">
               <p className={`font-semibold ${rarityStyle?.text}`}>{item.name}</p>
-              <p className="text-xs text-muted-foreground capitalize">{item.rarity} {info.label}</p>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-muted-foreground capitalize">{item.rarity} {info.label}</span>
+                {item.setId && <SetBadge setId={item.setId as SetId} size="sm" />}
+              </div>
               <div className="text-xs space-y-0.5">
                 {Object.entries(item.stats).map(([stat, value]) => (
                   value !== 0 && (
@@ -220,6 +227,11 @@ export function EquippedSlotDisplay({
               </div>
               {item.element && (
                 <p className="text-xs text-primary">⚡ {item.element} element</p>
+              )}
+              {item.setId && (
+                <p className="text-xs text-amber-400 italic">
+                  Part of {EQUIPMENT_SETS[item.setId as SetId]?.name} set
+                </p>
               )}
             </div>
           ) : (

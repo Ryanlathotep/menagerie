@@ -1,7 +1,7 @@
 // Equipment SVG Icon Component - Renders simple silhouette icons for equipment
 
 import React from 'react';
-import { EquipmentItem, RARITY_COLORS, Rarity } from './equipment';
+import { EquipmentItem, RARITY_COLORS, Rarity, EQUIPMENT_SETS, SetId } from './equipment';
 import { getEquipmentIcon, getPrimaryStat, STAT_COLORS } from './equipmentUtils';
 
 interface EquipmentIconProps {
@@ -31,8 +31,17 @@ const RARITY_GLOW: Record<Rarity, string> = {
 export function EquipmentIcon({ item, size = 40, showStatPreview = true, className = '' }: EquipmentIconProps) {
   const iconDef = getEquipmentIcon(item.name);
   const primaryStat = showStatPreview ? getPrimaryStat(item) : null;
-  const fillColor = `hsl(${RARITY_HSL[item.rarity]})`;
-  const glowFilter = RARITY_GLOW[item.rarity];
+  
+  // Use set color if item is part of a set, otherwise use rarity color
+  const setInfo = item.setId ? EQUIPMENT_SETS[item.setId as SetId] : null;
+  const fillColor = setInfo 
+    ? `hsl(${setInfo.color})`
+    : `hsl(${RARITY_HSL[item.rarity]})`;
+  
+  // Enhanced glow for set items
+  const glowFilter = setInfo 
+    ? `drop-shadow(0 0 4px hsl(${setInfo.color} / 0.6)) drop-shadow(0 0 2px hsl(${setInfo.color} / 0.4))`
+    : RARITY_GLOW[item.rarity];
   
   return (
     <div className={`relative inline-flex items-center justify-center ${className}`} style={{ width: size, height: size }}>

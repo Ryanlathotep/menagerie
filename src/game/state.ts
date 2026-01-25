@@ -225,7 +225,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       }
       
       // Unlock recipes for equipment brought back
-      const newUnlockedRecipes = [...state.saveData.unlockedRecipes];
+      const newUnlockedRecipes = [...(state.saveData.unlockedRecipes || [])];
       for (const item of equipmentToStore) {
         const matchingRecipe = getRecipeFromEquipment(item);
         if (matchingRecipe && !newUnlockedRecipes.includes(matchingRecipe.id)) {
@@ -676,14 +676,15 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
     
     case 'UNLOCK_RECIPE': {
-      if (state.saveData.unlockedRecipes.includes(action.recipeId)) {
+      const currentRecipes = state.saveData.unlockedRecipes || [];
+      if (currentRecipes.includes(action.recipeId)) {
         return state; // Already unlocked
       }
       return {
         ...state,
         saveData: {
           ...state.saveData,
-          unlockedRecipes: [...state.saveData.unlockedRecipes, action.recipeId],
+          unlockedRecipes: [...currentRecipes, action.recipeId],
         },
       };
     }

@@ -926,7 +926,7 @@ function DungeonView({
     } else if (item.effect === 'cure_poison' || item.effect === 'cure_burn' || item.effect === 'cure_freeze' || item.effect === 'cure_all') {
       message = `Used ${item.name}!`;
     } else if (item.effect === 'boost_attack' || item.effect === 'boost_defense' || item.effect === 'boost_speed') {
-      addLog(`⚔️ ${item.name} can only be used in battle.`, 'info');
+      addLog(`⚔️ ${item.name} can only be used in close combat.`, 'info');
       return;
     } else {
       message = `Used ${item.name}!`;
@@ -1019,7 +1019,7 @@ function DungeonView({
     }
     
     if (!canUse) {
-      addLog(`⚔️ ${move.name} can only be used in battle.`, 'info');
+      addLog(`⚔️ ${move.name} can only be used in close combat.`, 'info');
       return;
     }
     
@@ -1134,9 +1134,30 @@ function DungeonView({
           const newEnemyHp = enemy.stats.currentHp - damage;
           
           if (newEnemyHp <= 0) {
-            // Enemy defeated - remove from dungeon
+            // Enemy defeated - remove from dungeon and award XP
             newDungeon = removeEnemy(newDungeon, enemy.id);
-            addLog(`💥 ${targetingMove.name} defeated ${enemy.name}! (+${damage} dmg)`, 'damage');
+            
+            // Calculate and award XP
+            const xpGained = calculateXpReward(enemy.level, monster.level);
+            
+            // Award XP to active monster
+            dispatch({ type: 'ADD_XP', amount: xpGained });
+            
+            // Award 50% XP to conscious inactive party members
+            state.run.party.forEach((member, index) => {
+              if (index === state.run!.activePartyIndex) return;
+              if (member.stats.currentHp <= 0) return;
+              
+              const passiveXp = Math.floor(xpGained * 0.5);
+              const memberCurrentXp = member.experience || 0;
+              dispatch({
+                type: 'UPDATE_PARTY_MONSTER',
+                index,
+                monster: { ...member, experience: memberCurrentXp + passiveXp }
+              });
+            });
+            
+            addLog(`💥 ${targetingMove.name} defeated ${enemy.name}! (+${damage} dmg, +${xpGained} XP)`, 'damage');
           } else {
             // Update enemy HP
             const updatedEnemies = newDungeon.enemies.map(e => 

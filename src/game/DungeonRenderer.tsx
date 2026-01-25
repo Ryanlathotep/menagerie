@@ -4,37 +4,27 @@ import { forwardRef, useEffect, useRef, useImperativeHandle } from 'react';
 import { DungeonState, DungeonTile, TileType, ElementType, ClassType, Monster, SpeciesType, SPECIES_DATA, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED, TrapType, PlantType, UnlockedMonster } from './types';
 import { CRAFTING_MATERIALS } from './equipment';
 import { MonsterSprite } from './sprites';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Check if a monster combo has been captured at equal or lower level
-function isCaptured(
-  enemy: Monster,
-  unlockedMonsters: UnlockedMonster[]
-): { captured: boolean; capturedLevel?: number } {
-  const match = unlockedMonsters.find(
-    m => m.species === enemy.species && 
-         m.element === enemy.element && 
-         m.classType === enemy.class
-  );
-  
+function isCaptured(enemy: Monster, unlockedMonsters: UnlockedMonster[]): {
+  captured: boolean;
+  capturedLevel?: number;
+} {
+  const match = unlockedMonsters.find(m => m.species === enemy.species && m.element === enemy.element && m.classType === enemy.class);
   if (match && match.level >= enemy.level) {
-    return { captured: true, capturedLevel: match.level };
+    return {
+      captured: true,
+      capturedLevel: match.level
+    };
   }
-  return { captured: false };
+  return {
+    captured: false
+  };
 }
 
 // Calculate matchup between player and enemy
-function getMatchupInfo(
-  playerElement: ElementType,
-  playerClass: ClassType,
-  enemyElement: ElementType,
-  enemyClass: ClassType
-): {
+function getMatchupInfo(playerElement: ElementType, playerClass: ClassType, enemyElement: ElementType, enemyClass: ClassType): {
   elementAdvantage: 'player' | 'enemy' | 'neutral';
   classAdvantage: 'player' | 'enemy' | 'neutral';
   playerWeakToElement: boolean;
@@ -45,21 +35,19 @@ function getMatchupInfo(
   // Element matchup
   const playerBeatsEnemyElement = ELEMENT_ADVANTAGES[playerElement]?.includes(enemyElement) || false;
   const enemyBeatsPlayerElement = ELEMENT_ADVANTAGES[enemyElement]?.includes(playerElement) || false;
-  
+
   // Class matchup
   const playerBeatsEnemyClass = CLASS_ADVANTAGES_CORRECTED[playerClass]?.includes(enemyClass) || false;
   const enemyBeatsPlayerClass = CLASS_ADVANTAGES_CORRECTED[enemyClass]?.includes(playerClass) || false;
-  
   return {
     elementAdvantage: playerBeatsEnemyElement ? 'player' : enemyBeatsPlayerElement ? 'enemy' : 'neutral',
     classAdvantage: playerBeatsEnemyClass ? 'player' : enemyBeatsPlayerClass ? 'enemy' : 'neutral',
     playerWeakToElement: enemyBeatsPlayerElement,
     playerWeakToClass: enemyBeatsPlayerClass,
     playerStrongVsElement: playerBeatsEnemyElement,
-    playerStrongVsClass: playerBeatsEnemyClass,
+    playerStrongVsClass: playerBeatsEnemyClass
   };
 }
-
 interface DungeonRendererProps {
   dungeon: DungeonState;
   playerElement: ElementType;
@@ -68,11 +56,13 @@ interface DungeonRendererProps {
   playerDexterity?: number; // For disarm calculations
   zoom?: number; // 50-400, 100 = default
   unlockedMonsters?: UnlockedMonster[]; // For showing captured status
-  targetPath?: { x: number; y: number }[]; // Path for click-to-move
+  targetPath?: {
+    x: number;
+    y: number;
+  }[]; // Path for click-to-move
   onDisarmTrap?: (x: number, y: number, success: boolean) => void;
   onTileClick?: (x: number, y: number) => void; // Click-to-move handler
 }
-
 export interface DungeonRendererHandle {
   scrollToPlayer: () => void;
 }
@@ -135,43 +125,53 @@ const TILE_VISUALS: Record<TileType, {
 };
 
 // Trap info for tooltips and visuals
-const TRAP_INFO: Record<TrapType, { name: string; icon: string; description: string; color: string }> = {
-  spike: { 
-    name: 'Spike Trap', 
-    icon: '🔺', 
+const TRAP_INFO: Record<TrapType, {
+  name: string;
+  icon: string;
+  description: string;
+  color: string;
+}> = {
+  spike: {
+    name: 'Spike Trap',
+    icon: '🔺',
     description: 'Deals physical damage when triggered',
     color: 'from-red-200 to-red-300'
   },
-  poison: { 
-    name: 'Poison Trap', 
-    icon: '☠️', 
+  poison: {
+    name: 'Poison Trap',
+    icon: '☠️',
     description: 'Inflicts poison status when triggered',
     color: 'from-purple-200 to-purple-300'
   },
-  alarm: { 
-    name: 'Alarm Trap', 
-    icon: '🔔', 
+  alarm: {
+    name: 'Alarm Trap',
+    icon: '🔔',
     description: 'Alerts nearby enemies when triggered',
     color: 'from-yellow-200 to-orange-300'
-  },
+  }
 };
 
 // Plant info for tooltips and visuals
-function getPlantInfo(plantType: PlantType): { name: string; icon: string; description: string; rarity: string; color: string } {
+function getPlantInfo(plantType: PlantType): {
+  name: string;
+  icon: string;
+  description: string;
+  rarity: string;
+  color: string;
+} {
   const material = CRAFTING_MATERIALS.find(m => m.id === plantType);
   const rarityColors: Record<string, string> = {
     common: 'from-green-100 to-green-200',
     uncommon: 'from-emerald-100 to-teal-200',
     rare: 'from-amber-100 to-yellow-200',
-    epic: 'from-purple-100 to-violet-200',
+    epic: 'from-purple-100 to-violet-200'
   };
-  
   return {
     name: material?.name || plantType,
     icon: material?.icon || '🌿',
     description: material?.description || 'A harvestable plant.',
     rarity: material?.rarity || 'common',
-    color: rarityColors[material?.rarity || 'common'] || rarityColors.common,
+    color: rarityColors[material?.rarity || 'common'] || rarityColors.common
   };
 }
 function getWallVariant(x: number, y: number, tiles: DungeonTile[][]): string {
@@ -251,12 +251,11 @@ function Tile({
     width: `${tileSize}px`,
     height: `${tileSize}px`,
     minWidth: `${tileSize}px`,
-    minHeight: `${tileSize}px`,
+    minHeight: `${tileSize}px`
   };
-  
+
   // Path indicator overlay style
   const pathOverlayClass = isOnPath ? 'ring-2 ring-amber-400/70 ring-inset' : '';
-
   if (!tile.explored) {
     return <div className="flex items-center justify-center bg-background" style={tileStyle} onClick={onClick} />;
   }
@@ -264,7 +263,15 @@ function Tile({
   // Wall tiles
   if (tile.type === 'wall') {
     return <div className={`flex items-center justify-center ${getWallVariant(x, y, tiles)}`} style={tileStyle}>
-        {tile.visible && <span className="text-muted-foreground/30" style={{ fontSize: `${Math.max(6, tileSize * 0.3)}px` }}>▓</span>}
+        {tile.visible && <span className="text-muted-foreground/30 text-center" style={{
+        fontSize: `${Math.max(6, tileSize * 0.3)}px`
+      }}>▓
+
+
+
+
+
+      </span>}
       </div>;
   }
 
@@ -280,16 +287,11 @@ function Tile({
     const enemy = enemies.find(e => e.id === tile.enemyId);
     if (enemy) {
       const speciesData = SPECIES_DATA[enemy.species];
-      const matchup = playerElement && playerClass 
-        ? getMatchupInfo(playerElement, playerClass, enemy.element, enemy.class)
-        : null;
-      
+      const matchup = playerElement && playerClass ? getMatchupInfo(playerElement, playerClass, enemy.element, enemy.class) : null;
       const hasWeakness = matchup && (matchup.playerWeakToElement || matchup.playerWeakToClass);
       const hasStrength = matchup && (matchup.playerStrongVsElement || matchup.playerStrongVsClass);
       const captureStatus = isCaptured(enemy, unlockedMonsters);
-      
-      return (
-        <Tooltip>
+      return <Tooltip>
           <TooltipTrigger asChild>
             <div className={`flex items-center justify-center ${getFloorVariant(x, y, true)} relative hover:scale-110 transition-transform cursor-pointer`} style={tileStyle}>
               <MonsterSprite species={enemy.species} element={enemy.element} classType={enemy.class} size={spriteSize} />
@@ -303,12 +305,10 @@ function Tile({
                   <p className="font-bold text-sm">{enemy.name}</p>
                   <p className="text-xs text-muted-foreground">Lv.{enemy.level}</p>
                 </div>
-                {captureStatus.captured && (
-                  <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/20 border border-primary/40 text-primary shrink-0">
+                {captureStatus.captured && <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/20 border border-primary/40 text-primary shrink-0">
                     <span className="text-xs">✓</span>
                     <span className="text-[10px] font-medium">Captured</span>
-                  </div>
-                )}
+                  </div>}
               </div>
               
               {/* Type badges */}
@@ -331,10 +331,9 @@ function Tile({
                   <span className="font-mono">{enemy.stats.currentHp}/{enemy.stats.maxHp}</span>
                 </div>
                 <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-destructive transition-all" 
-                    style={{ width: `${(enemy.stats.currentHp / enemy.stats.maxHp) * 100}%` }}
-                  />
+                  <div className="h-full bg-destructive transition-all" style={{
+                  width: `${enemy.stats.currentHp / enemy.stats.maxHp * 100}%`
+                }} />
                 </div>
               </div>
               
@@ -346,56 +345,40 @@ function Tile({
               </div>
               
               {/* Matchup section */}
-              {matchup && (
-                <div className="border-t border-border pt-2 space-y-1">
+              {matchup && <div className="border-t border-border pt-2 space-y-1">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase">Matchup</p>
                   
                   {/* Danger warning */}
-                  {hasWeakness && (
-                    <div className="bg-destructive/20 border border-destructive/40 rounded p-1.5 space-y-0.5">
+                  {hasWeakness && <div className="bg-destructive/20 border border-destructive/40 rounded p-1.5 space-y-0.5">
                       <p className="text-xs font-bold text-destructive flex items-center gap-1">
                         ⚠️ You're weak!
                       </p>
-                      {matchup.playerWeakToElement && (
-                        <p className="text-[10px] text-destructive/90">
+                      {matchup.playerWeakToElement && <p className="text-[10px] text-destructive/90">
                           • {enemy.element.charAt(0).toUpperCase() + enemy.element.slice(1)} beats your element (1.5x dmg)
-                        </p>
-                      )}
-                      {matchup.playerWeakToClass && (
-                        <p className="text-[10px] text-destructive/90">
+                        </p>}
+                      {matchup.playerWeakToClass && <p className="text-[10px] text-destructive/90">
                           • {enemy.class.charAt(0).toUpperCase() + enemy.class.slice(1)} beats your class (1.3x dmg)
-                        </p>
-                      )}
-                    </div>
-                  )}
+                        </p>}
+                    </div>}
                   
                   {/* Strength indicator */}
-                  {hasStrength && (
-                    <div className="bg-green-500/20 border border-green-500/40 rounded p-1.5 space-y-0.5">
+                  {hasStrength && <div className="bg-green-500/20 border border-green-500/40 rounded p-1.5 space-y-0.5">
                       <p className="text-xs font-bold text-green-600 dark:text-green-400 flex items-center gap-1">
                         ✨ You have advantage!
                       </p>
-                      {matchup.playerStrongVsElement && (
-                        <p className="text-[10px] text-green-600 dark:text-green-400">
+                      {matchup.playerStrongVsElement && <p className="text-[10px] text-green-600 dark:text-green-400">
                           • Your element beats {enemy.element} (1.5x dmg)
-                        </p>
-                      )}
-                      {matchup.playerStrongVsClass && (
-                        <p className="text-[10px] text-green-600 dark:text-green-400">
+                        </p>}
+                      {matchup.playerStrongVsClass && <p className="text-[10px] text-green-600 dark:text-green-400">
                           • Your class beats {enemy.class} (1.3x dmg)
-                        </p>
-                      )}
-                    </div>
-                  )}
+                        </p>}
+                    </div>}
                   
                   {/* Neutral matchup */}
-                  {!hasWeakness && !hasStrength && (
-                    <p className="text-[10px] text-muted-foreground">
+                  {!hasWeakness && !hasStrength && <p className="text-[10px] text-muted-foreground">
                       ⚖️ Neutral matchup
-                    </p>
-                  )}
-                </div>
-              )}
+                    </p>}
+                </div>}
               
               {/* Passive ability */}
               <div className="border-t border-border pt-2">
@@ -404,8 +387,7 @@ function Tile({
               </div>
             </div>
           </TooltipContent>
-        </Tooltip>
-      );
+        </Tooltip>;
     }
   }
 
@@ -415,26 +397,22 @@ function Tile({
     const trapInfo = TRAP_INFO[trapType];
     const isTriggered = tile.triggered;
     const disarmChance = Math.min(95, Math.max(5, playerDexterity * 3 + 20)); // 20-95% based on dexterity
-    
+
     const handleRightClick = (e: React.MouseEvent) => {
       e.preventDefault();
       if (isTriggered || !onDisarmTrap) return;
-      
+
       // Calculate disarm success
       const roll = Math.random() * 100;
       const success = roll < disarmChance;
       onDisarmTrap(x, y, success);
     };
-    
-    return (
-      <Tooltip>
+    return <Tooltip>
         <TooltipTrigger asChild>
-          <div 
-            className={`flex items-center justify-center bg-gradient-to-br ${trapInfo.color} ${isTriggered ? 'opacity-50' : 'cursor-pointer hover:scale-110'} transition-transform`} 
-            style={tileStyle}
-            onContextMenu={handleRightClick}
-          >
-            <span style={{ fontSize: `${Math.max(10, tileSize * 0.5)}px` }}>
+          <div className={`flex items-center justify-center bg-gradient-to-br ${trapInfo.color} ${isTriggered ? 'opacity-50' : 'cursor-pointer hover:scale-110'} transition-transform`} style={tileStyle} onContextMenu={handleRightClick}>
+            <span style={{
+            fontSize: `${Math.max(10, tileSize * 0.5)}px`
+          }}>
               {isTriggered ? '✓' : trapInfo.icon}
             </span>
           </div>
@@ -443,63 +421,70 @@ function Tile({
           <div className="space-y-1">
             <p className="font-bold text-sm">{trapInfo.icon} {trapInfo.name}</p>
             <p className="text-xs text-muted-foreground">{trapInfo.description}</p>
-            {isTriggered ? (
-              <p className="text-xs text-green-600 font-medium">Already triggered</p>
-            ) : (
-              <div className="pt-1 border-t border-border mt-1">
+            {isTriggered ? <p className="text-xs text-green-600 font-medium">Already triggered</p> : <div className="pt-1 border-t border-border mt-1">
                 <p className="text-xs font-medium">Right-click to disarm</p>
                 <p className="text-[10px] text-muted-foreground">
                   Success chance: <span className={disarmChance >= 60 ? 'text-green-600' : disarmChance >= 30 ? 'text-yellow-600' : 'text-red-600'}>{disarmChance}%</span> (based on Dexterity)
                 </p>
-              </div>
-            )}
+              </div>}
           </div>
         </TooltipContent>
-      </Tooltip>
-    );
+      </Tooltip>;
   }
 
   // Special tiles with tooltips (excluding traps which are handled above)
   const visual = TILE_VISUALS[tile.type];
   const floorClass = getFloorVariant(x, y, tile.visible);
-  
+
   // Tiles that should have tooltips
-  const tileTooltips: Partial<Record<TileType, { title: string; description: string }>> = {
-    treasure: { title: '💎 Treasure', description: 'Walk over to collect loot!' },
-    stairs: { title: '⬇️ Stairs', description: 'Descend to the next floor' },
-    water: { title: '🌊 Water Hazard', description: 'Deals damage when walked through. Frogs are immune!' },
-    shop: { title: '🏪 Shop', description: 'Buy items and equipment' },
+  const tileTooltips: Partial<Record<TileType, {
+    title: string;
+    description: string;
+  }>> = {
+    treasure: {
+      title: '💎 Treasure',
+      description: 'Walk over to collect loot!'
+    },
+    stairs: {
+      title: '⬇️ Stairs',
+      description: 'Descend to the next floor'
+    },
+    water: {
+      title: '🌊 Water Hazard',
+      description: 'Deals damage when walked through. Frogs are immune!'
+    },
+    shop: {
+      title: '🏪 Shop',
+      description: 'Buy items and equipment'
+    }
   };
-  
   const tooltipInfo = tile.visible ? tileTooltips[tile.type] : null;
-  
   if (tooltipInfo) {
-    return (
-      <Tooltip>
+    return <Tooltip>
         <TooltipTrigger asChild>
           <div className={`flex items-center justify-center ${tile.type === 'floor' ? floorClass : visual.bg} ${visual.glow || ''} cursor-pointer`} style={tileStyle}>
-            {visual.content && <span style={{ fontSize: `${Math.max(10, tileSize * 0.5)}px` }}>{visual.content}</span>}
+            {visual.content && <span style={{
+            fontSize: `${Math.max(10, tileSize * 0.5)}px`
+          }}>{visual.content}</span>}
           </div>
         </TooltipTrigger>
         <TooltipContent side="top" className="p-2">
           <p className="font-bold text-sm">{tooltipInfo.title}</p>
           <p className="text-xs text-muted-foreground">{tooltipInfo.description}</p>
         </TooltipContent>
-      </Tooltip>
-    );
+      </Tooltip>;
   }
-  
-  return (
-    <div 
-      className={`flex items-center justify-center ${tile.type === 'floor' ? floorClass : visual.bg} ${visual.glow || ''} ${pathOverlayClass} ${onClick ? 'cursor-pointer hover:brightness-110' : ''}`} 
-      style={tileStyle}
-      onClick={onClick}
-    >
-      {tile.visible && visual.content && <span style={{ fontSize: `${Math.max(10, tileSize * 0.5)}px` }}>{visual.content}</span>}
-      {tile.visible && tile.type === 'floor' && !isOnPath && <span className="text-muted-foreground/20" style={{ fontSize: `${Math.max(4, tileSize * 0.2)}px` }}>·</span>}
-      {isOnPath && <span className="text-amber-400" style={{ fontSize: `${Math.max(6, tileSize * 0.3)}px` }}>•</span>}
-    </div>
-  );
+  return <div className={`flex items-center justify-center ${tile.type === 'floor' ? floorClass : visual.bg} ${visual.glow || ''} ${pathOverlayClass} ${onClick ? 'cursor-pointer hover:brightness-110' : ''}`} style={tileStyle} onClick={onClick}>
+      {tile.visible && visual.content && <span style={{
+      fontSize: `${Math.max(10, tileSize * 0.5)}px`
+    }}>{visual.content}</span>}
+      {tile.visible && tile.type === 'floor' && !isOnPath && <span className="text-muted-foreground/20" style={{
+      fontSize: `${Math.max(4, tileSize * 0.2)}px`
+    }}>·</span>}
+      {isOnPath && <span className="text-amber-400" style={{
+      fontSize: `${Math.max(6, tileSize * 0.3)}px`
+    }}>•</span>}
+    </div>;
 }
 export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRendererProps>(({
   dungeon,
@@ -514,12 +499,12 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   onTileClick
 }, ref) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  
+
   // Calculate tile size based on zoom (base size is 28px at 100%)
   const baseTileSize = 28;
   const tileSize = Math.round(baseTileSize * (zoom / 100));
   const spriteSize = Math.round(22 * (zoom / 100));
-  
+
   // Expose scroll method to parent
   useImperativeHandle(ref, () => ({
     scrollToPlayer: () => {
@@ -537,23 +522,21 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
       }
     }
   }), [dungeon.playerPosition.x, dungeon.playerPosition.y, tileSize]);
-  
+
   // Auto-scroll when player moves or zoom changes
   useEffect(() => {
     if (scrollRef.current) {
       const scrollContainer = scrollRef.current;
       const scrollContent = scrollContainer.firstElementChild as HTMLElement;
-      
       if (!scrollContent) return;
-      
+
       // Calculate player position in pixels
       const playerPixelX = dungeon.playerPosition.x * tileSize + tileSize / 2;
       const playerPixelY = dungeon.playerPosition.y * tileSize + tileSize / 2;
-      
+
       // Calculate scroll position to center player
       const scrollX = playerPixelX - scrollContainer.clientWidth / 2;
       const scrollY = playerPixelY - scrollContainer.clientHeight / 2;
-      
       scrollContainer.scrollTo({
         left: Math.max(0, scrollX),
         top: Math.max(0, scrollY),
@@ -561,9 +544,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
       });
     }
   }, [dungeon.playerPosition.x, dungeon.playerPosition.y, tileSize]);
-  
-  return (
-    <TooltipProvider delayDuration={200}>
+  return <TooltipProvider delayDuration={200}>
     <div className="w-full h-full flex flex-col">
       {/* Floor header - anime style */}
       <div className="flex items-center justify-between mb-3 px-1">
@@ -588,36 +569,12 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
       {/* Dungeon grid - fills available space */}
       <div ref={scrollRef} className="flex-1 w-full overflow-auto">
         <div className="inline-block min-w-full min-h-full">
-          {dungeon.tiles.map((row, y) => (
-            <div key={y} className="flex">
-              {row.map((tile, x) => (
-                <Tile 
-                  key={`${x}-${y}`} 
-                  tile={tile} 
-                  x={x} 
-                  y={y} 
-                  tiles={dungeon.tiles} 
-                  enemies={dungeon.enemies} 
-                  isPlayer={dungeon.playerPosition.x === x && dungeon.playerPosition.y === y} 
-                  playerElement={playerElement} 
-                  playerClass={playerClass}
-                  playerSpecies={playerSpecies}
-                  playerDexterity={playerDexterity}
-                  tileSize={tileSize}
-                  spriteSize={spriteSize}
-                  unlockedMonsters={unlockedMonsters}
-                  isOnPath={targetPath.some(p => p.x === x && p.y === y)}
-                  onDisarmTrap={onDisarmTrap}
-                  onClick={tile.explored && tile.type !== 'wall' ? () => onTileClick?.(x, y) : undefined}
-                />
-              ))}
-            </div>
-          ))}
+          {dungeon.tiles.map((row, y) => <div key={y} className="flex">
+              {row.map((tile, x) => <Tile key={`${x}-${y}`} tile={tile} x={x} y={y} tiles={dungeon.tiles} enemies={dungeon.enemies} isPlayer={dungeon.playerPosition.x === x && dungeon.playerPosition.y === y} playerElement={playerElement} playerClass={playerClass} playerSpecies={playerSpecies} playerDexterity={playerDexterity} tileSize={tileSize} spriteSize={spriteSize} unlockedMonsters={unlockedMonsters} isOnPath={targetPath.some(p => p.x === x && p.y === y)} onDisarmTrap={onDisarmTrap} onClick={tile.explored && tile.type !== 'wall' ? () => onTileClick?.(x, y) : undefined} />)}
+            </div>)}
         </div>
       </div>
     </div>
-    </TooltipProvider>
-  );
+    </TooltipProvider>;
 });
-
 DungeonRenderer.displayName = 'DungeonRenderer';

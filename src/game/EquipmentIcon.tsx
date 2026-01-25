@@ -73,6 +73,16 @@ export function EquipmentIcon({ item, size = 40, showStatPreview = true, classNa
         />
       </svg>
       
+      {/* Bound indicator - shows item is protected */}
+      {item.bound && (
+        <div 
+          className="absolute -top-1 -left-1 text-[8px] bg-blue-500/90 text-white rounded-full w-3.5 h-3.5 flex items-center justify-center border border-blue-300"
+          title="Bound - returns to town on death"
+        >
+          🔒
+        </div>
+      )}
+      
       {/* Stat preview badge */}
       {primaryStat && (
         <div 

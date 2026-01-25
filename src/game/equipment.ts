@@ -73,6 +73,8 @@ export interface EquipmentItem {
   // Affinity system
   affinityRequired?: AffinityRequirement;  // Must match to equip (exclusive items)
   affinityBonus?: AffinityBonus;           // Bonus when matching (any can equip)
+  // Protection system
+  bound?: boolean; // If true, item came from town and always returns on death/flee
 }
 
 // ============= EQUIPMENT SETS =============

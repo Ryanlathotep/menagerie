@@ -12,6 +12,8 @@ import { DungeonRenderer } from '@/game/DungeonRenderer';
 import { GameSidebar } from '@/game/GameSidebar';
 import { getMonsterMoves, Move, STRUGGLE_MOVE, getNewMovesAtLevel } from '@/game/moves';
 import { MoveTooltip } from '@/game/BattleTooltip';
+import { MoveTierSelector } from '@/game/MoveTierSelector';
+import { getAvailableTiers, hasAoEUnlocked, createEvolvedMove, getHighestTier } from '@/game/moveMastery';
 import { ShopView } from '@/game/ShopView';
 import { executeCombat, calculateXpReward, xpToNextLevel, checkLevelUp, getEffectiveness, hasPassive, checkSkeletonSurvival, applyMushroomRegen, checkImpSteal } from '@/game/combat';
 import { toast } from 'sonner';
@@ -1137,6 +1139,9 @@ function BattleView({
   
   // Combat switch mode state
   const [showCombatSwitch, setShowCombatSwitch] = useState(false);
+  
+  // Move tier selector state
+  const [selectedMoveForTier, setSelectedMoveForTier] = useState<Move | null>(null);
 
   // Sync battle.log into the unified run log
   const lastBattleLogLen = useRef(0);
@@ -1490,12 +1495,53 @@ function BattleView({
   const executeMove = (move: Move) => {
     if (!state.run) return;
 
+    // Get base move ID for mastery tracking (evolved moves have baseMoveId)
+    const baseMoveId = (move as any).baseMoveId || move.id;
+
     // Check if player has enough stamina
     const staminaCost = move.staminaCost || 0;
     if (currentStamina < staminaCost) {
       toast.error('Not enough stamina!');
       return;
     }
+
+    // Track move mastery usage
+    const currentMastery = battle.playerMonster.moveMastery || {};
+    const moveMasteryEntry = currentMastery[baseMoveId] || {
+      uses: 0,
+      currentTier: 'lesser' as const,
+      hasAoE: false,
+    };
+    const newUses = moveMasteryEntry.uses + 1;
+    
+    // Calculate new tier
+    const THRESHOLDS = { lesser: 0, minor: 10, base: 25, greater: 50, omega: 100 };
+    let newTier: 'lesser' | 'minor' | 'base' | 'greater' | 'omega' = 'lesser';
+    const tierOrder = ['lesser', 'minor', 'base', 'greater', 'omega'] as const;
+    for (const tier of tierOrder) {
+      if (newUses >= THRESHOLDS[tier]) {
+        newTier = tier;
+      }
+    }
+    const hasAoE = newUses >= 30;
+    
+    // Check for tier/AoE unlocks and notify
+    const oldTier = moveMasteryEntry.currentTier;
+    const oldAoE = moveMasteryEntry.hasAoE;
+    if (newTier !== oldTier) {
+      const tierNames: Record<string, string> = {
+        lesser: 'Lesser', minor: 'Minor', base: 'Standard', greater: 'Greater', omega: 'Omega'
+      };
+      toast.success(`🎯 ${move.name} mastered to ${tierNames[newTier]} tier!`);
+    }
+    if (hasAoE && !oldAoE) {
+      toast.success(`⚔️ ${move.name} Mass variant unlocked!`);
+    }
+    
+    const updatedMastery = {
+      ...currentMastery,
+      [baseMoveId]: { uses: newUses, currentTier: newTier, hasAoE },
+    };
 
     // Consume stamina
     let newPlayerStamina = currentStamina - staminaCost;
@@ -2032,7 +2078,7 @@ function BattleView({
       }
       
       // Player's Chimera: Gain resistance to element that hit
-      let updatedPlayerMonster = { ...battle.playerMonster };
+      let updatedPlayerMonster = { ...battle.playerMonster, moveMastery: updatedMastery };
       if (hasPassive(battle.playerMonster.species, 'hybrid_nature') && enemyResult.elementHit && enemyResult.hit) {
         const currentResistances = updatedPlayerMonster.temporaryResistances || [];
         const existingRes = currentResistances.find(r => r.element === enemyResult.elementHit);
@@ -2431,33 +2477,81 @@ function BattleView({
               onSwitch={handleCombatSwitch}
               onCancel={() => setShowCombatSwitch(false)}
             />
+          ) : selectedMoveForTier ? (
+            /* Tier selector for a move */
+            <MoveTierSelector
+              move={selectedMoveForTier}
+              mastery={battle.playerMonster.moveMastery?.[selectedMoveForTier.id]}
+              monster={battle.playerMonster}
+              enemy={battle.enemyMonster}
+              currentStamina={currentStamina}
+              onSelectMove={(evolvedMove) => {
+                executeMove(evolvedMove);
+                setSelectedMoveForTier(null);
+              }}
+              onBack={() => setSelectedMoveForTier(null)}
+            />
           ) : (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {availableMoves.map(move => {
                 const canAfford = (move.staminaCost || 0) <= currentStamina;
                 const effectiveness = getMoveEffectiveness(move);
+                const mastery = battle.playerMonster.moveMastery?.[move.id];
+                const hasTierOptions = move.power > 0 && (
+                  getAvailableTiers(mastery, battle.playerMonster.level).length > 1 ||
+                  hasAoEUnlocked(mastery)
+                );
+                
+                // For moves with tier options, use best tier by default
+                const displayMove = hasTierOptions && mastery
+                  ? createEvolvedMove(move, getHighestTier(mastery, battle.playerMonster.level), 'single', battle.playerMonster.level)
+                  : move;
+                const displayCost = displayMove.staminaCost;
+                const canAffordBest = displayCost <= currentStamina;
+                
                 return (
-                  <MoveTooltip key={move.id} move={move} attacker={battle.playerMonster} defender={battle.enemyMonster}>
-                    <Button 
-                      variant={canAfford ? "outline" : "ghost"} 
-                      className={`h-auto py-2 px-3 text-left flex-shrink-0 transition-all ${!canAfford && move.id !== 'struggle' ? 'opacity-50' : ''} ${move.id === 'struggle' ? 'border-destructive text-destructive' : ''} ${canAfford ? effectiveness.auraClass : ''}`} 
-                      onClick={() => executeMove(move)} 
-                      disabled={!canAfford && move.id !== 'struggle'}
-                    >
-                      <div>
-                        <p className="font-semibold text-xs">
-                          {effectiveness.indicator && <span className="mr-1">{effectiveness.indicator}</span>}
-                          {move.name}
-                        </p>
-                        <p className="text-[9px] opacity-70">
-                          {move.power > 0 ? `⚔️${move.power} ` : ''} 
-                          🎯{move.accuracy}% 
-                          ⚡{move.staminaCost}
-                          {move.type === 'heal' ? ' 💚' : ''}
-                          {move.effect?.includes('stamina') ? ' ⚡+' : ''}
-                        </p>
-                      </div>
-                    </Button>
+                  <MoveTooltip 
+                    key={move.id} 
+                    move={displayMove} 
+                    attacker={battle.playerMonster} 
+                    defender={battle.enemyMonster}
+                    mastery={mastery}
+                  >
+                    <div className="relative flex-shrink-0">
+                      <Button 
+                        variant={canAffordBest ? "outline" : "ghost"} 
+                        className={`h-auto py-2 px-3 text-left transition-all ${!canAffordBest && move.id !== 'struggle' ? 'opacity-50' : ''} ${move.id === 'struggle' ? 'border-destructive text-destructive' : ''} ${canAffordBest ? effectiveness.auraClass : ''}`} 
+                        onClick={() => {
+                          if (hasTierOptions) {
+                            setSelectedMoveForTier(move);
+                          } else {
+                            executeMove(move);
+                          }
+                        }} 
+                        disabled={!canAfford && move.id !== 'struggle'}
+                      >
+                        <div>
+                          <p className="font-semibold text-xs">
+                            {effectiveness.indicator && <span className="mr-1">{effectiveness.indicator}</span>}
+                            {displayMove.name}
+                            {hasTierOptions && <span className="ml-1 text-primary">▼</span>}
+                          </p>
+                          <p className="text-[9px] opacity-70">
+                            {displayMove.power > 0 ? `⚔️${displayMove.power} ` : ''} 
+                            🎯{displayMove.accuracy}% 
+                            ⚡{displayCost}
+                            {move.type === 'heal' ? ' 💚' : ''}
+                            {move.effect?.includes('stamina') ? ' ⚡+' : ''}
+                          </p>
+                        </div>
+                      </Button>
+                      {/* Tier indicator badge */}
+                      {hasTierOptions && mastery && (
+                        <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[8px] px-1 rounded-full">
+                          {getAvailableTiers(mastery, battle.playerMonster.level).length}
+                        </div>
+                      )}
+                    </div>
                   </MoveTooltip>
                 );
               })}

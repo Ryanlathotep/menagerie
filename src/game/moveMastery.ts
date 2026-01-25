@@ -37,7 +37,7 @@ export const MASS_MULTIPLIERS = {
 // ============= MASTERY SYSTEM =============
 // Moves gain mastery through usage, unlocking higher tiers
 export interface MoveMastery {
-  moveId: string;
+  moveId?: string;        // Optional - key is typically the move ID in records
   uses: number;           // Total times this move has been used
   currentTier: MoveTier;  // Current unlocked tier
   hasAoE: boolean;        // Has unlocked Mass variant

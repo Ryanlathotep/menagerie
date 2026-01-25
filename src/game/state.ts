@@ -76,7 +76,14 @@ type GameAction =
   | { type: 'STORE_EQUIPMENT'; item: EquipmentItem }
   | { type: 'WITHDRAW_EQUIPMENT'; itemId: string }
   | { type: 'LOAD_SAVE'; saveData: SaveData }
-  | { type: 'RESET_SAVE' };
+  | { type: 'RESET_SAVE' }
+  // Party management
+  | { type: 'SWITCH_ACTIVE_MONSTER'; index: number }
+  | { type: 'ADD_TO_PARTY'; monster: Monster }
+  | { type: 'UPDATE_PARTY_MONSTER'; index: number; monster: Monster }
+  // Battle tracking
+  | { type: 'UPDATE_BATTLE_STATS'; stats: Partial<{ turnsUsed: number; overkillDamage: number; statusEffectsApplied: number; criticalHits: number }> }
+  | { type: 'RESET_BATTLE_STATS' };
 
 // Reducer
 function gameReducer(state: GameState, action: GameAction): GameState {
@@ -95,6 +102,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         phase: 'dungeon',
         run: {
           currentMonster: action.monster,
+          party: [action.monster],  // Start with single monster in party
+          activePartyIndex: 0,
           dungeon: null,
           battle: null,
           gold: 0,
@@ -110,6 +119,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           enemiesDefeated: 0,
           moveOrder: [],
           hiddenMoves: [],
+          battleStats: undefined,
         },
         saveData: {
           ...state.saveData,
@@ -549,6 +559,73 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...INITIAL_STATE,
         saveData: DEFAULT_SAVE_DATA,
+      };
+      
+    // Party management
+    case 'SWITCH_ACTIVE_MONSTER':
+      if (!state.run || action.index < 0 || action.index >= state.run.party.length) return state;
+      const newActiveMonster = state.run.party[action.index];
+      if (newActiveMonster.stats.currentHp <= 0) return state; // Can't switch to fainted
+      return {
+        ...state,
+        run: {
+          ...state.run,
+          currentMonster: newActiveMonster,
+          activePartyIndex: action.index,
+        },
+      };
+    
+    case 'ADD_TO_PARTY':
+      if (!state.run) return state;
+      if (state.run.party.length >= 6) return state; // Max party size
+      return {
+        ...state,
+        run: {
+          ...state.run,
+          party: [...state.run.party, action.monster],
+        },
+      };
+    
+    case 'UPDATE_PARTY_MONSTER':
+      if (!state.run || action.index < 0 || action.index >= state.run.party.length) return state;
+      const updatedParty = [...state.run.party];
+      updatedParty[action.index] = action.monster;
+      return {
+        ...state,
+        run: {
+          ...state.run,
+          party: updatedParty,
+          // Also update currentMonster if this is the active one
+          currentMonster: action.index === state.run.activePartyIndex 
+            ? action.monster 
+            : state.run.currentMonster,
+        },
+      };
+    
+    // Battle tracking for recruitment
+    case 'UPDATE_BATTLE_STATS':
+      if (!state.run) return state;
+      return {
+        ...state,
+        run: {
+          ...state.run,
+          battleStats: {
+            turnsUsed: action.stats.turnsUsed ?? state.run.battleStats?.turnsUsed ?? 0,
+            overkillDamage: action.stats.overkillDamage ?? state.run.battleStats?.overkillDamage ?? 0,
+            statusEffectsApplied: action.stats.statusEffectsApplied ?? state.run.battleStats?.statusEffectsApplied ?? 0,
+            criticalHits: action.stats.criticalHits ?? state.run.battleStats?.criticalHits ?? 0,
+          },
+        },
+      };
+    
+    case 'RESET_BATTLE_STATS':
+      if (!state.run) return state;
+      return {
+        ...state,
+        run: {
+          ...state.run,
+          battleStats: undefined,
+        },
       };
       
     default:

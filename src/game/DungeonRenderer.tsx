@@ -67,7 +67,9 @@ interface DungeonRendererProps {
   playerDexterity?: number; // For disarm calculations
   zoom?: number; // 50-400, 100 = default
   unlockedMonsters?: UnlockedMonster[]; // For showing captured status
+  targetPath?: { x: number; y: number }[]; // Path for click-to-move
   onDisarmTrap?: (x: number, y: number, success: boolean) => void;
+  onTileClick?: (x: number, y: number) => void; // Click-to-move handler
 }
 
 export interface DungeonRendererHandle {
@@ -200,7 +202,9 @@ interface TileProps {
   tileSize: number;
   spriteSize: number;
   unlockedMonsters?: UnlockedMonster[];
+  isOnPath?: boolean; // Is this tile part of the click-to-move path?
   onDisarmTrap?: (x: number, y: number, success: boolean) => void;
+  onClick?: () => void;
 }
 function Tile({
   tile,
@@ -216,7 +220,9 @@ function Tile({
   tileSize,
   spriteSize,
   unlockedMonsters = [],
-  onDisarmTrap
+  isOnPath = false,
+  onDisarmTrap,
+  onClick
 }: TileProps) {
   const tileStyle = {
     width: `${tileSize}px`,
@@ -224,9 +230,12 @@ function Tile({
     minWidth: `${tileSize}px`,
     minHeight: `${tileSize}px`,
   };
+  
+  // Path indicator overlay style
+  const pathOverlayClass = isOnPath ? 'ring-2 ring-amber-400/70 ring-inset' : '';
 
   if (!tile.explored) {
-    return <div className="flex items-center justify-center bg-background" style={tileStyle} />;
+    return <div className="flex items-center justify-center bg-background" style={tileStyle} onClick={onClick} />;
   }
 
   // Wall tiles
@@ -457,10 +466,17 @@ function Tile({
     );
   }
   
-  return <div className={`flex items-center justify-center ${tile.type === 'floor' ? floorClass : visual.bg} ${visual.glow || ''}`} style={tileStyle}>
+  return (
+    <div 
+      className={`flex items-center justify-center ${tile.type === 'floor' ? floorClass : visual.bg} ${visual.glow || ''} ${pathOverlayClass} ${onClick ? 'cursor-pointer hover:brightness-110' : ''}`} 
+      style={tileStyle}
+      onClick={onClick}
+    >
       {tile.visible && visual.content && <span style={{ fontSize: `${Math.max(10, tileSize * 0.5)}px` }}>{visual.content}</span>}
-      {tile.visible && tile.type === 'floor' && <span className="text-muted-foreground/20" style={{ fontSize: `${Math.max(4, tileSize * 0.2)}px` }}>·</span>}
-    </div>;
+      {tile.visible && tile.type === 'floor' && !isOnPath && <span className="text-muted-foreground/20" style={{ fontSize: `${Math.max(4, tileSize * 0.2)}px` }}>·</span>}
+      {isOnPath && <span className="text-amber-400" style={{ fontSize: `${Math.max(6, tileSize * 0.3)}px` }}>•</span>}
+    </div>
+  );
 }
 export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRendererProps>(({
   dungeon,
@@ -470,7 +486,9 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   playerDexterity = 10,
   zoom = 100,
   unlockedMonsters = [],
-  onDisarmTrap
+  targetPath = [],
+  onDisarmTrap,
+  onTileClick
 }, ref) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   
@@ -565,7 +583,9 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                   tileSize={tileSize}
                   spriteSize={spriteSize}
                   unlockedMonsters={unlockedMonsters}
+                  isOnPath={targetPath.some(p => p.x === x && p.y === y)}
                   onDisarmTrap={onDisarmTrap}
+                  onClick={tile.explored && tile.type !== 'wall' ? () => onTileClick?.(x, y) : undefined}
                 />
               ))}
             </div>

@@ -2,7 +2,7 @@ import { GameProvider, useGame } from '@/game/state';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { getComboId, UnlockedMonster, InventoryItem, MonsterStats } from '@/game/types';
+import { getComboId, UnlockedMonster, InventoryItem, MonsterStats, Monster, Position } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
 import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, LOOT_TABLE, generateLoot } from '@/game/dungeon';
 import { useEffect, useCallback, useState, useRef } from 'react';
@@ -34,9 +34,11 @@ import {
   StatusEffectType,
 } from '@/game/statusEffects';
 import { StatusIcons } from '@/game/StatusEffectDisplay';
-
 import { CraftingWorkshop } from '@/game/CraftingWorkshop';
 import { CraftingRecipe } from '@/game/equipment';
+import { findPath, getDirection } from '@/game/pathfinding';
+import { PartyPanel } from '@/game/PartyPanel';
+import { RecruitmentModal, calculateRecruitChance } from '@/game/RecruitmentModal';
 
 // Main Menu Component
 function MainMenu() {
@@ -356,6 +358,12 @@ function DungeonView() {
   const [isAutoRunning, setIsAutoRunning] = useState(false);
   const autoRunDirection = useRef<'up' | 'down' | 'left' | 'right' | null>(null);
   const lastKeyPress = useRef<{ key: string; time: number } | null>(null);
+  
+  // Click-to-move state
+  const [targetPath, setTargetPath] = useState<Position[]>([]);
+  const [isPathWalking, setIsPathWalking] = useState(false);
+  const pathWalkRef = useRef<Position[]>([]);
+  
   useEffect(() => {
     if (!dungeon) {
       const newDungeon = generateDungeon(1);
@@ -550,10 +558,17 @@ function DungeonView() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (showShop) return;
       
-      // If auto-running, any key stops it
+      // If auto-running or path-walking, any key stops it
       if (isAutoRunning) {
         setIsAutoRunning(false);
         autoRunDirection.current = null;
+        return;
+      }
+      
+      if (isPathWalking) {
+        setIsPathWalking(false);
+        setTargetPath([]);
+        pathWalkRef.current = [];
         return;
       }
       
@@ -586,7 +601,7 @@ function DungeonView() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [handleMove, showShop, isAutoRunning, settings.autoRunDelay]);
+  }, [handleMove, showShop, isAutoRunning, isPathWalking, settings.autoRunDelay]);
   const handleFlee = () => {
     dispatch({
       type: 'FLEE_DUNGEON'
@@ -597,6 +612,73 @@ function DungeonView() {
     });
     toast.success('Escaped safely! Materials and equipment kept.');
   };
+  
+  // Click-to-move handler
+  const handleTileClick = useCallback((x: number, y: number) => {
+    if (!dungeon || isPathWalking || isAutoRunning) return;
+    
+    // Don't path to current position
+    if (dungeon.playerPosition.x === x && dungeon.playerPosition.y === y) return;
+    
+    const path = findPath(dungeon, dungeon.playerPosition, { x, y });
+    if (path && path.length > 0) {
+      setTargetPath(path);
+      pathWalkRef.current = path;
+      setIsPathWalking(true);
+    } else {
+      toast.error("Can't reach that tile!");
+    }
+  }, [dungeon, isPathWalking, isAutoRunning]);
+  
+  // Path walking effect - walk one step at a time
+  useEffect(() => {
+    if (!isPathWalking || pathWalkRef.current.length === 0 || !dungeon) {
+      setIsPathWalking(false);
+      setTargetPath([]);
+      return;
+    }
+    
+    const walkInterval = setInterval(() => {
+      const currentPath = pathWalkRef.current;
+      if (currentPath.length === 0) {
+        setIsPathWalking(false);
+        setTargetPath([]);
+        return;
+      }
+      
+      const nextPos = currentPath[0];
+      const direction = getDirection(dungeon.playerPosition, nextPos);
+      
+      if (!direction) {
+        setIsPathWalking(false);
+        setTargetPath([]);
+        pathWalkRef.current = [];
+        return;
+      }
+      
+      // Check if we should stop (enemy, trap, etc.)
+      if (shouldStopAutoRun(dungeon.tiles, nextPos.x, nextPos.y, dungeon.width, dungeon.height)) {
+        // Still move to this tile, but stop after
+        handleMove(direction);
+        setIsPathWalking(false);
+        setTargetPath([]);
+        pathWalkRef.current = [];
+        return;
+      }
+      
+      handleMove(direction);
+      pathWalkRef.current = currentPath.slice(1);
+      setTargetPath(pathWalkRef.current);
+    }, settings.autoRunSpeed);
+    
+    return () => clearInterval(walkInterval);
+  }, [isPathWalking, dungeon, handleMove, settings.autoRunSpeed]);
+  
+  // Party switch handler
+  const handlePartySwitch = useCallback((index: number) => {
+    dispatch({ type: 'SWITCH_ACTIVE_MONSTER', index });
+    toast.success(`Switched to ${state.run?.party[index]?.species}!`);
+  }, [dispatch, state.run?.party]);
   const handleBuyItem = (item: LootItem) => {
     const price = item.value * 1.5; // Shop markup
     if (state.run && state.run.gold >= price) {
@@ -716,6 +798,9 @@ function DungeonView() {
         onToggleHideMove={moveId => dispatch({ type: 'TOGGLE_HIDE_MOVE', moveId })}
         onOpenEquipment={() => setShowEquipment(true)}
         onPanelChange={setMenuOpen}
+        party={state.run?.party || []}
+        activePartyIndex={state.run?.activePartyIndex || 0}
+        onPartySwitch={handlePartySwitch}
         expandedStats={state.run?.currentMonster ? {
           currentHp: state.run.currentMonster.stats.currentHp,
           maxHp: state.run.currentMonster.stats.maxHp,
@@ -761,6 +846,8 @@ function DungeonView() {
               playerDexterity={state.run?.currentMonster.stats.dodge || 10}
               zoom={settings.dungeonZoom}
               unlockedMonsters={state.saveData.unlockedMonsters}
+              targetPath={targetPath}
+              onTileClick={handleTileClick}
               onDisarmTrap={(x, y, success) => {
                 dispatch({ type: 'DISARM_TRAP', x, y, success });
                 if (success) {

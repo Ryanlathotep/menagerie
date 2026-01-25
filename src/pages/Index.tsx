@@ -10,7 +10,7 @@ import { ScrollText } from 'lucide-react';
 import { MonsterSprite } from '@/game/sprites';
 import { DungeonRenderer } from '@/game/DungeonRenderer';
 import { GameSidebar } from '@/game/GameSidebar';
-import { getMonsterMoves, Move, STRUGGLE_MOVE } from '@/game/moves';
+import { getMonsterMoves, Move, STRUGGLE_MOVE, getNewMovesAtLevel } from '@/game/moves';
 import { MoveTooltip } from '@/game/BattleTooltip';
 import { ShopView } from '@/game/ShopView';
 import { executeCombat, calculateXpReward, xpToNextLevel, checkLevelUp, getEffectiveness, hasPassive, checkSkeletonSurvival, applyMushroomRegen, checkImpSteal } from '@/game/combat';
@@ -1111,13 +1111,16 @@ function BattleView({
   const experience = state.run?.experience || 0;
   const [menuOpen, setMenuOpen] = useState(false);
   
-  // Level up screen state
-  const [levelUpData, setLevelUpData] = useState<{
+  // Level up screen queue state - supports multiple level-ups (active + passive party members)
+  interface LevelUpEntry {
     previousStats: MonsterStats;
     previousLevel: number;
     newMoves: Move[];
-    monster: typeof battle.playerMonster;
-  } | null>(null);
+    monster: Monster;
+    isPassive?: boolean; // True if this is a passive party member
+  }
+  const [levelUpQueue, setLevelUpQueue] = useState<LevelUpEntry[]>([]);
+  const levelUpData = levelUpQueue.length > 0 ? levelUpQueue[0] : null;
   
   // Recruitment modal state
   const [showRecruitment, setShowRecruitment] = useState(false);
@@ -1173,7 +1176,7 @@ function BattleView({
   );
   
   if (!battle || !state.run) return null;
-  const playerMoves = getMonsterMoves(battle.playerMonster.species, battle.playerMonster.element, battle.playerMonster.class);
+  const playerMoves = getMonsterMoves(battle.playerMonster.species, battle.playerMonster.element, battle.playerMonster.class, battle.playerMonster.level);
   const experienceToNext = xpToNextLevel(battle.playerMonster.level);
   const currentStamina = battle.playerMonster.stats.currentStamina ?? battle.playerMonster.stats.stamina ?? 50;
   const maxStamina = battle.playerMonster.stats.stamina ?? 50;
@@ -1236,7 +1239,7 @@ function BattleView({
     toast.success(`Go, ${state.run.party[newIndex].species}!`);
     
     // Enemy gets a free attack when you switch
-    const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class);
+    const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class, battle.enemyMonster.level);
     const enemyMove = enemyMoves[Math.floor(Math.random() * Math.min(3, enemyMoves.length))];
     const newMonster = state.run.party[newIndex];
     const enemyResult = executeCombat(enemyMove, battle.enemyMonster, newMonster);
@@ -1290,7 +1293,7 @@ function BattleView({
     setPendingReviveItem(null);
     
     // Enemy gets a turn after using item
-    const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class);
+    const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class, battle.enemyMonster.level);
     const enemyMove = enemyMoves[Math.floor(Math.random() * Math.min(3, enemyMoves.length))];
     const enemyResult = executeCombat(enemyMove, battle.enemyMonster, battle.playerMonster);
     const newPlayerHp = Math.max(0, battle.playerMonster.stats.currentHp - enemyResult.damage);
@@ -1334,7 +1337,7 @@ function BattleView({
       });
     } else {
       // Failed to flee - enemy gets a free attack
-      const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class);
+      const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class, battle.enemyMonster.level);
       const enemyMove = enemyMoves[Math.floor(Math.random() * Math.min(3, enemyMoves.length))];
       const enemyResult = executeCombat(enemyMove, battle.enemyMonster, battle.playerMonster);
       const newPlayerHp = Math.max(0, battle.playerMonster.stats.currentHp - enemyResult.damage);
@@ -1455,7 +1458,7 @@ function BattleView({
     // Inventory panel will close automatically via GameSidebar
 
     // Enemy gets a turn after using item
-    const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class);
+    const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class, battle.enemyMonster.level);
     const enemyMove = enemyMoves[Math.floor(Math.random() * Math.min(3, enemyMoves.length))];
     const enemyResult = executeCombat(enemyMove, battle.enemyMonster, {
       ...battle.playerMonster,
@@ -1727,14 +1730,64 @@ function BattleView({
       const xpGained = calculateXpReward(battle.enemyMonster.level, battle.playerMonster.level);
       const newXp = experience + xpGained;
       
-      // Award half XP to passive party members
+      // Calculate passive party level-ups BEFORE dispatching (to capture state changes)
+      const passiveXp = Math.floor(xpGained / 2);
+      const passiveLevelUps: LevelUpEntry[] = [];
+      
+      if (state.run.party && passiveXp > 0) {
+        state.run.party.forEach((monster, index) => {
+          // Skip active monster and fainted monsters
+          if (index === state.run!.activePartyIndex) return;
+          if (monster.stats.currentHp <= 0) return;
+          
+          const currentMonsterXp = monster.experience || 0;
+          let tempXp = currentMonsterXp + passiveXp;
+          let tempLevel = monster.level;
+          
+          // Check if this monster will level up
+          while (tempXp >= xpToNextLevel(tempLevel)) {
+            const previousStats = tempLevel === monster.level 
+              ? { ...monster.stats }
+              : calculateStats(monster.species, monster.class, tempLevel);
+            const previousLevel = tempLevel;
+            
+            tempXp -= xpToNextLevel(tempLevel);
+            tempLevel += 1;
+            
+            const newStats = calculateStats(monster.species, monster.class, tempLevel);
+            const newMoves = getNewMovesAtLevel(monster.species, monster.element, monster.class, tempLevel);
+            
+            passiveLevelUps.push({
+              previousStats: {
+                ...previousStats,
+                currentHp: monster.stats.currentHp,
+                currentStamina: monster.stats.currentStamina,
+              },
+              previousLevel,
+              newMoves,
+              monster: {
+                ...monster,
+                level: tempLevel,
+                stats: {
+                  ...newStats,
+                  currentHp: Math.ceil(newStats.maxHp * (monster.stats.currentHp / monster.stats.maxHp)),
+                  currentStamina: Math.ceil(newStats.stamina * (monster.stats.currentStamina / monster.stats.stamina)),
+                },
+              },
+              isPassive: true,
+            });
+          }
+        });
+      }
+      
+      // Award half XP to passive party members (this also levels them up)
       dispatch({
         type: 'ADD_PARTY_XP',
         xpGained: xpGained,
         excludeActiveIndex: state.run.activePartyIndex,
       });
 
-      // Check for level up
+      // Check for active monster level up
       const levelUpResult = checkLevelUp(battle.playerMonster, newXp);
       
       // Remove enemy from dungeon
@@ -1765,6 +1818,9 @@ function BattleView({
         playerLevel: battle.playerMonster.level,
       });
       
+      // Build the level-up queue (active monster first, then passive members)
+      const allLevelUps: LevelUpEntry[] = [];
+      
       if (levelUpResult.leveled) {
         // Level up! Store previous stats for comparison
         const previousStats = { ...battle.playerMonster.stats };
@@ -1781,8 +1837,13 @@ function BattleView({
           }
         };
         
-        // Check for new moves (moves that require higher level - for now, all moves are available)
-        const newMoves: Move[] = []; // Could implement level-gated moves in the future
+        // Check for new moves at this level
+        const newMoves = getNewMovesAtLevel(
+          battle.playerMonster.species, 
+          battle.playerMonster.element, 
+          battle.playerMonster.class, 
+          levelUpResult.newLevel
+        );
         
         dispatch({
           type: 'UPDATE_PLAYER_MONSTER',
@@ -1792,22 +1853,14 @@ function BattleView({
         dispatch({ type: 'ADD_XP', amount: levelUpResult.xpRemaining - experience });
         
         toast.success(`🎉 LEVEL UP! Now level ${levelUpResult.newLevel}!`);
-        toast.success(`+${xpGained} XP!`);
         
-        // Show level up screen - DON'T end battle yet, let user see level up first
-        setLevelUpData({
+        allLevelUps.push({
           previousStats,
           previousLevel,
           newMoves,
-          monster: leveledMonster
+          monster: leveledMonster,
+          isPassive: false,
         });
-        
-        // Store recruitment data for after level up
-        setDefeatedEnemy(battle.enemyMonster);
-        setRecruitChance(calculatedRecruitChance);
-        
-        // Battle will be ended when user clicks "Continue" on level up screen
-        return;
       } else {
         // Add XP to global state
         dispatch({ type: 'ADD_XP', amount: xpGained });
@@ -1823,7 +1876,23 @@ function BattleView({
             }
           }
         });
-        toast.success(`+${xpGained} XP!`);
+      }
+      
+      toast.success(`+${xpGained} XP!`);
+      
+      // Add passive level-ups to the queue
+      allLevelUps.push(...passiveLevelUps);
+      
+      // If there are any level-ups, show them
+      if (allLevelUps.length > 0) {
+        setLevelUpQueue(allLevelUps);
+        
+        // Store recruitment data for after level up screens
+        setDefeatedEnemy(battle.enemyMonster);
+        setRecruitChance(calculatedRecruitChance);
+        
+        // Battle will be ended when user clicks "Continue" on the last level up screen
+        return;
       }
       
       // Show recruitment modal if party not full
@@ -1868,7 +1937,7 @@ function BattleView({
       }
     } else {
       // Enemy turn - use random enemy move
-      const enemyMoves = getMonsterMoves(updatedEnemyMonster.species, updatedEnemyMonster.element, updatedEnemyMonster.class);
+      const enemyMoves = getMonsterMoves(updatedEnemyMonster.species, updatedEnemyMonster.element, updatedEnemyMonster.class, updatedEnemyMonster.level);
       
       // Enemy also has stamina - pick moves they can afford
       const enemyCurrentStamina = updatedEnemyMonster.stats.currentStamina ?? updatedEnemyMonster.stats.stamina ?? 50;
@@ -2117,21 +2186,30 @@ function BattleView({
   // Bottom offset based on menu state
   const bottomOffset = menuOpen ? 'pb-[280px]' : 'pb-[180px]';
 
-  // Handle level up screen dismissal
+  // Handle level up screen dismissal - advances through the queue
   const handleLevelUpContinue = () => {
-    setLevelUpData(null);
-    // Check if we should show recruitment after level up
-    if (defeatedEnemy && state.run && state.run.party.length < 6) {
-      setShowRecruitment(true);
-    } else {
-      // End the battle now that user has seen level up screen
-      dispatch({
-        type: 'END_BATTLE',
-        victory: true
-      });
-      // Reset battle stats
-      setBattleStats({ turnsUsed: 0, overkillDamage: 0, statusEffectsApplied: 0, criticalHits: 0 });
-    }
+    // Remove the first item from the queue
+    setLevelUpQueue(prev => {
+      const remaining = prev.slice(1);
+      
+      // If no more level-ups, proceed to recruitment or end battle
+      if (remaining.length === 0) {
+        // Check if we should show recruitment after all level ups
+        if (defeatedEnemy && state.run && state.run.party.length < 6) {
+          setShowRecruitment(true);
+        } else {
+          // End the battle now that user has seen all level up screens
+          dispatch({
+            type: 'END_BATTLE',
+            victory: true
+          });
+          // Reset battle stats
+          setBattleStats({ turnsUsed: 0, overkillDamage: 0, statusEffectsApplied: 0, criticalHits: 0 });
+        }
+      }
+      
+      return remaining;
+    });
   };
   
   // Handle recruitment attempt
@@ -2226,6 +2304,7 @@ function BattleView({
           previousLevel={levelUpData.previousLevel}
           newMoves={levelUpData.newMoves}
           onContinue={handleLevelUpContinue}
+          isPassive={levelUpData.isPassive}
         />
       )}
       

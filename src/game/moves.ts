@@ -1,4 +1,5 @@
 // Movesets System - Abilities based on 1-3 aspects (Species, Element, Class)
+// Moves now have unlock levels for progression
 
 import { SpeciesType, ElementType, ClassType } from './types';
 
@@ -20,150 +21,263 @@ export interface Move {
   element?: ElementType;    // Elemental type if applicable
   classBonus?: ClassType;   // Class that gives bonus if applicable
   effect?: string;      // Special effect
+  unlockLevel?: number; // Level required to learn this move (default: 1)
 }
 
 // ============= SPECIES-ONLY MOVES (1 aspect) =============
 export const SPECIES_MOVES: Record<SpeciesType, Move[]> = {
   slime: [
-    { id: 'slime_slam', name: 'Slime Slam', description: 'A goopy body slam', type: 'melee', power: 25, accuracy: 95, staminaCost: 5, speedMod: 0, aspects: ['species'] },
-    { id: 'absorb', name: 'Absorb', description: 'Absorb HP from enemy', type: 'melee', power: 15, accuracy: 100, staminaCost: 8, speedMod: -1, aspects: ['species'], effect: 'heal_self' },
+    { id: 'slime_slam', name: 'Slime Slam', description: 'A goopy body slam', type: 'melee', power: 25, accuracy: 95, staminaCost: 5, speedMod: 0, aspects: ['species'], unlockLevel: 1 },
+    { id: 'absorb', name: 'Absorb', description: 'Absorb HP from enemy', type: 'melee', power: 15, accuracy: 100, staminaCost: 8, speedMod: -1, aspects: ['species'], effect: 'heal_self', unlockLevel: 1 },
+    { id: 'slime_shield', name: 'Slime Shield', description: 'Coat yourself in protective goo', type: 'status', power: 0, accuracy: 100, staminaCost: 6, speedMod: 0, aspects: ['species'], effect: 'raise_defense', unlockLevel: 4 },
+    { id: 'goo_cannon', name: 'Goo Cannon', description: 'Launch a blob of slime', type: 'ranged', power: 35, accuracy: 85, staminaCost: 9, speedMod: 0, aspects: ['species'], effect: 'lower_speed', unlockLevel: 7 },
+    { id: 'mega_absorb', name: 'Mega Absorb', description: 'Drain massive HP from enemy', type: 'melee', power: 30, accuracy: 95, staminaCost: 14, speedMod: -1, aspects: ['species'], effect: 'heal_self', unlockLevel: 12 },
   ],
   skeleton: [
-    { id: 'bone_throw', name: 'Bone Throw', description: 'Hurl a sharp bone', type: 'ranged', power: 30, accuracy: 85, staminaCost: 6, speedMod: 0, aspects: ['species'] },
-    { id: 'rattle', name: 'Rattle', description: 'Scary bone rattling', type: 'status', power: 0, accuracy: 90, staminaCost: 4, speedMod: 1, aspects: ['species'], effect: 'lower_defense' },
+    { id: 'bone_throw', name: 'Bone Throw', description: 'Hurl a sharp bone', type: 'ranged', power: 30, accuracy: 85, staminaCost: 6, speedMod: 0, aspects: ['species'], unlockLevel: 1 },
+    { id: 'rattle', name: 'Rattle', description: 'Scary bone rattling', type: 'status', power: 0, accuracy: 90, staminaCost: 4, speedMod: 1, aspects: ['species'], effect: 'lower_defense', unlockLevel: 1 },
+    { id: 'bone_club', name: 'Bone Club', description: 'Swing a femur like a club', type: 'melee', power: 38, accuracy: 90, staminaCost: 8, speedMod: 0, aspects: ['species'], unlockLevel: 5 },
+    { id: 'skull_bash', name: 'Skull Bash', description: 'Headbutt with hollow skull', type: 'melee', power: 45, accuracy: 80, staminaCost: 10, speedMod: -1, aspects: ['species'], unlockLevel: 9 },
+    { id: 'bone_storm', name: 'Bone Storm', description: 'Summon a vortex of bones', type: 'ranged', power: 55, accuracy: 75, staminaCost: 15, speedMod: -1, aspects: ['species'], unlockLevel: 14 },
   ],
   goblin: [
-    { id: 'sneaky_stab', name: 'Sneaky Stab', description: 'A cunning strike', type: 'melee', power: 35, accuracy: 80, staminaCost: 7, speedMod: 1, aspects: ['species'], effect: 'crit_chance' },
-    { id: 'taunt', name: 'Taunt', description: 'Mock the enemy', type: 'status', power: 0, accuracy: 100, staminaCost: 3, speedMod: 2, aspects: ['species'], effect: 'lower_attack' },
+    { id: 'sneaky_stab', name: 'Sneaky Stab', description: 'A cunning strike', type: 'melee', power: 35, accuracy: 80, staminaCost: 7, speedMod: 1, aspects: ['species'], effect: 'crit_chance', unlockLevel: 1 },
+    { id: 'taunt', name: 'Taunt', description: 'Mock the enemy', type: 'status', power: 0, accuracy: 100, staminaCost: 3, speedMod: 2, aspects: ['species'], effect: 'lower_attack', unlockLevel: 1 },
+    { id: 'dirty_trick', name: 'Dirty Trick', description: 'Throw dirt in their eyes', type: 'status', power: 0, accuracy: 85, staminaCost: 5, speedMod: 2, aspects: ['species'], effect: 'lower_accuracy', unlockLevel: 4 },
+    { id: 'backstab', name: 'Backstab', description: 'Critical strike from behind', type: 'melee', power: 50, accuracy: 75, staminaCost: 12, speedMod: 1, aspects: ['species'], effect: 'crit_chance', unlockLevel: 8 },
+    { id: 'ambush', name: 'Ambush', description: 'A devastating surprise attack', type: 'melee', power: 65, accuracy: 70, staminaCost: 16, speedMod: 2, aspects: ['species'], effect: 'crit_chance', unlockLevel: 13 },
   ],
   mushroom: [
-    { id: 'spore_burst', name: 'Spore Burst', description: 'Release toxic spores', type: 'ranged', power: 20, accuracy: 90, staminaCost: 6, speedMod: -1, aspects: ['species'], effect: 'poison' },
-    { id: 'regenerate', name: 'Regenerate', description: 'Heal over time', type: 'heal', power: 25, accuracy: 100, staminaCost: 10, speedMod: 0, aspects: ['species'] },
+    { id: 'spore_burst', name: 'Spore Burst', description: 'Release toxic spores', type: 'ranged', power: 20, accuracy: 90, staminaCost: 6, speedMod: -1, aspects: ['species'], effect: 'poison', unlockLevel: 1 },
+    { id: 'regenerate', name: 'Regenerate', description: 'Heal over time', type: 'heal', power: 25, accuracy: 100, staminaCost: 10, speedMod: 0, aspects: ['species'], unlockLevel: 1 },
+    { id: 'fungal_growth', name: 'Fungal Growth', description: 'Boost defense naturally', type: 'status', power: 0, accuracy: 100, staminaCost: 6, speedMod: 0, aspects: ['species'], effect: 'raise_defense', unlockLevel: 3 },
+    { id: 'mycelium_net', name: 'Mycelium Net', description: 'Trap enemy in fungal web', type: 'status', power: 0, accuracy: 80, staminaCost: 8, speedMod: -1, aspects: ['species'], effect: 'lower_speed', unlockLevel: 6 },
+    { id: 'mega_spore', name: 'Mega Spore', description: 'Massive toxic cloud', type: 'ranged', power: 40, accuracy: 85, staminaCost: 12, speedMod: -2, aspects: ['species'], effect: 'poison', unlockLevel: 10 },
+    { id: 'full_bloom', name: 'Full Bloom', description: 'Powerful regeneration', type: 'heal', power: 50, accuracy: 100, staminaCost: 18, speedMod: -1, aspects: ['species'], unlockLevel: 15 },
   ],
   ghost: [
-    { id: 'haunt', name: 'Haunt', description: 'Phase through and strike', type: 'melee', power: 30, accuracy: 100, staminaCost: 8, speedMod: 0, aspects: ['species'] },
-    { id: 'terrify', name: 'Terrify', description: 'Cause fear', type: 'status', power: 0, accuracy: 85, staminaCost: 5, speedMod: 1, aspects: ['species'], effect: 'lower_speed' },
+    { id: 'haunt', name: 'Haunt', description: 'Phase through and strike', type: 'melee', power: 30, accuracy: 100, staminaCost: 8, speedMod: 0, aspects: ['species'], unlockLevel: 1 },
+    { id: 'terrify', name: 'Terrify', description: 'Cause fear', type: 'status', power: 0, accuracy: 85, staminaCost: 5, speedMod: 1, aspects: ['species'], effect: 'lower_speed', unlockLevel: 1 },
+    { id: 'curse', name: 'Curse', description: 'Inflict a weakening curse', type: 'status', power: 0, accuracy: 80, staminaCost: 7, speedMod: 0, aspects: ['species'], effect: 'lower_attack', unlockLevel: 4 },
+    { id: 'possession', name: 'Possession', description: 'Partially possess the enemy', type: 'melee', power: 45, accuracy: 90, staminaCost: 12, speedMod: 0, aspects: ['species'], effect: 'confuse', unlockLevel: 8 },
+    { id: 'soul_drain', name: 'Soul Drain', description: 'Drain the enemy\'s life force', type: 'melee', power: 50, accuracy: 95, staminaCost: 15, speedMod: -1, aspects: ['species'], effect: 'heal_self', unlockLevel: 13 },
   ],
   imp: [
-    { id: 'mischief', name: 'Mischief', description: 'Tricky attack', type: 'melee', power: 25, accuracy: 90, staminaCost: 5, speedMod: 1, aspects: ['species'] },
-    { id: 'steal_buff', name: 'Steal Buff', description: 'Take enemy buff', type: 'status', power: 0, accuracy: 75, staminaCost: 8, speedMod: 0, aspects: ['species'], effect: 'steal_buff' },
+    { id: 'mischief', name: 'Mischief', description: 'Tricky attack', type: 'melee', power: 25, accuracy: 90, staminaCost: 5, speedMod: 1, aspects: ['species'], unlockLevel: 1 },
+    { id: 'steal_buff', name: 'Steal Buff', description: 'Take enemy buff', type: 'status', power: 0, accuracy: 75, staminaCost: 8, speedMod: 0, aspects: ['species'], effect: 'steal_buff', unlockLevel: 1 },
+    { id: 'prank', name: 'Prank', description: 'Confuse the enemy', type: 'status', power: 0, accuracy: 85, staminaCost: 5, speedMod: 2, aspects: ['species'], effect: 'confuse', unlockLevel: 3 },
+    { id: 'hell_poke', name: 'Hell Poke', description: 'A fiendish jab', type: 'melee', power: 40, accuracy: 95, staminaCost: 9, speedMod: 1, aspects: ['species'], unlockLevel: 7 },
+    { id: 'chaos_strike', name: 'Chaos Strike', description: 'Unpredictable but powerful', type: 'melee', power: 55, accuracy: 80, staminaCost: 14, speedMod: 1, aspects: ['species'], effect: 'confuse', unlockLevel: 12 },
   ],
   golem: [
-    { id: 'rock_smash', name: 'Rock Smash', description: 'Devastating punch', type: 'melee', power: 45, accuracy: 75, staminaCost: 10, speedMod: -2, aspects: ['species'] },
-    { id: 'fortify', name: 'Fortify', description: 'Harden defenses', type: 'status', power: 0, accuracy: 100, staminaCost: 6, speedMod: 0, aspects: ['species'], effect: 'raise_defense' },
+    { id: 'rock_smash', name: 'Rock Smash', description: 'Devastating punch', type: 'melee', power: 45, accuracy: 75, staminaCost: 10, speedMod: -2, aspects: ['species'], unlockLevel: 1 },
+    { id: 'fortify', name: 'Fortify', description: 'Harden defenses', type: 'status', power: 0, accuracy: 100, staminaCost: 6, speedMod: 0, aspects: ['species'], effect: 'raise_defense', unlockLevel: 1 },
+    { id: 'tremor', name: 'Tremor', description: 'Shake the ground', type: 'melee', power: 30, accuracy: 90, staminaCost: 7, speedMod: -1, aspects: ['species'], effect: 'lower_speed', unlockLevel: 4 },
+    { id: 'boulder_throw', name: 'Boulder Throw', description: 'Hurl a massive rock', type: 'ranged', power: 55, accuracy: 70, staminaCost: 13, speedMod: -2, aspects: ['species'], unlockLevel: 8 },
+    { id: 'tectonic_slam', name: 'Tectonic Slam', description: 'Earth-shattering blow', type: 'melee', power: 70, accuracy: 65, staminaCost: 18, speedMod: -3, aspects: ['species'], unlockLevel: 14 },
   ],
   wisp: [
-    { id: 'light_beam', name: 'Light Beam', description: 'Focused light attack', type: 'ranged', power: 30, accuracy: 95, staminaCost: 7, speedMod: 1, aspects: ['species'] },
-    { id: 'illuminate', name: 'Illuminate', description: 'Boost team accuracy', type: 'status', power: 0, accuracy: 100, staminaCost: 5, speedMod: 0, aspects: ['species'], effect: 'raise_accuracy' },
+    { id: 'light_beam', name: 'Light Beam', description: 'Focused light attack', type: 'ranged', power: 30, accuracy: 95, staminaCost: 7, speedMod: 1, aspects: ['species'], unlockLevel: 1 },
+    { id: 'illuminate', name: 'Illuminate', description: 'Boost team accuracy', type: 'status', power: 0, accuracy: 100, staminaCost: 5, speedMod: 0, aspects: ['species'], effect: 'raise_accuracy', unlockLevel: 1 },
+    { id: 'healing_light', name: 'Healing Light', description: 'Soothing radiance', type: 'heal', power: 25, accuracy: 100, staminaCost: 8, speedMod: 0, aspects: ['species'], unlockLevel: 3 },
+    { id: 'flash_blind', name: 'Flash Blind', description: 'Blinding flash of light', type: 'status', power: 0, accuracy: 90, staminaCost: 6, speedMod: 2, aspects: ['species'], effect: 'lower_accuracy', unlockLevel: 6 },
+    { id: 'radiant_burst', name: 'Radiant Burst', description: 'Explosive light energy', type: 'ranged', power: 50, accuracy: 90, staminaCost: 14, speedMod: 1, aspects: ['species'], unlockLevel: 11 },
   ],
   chimera: [
-    { id: 'triple_strike', name: 'Triple Strike', description: 'Three-headed assault', type: 'melee', power: 35, accuracy: 85, staminaCost: 9, speedMod: 0, aspects: ['species'] },
-    { id: 'adapt', name: 'Adapt', description: 'Copy enemy type', type: 'status', power: 0, accuracy: 100, staminaCost: 7, speedMod: 0, aspects: ['species'], effect: 'copy_type' },
+    { id: 'triple_strike', name: 'Triple Strike', description: 'Three-headed assault', type: 'melee', power: 35, accuracy: 85, staminaCost: 9, speedMod: 0, aspects: ['species'], unlockLevel: 1 },
+    { id: 'adapt', name: 'Adapt', description: 'Copy enemy type', type: 'status', power: 0, accuracy: 100, staminaCost: 7, speedMod: 0, aspects: ['species'], effect: 'copy_type', unlockLevel: 1 },
+    { id: 'lion_bite', name: 'Lion Bite', description: 'Savage lion head attack', type: 'melee', power: 45, accuracy: 90, staminaCost: 10, speedMod: 0, aspects: ['species'], unlockLevel: 5 },
+    { id: 'snake_venom', name: 'Snake Venom', description: 'Venomous snake head strike', type: 'melee', power: 35, accuracy: 95, staminaCost: 9, speedMod: 1, aspects: ['species'], effect: 'poison', unlockLevel: 8 },
+    { id: 'goat_ram', name: 'Goat Ram', description: 'Powerful goat head charge', type: 'melee', power: 55, accuracy: 80, staminaCost: 13, speedMod: -1, aspects: ['species'], unlockLevel: 11 },
+    { id: 'chimeric_fury', name: 'Chimeric Fury', description: 'All three heads attack together', type: 'melee', power: 70, accuracy: 75, staminaCost: 18, speedMod: 0, aspects: ['species'], unlockLevel: 15 },
   ],
   dragon: [
-    { id: 'claw_rend', name: 'Claw Rend', description: 'Savage claw attack', type: 'melee', power: 40, accuracy: 90, staminaCost: 8, speedMod: 0, aspects: ['species'] },
-    { id: 'dragon_roar', name: 'Dragon Roar', description: 'Intimidating roar', type: 'status', power: 0, accuracy: 100, staminaCost: 6, speedMod: 1, aspects: ['species'], effect: 'lower_all_stats' },
+    { id: 'claw_rend', name: 'Claw Rend', description: 'Savage claw attack', type: 'melee', power: 40, accuracy: 90, staminaCost: 8, speedMod: 0, aspects: ['species'], unlockLevel: 1 },
+    { id: 'dragon_roar', name: 'Dragon Roar', description: 'Intimidating roar', type: 'status', power: 0, accuracy: 100, staminaCost: 6, speedMod: 1, aspects: ['species'], effect: 'lower_all_stats', unlockLevel: 1 },
+    { id: 'tail_sweep', name: 'Tail Sweep', description: 'Sweeping tail attack', type: 'melee', power: 35, accuracy: 95, staminaCost: 7, speedMod: 0, aspects: ['species'], unlockLevel: 4 },
+    { id: 'wing_gust', name: 'Wing Gust', description: 'Powerful wind from wings', type: 'ranged', power: 40, accuracy: 90, staminaCost: 9, speedMod: 1, aspects: ['species'], effect: 'lower_speed', unlockLevel: 7 },
+    { id: 'dragon_fury', name: 'Dragon Fury', description: 'Unleash draconic rage', type: 'melee', power: 60, accuracy: 85, staminaCost: 14, speedMod: 0, aspects: ['species'], unlockLevel: 11 },
+    { id: 'ancient_wrath', name: 'Ancient Wrath', description: 'Power of an ancient dragon', type: 'melee', power: 80, accuracy: 75, staminaCost: 20, speedMod: -1, aspects: ['species'], unlockLevel: 16 },
   ],
   rat: [
-    { id: 'quick_bite', name: 'Quick Bite', description: 'Fast nibble attack', type: 'melee', power: 20, accuracy: 100, staminaCost: 4, speedMod: 2, aspects: ['species'] },
-    { id: 'scavenge', name: 'Scavenge', description: 'Find an item', type: 'status', power: 0, accuracy: 80, staminaCost: 8, speedMod: 0, aspects: ['species'], effect: 'find_item' },
+    { id: 'quick_bite', name: 'Quick Bite', description: 'Fast nibble attack', type: 'melee', power: 20, accuracy: 100, staminaCost: 4, speedMod: 2, aspects: ['species'], unlockLevel: 1 },
+    { id: 'scavenge', name: 'Scavenge', description: 'Find an item', type: 'status', power: 0, accuracy: 80, staminaCost: 8, speedMod: 0, aspects: ['species'], effect: 'find_item', unlockLevel: 1 },
+    { id: 'gnaw', name: 'Gnaw', description: 'Persistent gnawing', type: 'melee', power: 30, accuracy: 95, staminaCost: 6, speedMod: 1, aspects: ['species'], unlockLevel: 3 },
+    { id: 'disease_bite', name: 'Disease Bite', description: 'Infectious bite', type: 'melee', power: 25, accuracy: 90, staminaCost: 7, speedMod: 1, aspects: ['species'], effect: 'poison', unlockLevel: 6 },
+    { id: 'swarm_call', name: 'Swarm Call', description: 'Call rat allies', type: 'melee', power: 45, accuracy: 85, staminaCost: 12, speedMod: 0, aspects: ['species'], unlockLevel: 10 },
   ],
   spider: [
-    { id: 'venom_bite', name: 'Venom Bite', description: 'Poisonous fangs', type: 'melee', power: 25, accuracy: 90, staminaCost: 6, speedMod: 0, aspects: ['species'], effect: 'poison' },
-    { id: 'web_trap', name: 'Web Trap', description: 'Slow the enemy', type: 'status', power: 0, accuracy: 85, staminaCost: 5, speedMod: 1, aspects: ['species'], effect: 'lower_speed' },
+    { id: 'venom_bite', name: 'Venom Bite', description: 'Poisonous fangs', type: 'melee', power: 25, accuracy: 90, staminaCost: 6, speedMod: 0, aspects: ['species'], effect: 'poison', unlockLevel: 1 },
+    { id: 'web_trap', name: 'Web Trap', description: 'Slow the enemy', type: 'status', power: 0, accuracy: 85, staminaCost: 5, speedMod: 1, aspects: ['species'], effect: 'lower_speed', unlockLevel: 1 },
+    { id: 'web_shot', name: 'Web Shot', description: 'Ranged web attack', type: 'ranged', power: 20, accuracy: 95, staminaCost: 5, speedMod: 1, aspects: ['species'], effect: 'lower_speed', unlockLevel: 4 },
+    { id: 'fang_strike', name: 'Fang Strike', description: 'Powerful fang attack', type: 'melee', power: 40, accuracy: 88, staminaCost: 9, speedMod: 0, aspects: ['species'], effect: 'poison', unlockLevel: 7 },
+    { id: 'cocoon', name: 'Cocoon', description: 'Wrap in protective silk', type: 'status', power: 0, accuracy: 100, staminaCost: 8, speedMod: -1, aspects: ['species'], effect: 'raise_defense', unlockLevel: 10 },
+    { id: 'spider_swarm', name: 'Spider Swarm', description: 'Summon tiny spiders', type: 'melee', power: 50, accuracy: 85, staminaCost: 14, speedMod: 0, aspects: ['species'], effect: 'poison', unlockLevel: 14 },
   ],
   bat: [
-    { id: 'sonic_screech', name: 'Sonic Screech', description: 'Disorienting sound', type: 'ranged', power: 25, accuracy: 95, staminaCost: 6, speedMod: 1, aspects: ['species'] },
-    { id: 'life_drain', name: 'Life Drain', description: 'Vampiric bite', type: 'melee', power: 20, accuracy: 90, staminaCost: 8, speedMod: 0, aspects: ['species'], effect: 'heal_self' },
+    { id: 'sonic_screech', name: 'Sonic Screech', description: 'Disorienting sound', type: 'ranged', power: 25, accuracy: 95, staminaCost: 6, speedMod: 1, aspects: ['species'], unlockLevel: 1 },
+    { id: 'life_drain', name: 'Life Drain', description: 'Vampiric bite', type: 'melee', power: 20, accuracy: 90, staminaCost: 8, speedMod: 0, aspects: ['species'], effect: 'heal_self', unlockLevel: 1 },
+    { id: 'wing_slash', name: 'Wing Slash', description: 'Sharp wing attack', type: 'melee', power: 30, accuracy: 95, staminaCost: 6, speedMod: 1, aspects: ['species'], unlockLevel: 3 },
+    { id: 'echolocation', name: 'Echo Pulse', description: 'Boost accuracy with sound', type: 'status', power: 0, accuracy: 100, staminaCost: 5, speedMod: 0, aspects: ['species'], effect: 'raise_accuracy', unlockLevel: 5 },
+    { id: 'blood_feast', name: 'Blood Feast', description: 'Powerful vampiric attack', type: 'melee', power: 40, accuracy: 88, staminaCost: 12, speedMod: 0, aspects: ['species'], effect: 'heal_self', unlockLevel: 9 },
+    { id: 'ultrasonic_blast', name: 'Ultrasonic Blast', description: 'Devastating sound wave', type: 'ranged', power: 55, accuracy: 90, staminaCost: 15, speedMod: 1, aspects: ['species'], unlockLevel: 13 },
   ],
   snake: [
-    { id: 'constrict', name: 'Constrict', description: 'Crushing squeeze', type: 'melee', power: 30, accuracy: 85, staminaCost: 7, speedMod: -1, aspects: ['species'] },
-    { id: 'toxic_fang', name: 'Toxic Fang', description: 'Venomous strike', type: 'melee', power: 25, accuracy: 90, staminaCost: 6, speedMod: 0, aspects: ['species'], effect: 'poison' },
+    { id: 'constrict', name: 'Constrict', description: 'Crushing squeeze', type: 'melee', power: 30, accuracy: 85, staminaCost: 7, speedMod: -1, aspects: ['species'], unlockLevel: 1 },
+    { id: 'toxic_fang', name: 'Toxic Fang', description: 'Venomous strike', type: 'melee', power: 25, accuracy: 90, staminaCost: 6, speedMod: 0, aspects: ['species'], effect: 'poison', unlockLevel: 1 },
+    { id: 'coil', name: 'Coil', description: 'Defensive coiling', type: 'status', power: 0, accuracy: 100, staminaCost: 4, speedMod: 0, aspects: ['species'], effect: 'raise_defense', unlockLevel: 3 },
+    { id: 'venom_spray', name: 'Venom Spray', description: 'Spray venom at range', type: 'ranged', power: 30, accuracy: 85, staminaCost: 8, speedMod: 0, aspects: ['species'], effect: 'poison', unlockLevel: 6 },
+    { id: 'crushing_coils', name: 'Crushing Coils', description: 'Powerful constriction', type: 'melee', power: 50, accuracy: 82, staminaCost: 12, speedMod: -1, aspects: ['species'], unlockLevel: 10 },
+    { id: 'deadly_venom', name: 'Deadly Venom', description: 'Lethal poison attack', type: 'melee', power: 45, accuracy: 90, staminaCost: 14, speedMod: 0, aspects: ['species'], effect: 'poison', unlockLevel: 14 },
   ],
   wolf: [
-    { id: 'pack_strike', name: 'Pack Strike', description: 'Coordinated attack', type: 'melee', power: 35, accuracy: 90, staminaCost: 7, speedMod: 0, aspects: ['species'] },
-    { id: 'howl', name: 'Howl', description: 'Boost attack power', type: 'status', power: 0, accuracy: 100, staminaCost: 5, speedMod: 0, aspects: ['species'], effect: 'raise_attack' },
+    { id: 'pack_strike', name: 'Pack Strike', description: 'Coordinated attack', type: 'melee', power: 35, accuracy: 90, staminaCost: 7, speedMod: 0, aspects: ['species'], unlockLevel: 1 },
+    { id: 'howl', name: 'Howl', description: 'Boost attack power', type: 'status', power: 0, accuracy: 100, staminaCost: 5, speedMod: 0, aspects: ['species'], effect: 'raise_attack', unlockLevel: 1 },
+    { id: 'feral_bite', name: 'Feral Bite', description: 'Savage biting attack', type: 'melee', power: 40, accuracy: 92, staminaCost: 8, speedMod: 0, aspects: ['species'], unlockLevel: 4 },
+    { id: 'chase_down', name: 'Chase Down', description: 'Swift pursuit attack', type: 'melee', power: 35, accuracy: 95, staminaCost: 7, speedMod: 2, aspects: ['species'], unlockLevel: 7 },
+    { id: 'alpha_strike', name: 'Alpha Strike', description: 'Dominant attack', type: 'melee', power: 55, accuracy: 88, staminaCost: 13, speedMod: 0, aspects: ['species'], effect: 'lower_attack', unlockLevel: 11 },
+    { id: 'pack_frenzy', name: 'Pack Frenzy', description: 'Coordinated assault', type: 'melee', power: 70, accuracy: 80, staminaCost: 17, speedMod: 0, aspects: ['species'], unlockLevel: 15 },
   ],
   beetle: [
-    { id: 'horn_charge', name: 'Horn Charge', description: 'Powerful charge', type: 'melee', power: 35, accuracy: 85, staminaCost: 8, speedMod: -1, aspects: ['species'] },
-    { id: 'shell_guard', name: 'Shell Guard', description: 'Defensive stance', type: 'status', power: 0, accuracy: 100, staminaCost: 4, speedMod: 0, aspects: ['species'], effect: 'raise_defense' },
+    { id: 'horn_charge', name: 'Horn Charge', description: 'Powerful charge', type: 'melee', power: 35, accuracy: 85, staminaCost: 8, speedMod: -1, aspects: ['species'], unlockLevel: 1 },
+    { id: 'shell_guard', name: 'Shell Guard', description: 'Defensive stance', type: 'status', power: 0, accuracy: 100, staminaCost: 4, speedMod: 0, aspects: ['species'], effect: 'raise_defense', unlockLevel: 1 },
+    { id: 'mandible_crush', name: 'Mandible Crush', description: 'Crushing mandible attack', type: 'melee', power: 42, accuracy: 88, staminaCost: 9, speedMod: -1, aspects: ['species'], unlockLevel: 4 },
+    { id: 'roll_out', name: 'Roll Out', description: 'Rolling ball attack', type: 'melee', power: 40, accuracy: 90, staminaCost: 8, speedMod: 0, aspects: ['species'], unlockLevel: 7 },
+    { id: 'iron_shell', name: 'Iron Shell', description: 'Maximum defense', type: 'status', power: 0, accuracy: 100, staminaCost: 10, speedMod: -2, aspects: ['species'], effect: 'raise_defense', unlockLevel: 10 },
+    { id: 'horn_javelin', name: 'Horn Javelin', description: 'Devastating horn strike', type: 'melee', power: 65, accuracy: 78, staminaCost: 16, speedMod: -1, aspects: ['species'], unlockLevel: 14 },
   ],
   crow: [
-    { id: 'peck_flurry', name: 'Peck Flurry', description: 'Rapid pecking', type: 'melee', power: 28, accuracy: 95, staminaCost: 6, speedMod: 1, aspects: ['species'] },
-    { id: 'keen_sight', name: 'Keen Sight', description: 'Reveal enemy stats', type: 'status', power: 0, accuracy: 100, staminaCost: 3, speedMod: 2, aspects: ['species'], effect: 'reveal_stats' },
+    { id: 'peck_flurry', name: 'Peck Flurry', description: 'Rapid pecking', type: 'melee', power: 28, accuracy: 95, staminaCost: 6, speedMod: 1, aspects: ['species'], unlockLevel: 1 },
+    { id: 'keen_sight', name: 'Keen Sight', description: 'Reveal enemy stats', type: 'status', power: 0, accuracy: 100, staminaCost: 3, speedMod: 2, aspects: ['species'], effect: 'reveal_stats', unlockLevel: 1 },
+    { id: 'steal_item', name: 'Steal Item', description: 'Snatch an item', type: 'status', power: 0, accuracy: 70, staminaCost: 8, speedMod: 1, aspects: ['species'], effect: 'steal_item', unlockLevel: 4 },
+    { id: 'dive_bomb', name: 'Dive Bomb', description: 'Aerial dive attack', type: 'melee', power: 45, accuracy: 88, staminaCost: 10, speedMod: 1, aspects: ['species'], unlockLevel: 7 },
+    { id: 'murder_call', name: 'Murder Call', description: 'Call other crows', type: 'ranged', power: 40, accuracy: 92, staminaCost: 11, speedMod: 0, aspects: ['species'], unlockLevel: 10 },
+    { id: 'shadow_wing', name: 'Shadow Wing', description: 'Dark aerial assault', type: 'melee', power: 55, accuracy: 90, staminaCost: 14, speedMod: 1, aspects: ['species'], unlockLevel: 13 },
   ],
   shark: [
-    { id: 'bite_frenzy', name: 'Bite Frenzy', description: 'Savage biting', type: 'melee', power: 45, accuracy: 80, staminaCost: 10, speedMod: 0, aspects: ['species'], effect: 'bonus_vs_wounded' },
-    { id: 'blood_sense', name: 'Blood Sense', description: 'Track wounded prey', type: 'status', power: 0, accuracy: 100, staminaCost: 4, speedMod: 1, aspects: ['species'], effect: 'crit_vs_wounded' },
+    { id: 'bite_frenzy', name: 'Bite Frenzy', description: 'Savage biting', type: 'melee', power: 45, accuracy: 80, staminaCost: 10, speedMod: 0, aspects: ['species'], effect: 'bonus_vs_wounded', unlockLevel: 1 },
+    { id: 'blood_sense', name: 'Blood Sense', description: 'Track wounded prey', type: 'status', power: 0, accuracy: 100, staminaCost: 4, speedMod: 1, aspects: ['species'], effect: 'crit_vs_wounded', unlockLevel: 1 },
+    { id: 'thrash', name: 'Thrash', description: 'Violent thrashing', type: 'melee', power: 40, accuracy: 88, staminaCost: 9, speedMod: 0, aspects: ['species'], unlockLevel: 4 },
+    { id: 'ram', name: 'Ram', description: 'Body slam attack', type: 'melee', power: 50, accuracy: 85, staminaCost: 11, speedMod: 0, aspects: ['species'], unlockLevel: 7 },
+    { id: 'feeding_frenzy', name: 'Feeding Frenzy', description: 'Berserker attack', type: 'melee', power: 60, accuracy: 78, staminaCost: 14, speedMod: 0, aspects: ['species'], effect: 'bonus_vs_wounded', unlockLevel: 11 },
+    { id: 'apex_predator', name: 'Apex Predator', description: 'Ultimate predator strike', type: 'melee', power: 75, accuracy: 72, staminaCost: 18, speedMod: 0, aspects: ['species'], effect: 'bonus_vs_wounded', unlockLevel: 15 },
   ],
   frog: [
-    { id: 'tongue_lash', name: 'Tongue Lash', description: 'Stretchy tongue attack', type: 'ranged', power: 25, accuracy: 95, staminaCost: 5, speedMod: 1, aspects: ['species'] },
-    { id: 'croak', name: 'Croak', description: 'Confusing sound', type: 'status', power: 0, accuracy: 80, staminaCost: 5, speedMod: 0, aspects: ['species'], effect: 'confuse' },
+    { id: 'tongue_lash', name: 'Tongue Lash', description: 'Stretchy tongue attack', type: 'ranged', power: 25, accuracy: 95, staminaCost: 5, speedMod: 1, aspects: ['species'], unlockLevel: 1 },
+    { id: 'croak', name: 'Croak', description: 'Confusing sound', type: 'status', power: 0, accuracy: 80, staminaCost: 5, speedMod: 0, aspects: ['species'], effect: 'confuse', unlockLevel: 1 },
+    { id: 'hop_kick', name: 'Hop Kick', description: 'Leaping kick attack', type: 'melee', power: 32, accuracy: 92, staminaCost: 6, speedMod: 1, aspects: ['species'], unlockLevel: 3 },
+    { id: 'sticky_tongue', name: 'Sticky Tongue', description: 'Grab and pull enemy', type: 'ranged', power: 30, accuracy: 90, staminaCost: 7, speedMod: 0, aspects: ['species'], effect: 'lower_speed', unlockLevel: 6 },
+    { id: 'poison_skin', name: 'Poison Skin', description: 'Secrete toxins', type: 'status', power: 0, accuracy: 100, staminaCost: 8, speedMod: 0, aspects: ['species'], effect: 'poison', unlockLevel: 9 },
+    { id: 'frog_bomb', name: 'Frog Bomb', description: 'Explosive leap attack', type: 'melee', power: 55, accuracy: 85, staminaCost: 14, speedMod: 1, aspects: ['species'], unlockLevel: 13 },
   ],
   jellyfish: [
-    { id: 'sting_tentacle', name: 'Sting Tentacle', description: 'Stinging attack', type: 'melee', power: 20, accuracy: 90, staminaCost: 5, speedMod: 0, aspects: ['species'], effect: 'paralyze' },
-    { id: 'drift', name: 'Drift', description: 'Evasive movement', type: 'status', power: 0, accuracy: 100, staminaCost: 4, speedMod: 0, aspects: ['species'], effect: 'raise_dodge' },
+    { id: 'sting_tentacle', name: 'Sting Tentacle', description: 'Stinging attack', type: 'melee', power: 20, accuracy: 90, staminaCost: 5, speedMod: 0, aspects: ['species'], effect: 'paralyze', unlockLevel: 1 },
+    { id: 'drift', name: 'Drift', description: 'Evasive movement', type: 'status', power: 0, accuracy: 100, staminaCost: 4, speedMod: 0, aspects: ['species'], effect: 'raise_dodge', unlockLevel: 1 },
+    { id: 'tentacle_wrap', name: 'Tentacle Wrap', description: 'Constricting tentacles', type: 'melee', power: 30, accuracy: 88, staminaCost: 7, speedMod: -1, aspects: ['species'], effect: 'paralyze', unlockLevel: 4 },
+    { id: 'bioluminescence', name: 'Bioluminescence', description: 'Confusing light display', type: 'status', power: 0, accuracy: 85, staminaCost: 6, speedMod: 0, aspects: ['species'], effect: 'confuse', unlockLevel: 6 },
+    { id: 'venom_cloud', name: 'Venom Cloud', description: 'Toxic cloud release', type: 'ranged', power: 35, accuracy: 85, staminaCost: 10, speedMod: -1, aspects: ['species'], effect: 'poison', unlockLevel: 9 },
+    { id: 'tentacle_storm', name: 'Tentacle Storm', description: 'Flurry of stinging attacks', type: 'melee', power: 50, accuracy: 82, staminaCost: 14, speedMod: -1, aspects: ['species'], effect: 'paralyze', unlockLevel: 13 },
   ],
 };
 
 // ============= ELEMENT-ONLY MOVES (1 aspect) =============
 export const ELEMENT_MOVES: Record<ElementType, Move[]> = {
   normal: [
-    { id: 'tackle', name: 'Tackle', description: 'Basic physical attack', type: 'melee', power: 25, accuracy: 95, staminaCost: 4, speedMod: 0, aspects: ['element'], element: 'normal' },
-    { id: 'focus', name: 'Focus', description: 'Concentrate energy', type: 'status', power: 0, accuracy: 100, staminaCost: 5, speedMod: 0, aspects: ['element'], element: 'normal', effect: 'raise_accuracy' },
+    { id: 'tackle', name: 'Tackle', description: 'Basic physical attack', type: 'melee', power: 25, accuracy: 95, staminaCost: 4, speedMod: 0, aspects: ['element'], element: 'normal', unlockLevel: 1 },
+    { id: 'focus', name: 'Focus', description: 'Concentrate energy', type: 'status', power: 0, accuracy: 100, staminaCost: 5, speedMod: 0, aspects: ['element'], element: 'normal', effect: 'raise_accuracy', unlockLevel: 1 },
+    { id: 'slam', name: 'Slam', description: 'Powerful body slam', type: 'melee', power: 40, accuracy: 88, staminaCost: 8, speedMod: 0, aspects: ['element'], element: 'normal', unlockLevel: 5 },
+    { id: 'double_strike', name: 'Double Strike', description: 'Two quick attacks', type: 'melee', power: 35, accuracy: 92, staminaCost: 7, speedMod: 1, aspects: ['element'], element: 'normal', unlockLevel: 8 },
+    { id: 'full_power', name: 'Full Power', description: 'Maximum effort attack', type: 'melee', power: 60, accuracy: 80, staminaCost: 14, speedMod: -1, aspects: ['element'], element: 'normal', unlockLevel: 12 },
   ],
   fire: [
-    { id: 'fireball', name: 'Fireball', description: 'Launch a blazing orb', type: 'ranged', power: 35, accuracy: 90, staminaCost: 8, speedMod: 0, aspects: ['element'], element: 'fire' },
-    { id: 'flame_burst', name: 'Flame Burst', description: 'Explosive fire', type: 'ranged', power: 25, accuracy: 95, staminaCost: 6, speedMod: 1, aspects: ['element'], element: 'fire', effect: 'burn' },
+    { id: 'fireball', name: 'Fireball', description: 'Launch a blazing orb', type: 'ranged', power: 35, accuracy: 90, staminaCost: 8, speedMod: 0, aspects: ['element'], element: 'fire', unlockLevel: 1 },
+    { id: 'flame_burst', name: 'Flame Burst', description: 'Explosive fire', type: 'ranged', power: 25, accuracy: 95, staminaCost: 6, speedMod: 1, aspects: ['element'], element: 'fire', effect: 'burn', unlockLevel: 1 },
+    { id: 'heat_wave', name: 'Heat Wave', description: 'Searing heat wave', type: 'ranged', power: 40, accuracy: 88, staminaCost: 10, speedMod: 0, aspects: ['element'], element: 'fire', effect: 'burn', unlockLevel: 5 },
+    { id: 'fire_spin', name: 'Fire Spin', description: 'Spiraling flames', type: 'ranged', power: 45, accuracy: 85, staminaCost: 11, speedMod: 0, aspects: ['element'], element: 'fire', unlockLevel: 8 },
+    { id: 'inferno', name: 'Inferno', description: 'Massive fire eruption', type: 'ranged', power: 65, accuracy: 78, staminaCost: 16, speedMod: -1, aspects: ['element'], element: 'fire', effect: 'burn', unlockLevel: 12 },
+    { id: 'solar_flare', name: 'Solar Flare', description: 'Blinding fire blast', type: 'ranged', power: 75, accuracy: 72, staminaCost: 20, speedMod: 0, aspects: ['element'], element: 'fire', effect: 'burn', unlockLevel: 16 },
   ],
   water: [
-    { id: 'aqua_jet', name: 'Aqua Jet', description: 'High-pressure water', type: 'ranged', power: 30, accuracy: 95, staminaCost: 7, speedMod: 1, aspects: ['element'], element: 'water' },
-    { id: 'tidal_wave', name: 'Tidal Wave', description: 'Crushing wave', type: 'ranged', power: 40, accuracy: 80, staminaCost: 10, speedMod: -1, aspects: ['element'], element: 'water' },
+    { id: 'aqua_jet', name: 'Aqua Jet', description: 'High-pressure water', type: 'ranged', power: 30, accuracy: 95, staminaCost: 7, speedMod: 1, aspects: ['element'], element: 'water', unlockLevel: 1 },
+    { id: 'tidal_wave', name: 'Tidal Wave', description: 'Crushing wave', type: 'ranged', power: 40, accuracy: 80, staminaCost: 10, speedMod: -1, aspects: ['element'], element: 'water', unlockLevel: 1 },
+    { id: 'bubble_beam', name: 'Bubble Beam', description: 'Stream of bubbles', type: 'ranged', power: 35, accuracy: 92, staminaCost: 8, speedMod: 0, aspects: ['element'], element: 'water', unlockLevel: 4 },
+    { id: 'whirlpool', name: 'Whirlpool', description: 'Trapping vortex', type: 'ranged', power: 45, accuracy: 85, staminaCost: 11, speedMod: -1, aspects: ['element'], element: 'water', effect: 'lower_speed', unlockLevel: 7 },
+    { id: 'hydro_pump', name: 'Hydro Pump', description: 'Devastating water blast', type: 'ranged', power: 65, accuracy: 75, staminaCost: 16, speedMod: 0, aspects: ['element'], element: 'water', unlockLevel: 11 },
+    { id: 'tsunami', name: 'Tsunami', description: 'Massive wave attack', type: 'ranged', power: 80, accuracy: 68, staminaCost: 22, speedMod: -2, aspects: ['element'], element: 'water', unlockLevel: 15 },
   ],
   earth: [
-    { id: 'rock_throw', name: 'Rock Throw', description: 'Hurl boulders', type: 'ranged', power: 35, accuracy: 85, staminaCost: 7, speedMod: 0, aspects: ['element'], element: 'earth' },
-    { id: 'earthquake', name: 'Earthquake', description: 'Ground-shaking attack', type: 'melee', power: 40, accuracy: 75, staminaCost: 12, speedMod: -2, aspects: ['element'], element: 'earth' },
+    { id: 'rock_throw', name: 'Rock Throw', description: 'Hurl boulders', type: 'ranged', power: 35, accuracy: 85, staminaCost: 7, speedMod: 0, aspects: ['element'], element: 'earth', unlockLevel: 1 },
+    { id: 'earthquake', name: 'Earthquake', description: 'Ground-shaking attack', type: 'melee', power: 40, accuracy: 75, staminaCost: 12, speedMod: -2, aspects: ['element'], element: 'earth', unlockLevel: 1 },
+    { id: 'mud_slap', name: 'Mud Slap', description: 'Blinding mud attack', type: 'ranged', power: 25, accuracy: 95, staminaCost: 5, speedMod: 0, aspects: ['element'], element: 'earth', effect: 'lower_accuracy', unlockLevel: 3 },
+    { id: 'stone_edge', name: 'Stone Edge', description: 'Sharp stone attack', type: 'melee', power: 50, accuracy: 80, staminaCost: 12, speedMod: 0, aspects: ['element'], element: 'earth', unlockLevel: 7 },
+    { id: 'landslide', name: 'Landslide', description: 'Avalanche of rocks', type: 'ranged', power: 60, accuracy: 75, staminaCost: 15, speedMod: -1, aspects: ['element'], element: 'earth', unlockLevel: 11 },
+    { id: 'tectonic_fury', name: 'Tectonic Fury', description: 'Earth-shattering power', type: 'melee', power: 85, accuracy: 65, staminaCost: 22, speedMod: -3, aspects: ['element'], element: 'earth', unlockLevel: 15 },
   ],
   air: [
-    { id: 'wind_slash', name: 'Wind Slash', description: 'Cutting air blade', type: 'ranged', power: 30, accuracy: 95, staminaCost: 6, speedMod: 2, aspects: ['element'], element: 'air' },
-    { id: 'cyclone', name: 'Cyclone', description: 'Spinning vortex', type: 'ranged', power: 35, accuracy: 85, staminaCost: 9, speedMod: 0, aspects: ['element'], element: 'air', effect: 'confuse' },
+    { id: 'wind_slash', name: 'Wind Slash', description: 'Cutting air blade', type: 'ranged', power: 30, accuracy: 95, staminaCost: 6, speedMod: 2, aspects: ['element'], element: 'air', unlockLevel: 1 },
+    { id: 'cyclone', name: 'Cyclone', description: 'Spinning vortex', type: 'ranged', power: 35, accuracy: 85, staminaCost: 9, speedMod: 0, aspects: ['element'], element: 'air', effect: 'confuse', unlockLevel: 1 },
+    { id: 'gust', name: 'Gust', description: 'Powerful wind blast', type: 'ranged', power: 28, accuracy: 100, staminaCost: 5, speedMod: 2, aspects: ['element'], element: 'air', unlockLevel: 3 },
+    { id: 'air_cutter', name: 'Air Cutter', description: 'Sharp wind blades', type: 'ranged', power: 45, accuracy: 92, staminaCost: 10, speedMod: 1, aspects: ['element'], element: 'air', unlockLevel: 6 },
+    { id: 'tornado', name: 'Tornado', description: 'Massive wind funnel', type: 'ranged', power: 55, accuracy: 80, staminaCost: 14, speedMod: 0, aspects: ['element'], element: 'air', effect: 'confuse', unlockLevel: 10 },
+    { id: 'hurricane', name: 'Hurricane', description: 'Devastating storm', type: 'ranged', power: 70, accuracy: 72, staminaCost: 18, speedMod: -1, aspects: ['element'], element: 'air', effect: 'confuse', unlockLevel: 14 },
   ],
   void: [
-    { id: 'shadow_bolt', name: 'Shadow Bolt', description: 'Dark energy blast', type: 'ranged', power: 35, accuracy: 90, staminaCost: 8, speedMod: 0, aspects: ['element'], element: 'void' },
-    { id: 'null_zone', name: 'Null Zone', description: 'Drain enemy stamina', type: 'status', power: 0, accuracy: 85, staminaCost: 10, speedMod: -1, aspects: ['element'], element: 'void', effect: 'drain_stamina' },
+    { id: 'shadow_bolt', name: 'Shadow Bolt', description: 'Dark energy blast', type: 'ranged', power: 35, accuracy: 90, staminaCost: 8, speedMod: 0, aspects: ['element'], element: 'void', unlockLevel: 1 },
+    { id: 'null_zone', name: 'Null Zone', description: 'Drain enemy stamina', type: 'status', power: 0, accuracy: 85, staminaCost: 10, speedMod: -1, aspects: ['element'], element: 'void', effect: 'drain_stamina', unlockLevel: 1 },
+    { id: 'dark_pulse', name: 'Dark Pulse', description: 'Wave of darkness', type: 'ranged', power: 40, accuracy: 88, staminaCost: 9, speedMod: 0, aspects: ['element'], element: 'void', unlockLevel: 4 },
+    { id: 'void_touch', name: 'Void Touch', description: 'Draining contact', type: 'melee', power: 35, accuracy: 95, staminaCost: 8, speedMod: 0, aspects: ['element'], element: 'void', effect: 'drain_stamina', unlockLevel: 7 },
+    { id: 'shadow_storm', name: 'Shadow Storm', description: 'Storm of darkness', type: 'ranged', power: 55, accuracy: 82, staminaCost: 14, speedMod: 0, aspects: ['element'], element: 'void', unlockLevel: 10 },
+    { id: 'void_collapse', name: 'Void Collapse', description: 'Collapse reality itself', type: 'ranged', power: 75, accuracy: 70, staminaCost: 20, speedMod: -1, aspects: ['element'], element: 'void', effect: 'drain_stamina', unlockLevel: 14 },
   ],
 };
 
 // ============= CLASS-ONLY MOVES (1 aspect) =============
 export const CLASS_MOVES: Record<ClassType, Move[]> = {
   normal: [
-    { id: 'basic_attack', name: 'Basic Attack', description: 'Simple attack', type: 'melee', power: 25, accuracy: 100, staminaCost: 3, speedMod: 0, aspects: ['class'], classBonus: 'normal' },
-    { id: 'rest', name: 'Rest', description: 'Recover stamina', type: 'status', power: 0, accuracy: 100, staminaCost: 0, speedMod: -2, aspects: ['class'], classBonus: 'normal', effect: 'restore_stamina' },
+    { id: 'basic_attack', name: 'Basic Attack', description: 'Simple attack', type: 'melee', power: 25, accuracy: 100, staminaCost: 3, speedMod: 0, aspects: ['class'], classBonus: 'normal', unlockLevel: 1 },
+    { id: 'rest', name: 'Rest', description: 'Recover stamina', type: 'status', power: 0, accuracy: 100, staminaCost: 0, speedMod: -2, aspects: ['class'], classBonus: 'normal', effect: 'restore_stamina', unlockLevel: 1 },
+    { id: 'balanced_strike', name: 'Balanced Strike', description: 'Well-rounded attack', type: 'melee', power: 35, accuracy: 95, staminaCost: 6, speedMod: 0, aspects: ['class'], classBonus: 'normal', unlockLevel: 5 },
+    { id: 'adaptability', name: 'Adaptability', description: 'Boost all stats slightly', type: 'status', power: 0, accuracy: 100, staminaCost: 10, speedMod: 0, aspects: ['class'], classBonus: 'normal', effect: 'raise_all_stats', unlockLevel: 10 },
   ],
   kinetic: [
-    { id: 'power_strike', name: 'Power Strike', description: 'Raw physical force', type: 'melee', power: 40, accuracy: 90, staminaCost: 8, speedMod: 0, aspects: ['class'], classBonus: 'kinetic' },
-    { id: 'momentum', name: 'Momentum', description: 'Build up power', type: 'status', power: 0, accuracy: 100, staminaCost: 5, speedMod: 0, aspects: ['class'], classBonus: 'kinetic', effect: 'charge_next' },
-    { id: 'second_wind', name: 'Second Wind', description: 'Recover 25 stamina', type: 'status', power: 0, accuracy: 100, staminaCost: 0, speedMod: -1, aspects: ['class'], classBonus: 'kinetic', effect: 'restore_stamina_25' },
+    { id: 'power_strike', name: 'Power Strike', description: 'Raw physical force', type: 'melee', power: 40, accuracy: 90, staminaCost: 8, speedMod: 0, aspects: ['class'], classBonus: 'kinetic', unlockLevel: 1 },
+    { id: 'momentum', name: 'Momentum', description: 'Build up power', type: 'status', power: 0, accuracy: 100, staminaCost: 5, speedMod: 0, aspects: ['class'], classBonus: 'kinetic', effect: 'charge_next', unlockLevel: 1 },
+    { id: 'second_wind', name: 'Second Wind', description: 'Recover 25 stamina', type: 'status', power: 0, accuracy: 100, staminaCost: 0, speedMod: -1, aspects: ['class'], classBonus: 'kinetic', effect: 'restore_stamina_25', unlockLevel: 1 },
+    { id: 'heavy_blow', name: 'Heavy Blow', description: 'Powerful but slow', type: 'melee', power: 55, accuracy: 82, staminaCost: 12, speedMod: -1, aspects: ['class'], classBonus: 'kinetic', unlockLevel: 5 },
+    { id: 'full_force', name: 'Full Force', description: 'Maximum physical power', type: 'melee', power: 70, accuracy: 75, staminaCost: 16, speedMod: -2, aspects: ['class'], classBonus: 'kinetic', unlockLevel: 9 },
+    { id: 'meteor_strike', name: 'Meteor Strike', description: 'Devastating physical attack', type: 'melee', power: 85, accuracy: 68, staminaCost: 20, speedMod: -2, aspects: ['class'], classBonus: 'kinetic', unlockLevel: 14 },
   ],
   energy: [
-    { id: 'energy_blast', name: 'Energy Blast', description: 'Pure energy attack', type: 'ranged', power: 35, accuracy: 95, staminaCost: 7, speedMod: 1, aspects: ['class'], classBonus: 'energy' },
-    { id: 'overcharge', name: 'Overcharge', description: 'Boost special power', type: 'status', power: 0, accuracy: 100, staminaCost: 6, speedMod: 0, aspects: ['class'], classBonus: 'energy', effect: 'raise_special' },
-    { id: 'energy_siphon', name: 'Energy Siphon', description: 'Drain stamina from enemy', type: 'status', power: 0, accuracy: 85, staminaCost: 0, speedMod: 0, aspects: ['class'], classBonus: 'energy', effect: 'drain_enemy_stamina' },
+    { id: 'energy_blast', name: 'Energy Blast', description: 'Pure energy attack', type: 'ranged', power: 35, accuracy: 95, staminaCost: 7, speedMod: 1, aspects: ['class'], classBonus: 'energy', unlockLevel: 1 },
+    { id: 'overcharge', name: 'Overcharge', description: 'Boost special power', type: 'status', power: 0, accuracy: 100, staminaCost: 6, speedMod: 0, aspects: ['class'], classBonus: 'energy', effect: 'raise_special', unlockLevel: 1 },
+    { id: 'energy_siphon', name: 'Energy Siphon', description: 'Drain stamina from enemy', type: 'status', power: 0, accuracy: 85, staminaCost: 0, speedMod: 0, aspects: ['class'], classBonus: 'energy', effect: 'drain_enemy_stamina', unlockLevel: 1 },
+    { id: 'power_surge', name: 'Power Surge', description: 'Surge of energy', type: 'ranged', power: 45, accuracy: 92, staminaCost: 10, speedMod: 1, aspects: ['class'], classBonus: 'energy', unlockLevel: 5 },
+    { id: 'plasma_bolt', name: 'Plasma Bolt', description: 'Superheated energy', type: 'ranged', power: 60, accuracy: 85, staminaCost: 14, speedMod: 1, aspects: ['class'], classBonus: 'energy', unlockLevel: 9 },
+    { id: 'nova_burst', name: 'Nova Burst', description: 'Explosive energy release', type: 'ranged', power: 75, accuracy: 78, staminaCost: 18, speedMod: 0, aspects: ['class'], classBonus: 'energy', unlockLevel: 13 },
   ],
   biological: [
-    { id: 'bio_strike', name: 'Bio Strike', description: 'Nature-infused attack', type: 'melee', power: 30, accuracy: 90, staminaCost: 6, speedMod: 0, aspects: ['class'], classBonus: 'biological' },
-    { id: 'regeneration', name: 'Regeneration', description: 'Heal 30 HP', type: 'heal', power: 30, accuracy: 100, staminaCost: 10, speedMod: -1, aspects: ['class'], classBonus: 'biological' },
-    { id: 'photosynthesis', name: 'Photosynthesis', description: 'Recover 20 stamina', type: 'status', power: 0, accuracy: 100, staminaCost: 0, speedMod: -2, aspects: ['class'], classBonus: 'biological', effect: 'restore_stamina_20' },
+    { id: 'bio_strike', name: 'Bio Strike', description: 'Nature-infused attack', type: 'melee', power: 30, accuracy: 90, staminaCost: 6, speedMod: 0, aspects: ['class'], classBonus: 'biological', unlockLevel: 1 },
+    { id: 'regeneration', name: 'Regeneration', description: 'Heal 30 HP', type: 'heal', power: 30, accuracy: 100, staminaCost: 10, speedMod: -1, aspects: ['class'], classBonus: 'biological', unlockLevel: 1 },
+    { id: 'photosynthesis', name: 'Photosynthesis', description: 'Recover 20 stamina', type: 'status', power: 0, accuracy: 100, staminaCost: 0, speedMod: -2, aspects: ['class'], classBonus: 'biological', effect: 'restore_stamina_20', unlockLevel: 1 },
+    { id: 'growth', name: 'Growth', description: 'Boost attack and special', type: 'status', power: 0, accuracy: 100, staminaCost: 8, speedMod: 0, aspects: ['class'], classBonus: 'biological', effect: 'raise_attack', unlockLevel: 4 },
+    { id: 'nature_wrath', name: "Nature's Wrath", description: 'Powerful natural attack', type: 'melee', power: 50, accuracy: 88, staminaCost: 12, speedMod: 0, aspects: ['class'], classBonus: 'biological', unlockLevel: 8 },
+    { id: 'full_restore', name: 'Full Restore', description: 'Heal 60 HP', type: 'heal', power: 60, accuracy: 100, staminaCost: 18, speedMod: -2, aspects: ['class'], classBonus: 'biological', unlockLevel: 12 },
   ],
   chemical: [
-    { id: 'acid_spray', name: 'Acid Spray', description: 'Corrosive attack', type: 'ranged', power: 30, accuracy: 90, staminaCost: 7, speedMod: 0, aspects: ['class'], classBonus: 'chemical', effect: 'lower_defense' },
-    { id: 'catalyst', name: 'Catalyst', description: 'Boost next attack', type: 'status', power: 0, accuracy: 100, staminaCost: 5, speedMod: 0, aspects: ['class'], classBonus: 'chemical', effect: 'double_next' },
-    { id: 'adrenaline', name: 'Adrenaline', description: 'Recover 15 stamina', type: 'status', power: 0, accuracy: 100, staminaCost: 0, speedMod: 1, aspects: ['class'], classBonus: 'chemical', effect: 'restore_stamina_15' },
+    { id: 'acid_spray', name: 'Acid Spray', description: 'Corrosive attack', type: 'ranged', power: 30, accuracy: 90, staminaCost: 7, speedMod: 0, aspects: ['class'], classBonus: 'chemical', effect: 'lower_defense', unlockLevel: 1 },
+    { id: 'catalyst', name: 'Catalyst', description: 'Boost next attack', type: 'status', power: 0, accuracy: 100, staminaCost: 5, speedMod: 0, aspects: ['class'], classBonus: 'chemical', effect: 'double_next', unlockLevel: 1 },
+    { id: 'adrenaline', name: 'Adrenaline', description: 'Recover 15 stamina', type: 'status', power: 0, accuracy: 100, staminaCost: 0, speedMod: 1, aspects: ['class'], classBonus: 'chemical', effect: 'restore_stamina_15', unlockLevel: 1 },
+    { id: 'corrosive_bomb', name: 'Corrosive Bomb', description: 'Explosive acid', type: 'ranged', power: 45, accuracy: 85, staminaCost: 11, speedMod: 0, aspects: ['class'], classBonus: 'chemical', effect: 'lower_defense', unlockLevel: 5 },
+    { id: 'toxic_injection', name: 'Toxic Injection', description: 'Inject deadly toxins', type: 'melee', power: 40, accuracy: 92, staminaCost: 10, speedMod: 0, aspects: ['class'], classBonus: 'chemical', effect: 'poison', unlockLevel: 8 },
+    { id: 'chemical_warfare', name: 'Chemical Warfare', description: 'Devastating chemical attack', type: 'ranged', power: 65, accuracy: 78, staminaCost: 17, speedMod: -1, aspects: ['class'], classBonus: 'chemical', effect: 'poison', unlockLevel: 13 },
   ],
   political: [
-    { id: 'decree', name: 'Decree', description: 'Commanding strike', type: 'ranged', power: 25, accuracy: 100, staminaCost: 6, speedMod: 1, aspects: ['class'], classBonus: 'political' },
-    { id: 'inspire', name: 'Inspire', description: 'Boost all stats', type: 'status', power: 0, accuracy: 100, staminaCost: 12, speedMod: 0, aspects: ['class'], classBonus: 'political', effect: 'raise_all_stats' },
-    { id: 'rally', name: 'Rally', description: 'Recover 30 stamina', type: 'status', power: 0, accuracy: 100, staminaCost: 0, speedMod: -1, aspects: ['class'], classBonus: 'political', effect: 'restore_stamina_30' },
+    { id: 'decree', name: 'Decree', description: 'Commanding strike', type: 'ranged', power: 25, accuracy: 100, staminaCost: 6, speedMod: 1, aspects: ['class'], classBonus: 'political', unlockLevel: 1 },
+    { id: 'inspire', name: 'Inspire', description: 'Boost all stats', type: 'status', power: 0, accuracy: 100, staminaCost: 12, speedMod: 0, aspects: ['class'], classBonus: 'political', effect: 'raise_all_stats', unlockLevel: 1 },
+    { id: 'rally', name: 'Rally', description: 'Recover 30 stamina', type: 'status', power: 0, accuracy: 100, staminaCost: 0, speedMod: -1, aspects: ['class'], classBonus: 'political', effect: 'restore_stamina_30', unlockLevel: 1 },
+    { id: 'diplomacy', name: 'Diplomacy', description: 'Lower enemy attack', type: 'status', power: 0, accuracy: 90, staminaCost: 6, speedMod: 1, aspects: ['class'], classBonus: 'political', effect: 'lower_attack', unlockLevel: 4 },
+    { id: 'royal_command', name: 'Royal Command', description: 'Authoritative attack', type: 'ranged', power: 45, accuracy: 95, staminaCost: 11, speedMod: 1, aspects: ['class'], classBonus: 'political', unlockLevel: 8 },
+    { id: 'absolute_authority', name: 'Absolute Authority', description: 'Overwhelming command', type: 'ranged', power: 60, accuracy: 92, staminaCost: 15, speedMod: 0, aspects: ['class'], classBonus: 'political', effect: 'lower_all_stats', unlockLevel: 12 },
   ],
 };
 
@@ -180,139 +294,284 @@ export const STRUGGLE_MOVE: Move = {
   aspects: [],
 };
 
-// ============= DUAL-ASPECT MOVES (2 aspects) =============
+// ============= DUAL-ASPECT MOVES (2 aspects) - Unlock at level 5+ =============
 // Species + Element combos
 export const SPECIES_ELEMENT_MOVES: Record<string, Move[]> = {
   'bat_fire': [
-    { id: 'bat_fire_inferno_screech', name: 'Inferno Screech', description: 'A burning sonic wave', type: 'ranged', power: 40, accuracy: 90, staminaCost: 10, speedMod: 1, aspects: ['species', 'element'], element: 'fire' },
+    { id: 'bat_fire_inferno_screech', name: 'Inferno Screech', description: 'A burning sonic wave', type: 'ranged', power: 40, accuracy: 90, staminaCost: 10, speedMod: 1, aspects: ['species', 'element'], element: 'fire', unlockLevel: 5 },
   ],
   'bat_water': [
-    { id: 'bat_water_tidal_echo', name: 'Tidal Echo', description: 'Water-enhanced sonar', type: 'ranged', power: 35, accuracy: 95, staminaCost: 9, speedMod: 1, aspects: ['species', 'element'], element: 'water' },
+    { id: 'bat_water_tidal_echo', name: 'Tidal Echo', description: 'Water-enhanced sonar', type: 'ranged', power: 35, accuracy: 95, staminaCost: 9, speedMod: 1, aspects: ['species', 'element'], element: 'water', unlockLevel: 5 },
   ],
   'bat_earth': [
-    { id: 'bat_earth_cave_dive', name: 'Cave Dive', description: 'Stone-coated strike from above', type: 'melee', power: 38, accuracy: 85, staminaCost: 9, speedMod: 0, aspects: ['species', 'element'], element: 'earth' },
+    { id: 'bat_earth_cave_dive', name: 'Cave Dive', description: 'Stone-coated strike from above', type: 'melee', power: 38, accuracy: 85, staminaCost: 9, speedMod: 0, aspects: ['species', 'element'], element: 'earth', unlockLevel: 5 },
   ],
   'bat_air': [
-    { id: 'bat_air_gale_screech', name: 'Gale Screech', description: 'Wind-amplified cry', type: 'ranged', power: 38, accuracy: 95, staminaCost: 8, speedMod: 2, aspects: ['species', 'element'], element: 'air' },
+    { id: 'bat_air_gale_screech', name: 'Gale Screech', description: 'Wind-amplified cry', type: 'ranged', power: 38, accuracy: 95, staminaCost: 8, speedMod: 2, aspects: ['species', 'element'], element: 'air', unlockLevel: 5 },
   ],
   'bat_void': [
-    { id: 'bat_void_shadow_shriek', name: 'Shadow Shriek', description: 'Dark energy sonic blast', type: 'ranged', power: 42, accuracy: 88, staminaCost: 10, speedMod: 1, aspects: ['species', 'element'], element: 'void' },
+    { id: 'bat_void_shadow_shriek', name: 'Shadow Shriek', description: 'Dark energy sonic blast', type: 'ranged', power: 42, accuracy: 88, staminaCost: 10, speedMod: 1, aspects: ['species', 'element'], element: 'void', unlockLevel: 5 },
   ],
   'slime_fire': [
-    { id: 'slime_fire_lava_splash', name: 'Lava Splash', description: 'Molten body slam', type: 'melee', power: 35, accuracy: 90, staminaCost: 9, speedMod: 0, aspects: ['species', 'element'], element: 'fire', effect: 'burn' },
+    { id: 'slime_fire_lava_splash', name: 'Lava Splash', description: 'Molten body slam', type: 'melee', power: 35, accuracy: 90, staminaCost: 9, speedMod: 0, aspects: ['species', 'element'], element: 'fire', effect: 'burn', unlockLevel: 5 },
+  ],
+  'slime_water': [
+    { id: 'slime_water_tidal_slam', name: 'Tidal Slam', description: 'Water-infused body slam', type: 'melee', power: 38, accuracy: 92, staminaCost: 9, speedMod: 0, aspects: ['species', 'element'], element: 'water', unlockLevel: 5 },
+  ],
+  'slime_earth': [
+    { id: 'slime_earth_mud_slam', name: 'Mud Slam', description: 'Earth-infused goopy slam', type: 'melee', power: 40, accuracy: 88, staminaCost: 10, speedMod: -1, aspects: ['species', 'element'], element: 'earth', unlockLevel: 5 },
+  ],
+  'slime_air': [
+    { id: 'slime_air_bubble_burst', name: 'Bubble Burst', description: 'Explosive air bubbles', type: 'ranged', power: 35, accuracy: 95, staminaCost: 8, speedMod: 1, aspects: ['species', 'element'], element: 'air', unlockLevel: 5 },
+  ],
+  'slime_void': [
+    { id: 'slime_void_dark_absorb', name: 'Dark Absorb', description: 'Void-infused absorption', type: 'melee', power: 32, accuracy: 95, staminaCost: 10, speedMod: 0, aspects: ['species', 'element'], element: 'void', effect: 'heal_self', unlockLevel: 5 },
   ],
   'dragon_fire': [
-    { id: 'dragon_fire_breath', name: 'Fire Breath', description: 'Classic dragon flames', type: 'ranged', power: 50, accuracy: 88, staminaCost: 12, speedMod: 0, aspects: ['species', 'element'], element: 'fire', effect: 'burn' },
+    { id: 'dragon_fire_breath', name: 'Fire Breath', description: 'Classic dragon flames', type: 'ranged', power: 50, accuracy: 88, staminaCost: 12, speedMod: 0, aspects: ['species', 'element'], element: 'fire', effect: 'burn', unlockLevel: 5 },
+    { id: 'dragon_fire_inferno_breath', name: 'Inferno Breath', description: 'Ultimate fire breath', type: 'ranged', power: 70, accuracy: 80, staminaCost: 18, speedMod: -1, aspects: ['species', 'element'], element: 'fire', effect: 'burn', unlockLevel: 12 },
+  ],
+  'dragon_water': [
+    { id: 'dragon_water_breath', name: 'Hydro Breath', description: 'Pressurized water breath', type: 'ranged', power: 50, accuracy: 88, staminaCost: 12, speedMod: 0, aspects: ['species', 'element'], element: 'water', unlockLevel: 5 },
+  ],
+  'dragon_earth': [
+    { id: 'dragon_earth_breath', name: 'Sand Breath', description: 'Blasting sand breath', type: 'ranged', power: 48, accuracy: 85, staminaCost: 12, speedMod: 0, aspects: ['species', 'element'], element: 'earth', effect: 'lower_accuracy', unlockLevel: 5 },
+  ],
+  'dragon_air': [
+    { id: 'dragon_air_breath', name: 'Storm Breath', description: 'Gale-force breath', type: 'ranged', power: 48, accuracy: 92, staminaCost: 11, speedMod: 1, aspects: ['species', 'element'], element: 'air', unlockLevel: 5 },
+  ],
+  'dragon_void': [
+    { id: 'dragon_void_breath', name: 'Void Breath', description: 'Reality-warping breath', type: 'ranged', power: 52, accuracy: 85, staminaCost: 13, speedMod: 0, aspects: ['species', 'element'], element: 'void', effect: 'drain_stamina', unlockLevel: 5 },
   ],
   'shark_water': [
-    { id: 'shark_water_hydro_frenzy', name: 'Hydro Frenzy', description: 'Water-propelled biting', type: 'melee', power: 55, accuracy: 78, staminaCost: 14, speedMod: 1, aspects: ['species', 'element'], element: 'water' },
+    { id: 'shark_water_hydro_frenzy', name: 'Hydro Frenzy', description: 'Water-propelled biting', type: 'melee', power: 55, accuracy: 78, staminaCost: 14, speedMod: 1, aspects: ['species', 'element'], element: 'water', unlockLevel: 5 },
   ],
   'golem_earth': [
-    { id: 'golem_earth_seismic_slam', name: 'Seismic Slam', description: 'Earth-shattering punch', type: 'melee', power: 55, accuracy: 70, staminaCost: 14, speedMod: -2, aspects: ['species', 'element'], element: 'earth' },
+    { id: 'golem_earth_seismic_slam', name: 'Seismic Slam', description: 'Earth-shattering punch', type: 'melee', power: 55, accuracy: 70, staminaCost: 14, speedMod: -2, aspects: ['species', 'element'], element: 'earth', unlockLevel: 5 },
   ],
   'ghost_void': [
-    { id: 'ghost_void_phantom_drain', name: 'Phantom Drain', description: 'Spectral void attack', type: 'melee', power: 40, accuracy: 95, staminaCost: 11, speedMod: 0, aspects: ['species', 'element'], element: 'void', effect: 'heal_self' },
+    { id: 'ghost_void_phantom_drain', name: 'Phantom Drain', description: 'Spectral void attack', type: 'melee', power: 40, accuracy: 95, staminaCost: 11, speedMod: 0, aspects: ['species', 'element'], element: 'void', effect: 'heal_self', unlockLevel: 5 },
+  ],
+  'wisp_fire': [
+    { id: 'wisp_fire_flame_light', name: 'Flame Light', description: 'Burning radiance', type: 'ranged', power: 42, accuracy: 92, staminaCost: 10, speedMod: 1, aspects: ['species', 'element'], element: 'fire', effect: 'burn', unlockLevel: 5 },
+  ],
+  'wisp_air': [
+    { id: 'wisp_air_wind_light', name: 'Wind Light', description: 'Swift light attack', type: 'ranged', power: 38, accuracy: 98, staminaCost: 8, speedMod: 2, aspects: ['species', 'element'], element: 'air', unlockLevel: 5 },
+  ],
+  'wolf_fire': [
+    { id: 'wolf_fire_flame_fang', name: 'Flame Fang', description: 'Burning bite attack', type: 'melee', power: 45, accuracy: 90, staminaCost: 10, speedMod: 0, aspects: ['species', 'element'], element: 'fire', effect: 'burn', unlockLevel: 5 },
+  ],
+  'skeleton_void': [
+    { id: 'skeleton_void_death_rattle', name: 'Death Rattle', description: 'Cursed bone attack', type: 'ranged', power: 42, accuracy: 88, staminaCost: 10, speedMod: 0, aspects: ['species', 'element'], element: 'void', effect: 'lower_defense', unlockLevel: 5 },
+  ],
+  'goblin_fire': [
+    { id: 'goblin_fire_firebomb', name: 'Firebomb', description: 'Explosive goblin bomb', type: 'ranged', power: 45, accuracy: 82, staminaCost: 11, speedMod: 1, aspects: ['species', 'element'], element: 'fire', effect: 'burn', unlockLevel: 5 },
+  ],
+  'spider_void': [
+    { id: 'spider_void_shadow_web', name: 'Shadow Web', description: 'Darkness-infused web', type: 'ranged', power: 38, accuracy: 90, staminaCost: 10, speedMod: 0, aspects: ['species', 'element'], element: 'void', effect: 'lower_speed', unlockLevel: 5 },
+  ],
+  'frog_water': [
+    { id: 'frog_water_hydro_tongue', name: 'Hydro Tongue', description: 'Water-powered tongue lash', type: 'ranged', power: 40, accuracy: 95, staminaCost: 9, speedMod: 1, aspects: ['species', 'element'], element: 'water', unlockLevel: 5 },
+  ],
+  'jellyfish_water': [
+    { id: 'jellyfish_water_current_sting', name: 'Current Sting', description: 'Water-propelled sting', type: 'melee', power: 38, accuracy: 92, staminaCost: 9, speedMod: 0, aspects: ['species', 'element'], element: 'water', effect: 'paralyze', unlockLevel: 5 },
   ],
 };
 
 // Species + Class combos
 export const SPECIES_CLASS_MOVES: Record<string, Move[]> = {
   'bat_kinetic': [
-    { id: 'bat_kinetic_impact_dive', name: 'Impact Dive', description: 'Full-force aerial strike', type: 'melee', power: 42, accuracy: 85, staminaCost: 10, speedMod: 1, aspects: ['species', 'class'], classBonus: 'kinetic' },
+    { id: 'bat_kinetic_impact_dive', name: 'Impact Dive', description: 'Full-force aerial strike', type: 'melee', power: 42, accuracy: 85, staminaCost: 10, speedMod: 1, aspects: ['species', 'class'], classBonus: 'kinetic', unlockLevel: 5 },
   ],
   'bat_energy': [
-    { id: 'bat_energy_pulse_wave', name: 'Pulse Wave', description: 'Energy-charged screech', type: 'ranged', power: 38, accuracy: 92, staminaCost: 9, speedMod: 1, aspects: ['species', 'class'], classBonus: 'energy' },
+    { id: 'bat_energy_pulse_wave', name: 'Pulse Wave', description: 'Energy-charged screech', type: 'ranged', power: 38, accuracy: 92, staminaCost: 9, speedMod: 1, aspects: ['species', 'class'], classBonus: 'energy', unlockLevel: 5 },
   ],
   'dragon_kinetic': [
-    { id: 'dragon_kinetic_tail_slam', name: 'Tail Slam', description: 'Devastating physical tail strike', type: 'melee', power: 50, accuracy: 85, staminaCost: 11, speedMod: -1, aspects: ['species', 'class'], classBonus: 'kinetic' },
+    { id: 'dragon_kinetic_tail_slam', name: 'Tail Slam', description: 'Devastating physical tail strike', type: 'melee', power: 50, accuracy: 85, staminaCost: 11, speedMod: -1, aspects: ['species', 'class'], classBonus: 'kinetic', unlockLevel: 5 },
+  ],
+  'dragon_energy': [
+    { id: 'dragon_energy_plasma_breath', name: 'Plasma Breath', description: 'Energy-infused dragon breath', type: 'ranged', power: 52, accuracy: 88, staminaCost: 13, speedMod: 0, aspects: ['species', 'class'], classBonus: 'energy', unlockLevel: 5 },
   ],
   'slime_biological': [
-    { id: 'slime_bio_mitosis', name: 'Mitosis', description: 'Split and regenerate', type: 'heal', power: 40, accuracy: 100, staminaCost: 12, speedMod: 0, aspects: ['species', 'class'], classBonus: 'biological' },
+    { id: 'slime_bio_mitosis', name: 'Mitosis', description: 'Split and regenerate', type: 'heal', power: 40, accuracy: 100, staminaCost: 12, speedMod: 0, aspects: ['species', 'class'], classBonus: 'biological', unlockLevel: 5 },
   ],
   'spider_chemical': [
-    { id: 'spider_chem_acid_web', name: 'Acid Web', description: 'Corrosive web trap', type: 'ranged', power: 35, accuracy: 88, staminaCost: 10, speedMod: 0, aspects: ['species', 'class'], classBonus: 'chemical', effect: 'poison' },
+    { id: 'spider_chem_acid_web', name: 'Acid Web', description: 'Corrosive web trap', type: 'ranged', power: 35, accuracy: 88, staminaCost: 10, speedMod: 0, aspects: ['species', 'class'], classBonus: 'chemical', effect: 'poison', unlockLevel: 5 },
+  ],
+  'golem_kinetic': [
+    { id: 'golem_kinetic_mega_punch', name: 'Mega Punch', description: 'Ultimate physical punch', type: 'melee', power: 60, accuracy: 75, staminaCost: 14, speedMod: -2, aspects: ['species', 'class'], classBonus: 'kinetic', unlockLevel: 5 },
+  ],
+  'wolf_kinetic': [
+    { id: 'wolf_kinetic_tackle', name: 'Wild Tackle', description: 'Full-force tackle', type: 'melee', power: 48, accuracy: 88, staminaCost: 10, speedMod: 0, aspects: ['species', 'class'], classBonus: 'kinetic', unlockLevel: 5 },
+  ],
+  'ghost_political': [
+    { id: 'ghost_political_haunt_command', name: 'Haunt Command', description: 'Ghostly authority', type: 'status', power: 0, accuracy: 95, staminaCost: 8, speedMod: 1, aspects: ['species', 'class'], classBonus: 'political', effect: 'lower_all_stats', unlockLevel: 5 },
+  ],
+  'shark_kinetic': [
+    { id: 'shark_kinetic_power_bite', name: 'Power Bite', description: 'Maximum force bite', type: 'melee', power: 58, accuracy: 82, staminaCost: 13, speedMod: 0, aspects: ['species', 'class'], classBonus: 'kinetic', unlockLevel: 5 },
+  ],
+  'wisp_energy': [
+    { id: 'wisp_energy_photon_burst', name: 'Photon Burst', description: 'Pure light energy', type: 'ranged', power: 48, accuracy: 95, staminaCost: 12, speedMod: 1, aspects: ['species', 'class'], classBonus: 'energy', unlockLevel: 5 },
+  ],
+  'mushroom_biological': [
+    { id: 'mushroom_bio_mega_regen', name: 'Mega Regenerate', description: 'Powerful natural healing', type: 'heal', power: 50, accuracy: 100, staminaCost: 14, speedMod: -1, aspects: ['species', 'class'], classBonus: 'biological', unlockLevel: 5 },
+  ],
+  'imp_chemical': [
+    { id: 'imp_chem_trick_bomb', name: 'Trick Bomb', description: 'Mischievous explosive', type: 'ranged', power: 42, accuracy: 88, staminaCost: 10, speedMod: 1, aspects: ['species', 'class'], classBonus: 'chemical', effect: 'confuse', unlockLevel: 5 },
   ],
 };
 
 // Element + Class combos
 export const ELEMENT_CLASS_MOVES: Record<string, Move[]> = {
   'fire_kinetic': [
-    { id: 'fire_kinetic_blazing_strike', name: 'Blazing Strike', description: 'Flame-enhanced punch', type: 'melee', power: 45, accuracy: 88, staminaCost: 10, speedMod: 0, aspects: ['element', 'class'], element: 'fire', classBonus: 'kinetic' },
+    { id: 'fire_kinetic_blazing_strike', name: 'Blazing Strike', description: 'Flame-enhanced punch', type: 'melee', power: 45, accuracy: 88, staminaCost: 10, speedMod: 0, aspects: ['element', 'class'], element: 'fire', classBonus: 'kinetic', unlockLevel: 5 },
+  ],
+  'fire_energy': [
+    { id: 'fire_energy_plasma_flame', name: 'Plasma Flame', description: 'Superheated energy fire', type: 'ranged', power: 48, accuracy: 90, staminaCost: 12, speedMod: 1, aspects: ['element', 'class'], element: 'fire', classBonus: 'energy', unlockLevel: 5 },
   ],
   'water_energy': [
-    { id: 'water_energy_hydro_beam', name: 'Hydro Beam', description: 'High-energy water laser', type: 'ranged', power: 45, accuracy: 90, staminaCost: 11, speedMod: 1, aspects: ['element', 'class'], element: 'water', classBonus: 'energy' },
+    { id: 'water_energy_hydro_beam', name: 'Hydro Beam', description: 'High-energy water laser', type: 'ranged', power: 45, accuracy: 90, staminaCost: 11, speedMod: 1, aspects: ['element', 'class'], element: 'water', classBonus: 'energy', unlockLevel: 5 },
+  ],
+  'water_kinetic': [
+    { id: 'water_kinetic_hydro_punch', name: 'Hydro Punch', description: 'Water-powered strike', type: 'melee', power: 45, accuracy: 90, staminaCost: 10, speedMod: 0, aspects: ['element', 'class'], element: 'water', classBonus: 'kinetic', unlockLevel: 5 },
   ],
   'earth_biological': [
-    { id: 'earth_bio_nature_growth', name: "Nature's Growth", description: 'Earth-powered healing', type: 'heal', power: 45, accuracy: 100, staminaCost: 13, speedMod: -1, aspects: ['element', 'class'], element: 'earth', classBonus: 'biological' },
+    { id: 'earth_bio_nature_growth', name: "Nature's Growth", description: 'Earth-powered healing', type: 'heal', power: 45, accuracy: 100, staminaCost: 13, speedMod: -1, aspects: ['element', 'class'], element: 'earth', classBonus: 'biological', unlockLevel: 5 },
+  ],
+  'earth_kinetic': [
+    { id: 'earth_kinetic_boulder_punch', name: 'Boulder Punch', description: 'Earth-infused strike', type: 'melee', power: 52, accuracy: 82, staminaCost: 12, speedMod: -1, aspects: ['element', 'class'], element: 'earth', classBonus: 'kinetic', unlockLevel: 5 },
   ],
   'void_political': [
-    { id: 'void_political_dark_decree', name: 'Dark Decree', description: 'Commanding void energy', type: 'ranged', power: 40, accuracy: 100, staminaCost: 11, speedMod: 0, aspects: ['element', 'class'], element: 'void', classBonus: 'political' },
+    { id: 'void_political_dark_decree', name: 'Dark Decree', description: 'Commanding void energy', type: 'ranged', power: 40, accuracy: 100, staminaCost: 11, speedMod: 0, aspects: ['element', 'class'], element: 'void', classBonus: 'political', unlockLevel: 5 },
+  ],
+  'void_energy': [
+    { id: 'void_energy_dark_pulse', name: 'Dark Energy Pulse', description: 'Concentrated void energy', type: 'ranged', power: 48, accuracy: 88, staminaCost: 12, speedMod: 0, aspects: ['element', 'class'], element: 'void', classBonus: 'energy', unlockLevel: 5 },
   ],
   'air_chemical': [
-    { id: 'air_chem_toxic_cloud', name: 'Toxic Cloud', description: 'Poisonous gas attack', type: 'ranged', power: 30, accuracy: 92, staminaCost: 9, speedMod: 0, aspects: ['element', 'class'], element: 'air', classBonus: 'chemical', effect: 'poison' },
+    { id: 'air_chem_toxic_cloud', name: 'Toxic Cloud', description: 'Poisonous gas attack', type: 'ranged', power: 30, accuracy: 92, staminaCost: 9, speedMod: 0, aspects: ['element', 'class'], element: 'air', classBonus: 'chemical', effect: 'poison', unlockLevel: 5 },
+  ],
+  'air_energy': [
+    { id: 'air_energy_lightning_wind', name: 'Lightning Wind', description: 'Electric wind attack', type: 'ranged', power: 45, accuracy: 92, staminaCost: 11, speedMod: 2, aspects: ['element', 'class'], element: 'air', classBonus: 'energy', unlockLevel: 5 },
   ],
 };
 
-// ============= TRIPLE-ASPECT MOVES (3 aspects - unique to specific combos) =============
+// ============= TRIPLE-ASPECT MOVES (3 aspects - unique signature moves, unlock at level 10+) =============
 export const TRIPLE_ASPECT_MOVES: Record<string, Move> = {
   'bat_fire_kinetic': {
     id: 'bat_fire_kinetic_meteor_dive', name: 'Meteor Dive', description: 'A blazing aerial impact strike unique to Fire Kinetic Bats',
-    type: 'melee', power: 60, accuracy: 82, staminaCost: 15, speedMod: 1, aspects: ['species', 'element', 'class'], element: 'fire', classBonus: 'kinetic'
+    type: 'melee', power: 60, accuracy: 82, staminaCost: 15, speedMod: 1, aspects: ['species', 'element', 'class'], element: 'fire', classBonus: 'kinetic', unlockLevel: 10
+  },
+  'bat_fire_energy': {
+    id: 'bat_fire_energy_solar_screech', name: 'Solar Screech', description: 'Blazing energy sonic attack',
+    type: 'ranged', power: 58, accuracy: 88, staminaCost: 14, speedMod: 1, aspects: ['species', 'element', 'class'], element: 'fire', classBonus: 'energy', unlockLevel: 10
   },
   'dragon_fire_energy': {
     id: 'dragon_fire_energy_solar_blast', name: 'Solar Blast', description: 'Pure plasma dragon breath',
-    type: 'ranged', power: 65, accuracy: 85, staminaCost: 16, speedMod: 0, aspects: ['species', 'element', 'class'], element: 'fire', classBonus: 'energy', effect: 'burn'
+    type: 'ranged', power: 65, accuracy: 85, staminaCost: 16, speedMod: 0, aspects: ['species', 'element', 'class'], element: 'fire', classBonus: 'energy', effect: 'burn', unlockLevel: 10
+  },
+  'dragon_fire_kinetic': {
+    id: 'dragon_fire_kinetic_blazing_charge', name: 'Blazing Charge', description: 'Fiery physical assault',
+    type: 'melee', power: 68, accuracy: 80, staminaCost: 17, speedMod: 0, aspects: ['species', 'element', 'class'], element: 'fire', classBonus: 'kinetic', effect: 'burn', unlockLevel: 10
   },
   'shark_water_kinetic': {
     id: 'shark_water_kinetic_torpedo', name: 'Torpedo Rush', description: 'Maximum velocity water assault',
-    type: 'melee', power: 70, accuracy: 75, staminaCost: 18, speedMod: 2, aspects: ['species', 'element', 'class'], element: 'water', classBonus: 'kinetic'
+    type: 'melee', power: 70, accuracy: 75, staminaCost: 18, speedMod: 2, aspects: ['species', 'element', 'class'], element: 'water', classBonus: 'kinetic', unlockLevel: 10
   },
   'ghost_void_political': {
     id: 'ghost_void_political_spectral_command', name: 'Spectral Command', description: 'Command the shadows themselves',
-    type: 'status', power: 0, accuracy: 100, staminaCost: 14, speedMod: 0, aspects: ['species', 'element', 'class'], element: 'void', classBonus: 'political', effect: 'lower_all_stats'
+    type: 'status', power: 0, accuracy: 100, staminaCost: 14, speedMod: 0, aspects: ['species', 'element', 'class'], element: 'void', classBonus: 'political', effect: 'lower_all_stats', unlockLevel: 10
+  },
+  'ghost_void_energy': {
+    id: 'ghost_void_energy_soul_blast', name: 'Soul Blast', description: 'Pure spectral energy',
+    type: 'ranged', power: 62, accuracy: 90, staminaCost: 15, speedMod: 0, aspects: ['species', 'element', 'class'], element: 'void', classBonus: 'energy', effect: 'heal_self', unlockLevel: 10
   },
   'golem_earth_kinetic': {
     id: 'golem_earth_kinetic_continental_crush', name: 'Continental Crush', description: 'The ultimate earth-shattering blow',
-    type: 'melee', power: 80, accuracy: 65, staminaCost: 20, speedMod: -3, aspects: ['species', 'element', 'class'], element: 'earth', classBonus: 'kinetic'
+    type: 'melee', power: 80, accuracy: 65, staminaCost: 20, speedMod: -3, aspects: ['species', 'element', 'class'], element: 'earth', classBonus: 'kinetic', unlockLevel: 10
+  },
+  'golem_earth_biological': {
+    id: 'golem_earth_bio_living_mountain', name: 'Living Mountain', description: 'Become one with the earth',
+    type: 'status', power: 0, accuracy: 100, staminaCost: 15, speedMod: -2, aspects: ['species', 'element', 'class'], element: 'earth', classBonus: 'biological', effect: 'raise_defense', unlockLevel: 10
   },
   'wisp_air_energy': {
     id: 'wisp_air_energy_aurora_beam', name: 'Aurora Beam', description: 'Prismatic light energy',
-    type: 'ranged', power: 55, accuracy: 95, staminaCost: 14, speedMod: 2, aspects: ['species', 'element', 'class'], element: 'air', classBonus: 'energy'
+    type: 'ranged', power: 55, accuracy: 95, staminaCost: 14, speedMod: 2, aspects: ['species', 'element', 'class'], element: 'air', classBonus: 'energy', unlockLevel: 10
+  },
+  'wolf_fire_kinetic': {
+    id: 'wolf_fire_kinetic_inferno_pounce', name: 'Inferno Pounce', description: 'Blazing physical assault',
+    type: 'melee', power: 62, accuracy: 85, staminaCost: 15, speedMod: 1, aspects: ['species', 'element', 'class'], element: 'fire', classBonus: 'kinetic', effect: 'burn', unlockLevel: 10
+  },
+  'spider_void_chemical': {
+    id: 'spider_void_chem_nightmare_web', name: 'Nightmare Web', description: 'Toxic darkness trap',
+    type: 'ranged', power: 48, accuracy: 88, staminaCost: 14, speedMod: 0, aspects: ['species', 'element', 'class'], element: 'void', classBonus: 'chemical', effect: 'poison', unlockLevel: 10
+  },
+  'slime_water_biological': {
+    id: 'slime_water_bio_tidal_regeneration', name: 'Tidal Regeneration', description: 'Water-powered healing',
+    type: 'heal', power: 55, accuracy: 100, staminaCost: 16, speedMod: -1, aspects: ['species', 'element', 'class'], element: 'water', classBonus: 'biological', unlockLevel: 10
+  },
+  'jellyfish_water_chemical': {
+    id: 'jellyfish_water_chem_toxic_current', name: 'Toxic Current', description: 'Poisonous water attack',
+    type: 'ranged', power: 50, accuracy: 90, staminaCost: 14, speedMod: 0, aspects: ['species', 'element', 'class'], element: 'water', classBonus: 'chemical', effect: 'poison', unlockLevel: 10
+  },
+  'mushroom_earth_biological': {
+    id: 'mushroom_earth_bio_gaia_bloom', name: 'Gaia Bloom', description: 'Ultimate natural restoration',
+    type: 'heal', power: 70, accuracy: 100, staminaCost: 20, speedMod: -2, aspects: ['species', 'element', 'class'], element: 'earth', classBonus: 'biological', unlockLevel: 10
+  },
+  'skeleton_void_political': {
+    id: 'skeleton_void_pol_death_decree', name: 'Death Decree', description: 'Commanding undead authority',
+    type: 'ranged', power: 55, accuracy: 95, staminaCost: 14, speedMod: 0, aspects: ['species', 'element', 'class'], element: 'void', classBonus: 'political', effect: 'lower_all_stats', unlockLevel: 10
+  },
+  'imp_fire_chemical': {
+    id: 'imp_fire_chem_hellfire_bomb', name: 'Hellfire Bomb', description: 'Demonic explosive attack',
+    type: 'ranged', power: 58, accuracy: 82, staminaCost: 15, speedMod: 1, aspects: ['species', 'element', 'class'], element: 'fire', classBonus: 'chemical', effect: 'burn', unlockLevel: 10
+  },
+  'crow_void_political': {
+    id: 'crow_void_pol_omen_call', name: 'Omen Call', description: 'Dark prophetic attack',
+    type: 'ranged', power: 52, accuracy: 95, staminaCost: 13, speedMod: 1, aspects: ['species', 'element', 'class'], element: 'void', classBonus: 'political', effect: 'lower_attack', unlockLevel: 10
   },
 };
 
-// Get all moves available to a monster based on its aspects
-export function getMonsterMoves(species: SpeciesType, element: ElementType, classType: ClassType): Move[] {
+// Get all moves available to a monster based on its aspects and level
+export function getMonsterMoves(species: SpeciesType, element: ElementType, classType: ClassType, level: number = 99): Move[] {
   const moves: Move[] = [];
   
-  // Single aspect moves (always available)
-  moves.push(...SPECIES_MOVES[species]);
-  moves.push(...ELEMENT_MOVES[element]);
-  moves.push(...CLASS_MOVES[classType]);
+  // Filter by unlock level
+  const filterByLevel = (m: Move) => (m.unlockLevel || 1) <= level;
+  
+  // Single aspect moves
+  moves.push(...SPECIES_MOVES[species].filter(filterByLevel));
+  moves.push(...ELEMENT_MOVES[element].filter(filterByLevel));
+  moves.push(...CLASS_MOVES[classType].filter(filterByLevel));
   
   // Dual aspect moves (if defined)
   const speciesElementKey = `${species}_${element}`;
   if (SPECIES_ELEMENT_MOVES[speciesElementKey]) {
-    moves.push(...SPECIES_ELEMENT_MOVES[speciesElementKey]);
+    moves.push(...SPECIES_ELEMENT_MOVES[speciesElementKey].filter(filterByLevel));
   }
   
   const speciesClassKey = `${species}_${classType}`;
   if (SPECIES_CLASS_MOVES[speciesClassKey]) {
-    moves.push(...SPECIES_CLASS_MOVES[speciesClassKey]);
+    moves.push(...SPECIES_CLASS_MOVES[speciesClassKey].filter(filterByLevel));
   }
   
   const elementClassKey = `${element}_${classType}`;
   if (ELEMENT_CLASS_MOVES[elementClassKey]) {
-    moves.push(...ELEMENT_CLASS_MOVES[elementClassKey]);
+    moves.push(...ELEMENT_CLASS_MOVES[elementClassKey].filter(filterByLevel));
   }
   
   // Triple aspect move (if defined - unique signature move)
   const tripleKey = `${species}_${element}_${classType}`;
-  if (TRIPLE_ASPECT_MOVES[tripleKey]) {
+  if (TRIPLE_ASPECT_MOVES[tripleKey] && filterByLevel(TRIPLE_ASPECT_MOVES[tripleKey])) {
     moves.push(TRIPLE_ASPECT_MOVES[tripleKey]);
   }
   
   return moves;
+}
+
+// Get moves that were just unlocked at a specific level
+export function getNewMovesAtLevel(species: SpeciesType, element: ElementType, classType: ClassType, level: number): Move[] {
+  const allMoves = getMonsterMoves(species, element, classType, level);
+  return allMoves.filter(m => m.unlockLevel === level);
 }
 
 // Get aspect display info

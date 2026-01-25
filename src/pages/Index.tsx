@@ -803,7 +803,7 @@ function DungeonView() {
         floor={dungeon.floor} 
         inventory={state.run?.inventory || []} 
         equipmentInventory={state.run?.equipmentInventory || []}
-        equipment={state.run?.equipment}
+        equipment={state.run?.partyEquipment?.[state.run?.activePartyIndex || 0]}
         runMaterials={state.run?.runMaterials || {}}
         moveOrder={state.run?.moveOrder || []} 
         hiddenMoves={state.run?.hiddenMoves || []} 
@@ -843,12 +843,14 @@ function DungeonView() {
       
       {showEquipment && state.run && (
         <EquipmentView
-          monster={state.run.currentMonster}
-          equipment={state.run.equipment}
+          party={state.run.party}
+          activePartyIndex={state.run.activePartyIndex}
+          partyEquipment={state.run.partyEquipment}
           inventory={state.run.equipmentInventory}
-          onEquip={(item) => dispatch({ type: 'EQUIP_ITEM', item })}
-          onUnequip={(slot) => dispatch({ type: 'UNEQUIP_ITEM', slot })}
+          onEquip={(item, partyIndex) => dispatch({ type: 'EQUIP_ITEM', item, partyIndex })}
+          onUnequip={(slot, partyIndex) => dispatch({ type: 'UNEQUIP_ITEM', slot, partyIndex })}
           onDrop={(itemId) => dispatch({ type: 'DROP_EQUIPMENT', itemId })}
+          onBulkEquip={(partyIndex, equipment, usedIds) => dispatch({ type: 'BULK_EQUIP', partyIndex, equipment, usedIds })}
           onClose={() => setShowEquipment(false)}
         />
       )}
@@ -2198,7 +2200,7 @@ function BattleView() {
         floor={state.run.dungeon?.floor || 1}
         inventory={inventory}
         equipmentInventory={state.run.equipmentInventory}
-        equipment={state.run.equipment}
+        equipment={state.run.partyEquipment[state.run.activePartyIndex]}
         runMaterials={state.run.runMaterials}
         moveOrder={state.run.moveOrder}
         hiddenMoves={state.run.hiddenMoves}

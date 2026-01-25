@@ -68,9 +68,10 @@ type GameAction =
   | { type: 'SET_MOVE_ORDER'; order: string[] }
   | { type: 'TOGGLE_HIDE_MOVE'; moveId: string }
   | { type: 'ADD_EQUIPMENT'; item: EquipmentItem }
-  | { type: 'EQUIP_ITEM'; item: EquipmentItem }
-  | { type: 'UNEQUIP_ITEM'; slot: EquipmentSlot }
+  | { type: 'EQUIP_ITEM'; item: EquipmentItem; partyIndex?: number }
+  | { type: 'UNEQUIP_ITEM'; slot: EquipmentSlot; partyIndex?: number }
   | { type: 'DROP_EQUIPMENT'; itemId: string }
+  | { type: 'BULK_EQUIP'; partyIndex: number; equipment: MonsterEquipment; usedIds: string[] }
   | { type: 'ADD_MATERIAL'; materialId: string; quantity: number }
   | { type: 'USE_MATERIALS'; materials: { materialId: string; quantity: number }[] }
   | { type: 'STORE_EQUIPMENT'; item: EquipmentItem }
@@ -117,7 +118,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             { id: 'stamina_tonic', name: 'Stamina Tonic', type: 'potion', value: 20, effect: 'heal_stamina', quantity: 1 },
           ],
           equipmentInventory: [],
-          equipment: action.preEquipped || createEmptyEquipment(),
+          partyEquipment: [action.preEquipped || createEmptyEquipment()],  // One equipment set per party member
           runMaterials: {},
           enemiesDefeated: 0,
           moveOrder: [],
@@ -135,12 +136,15 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case 'END_RUN': {
       // On death (victory=false), return equipped items to town storage
       const equipmentToStore: EquipmentItem[] = [];
-      if (!action.victory && state.run?.equipment) {
+      if (!action.victory && state.run?.partyEquipment) {
         const slots: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory', 'back'];
-        for (const slot of slots) {
-          const item = state.run.equipment[slot];
-          if (item) {
-            equipmentToStore.push(item);
+        // Collect equipment from all party members
+        for (const memberEquipment of state.run.partyEquipment) {
+          for (const slot of slots) {
+            const item = memberEquipment[slot];
+            if (item) {
+              equipmentToStore.push(item);
+            }
           }
         }
       }
@@ -183,13 +187,15 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       // Flee safely - keep materials and equipment by storing them
       if (!state.run) return state;
       
-      // Collect all equipment to store (equipped + inventory)
+      // Collect all equipment to store (equipped from all party members + inventory)
       const equipmentToStore: EquipmentItem[] = [...state.run.equipmentInventory];
       const slots: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory', 'back'];
-      for (const slot of slots) {
-        const item = state.run.equipment[slot];
-        if (item) {
-          equipmentToStore.push(item);
+      for (const memberEquipment of state.run.partyEquipment) {
+        for (const slot of slots) {
+          const item = memberEquipment[slot];
+          if (item) {
+            equipmentToStore.push(item);
+          }
         }
       }
       
@@ -492,43 +498,82 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         },
       };
     
-    case 'EQUIP_ITEM':
+    case 'EQUIP_ITEM': {
       if (!state.run) return state;
+      const equipIndex = action.partyIndex ?? state.run.activePartyIndex;
       const slot = action.item.slot;
-      const previouslyEquipped = state.run.equipment[slot];
+      const currentEquipment = state.run.partyEquipment[equipIndex] || createEmptyEquipment();
+      const previouslyEquipped = currentEquipment[slot];
       const newEquipmentInv = state.run.equipmentInventory.filter(i => i.id !== action.item.id);
       // Add previously equipped item back to inventory
       if (previouslyEquipped) {
         newEquipmentInv.push(previouslyEquipped);
       }
+      // Update the party equipment array
+      const newPartyEquipment = [...state.run.partyEquipment];
+      newPartyEquipment[equipIndex] = {
+        ...currentEquipment,
+        [slot]: action.item,
+      };
       return {
         ...state,
         run: {
           ...state.run,
           equipmentInventory: newEquipmentInv,
-          equipment: {
-            ...state.run.equipment,
-            [slot]: action.item,
-          },
+          partyEquipment: newPartyEquipment,
         },
       };
+    }
     
-    case 'UNEQUIP_ITEM':
+    case 'UNEQUIP_ITEM': {
       if (!state.run) return state;
+      const unequipIndex = action.partyIndex ?? state.run.activePartyIndex;
       const unequipSlot = action.slot;
-      const itemToUnequip = state.run.equipment[unequipSlot];
+      const unequipCurrentEquipment = state.run.partyEquipment[unequipIndex] || createEmptyEquipment();
+      const itemToUnequip = unequipCurrentEquipment[unequipSlot];
       if (!itemToUnequip) return state;
+      // Update the party equipment array
+      const unequipNewPartyEquipment = [...state.run.partyEquipment];
+      unequipNewPartyEquipment[unequipIndex] = {
+        ...unequipCurrentEquipment,
+        [unequipSlot]: null,
+      };
       return {
         ...state,
         run: {
           ...state.run,
           equipmentInventory: [...state.run.equipmentInventory, itemToUnequip],
-          equipment: {
-            ...state.run.equipment,
-            [unequipSlot]: null,
-          },
+          partyEquipment: unequipNewPartyEquipment,
         },
       };
+    }
+    
+    case 'BULK_EQUIP': {
+      if (!state.run) return state;
+      const bulkIndex = action.partyIndex;
+      // Remove used items from inventory
+      const bulkNewInventory = state.run.equipmentInventory.filter(i => !action.usedIds.includes(i.id));
+      // Add previously equipped items back to inventory
+      const bulkCurrentEquipment = state.run.partyEquipment[bulkIndex] || createEmptyEquipment();
+      const slots: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory', 'back'];
+      for (const slot of slots) {
+        const oldItem = bulkCurrentEquipment[slot];
+        if (oldItem && !action.usedIds.includes(oldItem.id)) {
+          bulkNewInventory.push(oldItem);
+        }
+      }
+      // Update party equipment
+      const bulkNewPartyEquipment = [...state.run.partyEquipment];
+      bulkNewPartyEquipment[bulkIndex] = action.equipment;
+      return {
+        ...state,
+        run: {
+          ...state.run,
+          equipmentInventory: bulkNewInventory,
+          partyEquipment: bulkNewPartyEquipment,
+        },
+      };
+    }
     
     case 'DROP_EQUIPMENT':
       if (!state.run) return state;
@@ -685,6 +730,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         run: {
           ...state.run,
           party: [...state.run.party, action.monster],
+          partyEquipment: [...state.run.partyEquipment, createEmptyEquipment()], // Add empty equipment for new member
         },
       };
     

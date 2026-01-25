@@ -1,7 +1,7 @@
 // Unified Game Log - Works for both dungeon exploration and combat
 // Single message system that combines all game events
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp } from 'lucide-react';
@@ -32,17 +32,14 @@ const TYPE_STYLES: Record<LogMessage['type'], string> = {
 
 export function GameLog({ messages, maxHeight = '160px', expanded = true, onToggleExpand }: GameLogProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [isAtBottom, setIsAtBottom] = useState(true);
+  const bottomRef = useRef<HTMLDivElement>(null);
   
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (isAtBottom && scrollRef.current) {
-      const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      }
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
-  }, [messages, isAtBottom]);
+  }, [messages]);
   
   if (!expanded) {
     return (
@@ -85,6 +82,7 @@ export function GameLog({ messages, maxHeight = '160px', expanded = true, onTogg
               </p>
             ))
           )}
+          <div ref={bottomRef} />
         </div>
       </ScrollArea>
     </div>

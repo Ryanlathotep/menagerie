@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { EquipmentIcon, SlotIcon } from './EquipmentIcon';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Tooltip,
@@ -110,24 +111,26 @@ export function CraftingWorkshop({
   };
   
   return (
-    <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex items-center justify-center p-2">
+      <Card className="w-full max-w-4xl h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b flex items-center justify-between">
-          <h2 className="text-xl font-bold bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
+        <div className="p-2 border-b flex items-center justify-between shrink-0">
+          <h2 className="text-base font-bold bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
             🔨 Crafting Workshop
           </h2>
-          <div className="flex gap-2">
+          <div className="flex gap-1">
             <Button
               variant={activeTab === 'craft' ? 'default' : 'ghost'}
               size="sm"
+              className="text-xs h-7 px-2"
               onClick={() => setActiveTab('craft')}
             >
-              ⚒️ Equipment
+              ⚒️ Equip
             </Button>
             <Button
               variant={activeTab === 'consumables' ? 'default' : 'ghost'}
               size="sm"
+              className="text-xs h-7 px-2"
               onClick={() => setActiveTab('consumables')}
             >
               🧪 Potions
@@ -135,11 +138,12 @@ export function CraftingWorkshop({
             <Button
               variant={activeTab === 'dismantle' ? 'default' : 'ghost'}
               size="sm"
+              className="text-xs h-7 px-2"
               onClick={() => setActiveTab('dismantle')}
             >
               🔧 Dismantle
             </Button>
-            <Button variant="ghost" size="sm" onClick={onClose}>✕</Button>
+            <Button variant="ghost" size="sm" className="h-7 px-2" onClick={onClose}>✕</Button>
           </div>
         </div>
         
@@ -204,22 +208,22 @@ function CraftingTab({
   handleCraft: () => void;
 }) {
   return (
-    <div className="flex-1 overflow-hidden flex">
+    <div className="flex-1 overflow-hidden flex min-h-0">
       {/* Recipe List */}
-      <div className="w-1/2 border-r flex flex-col">
-        <Tabs defaultValue="common" className="flex-1 flex flex-col">
-          <TabsList className="w-full grid grid-cols-5 m-2 mr-4">
-            <TabsTrigger value="common" className="text-xs">Common</TabsTrigger>
-            <TabsTrigger value="uncommon" className="text-xs text-green-400">Uncommon</TabsTrigger>
-            <TabsTrigger value="rare" className="text-xs text-blue-400">Rare</TabsTrigger>
-            <TabsTrigger value="epic" className="text-xs text-purple-400">Epic</TabsTrigger>
-            <TabsTrigger value="legendary" className="text-xs text-amber-400">Legend</TabsTrigger>
+      <div className="w-1/2 border-r flex flex-col min-h-0">
+        <Tabs defaultValue="common" className="flex-1 flex flex-col min-h-0">
+          <TabsList className="w-full grid grid-cols-5 mx-1 my-1 shrink-0">
+            <TabsTrigger value="common" className="text-[10px] h-6">Common</TabsTrigger>
+            <TabsTrigger value="uncommon" className="text-[10px] h-6 text-green-400">Uncommon</TabsTrigger>
+            <TabsTrigger value="rare" className="text-[10px] h-6 text-blue-400">Rare</TabsTrigger>
+            <TabsTrigger value="epic" className="text-[10px] h-6 text-purple-400">Epic</TabsTrigger>
+            <TabsTrigger value="legendary" className="text-[10px] h-6 text-amber-400">Legend</TabsTrigger>
           </TabsList>
           
           {Object.entries(recipesByRarity).map(([rarity, recipes]) => (
-            <TabsContent key={rarity} value={rarity} className="flex-1 m-0">
+            <TabsContent key={rarity} value={rarity} className="flex-1 m-0 min-h-0">
               <ScrollArea className="h-full">
-                <div className="p-2 space-y-2">
+                <div className="p-1 space-y-1">
                   {recipes.length > 0 ? recipes.map(recipe => {
                     const craftable = canCraft(recipe);
                     const unlocked = isUnlocked(recipe);
@@ -233,7 +237,7 @@ function CraftingTab({
                           setCraftedItem(null);
                         }}
                         className={`
-                          w-full p-3 rounded-lg border text-left transition-all
+                          w-full p-2 rounded border text-left transition-all
                           ${selectedRecipe?.id === recipe.id 
                             ? 'ring-2 ring-primary' 
                             : 'hover:bg-muted/50'
@@ -247,26 +251,30 @@ function CraftingTab({
                         `}
                       >
                         <div className="flex items-center gap-2">
-                          <span className="text-2xl">{unlocked ? recipe.icon : '❓'}</span>
-                          <div className="flex-1">
-                            <p className={`font-semibold ${unlocked ? rarityStyle.text : 'text-muted-foreground'}`}>
+                          {unlocked ? (
+                            <SlotIcon slot={recipe.resultSlot} size={28} />
+                          ) : (
+                            <span className="text-lg">❓</span>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs font-semibold truncate ${unlocked ? rarityStyle.text : 'text-muted-foreground'}`}>
                               {unlocked ? recipe.name : '???'}
                             </p>
-                            <p className="text-xs text-muted-foreground">
-                              {unlocked ? recipe.description : 'Find this item in the dungeon to unlock'}
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {unlocked ? `${recipe.resultSlot}` : 'Find to unlock'}
                             </p>
                           </div>
                           {!unlocked ? (
-                            <span className="text-muted-foreground text-xs">🔒</span>
+                            <span className="text-muted-foreground text-[10px]">🔒</span>
                           ) : craftable ? (
-                            <span className="text-green-400 text-xs">✓ Ready</span>
+                            <span className="text-green-400 text-[10px]">✓</span>
                           ) : null}
                         </div>
                       </button>
                     );
                   }) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>No {rarity} recipes available</p>
+                    <div className="text-center py-4 text-muted-foreground text-xs">
+                      <p>No {rarity} recipes</p>
                     </div>
                   )}
                 </div>
@@ -277,41 +285,39 @@ function CraftingTab({
       </div>
       
       {/* Recipe Details & Crafting */}
-      <div className="w-1/2 p-4 flex flex-col">
-        {selectedRecipe ? (
-          <>
-            <div className="flex-1 space-y-4">
-              {/* Recipe header */}
-              <div className="flex items-center gap-3">
-                <span className="text-4xl">{isUnlocked(selectedRecipe) ? selectedRecipe.icon : '❓'}</span>
-                <div>
-                  <h3 className={`text-lg font-bold ${isUnlocked(selectedRecipe) ? RARITY_COLORS[selectedRecipe.resultRarity].text : 'text-muted-foreground'}`}>
+      <div className="w-1/2 p-2 flex flex-col min-h-0">
+        <ScrollArea className="flex-1">
+          {selectedRecipe ? (
+            <div className="space-y-3 pr-2">
+              {/* Recipe header with sprite preview */}
+              <div className="flex items-center gap-2">
+                <SlotIcon slot={selectedRecipe.resultSlot} size={36} />
+                <div className="flex-1 min-w-0">
+                  <h3 className={`text-sm font-bold truncate ${isUnlocked(selectedRecipe) ? RARITY_COLORS[selectedRecipe.resultRarity].text : 'text-muted-foreground'}`}>
                     {isUnlocked(selectedRecipe) ? selectedRecipe.name : '???'}
                   </h3>
-                  <p className="text-sm text-muted-foreground capitalize">
+                  <p className="text-[10px] text-muted-foreground capitalize">
                     {selectedRecipe.resultRarity} {selectedRecipe.resultSlot}
-                    {selectedRecipe.element && ` • ${selectedRecipe.element} element`}
+                    {selectedRecipe.element && ` • ${selectedRecipe.element}`}
                   </p>
                 </div>
               </div>
               
               {!isUnlocked(selectedRecipe) ? (
-                <div className="p-4 bg-muted/50 rounded-lg border border-dashed border-muted-foreground/30">
-                  <p className="text-sm text-muted-foreground text-center">
-                    🔒 Recipe Locked
-                  </p>
-                  <p className="text-xs text-muted-foreground text-center mt-2">
-                    Bring back a matching item from the dungeon to unlock this recipe!
+                <div className="p-2 bg-muted/50 rounded border border-dashed border-muted-foreground/30">
+                  <p className="text-xs text-muted-foreground text-center">🔒 Recipe Locked</p>
+                  <p className="text-[10px] text-muted-foreground text-center mt-1">
+                    Bring back a matching item to unlock!
                   </p>
                 </div>
               ) : (
                 <>
-                  <p className="text-sm">{selectedRecipe.description}</p>
+                  <p className="text-xs text-muted-foreground">{selectedRecipe.description}</p>
                   
                   {/* Required materials */}
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-sm">Required Materials</h4>
-                    <div className="space-y-1">
+                  <div className="space-y-1">
+                    <h4 className="font-semibold text-xs">Required Materials</h4>
+                    <div className="space-y-0.5">
                       {selectedRecipe.materials.map(req => {
                         const have = materials[req.materialId] || 0;
                         const enough = have >= req.quantity;
@@ -319,15 +325,10 @@ function CraftingTab({
                         return (
                           <div 
                             key={req.materialId}
-                            className={`
-                              flex items-center justify-between p-2 rounded
-                              ${enough ? 'bg-green-500/10' : 'bg-red-500/10'}
-                            `}
+                            className={`flex items-center justify-between p-1.5 rounded text-xs ${enough ? 'bg-green-500/10' : 'bg-red-500/10'}`}
                           >
-                            <span className="text-sm">
-                              {req.materialId.split('_').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}
-                            </span>
-                            <span className={`text-sm font-mono ${enough ? 'text-green-400' : 'text-red-400'}`}>
+                            <span>{req.materialId.split('_').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}</span>
+                            <span className={`font-mono ${enough ? 'text-green-400' : 'text-red-400'}`}>
                               {have}/{req.quantity}
                             </span>
                           </div>
@@ -338,22 +339,22 @@ function CraftingTab({
                 </>
               )}
               
-              {/* Crafted item preview */}
+              {/* Crafted item preview with sprite */}
               {craftedItem && (
-                <div className={`p-3 rounded-lg border ${RARITY_COLORS[craftedItem.rarity].border} ${RARITY_COLORS[craftedItem.rarity].bg}`}>
-                  <p className="text-xs text-muted-foreground mb-1">Crafted:</p>
+                <div className={`p-2 rounded border ${RARITY_COLORS[craftedItem.rarity].border} ${RARITY_COLORS[craftedItem.rarity].bg}`}>
+                  <p className="text-[10px] text-muted-foreground mb-1">Crafted:</p>
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl">{craftedItem.icon}</span>
-                    <div>
-                      <p className={`font-semibold ${RARITY_COLORS[craftedItem.rarity].text}`}>
+                    <EquipmentIcon item={craftedItem} size={32} />
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-semibold truncate ${RARITY_COLORS[craftedItem.rarity].text}`}>
                         {craftedItem.name}
                       </p>
-                      <div className="flex flex-wrap gap-1 mt-1">
+                      <div className="flex flex-wrap gap-0.5 mt-0.5">
                         {Object.entries(craftedItem.stats).map(([stat, value]) => (
                           value !== 0 && (
                             <span 
                               key={stat} 
-                              className={`text-[10px] px-1 rounded ${value > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
+                              className={`text-[9px] px-1 rounded ${value > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
                             >
                               {value > 0 ? '+' : ''}{value} {stat.slice(0, 3).toUpperCase()}
                             </span>
@@ -365,28 +366,26 @@ function CraftingTab({
                 </div>
               )}
             </div>
-            
-            <Button
-              className="w-full mt-4 bg-gradient-to-r from-orange-500 to-amber-500"
-              disabled={!canCraft(selectedRecipe) || !isUnlocked(selectedRecipe)}
-              onClick={handleCraft}
-            >
-              {!isUnlocked(selectedRecipe) ? '🔒 Locked' : canCraft(selectedRecipe) ? '🔨 Craft' : '❌ Missing Materials'}
-            </Button>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-center">
-            <div className="text-muted-foreground">
-              <p className="text-4xl mb-2">🔨</p>
-              <p>Select a recipe to craft</p>
-              <p className="text-xs mt-2">
-                Materials are kept even if you flee the dungeon!
-              </p>
-              <p className="text-xs mt-1 text-amber-400">
-                💡 Bring back equipment to unlock new recipes
-              </p>
+          ) : (
+            <div className="h-full flex items-center justify-center text-center py-8">
+              <div className="text-muted-foreground">
+                <p className="text-2xl mb-1">🔨</p>
+                <p className="text-xs">Select a recipe to craft</p>
+                <p className="text-[10px] mt-1">Materials kept when fleeing!</p>
+                <p className="text-[10px] text-amber-400">💡 Find items to unlock recipes</p>
+              </div>
             </div>
-          </div>
+          )}
+        </ScrollArea>
+        
+        {selectedRecipe && (
+          <Button
+            className="w-full mt-2 h-8 text-xs bg-gradient-to-r from-orange-500 to-amber-500 shrink-0"
+            disabled={!canCraft(selectedRecipe) || !isUnlocked(selectedRecipe)}
+            onClick={handleCraft}
+          >
+            {!isUnlocked(selectedRecipe) ? '🔒 Locked' : canCraft(selectedRecipe) ? '🔨 Craft' : '❌ Missing Materials'}
+          </Button>
         )}
         
         {/* Material inventory summary */}
@@ -426,22 +425,22 @@ function ConsumablesTab({
   };
 
   return (
-    <div className="flex-1 overflow-hidden flex">
+    <div className="flex-1 overflow-hidden flex min-h-0">
       {/* Recipe List */}
-      <div className="w-1/2 border-r flex flex-col">
-        <Tabs defaultValue="healing" className="flex-1 flex flex-col">
-          <TabsList className="w-full grid grid-cols-4 m-2 mr-4">
+      <div className="w-1/2 border-r flex flex-col min-h-0">
+        <Tabs defaultValue="healing" className="flex-1 flex flex-col min-h-0">
+          <TabsList className="w-full grid grid-cols-4 mx-1 my-1 shrink-0">
             {Object.entries(typeLabels).map(([type, { label, icon }]) => (
-              <TabsTrigger key={type} value={type} className="text-xs">
+              <TabsTrigger key={type} value={type} className="text-[10px] h-6">
                 {icon} {label}
               </TabsTrigger>
             ))}
           </TabsList>
           
           {Object.entries(consumablesByType).map(([type, recipes]) => (
-            <TabsContent key={type} value={type} className="flex-1 m-0">
+            <TabsContent key={type} value={type} className="flex-1 m-0 min-h-0">
               <ScrollArea className="h-full">
-                <div className="p-2 space-y-2">
+                <div className="p-1 space-y-1">
                   {recipes.length > 0 ? recipes.map(recipe => {
                     const craftable = canCraft(recipe);
                     const unlocked = isUnlocked(recipe);
@@ -455,7 +454,7 @@ function ConsumablesTab({
                           setCraftedConsumable(null);
                         }}
                         className={`
-                          w-full p-3 rounded-lg border text-left transition-all
+                          w-full p-2 rounded border text-left transition-all
                           ${selectedConsumable?.id === recipe.id 
                             ? 'ring-2 ring-primary' 
                             : 'hover:bg-muted/50'
@@ -469,26 +468,26 @@ function ConsumablesTab({
                         `}
                       >
                         <div className="flex items-center gap-2">
-                          <span className="text-2xl">{unlocked ? recipe.icon : '❓'}</span>
-                          <div className="flex-1">
-                            <p className={`font-semibold ${unlocked ? rarityStyle.text : 'text-muted-foreground'}`}>
+                          <span className="text-lg">{unlocked ? recipe.icon : '❓'}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs font-semibold truncate ${unlocked ? rarityStyle.text : 'text-muted-foreground'}`}>
                               {unlocked ? recipe.name : '???'}
                             </p>
-                            <p className="text-xs text-muted-foreground">
-                              {unlocked ? recipe.description : 'Find this item in the dungeon to unlock'}
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {unlocked ? recipe.description : 'Find to unlock'}
                             </p>
                           </div>
                           {!unlocked ? (
-                            <span className="text-muted-foreground text-xs">🔒</span>
+                            <span className="text-muted-foreground text-[10px]">🔒</span>
                           ) : craftable ? (
-                            <span className="text-green-400 text-xs">✓ Ready</span>
+                            <span className="text-green-400 text-[10px]">✓</span>
                           ) : null}
                         </div>
                       </button>
                     );
                   }) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>No {type} recipes available</p>
+                    <div className="text-center py-4 text-muted-foreground text-xs">
+                      <p>No {type} recipes</p>
                     </div>
                   )}
                 </div>
@@ -499,40 +498,38 @@ function ConsumablesTab({
       </div>
       
       {/* Recipe Details & Crafting */}
-      <div className="w-1/2 p-4 flex flex-col">
-        {selectedConsumable ? (
-          <>
-            <div className="flex-1 space-y-4">
+      <div className="w-1/2 p-2 flex flex-col min-h-0">
+        <ScrollArea className="flex-1">
+          {selectedConsumable ? (
+            <div className="space-y-3 pr-2">
               {/* Recipe header */}
-              <div className="flex items-center gap-3">
-                <span className="text-4xl">{isUnlocked(selectedConsumable) ? selectedConsumable.icon : '❓'}</span>
-                <div>
-                  <h3 className={`text-lg font-bold ${isUnlocked(selectedConsumable) ? RARITY_COLORS[selectedConsumable.rarity].text : 'text-muted-foreground'}`}>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">{isUnlocked(selectedConsumable) ? selectedConsumable.icon : '❓'}</span>
+                <div className="flex-1 min-w-0">
+                  <h3 className={`text-sm font-bold truncate ${isUnlocked(selectedConsumable) ? RARITY_COLORS[selectedConsumable.rarity].text : 'text-muted-foreground'}`}>
                     {isUnlocked(selectedConsumable) ? selectedConsumable.name : '???'}
                   </h3>
-                  <p className="text-sm text-muted-foreground capitalize">
+                  <p className="text-[10px] text-muted-foreground capitalize">
                     {selectedConsumable.rarity} consumable
                   </p>
                 </div>
               </div>
               
               {!isUnlocked(selectedConsumable) ? (
-                <div className="p-4 bg-muted/50 rounded-lg border border-dashed border-muted-foreground/30">
-                  <p className="text-sm text-muted-foreground text-center">
-                    🔒 Recipe Locked
-                  </p>
-                  <p className="text-xs text-muted-foreground text-center mt-2">
-                    Bring back this potion from the dungeon to unlock the recipe!
+                <div className="p-2 bg-muted/50 rounded border border-dashed border-muted-foreground/30">
+                  <p className="text-xs text-muted-foreground text-center">🔒 Recipe Locked</p>
+                  <p className="text-[10px] text-muted-foreground text-center mt-1">
+                    Bring back this potion to unlock!
                   </p>
                 </div>
               ) : (
                 <>
-                  <p className="text-sm">{selectedConsumable.description}</p>
+                  <p className="text-xs text-muted-foreground">{selectedConsumable.description}</p>
                   
                   {/* Required materials */}
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-sm">Required Materials</h4>
-                    <div className="space-y-1">
+                  <div className="space-y-1">
+                    <h4 className="font-semibold text-xs">Required Materials</h4>
+                    <div className="space-y-0.5">
                       {selectedConsumable.materials.map(req => {
                         const have = materials[req.materialId] || 0;
                         const enough = have >= req.quantity;
@@ -540,15 +537,10 @@ function ConsumablesTab({
                         return (
                           <div 
                             key={req.materialId}
-                            className={`
-                              flex items-center justify-between p-2 rounded
-                              ${enough ? 'bg-green-500/10' : 'bg-red-500/10'}
-                            `}
+                            className={`flex items-center justify-between p-1.5 rounded text-xs ${enough ? 'bg-green-500/10' : 'bg-red-500/10'}`}
                           >
-                            <span className="text-sm">
-                              {req.materialId.split('_').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}
-                            </span>
-                            <span className={`text-sm font-mono ${enough ? 'text-green-400' : 'text-red-400'}`}>
+                            <span>{req.materialId.split('_').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}</span>
+                            <span className={`font-mono ${enough ? 'text-green-400' : 'text-red-400'}`}>
                               {have}/{req.quantity}
                             </span>
                           </div>
@@ -561,42 +553,40 @@ function ConsumablesTab({
               
               {/* Crafted consumable confirmation */}
               {craftedConsumable && (
-                <div className={`p-3 rounded-lg border ${RARITY_COLORS[craftedConsumable.rarity].border} ${RARITY_COLORS[craftedConsumable.rarity].bg}`}>
-                  <p className="text-xs text-muted-foreground mb-1">Crafted:</p>
+                <div className={`p-2 rounded border ${RARITY_COLORS[craftedConsumable.rarity].border} ${RARITY_COLORS[craftedConsumable.rarity].bg}`}>
+                  <p className="text-[10px] text-muted-foreground mb-1">Crafted:</p>
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl">{craftedConsumable.icon}</span>
-                    <div>
-                      <p className={`font-semibold ${RARITY_COLORS[craftedConsumable.rarity].text}`}>
+                    <span className="text-lg">{craftedConsumable.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-semibold truncate ${RARITY_COLORS[craftedConsumable.rarity].text}`}>
                         {craftedConsumable.name}
                       </p>
-                      <p className="text-xs text-muted-foreground">{craftedConsumable.description}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{craftedConsumable.description}</p>
                     </div>
                   </div>
                 </div>
               )}
             </div>
-            
-            <Button
-              className="w-full mt-4 bg-gradient-to-r from-green-500 to-emerald-500"
-              disabled={!canCraft(selectedConsumable) || !isUnlocked(selectedConsumable)}
-              onClick={handleCraftConsumable}
-            >
-              {!isUnlocked(selectedConsumable) ? '🔒 Locked' : canCraft(selectedConsumable) ? '🧪 Brew' : '❌ Missing Materials'}
-            </Button>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-center">
-            <div className="text-muted-foreground">
-              <p className="text-4xl mb-2">🧪</p>
-              <p>Select a consumable to craft</p>
-              <p className="text-xs mt-2">
-                Potions, cures, and buffs to aid your adventure!
-              </p>
-              <p className="text-xs mt-1 text-green-400">
-                💡 Bring back potions to unlock new recipes
-              </p>
+          ) : (
+            <div className="h-full flex items-center justify-center text-center py-8">
+              <div className="text-muted-foreground">
+                <p className="text-2xl mb-1">🧪</p>
+                <p className="text-xs">Select a consumable to craft</p>
+                <p className="text-[10px] mt-1">Potions, cures, and buffs!</p>
+                <p className="text-[10px] text-green-400">💡 Find potions to unlock recipes</p>
+              </div>
             </div>
-          </div>
+          )}
+        </ScrollArea>
+        
+        {selectedConsumable && (
+          <Button
+            className="w-full mt-2 h-8 text-xs bg-gradient-to-r from-green-500 to-emerald-500 shrink-0"
+            disabled={!canCraft(selectedConsumable) || !isUnlocked(selectedConsumable)}
+            onClick={handleCraftConsumable}
+          >
+            {!isUnlocked(selectedConsumable) ? '🔒 Locked' : canCraft(selectedConsumable) ? '🧪 Brew' : '❌ Missing Materials'}
+          </Button>
         )}
         
         {/* Material inventory summary */}
@@ -623,14 +613,14 @@ function DismantleTab({
   const previewResult = selectedDismantle ? dismantleEquipment(selectedDismantle) : null;
   
   return (
-    <div className="flex-1 overflow-hidden flex">
+    <div className="flex-1 overflow-hidden flex min-h-0">
       {/* Equipment List */}
-      <div className="w-1/2 border-r flex flex-col">
-        <div className="p-2 border-b text-xs text-muted-foreground">
-          Select equipment to break down into materials
+      <div className="w-1/2 border-r flex flex-col min-h-0">
+        <div className="p-1.5 border-b text-[10px] text-muted-foreground shrink-0">
+          Select equipment to break down
         </div>
         <ScrollArea className="flex-1">
-          <div className="p-2 space-y-2">
+          <div className="p-1 space-y-1">
             {storedEquipment.length > 0 ? storedEquipment.map(item => {
               const rarityStyle = RARITY_COLORS[item.rarity];
               
@@ -639,7 +629,7 @@ function DismantleTab({
                   key={item.id}
                   onClick={() => setSelectedDismantle(item)}
                   className={`
-                    w-full p-3 rounded-lg border text-left transition-all
+                    w-full p-2 rounded border text-left transition-all
                     ${selectedDismantle?.id === item.id 
                       ? 'ring-2 ring-primary' 
                       : 'hover:bg-muted/50'
@@ -648,12 +638,12 @@ function DismantleTab({
                   `}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl">{item.icon}</span>
-                    <div className="flex-1">
-                      <p className={`font-semibold ${rarityStyle.text}`}>
+                    <EquipmentIcon item={item} size={28} showStatPreview={false} />
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-semibold truncate ${rarityStyle.text}`}>
                         {item.name}
                       </p>
-                      <p className="text-xs text-muted-foreground capitalize">
+                      <p className="text-[10px] text-muted-foreground capitalize truncate">
                         Lv.{item.level} {item.rarity} {item.slot}
                       </p>
                     </div>
@@ -661,10 +651,10 @@ function DismantleTab({
                 </button>
               );
             }) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <p className="text-2xl mb-2">📦</p>
-                <p>No equipment in storage</p>
-                <p className="text-xs mt-1">Flee the dungeon with equipment to store it</p>
+              <div className="text-center py-4 text-muted-foreground">
+                <p className="text-lg mb-1">📦</p>
+                <p className="text-xs">No equipment in storage</p>
+                <p className="text-[10px] mt-0.5">Flee the dungeon with gear to store it</p>
               </div>
             )}
           </div>
@@ -672,32 +662,32 @@ function DismantleTab({
       </div>
       
       {/* Dismantle Preview */}
-      <div className="w-1/2 p-4 flex flex-col">
-        {selectedDismantle ? (
-          <>
-            <div className="flex-1 space-y-4">
-              {/* Item header */}
-              <div className="flex items-center gap-3">
-                <span className="text-4xl">{selectedDismantle.icon}</span>
-                <div>
-                  <h3 className={`text-lg font-bold ${RARITY_COLORS[selectedDismantle.rarity].text}`}>
+      <div className="w-1/2 p-2 flex flex-col min-h-0">
+        <ScrollArea className="flex-1">
+          {selectedDismantle ? (
+            <div className="space-y-3 pr-2">
+              {/* Item header with sprite */}
+              <div className="flex items-center gap-2">
+                <EquipmentIcon item={selectedDismantle} size={36} />
+                <div className="flex-1 min-w-0">
+                  <h3 className={`text-sm font-bold truncate ${RARITY_COLORS[selectedDismantle.rarity].text}`}>
                     {selectedDismantle.name}
                   </h3>
-                  <p className="text-sm text-muted-foreground capitalize">
+                  <p className="text-[10px] text-muted-foreground capitalize">
                     Lv.{selectedDismantle.level} {selectedDismantle.rarity} {selectedDismantle.slot}
                   </p>
                 </div>
               </div>
               
               {/* Current stats */}
-              <div className="space-y-2">
-                <h4 className="font-semibold text-sm text-muted-foreground">Current Stats</h4>
-                <div className="flex flex-wrap gap-1">
+              <div className="space-y-1">
+                <h4 className="font-semibold text-xs text-muted-foreground">Current Stats</h4>
+                <div className="flex flex-wrap gap-0.5">
                   {Object.entries(selectedDismantle.stats).map(([stat, value]) => (
                     value !== 0 && (
                       <span 
                         key={stat} 
-                        className={`text-xs px-2 py-0.5 rounded ${value > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
+                        className={`text-[10px] px-1.5 py-0.5 rounded ${value > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
                       >
                         {value > 0 ? '+' : ''}{value} {stat}
                       </span>
@@ -707,54 +697,52 @@ function DismantleTab({
               </div>
               
               {/* Materials to receive */}
-              <div className="space-y-2">
-                <h4 className="font-semibold text-sm text-green-400">Materials You'll Receive</h4>
-                <div className="space-y-1">
+              <div className="space-y-1">
+                <h4 className="font-semibold text-xs text-green-400">Materials You'll Receive</h4>
+                <div className="space-y-0.5">
                   {previewResult?.materials.map(({ materialId, quantity }) => {
                     const material = CRAFTING_MATERIALS.find(m => m.id === materialId);
                     return (
                       <div 
                         key={materialId}
-                        className="flex items-center justify-between p-2 rounded bg-green-500/10"
+                        className="flex items-center justify-between p-1.5 rounded bg-green-500/10 text-xs"
                       >
-                        <span className="text-sm flex items-center gap-2">
+                        <span className="flex items-center gap-1">
                           <span>{material?.icon || '📦'}</span>
                           {materialId.split('_').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}
                         </span>
-                        <span className="text-sm font-mono text-green-400">
-                          +{quantity}
-                        </span>
+                        <span className="font-mono text-green-400">+{quantity}</span>
                       </div>
                     );
                   })}
                 </div>
               </div>
               
-              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-                <p className="text-xs text-amber-400">
-                  ⚠️ This action cannot be undone. The equipment will be destroyed.
+              <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded">
+                <p className="text-[10px] text-amber-400">
+                  ⚠️ Cannot be undone. Equipment will be destroyed.
                 </p>
               </div>
             </div>
-            
-            <Button
-              className="w-full mt-4"
-              variant="destructive"
-              onClick={handleDismantle}
-            >
-              🔧 Dismantle Equipment
-            </Button>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-center">
-            <div className="text-muted-foreground">
-              <p className="text-4xl mb-2">🔧</p>
-              <p>Select equipment to dismantle</p>
-              <p className="text-xs mt-2">
-                Break down unwanted gear into crafting materials
-              </p>
+          ) : (
+            <div className="h-full flex items-center justify-center text-center py-8">
+              <div className="text-muted-foreground">
+                <p className="text-2xl mb-1">🔧</p>
+                <p className="text-xs">Select equipment to dismantle</p>
+                <p className="text-[10px] mt-1">Break down gear into materials</p>
+              </div>
             </div>
-          </div>
+          )}
+        </ScrollArea>
+        
+        {selectedDismantle && (
+          <Button
+            className="w-full mt-2 h-8 text-xs shrink-0"
+            variant="destructive"
+            onClick={handleDismantle}
+          >
+            🔧 Dismantle Equipment
+          </Button>
         )}
         
         {/* Material inventory summary */}
@@ -767,15 +755,15 @@ function DismantleTab({
 // Material summary component
 function MaterialSummary({ materials }: { materials: MaterialInventory }) {
   return (
-    <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-      <p className="text-xs font-semibold text-muted-foreground mb-2">Your Materials</p>
-      <div className="flex flex-wrap gap-1">
+    <div className="mt-2 p-2 bg-muted/50 rounded shrink-0">
+      <p className="text-[10px] font-semibold text-muted-foreground mb-1">Your Materials</p>
+      <div className="flex flex-wrap gap-0.5">
         {Object.entries(materials).length > 0 ? (
           Object.entries(materials).map(([id, qty]) => (
             <TooltipProvider key={id}>
               <Tooltip>
                 <TooltipTrigger>
-                  <span className="text-xs px-1.5 py-0.5 bg-muted rounded">
+                  <span className="text-[10px] px-1 py-0.5 bg-muted rounded">
                     {id.split('_')[0]}: {qty}
                   </span>
                 </TooltipTrigger>
@@ -786,7 +774,7 @@ function MaterialSummary({ materials }: { materials: MaterialInventory }) {
             </TooltipProvider>
           ))
         ) : (
-          <span className="text-xs text-muted-foreground">No materials yet</span>
+          <span className="text-[10px] text-muted-foreground">No materials yet</span>
         )}
       </div>
     </div>

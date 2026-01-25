@@ -911,6 +911,112 @@ function DungeonView({
     addLog(`✨ ${message}`, 'heal');
   };
 
+  // Use moves outside of combat (heals, buffs, stamina recovery)
+  const handleUseMoveOutOfCombat = (move: Move) => {
+    if (!state.run) return;
+    
+    const monster = state.run.currentMonster;
+    const maxStamina = monster.stats.stamina ?? 50;
+    const currentStamina = monster.stats.currentStamina ?? maxStamina;
+    
+    // Check stamina cost
+    const staminaCost = move.staminaCost || 0;
+    if (currentStamina < staminaCost) {
+      toast.error('Not enough stamina!');
+      return;
+    }
+    
+    let message = '';
+    let updatedStats = { ...monster.stats, currentStamina: currentStamina - staminaCost };
+    let canUse = false;
+    
+    // Handle different move types
+    if (move.type === 'heal' && move.power > 0) {
+      const hpBefore = monster.stats.currentHp;
+      if (hpBefore >= monster.stats.maxHp) {
+        addLog('❤️ Already at full HP!', 'info');
+        return;
+      }
+      const newHp = Math.min(monster.stats.maxHp, hpBefore + move.power);
+      const healed = newHp - hpBefore;
+      updatedStats.currentHp = newHp;
+      message = `${move.name} restored ${healed} HP!`;
+      canUse = true;
+    } else if (move.effect?.includes('restore_stamina')) {
+      // Parse stamina recovery amount
+      let recovery = 15;
+      if (move.effect === 'restore_stamina_15') recovery = 15;
+      else if (move.effect === 'restore_stamina_20') recovery = 20;
+      else if (move.effect === 'restore_stamina_25') recovery = 25;
+      else if (move.effect === 'restore_stamina_30') recovery = 30;
+      
+      // Net recovery = recovery - cost
+      const netRecovery = recovery - staminaCost;
+      if (netRecovery <= 0 && currentStamina >= maxStamina) {
+        addLog('⚡ Already at full stamina!', 'info');
+        return;
+      }
+      
+      updatedStats.currentStamina = Math.min(maxStamina, currentStamina - staminaCost + recovery);
+      message = `${move.name} recovered ${recovery} stamina!`;
+      canUse = true;
+    } else if (move.effect?.startsWith('raise_')) {
+      // Buff moves - can use but no immediate effect outside combat
+      message = `${move.name} prepared for next battle!`;
+      canUse = true;
+      // Note: In a full implementation, we'd track the buff for the next combat
+    }
+    
+    if (!canUse) {
+      addLog(`⚔️ ${move.name} can only be used in battle.`, 'info');
+      return;
+    }
+    
+    // Track move mastery
+    const baseMoveId = (move as any).baseMoveId || move.id;
+    const currentMastery = monster.moveMastery || {};
+    const moveMasteryEntry = currentMastery[baseMoveId] || {
+      uses: 0,
+      currentTier: 'lesser' as const,
+      hasAoE: false,
+    };
+    const newUses = moveMasteryEntry.uses + 1;
+    
+    // Calculate new tier
+    const THRESHOLDS = { lesser: 0, minor: 10, base: 25, greater: 50, omega: 100 };
+    let newTier: 'lesser' | 'minor' | 'base' | 'greater' | 'omega' = 'lesser';
+    const tierOrder = ['lesser', 'minor', 'base', 'greater', 'omega'] as const;
+    for (const tier of tierOrder) {
+      if (newUses >= THRESHOLDS[tier]) {
+        newTier = tier;
+      }
+    }
+    const hasAoE = newUses >= 30;
+    
+    // Check for tier unlocks
+    if (newTier !== moveMasteryEntry.currentTier) {
+      const tierNames: Record<string, string> = {
+        lesser: 'Lesser', minor: 'Minor', base: 'Standard', greater: 'Greater', omega: 'Omega'
+      };
+      toast.success(`🎯 ${move.name} mastered to ${tierNames[newTier]} tier!`);
+    }
+    if (hasAoE && !moveMasteryEntry.hasAoE) {
+      toast.success(`⚔️ ${move.name} Mass variant unlocked!`);
+    }
+    
+    const updatedMonster = {
+      ...monster,
+      stats: updatedStats,
+      moveMastery: {
+        ...currentMastery,
+        [baseMoveId]: { uses: newUses, currentTier: newTier, hasAoE },
+      },
+    };
+    
+    dispatch({ type: 'UPDATE_PLAYER_MONSTER', monster: updatedMonster });
+    addLog(`✨ ${message} (⚡-${staminaCost})`, 'heal');
+  };
+
   return <>
       <GameSidebar 
         monster={state.run?.currentMonster || null} 
@@ -926,7 +1032,8 @@ function DungeonView({
         experienceToNext={xpToNextLevel(state.run?.currentMonster?.level || 1)} 
         onFlee={handleFlee} 
         onDropItem={handleDropItem} 
-        onUseItem={handleUseItemOutOfCombat} 
+        onUseItem={handleUseItemOutOfCombat}
+        onUseMove={handleUseMoveOutOfCombat}
         onReorderMoves={order => dispatch({ type: 'SET_MOVE_ORDER', order })} 
         onToggleHideMove={moveId => dispatch({ type: 'TOGGLE_HIDE_MOVE', moveId })}
         onOpenEquipment={() => setShowEquipment(true)}

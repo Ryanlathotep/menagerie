@@ -9,13 +9,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { User, Backpack, Map, DoorOpen, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, Shirt, Gem, Users } from 'lucide-react';
 import { Monster, InventoryItem, MaterialInventory } from './types';
 import { MonsterSprite } from './sprites';
-import { getMonsterMoves } from './moves';
+import { getMonsterMoves, Move } from './moves';
 import { ExpandedStats } from './CharacterSheet';
 import { ITEMS } from './Inventory';
-import { MovePanel } from './MovePanel';
+import { UnifiedMovePanel } from './UnifiedMovePanel';
 import { SettingsPanel } from './Settings';
 import { MonsterEquipment, EquipmentItem, RARITY_COLORS, CRAFTING_MATERIALS } from './equipment';
 import { PartyPanel } from './PartyPanel';
+import { EvolvedMove } from './moveMastery';
 
 
 // Helper functions to get item info when not in ITEMS database
@@ -63,6 +64,7 @@ interface GameSidebarProps {
   expandedStats?: ExpandedStats;
   onPanelChange?: (isOpen: boolean) => void;
   onUseItem?: (item: InventoryItem) => void;
+  onUseMove?: (move: Move | EvolvedMove) => void; // NEW: for using moves
   enemyMonster?: Monster | null;
   enemyExpandedStats?: ExpandedStats;
   // Party props
@@ -91,6 +93,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   expandedStats,
   onPanelChange,
   onUseItem,
+  onUseMove,
   enemyMonster,
   enemyExpandedStats,
   party = [],
@@ -337,9 +340,9 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 </div>
               </div>}
             
-            {/* Moves Panel with drag-and-drop */}
+            {/* Moves Panel with drag-and-drop and usage */}
             {activePanel === 'moves' && (
-              <MovePanel
+              <UnifiedMovePanel
                 moves={moves}
                 monster={monster}
                 expandedStats={expandedStats}
@@ -347,6 +350,10 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 hiddenMoves={hiddenMoves}
                 onReorder={onReorderMoves || (() => {})}
                 onToggleHide={onToggleHideMove || (() => {})}
+                inBattle={inBattle}
+                currentStamina={expandedStats?.currentStamina ?? monster.stats.currentStamina ?? monster.stats.stamina ?? 50}
+                enemyMonster={enemyMonster}
+                onUseMove={onUseMove}
               />
             )}
             

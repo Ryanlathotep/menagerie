@@ -22,6 +22,8 @@ const SHOP_ITEMS: { item: LootItem; price: number }[] = [
   { item: { id: 'antidote', name: 'Antidote', type: 'potion', value: 10, effect: 'cure_poison' }, price: 15 },
   { item: { id: 'power_berry', name: 'Power Berry', type: 'potion', value: 25, effect: 'boost_attack' }, price: 30 },
   { item: { id: 'full_heal', name: 'Full Heal', type: 'potion', value: 999, effect: 'heal_full' }, price: 50 },
+  { item: { id: 'revive_herb', name: 'Revive Herb', type: 'potion', value: 25, effect: 'revive' }, price: 75 },
+  { item: { id: 'phoenix_feather', name: 'Phoenix Feather', type: 'potion', value: 50, effect: 'revive' }, price: 150 },
 ];
 
 // Generate shop equipment based on floor

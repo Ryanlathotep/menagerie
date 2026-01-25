@@ -39,6 +39,8 @@ import { CraftingRecipe } from '@/game/equipment';
 import { findPath, getDirection } from '@/game/pathfinding';
 import { PartyPanel } from '@/game/PartyPanel';
 import { RecruitmentModal, calculateRecruitChance } from '@/game/RecruitmentModal';
+import { PartySwitchModal } from '@/game/PartySwitchModal';
+import { ReviveTargetModal } from '@/game/ReviveTargetModal';
 
 // Main Menu Component
 function MainMenu() {
@@ -933,6 +935,14 @@ function BattleView() {
   const [defeatedEnemy, setDefeatedEnemy] = useState<Monster | null>(null);
   const [recruitChance, setRecruitChance] = useState(0);
   
+  // Party switch on defeat modal state
+  const [showPartySwitchModal, setShowPartySwitchModal] = useState(false);
+  const [defeatedPartyIndex, setDefeatedPartyIndex] = useState<number>(0);
+  
+  // Revive target modal state
+  const [showReviveModal, setShowReviveModal] = useState(false);
+  const [pendingReviveItem, setPendingReviveItem] = useState<InventoryItem | null>(null);
+  
   // Battle stats tracking (local, synced to state at end)
   const [battleStats, setBattleStats] = useState({
     turnsUsed: 0,
@@ -954,6 +964,107 @@ function BattleView() {
   const experienceToNext = xpToNextLevel(battle.playerMonster.level);
   const currentStamina = battle.playerMonster.stats.currentStamina ?? battle.playerMonster.stats.stamina ?? 50;
   const maxStamina = battle.playerMonster.stats.stamina ?? 50;
+
+  // Check if there are alive party members besides the active one
+  const hasAlivePartyMembers = () => {
+    return state.run!.party.some((m, i) => i !== state.run!.activePartyIndex && m.stats.currentHp > 0);
+  };
+  
+  // Handle active monster defeat - show switch modal or end run
+  const handleActiveMonsterDefeated = (updatedPlayerMonster: Monster, log: string[]) => {
+    // Update the current monster's HP to 0 in state
+    dispatch({
+      type: 'UPDATE_PLAYER_MONSTER',
+      monster: updatedPlayerMonster
+    });
+    
+    if (hasAlivePartyMembers()) {
+      // Show party switch modal
+      setDefeatedPartyIndex(state.run!.activePartyIndex);
+      setShowPartySwitchModal(true);
+      // Update battle log
+      dispatch({
+        type: 'UPDATE_BATTLE',
+        battle: {
+          playerMonster: updatedPlayerMonster,
+          log: [...log, `${updatedPlayerMonster.name} was defeated!`]
+        }
+      });
+    } else {
+      // All party members defeated - end run
+      dispatch({ type: 'END_BATTLE', victory: false });
+      dispatch({ type: 'END_RUN', victory: false });
+    }
+  };
+  
+  // Handle party switch from defeat modal
+  const handlePartySwitchFromDefeat = (newIndex: number) => {
+    dispatch({ type: 'SWITCH_ACTIVE_IN_BATTLE', index: newIndex });
+    setShowPartySwitchModal(false);
+    toast.success(`Go, ${state.run!.party[newIndex].species}!`);
+    // Reset combat effects for the new monster
+    setPlayerEffects(EMPTY_COMBAT_EFFECTS);
+  };
+  
+  // Handle surrender from defeat modal
+  const handleSurrenderFromDefeat = () => {
+    setShowPartySwitchModal(false);
+    dispatch({ type: 'END_BATTLE', victory: false });
+    dispatch({ type: 'END_RUN', victory: false });
+  };
+  
+  // Handle revive target selection
+  const handleReviveTarget = (partyIndex: number) => {
+    if (!pendingReviveItem || !state.run) return;
+    
+    const revivePercent = pendingReviveItem.effect === 'revive_full' ? 100 : (pendingReviveItem.value || 25);
+    
+    // Revive the party member
+    dispatch({ type: 'REVIVE_PARTY_MEMBER', index: partyIndex, hpPercent: revivePercent });
+    
+    // Consume the item
+    dispatch({ type: 'USE_ITEM', itemId: pendingReviveItem.id });
+    
+    const revivedMonster = state.run.party[partyIndex];
+    const revivedHp = Math.max(1, Math.floor(revivedMonster.stats.maxHp * (revivePercent / 100)));
+    toast.success(`🌿 ${revivedMonster.species} was revived with ${revivedHp} HP!`);
+    
+    // Update battle log
+    dispatch({
+      type: 'UPDATE_BATTLE',
+      battle: {
+        log: [...battle.log, `${revivedMonster.name} was revived!`]
+      }
+    });
+    
+    setShowReviveModal(false);
+    setPendingReviveItem(null);
+    
+    // Enemy gets a turn after using item
+    const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class);
+    const enemyMove = enemyMoves[Math.floor(Math.random() * Math.min(3, enemyMoves.length))];
+    const enemyResult = executeCombat(enemyMove, battle.enemyMonster, battle.playerMonster);
+    const newPlayerHp = Math.max(0, battle.playerMonster.stats.currentHp - enemyResult.damage);
+    
+    if (newPlayerHp <= 0) {
+      const defeatedMonster = {
+        ...battle.playerMonster,
+        stats: { ...battle.playerMonster.stats, currentHp: 0 }
+      };
+      handleActiveMonsterDefeated(defeatedMonster, [...battle.log, `${revivedMonster.name} was revived!`, enemyResult.message]);
+    } else {
+      dispatch({
+        type: 'UPDATE_BATTLE',
+        battle: {
+          playerMonster: {
+            ...battle.playerMonster,
+            stats: { ...battle.playerMonster.stats, currentHp: newPlayerHp }
+          },
+          log: [...battle.log, `${revivedMonster.name} was revived!`, enemyResult.message]
+        }
+      });
+    }
+  };
 
   // Flee attempt based on speed comparison
   const handleFlee = () => {
@@ -980,14 +1091,11 @@ function BattleView() {
       const newPlayerHp = Math.max(0, battle.playerMonster.stats.currentHp - enemyResult.damage);
       const newLog = [...battle.log, `Couldn't escape!`, enemyResult.message];
       if (newPlayerHp <= 0) {
-        dispatch({
-          type: 'END_BATTLE',
-          victory: false
-        });
-        dispatch({
-          type: 'END_RUN',
-          victory: false
-        });
+        const defeatedMonster = {
+          ...battle.playerMonster,
+          stats: { ...battle.playerMonster.stats, currentHp: 0 }
+        };
+        handleActiveMonsterDefeated(defeatedMonster, newLog);
       } else {
         dispatch({
           type: 'UPDATE_BATTLE',
@@ -1066,6 +1174,17 @@ function BattleView() {
       const result = applyStatModifier(playerEffects, 'speed', 'buff', 25, 5, item.name);
       setPlayerEffects(result.effects);
       message = '💨 Speed boosted!';
+    } else if (item.effect === 'revive' || item.effect === 'revive_full') {
+      // Check if there are fainted party members
+      const hasFainted = state.run!.party.some(m => m.stats.currentHp <= 0);
+      if (!hasFainted) {
+        toast.error('No fainted party members to revive!');
+        return;
+      }
+      // Show revive target modal
+      setPendingReviveItem(item);
+      setShowReviveModal(true);
+      return; // Don't consume item yet - wait for selection
     } else {
       message = `Used ${item.name}!`;
     }
@@ -1095,14 +1214,11 @@ function BattleView() {
     });
     const newPlayerHp = Math.max(0, newStats.currentHp - enemyResult.damage);
     if (newPlayerHp <= 0) {
-      dispatch({
-        type: 'END_BATTLE',
-        victory: false
-      });
-      dispatch({
-        type: 'END_RUN',
-        victory: false
-      });
+      const defeatedMonster = {
+        ...battle.playerMonster,
+        stats: { ...newStats, currentHp: 0 }
+      };
+      handleActiveMonsterDefeated(defeatedMonster, [...battle.log, message, enemyResult.message]);
     } else {
       dispatch({
         type: 'UPDATE_BATTLE',
@@ -1672,14 +1788,12 @@ function BattleView() {
       }
       
       if (newPlayerHp <= 0) {
-        dispatch({
-          type: 'END_BATTLE',
-          victory: false
-        });
-        dispatch({
-          type: 'END_RUN',
-          victory: false
-        });
+        const defeatedMonster = {
+          ...updatedPlayerMonster,
+          stats: { ...updatedPlayerMonster.stats, currentHp: 0 },
+          temporaryResistances: updatedPlayerMonster.temporaryResistances,
+        };
+        handleActiveMonsterDefeated(defeatedMonster, newLog);
       } else {
         // Regenerate a bit of stamina each turn (2 stamina recovery)
         const recoveredStamina = Math.min(maxStamina, newPlayerStamina + 2);
@@ -1821,6 +1935,28 @@ function BattleView() {
 
   return (
     <>
+      {/* Party switch modal on defeat */}
+      <PartySwitchModal
+        open={showPartySwitchModal}
+        party={state.run?.party || []}
+        defeatedIndex={defeatedPartyIndex}
+        onSwitch={handlePartySwitchFromDefeat}
+        onSurrender={handleSurrenderFromDefeat}
+      />
+      
+      {/* Revive target modal */}
+      <ReviveTargetModal
+        open={showReviveModal}
+        onClose={() => {
+          setShowReviveModal(false);
+          setPendingReviveItem(null);
+        }}
+        party={state.run?.party || []}
+        revivePercent={pendingReviveItem?.effect === 'revive_full' ? 100 : (pendingReviveItem?.value || 25)}
+        itemName={pendingReviveItem?.name || 'Revive'}
+        onRevive={handleReviveTarget}
+      />
+      
       {/* Recruitment modal */}
       {showRecruitment && defeatedEnemy && (
         <RecruitmentModal

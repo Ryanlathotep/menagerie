@@ -260,7 +260,7 @@ export function EquipmentView({
                 />
               </div>
               
-              {/* Armor row */}
+              {/* Armor row with back slot */}
               <div className="flex gap-4">
                 <EquipmentSlotDisplay 
                   slot="gloves" 
@@ -275,15 +275,21 @@ export function EquipmentView({
                   isSelected={selectedSlot === 'armor'}
                 />
                 <EquipmentSlotDisplay 
+                  slot="back" 
+                  item={equipment.back}
+                  onSelect={() => setSelectedSlot('back')}
+                  isSelected={selectedSlot === 'back'}
+                />
+              </div>
+              
+              {/* Bottom row: accessory and boots */}
+              <div className="flex gap-4">
+                <EquipmentSlotDisplay 
                   slot="accessory" 
                   item={equipment.accessory}
                   onSelect={() => setSelectedSlot('accessory')}
                   isSelected={selectedSlot === 'accessory'}
                 />
-              </div>
-              
-              {/* Boots row */}
-              <div className="flex justify-center">
                 <EquipmentSlotDisplay 
                   slot="boots" 
                   item={equipment.boots}

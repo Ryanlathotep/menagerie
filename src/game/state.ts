@@ -849,24 +849,44 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       };
       
     // Party management
-    case 'SWITCH_ACTIVE_MONSTER':
+    case 'SWITCH_ACTIVE_MONSTER': {
       if (!state.run || action.index < 0 || action.index >= state.run.party.length) return state;
       const newActiveMonster = state.run.party[action.index];
       if (newActiveMonster.stats.currentHp <= 0) return state; // Can't switch to fainted
+      
+      // Save current XP to outgoing monster, load incoming monster's XP
+      const outgoingIndex = state.run.activePartyIndex;
+      const updatedPartyWithXp = state.run.party.map((monster, idx) => 
+        idx === outgoingIndex 
+          ? { ...monster, experience: state.run!.experience }
+          : monster
+      );
+      
       return {
         ...state,
         run: {
           ...state.run,
           currentMonster: newActiveMonster,
           activePartyIndex: action.index,
+          party: updatedPartyWithXp,
+          experience: newActiveMonster.experience || 0, // Load new monster's XP
         },
       };
+    }
     
     // Switch active monster during battle - also updates the battle state
     case 'SWITCH_ACTIVE_IN_BATTLE': {
       if (!state.run || action.index < 0 || action.index >= state.run.party.length) return state;
       const switchedMonster = state.run.party[action.index];
       if (switchedMonster.stats.currentHp <= 0) return state; // Can't switch to fainted
+      
+      // Save current XP to outgoing monster, load incoming monster's XP
+      const battleOutgoingIndex = state.run.activePartyIndex;
+      const battleUpdatedPartyWithXp = state.run.party.map((monster, idx) => 
+        idx === battleOutgoingIndex 
+          ? { ...monster, experience: state.run!.experience }
+          : monster
+      );
       
       // If there's an active battle, update the playerMonster in battle state too
       const updatedBattle = state.run.battle ? {
@@ -881,6 +901,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           ...state.run,
           currentMonster: switchedMonster,
           activePartyIndex: action.index,
+          party: battleUpdatedPartyWithXp,
+          experience: switchedMonster.experience || 0, // Load new monster's XP
           battle: updatedBattle,
         },
       };

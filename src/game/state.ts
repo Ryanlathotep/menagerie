@@ -107,10 +107,23 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, phase: action.phase };
       
     case 'START_RUN': {
-      // Remove withdrawn equipment from storage
+      // Remove withdrawn equipment from storage and mark as bound
+      const withdrawnItems = action.withdrawnIds 
+        ? state.saveData.storedEquipment.filter(item => action.withdrawnIds!.includes(item.id))
+        : [];
       const remainingStorage = action.withdrawnIds 
         ? state.saveData.storedEquipment.filter(item => !action.withdrawnIds!.includes(item.id))
         : state.saveData.storedEquipment;
+      
+      // Mark pre-equipped items as bound (they came from town storage)
+      const boundPreEquipped: MonsterEquipment = action.preEquipped 
+        ? Object.fromEntries(
+            Object.entries(action.preEquipped).map(([slot, item]) => [
+              slot,
+              item ? { ...item, bound: true } : null
+            ])
+          ) as MonsterEquipment
+        : createEmptyEquipment();
       
       // Build starting inventory from pre-selected items (if any) or default items
       let startingInventory: InventoryItem[] = action.preSelectedItems && action.preSelectedItems.length > 0
@@ -152,7 +165,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           itemsCollected: [],
           inventory: startingInventory,
           equipmentInventory: [],
-          partyEquipment: [action.preEquipped || createEmptyEquipment()],  // One equipment set per party member
+          partyEquipment: [boundPreEquipped],  // One equipment set per party member
           runMaterials: {},
           enemiesDefeated: 0,
           moveOrder: [],
@@ -169,18 +182,34 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
       
     case 'END_RUN': {
-      // On death (victory=false), return equipped items to town storage
+      // On death (victory=false), return BOUND equipment to town storage (non-bound is lost)
       const equipmentToStore: EquipmentItem[] = [];
       if (!action.victory && state.run?.partyEquipment) {
         const slots: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory', 'back'];
-        // Collect equipment from all party members
+        // Collect only BOUND equipment from all party members
         for (const memberEquipment of state.run.partyEquipment) {
           for (const slot of slots) {
             const item = memberEquipment[slot];
-            if (item) {
-              equipmentToStore.push(item);
+            if (item && item.bound) {
+              // Remove the bound flag when returning to storage
+              equipmentToStore.push({ ...item, bound: undefined });
             }
           }
+        }
+        // Also save bound items from equipment inventory
+        for (const item of state.run.equipmentInventory) {
+          if (item.bound) {
+            equipmentToStore.push({ ...item, bound: undefined });
+          }
+        }
+      }
+      
+      // Unlock recipes for bound items being returned
+      const newUnlockedRecipes = [...(state.saveData.unlockedRecipes || [])];
+      for (const item of equipmentToStore) {
+        const matchingRecipe = getRecipeFromEquipment(item);
+        if (matchingRecipe && !newUnlockedRecipes.includes(matchingRecipe.id)) {
+          newUnlockedRecipes.push(matchingRecipe.id);
         }
       }
       
@@ -211,9 +240,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             ? Math.max(state.saveData.highestFloor, state.run.dungeon.floor)
             : state.saveData.highestFloor,
           totalEnemiesDefeated: state.saveData.totalEnemiesDefeated + (state.run?.enemiesDefeated || 0),
-          // Return equipped items to storage on death
+          // Return BOUND equipped items to storage on death
           storedEquipment: [...state.saveData.storedEquipment, ...equipmentToStore],
           unlockedMonsters: updatedUnlockedMonsters,
+          unlockedRecipes: newUnlockedRecipes,
         },
       };
     }
@@ -223,13 +253,14 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       if (!state.run) return state;
       
       // Collect all equipment to store (equipped from all party members + inventory)
-      const equipmentToStore: EquipmentItem[] = [...state.run.equipmentInventory];
+      // Remove 'bound' flag since items are returning to storage
+      const equipmentToStore: EquipmentItem[] = state.run.equipmentInventory.map(item => ({ ...item, bound: undefined }));
       const slots: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory', 'back'];
       for (const memberEquipment of state.run.partyEquipment) {
         for (const slot of slots) {
           const item = memberEquipment[slot];
           if (item) {
-            equipmentToStore.push(item);
+            equipmentToStore.push({ ...item, bound: undefined });
           }
         }
       }
@@ -1035,7 +1066,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       for (const slot of slots) {
         const item = equipmentToSend[slot];
         if (item) {
-          equipmentToStore.push(item);
+          // Remove 'bound' flag when storing back to town
+          equipmentToStore.push({ ...item, bound: undefined });
           const matchingRecipe = getRecipeFromEquipment(item);
           if (matchingRecipe && !newUnlockedRecipes.includes(matchingRecipe.id)) {
             newUnlockedRecipes.push(matchingRecipe.id);

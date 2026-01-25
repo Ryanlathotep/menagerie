@@ -2,6 +2,7 @@
 
 import { Monster, ElementType, ClassType, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED, SpeciesType } from './types';
 import { Move } from './moves';
+import { recordMoveUse, MonsterMasteryData, MoveTier } from './moveMastery';
 
 export interface CombatResult {
   damage: number;
@@ -457,3 +458,49 @@ export function calculateTurnOrder(
   
   return playerPriority > enemyPriority ? 'player' : 'enemy';
 }
+
+// Update monster's move mastery after using a move
+export function updateMoveMastery(monster: Monster, moveId: string): Monster {
+  const currentMastery = monster.moveMastery || {};
+  const moveMasteryEntry = currentMastery[moveId] || {
+    uses: 0,
+    currentTier: 'lesser' as MoveTier,
+    hasAoE: false,
+  };
+  
+  const newUses = moveMasteryEntry.uses + 1;
+  
+  // Calculate new tier based on uses
+  const THRESHOLDS: Record<MoveTier, number> = {
+    lesser: 0,
+    minor: 10,
+    base: 25,
+    greater: 50,
+    omega: 100,
+  };
+  
+  let newTier: MoveTier = 'lesser';
+  const tierOrder: MoveTier[] = ['lesser', 'minor', 'base', 'greater', 'omega'];
+  for (const tier of tierOrder) {
+    if (newUses >= THRESHOLDS[tier]) {
+      newTier = tier;
+    }
+  }
+  
+  const hasAoE = newUses >= 30; // AOE_UNLOCK_THRESHOLD
+  
+  return {
+    ...monster,
+    moveMastery: {
+      ...currentMastery,
+      [moveId]: {
+        uses: newUses,
+        currentTier: newTier,
+        hasAoE,
+      },
+    },
+  };
+}
+
+// Re-export mastery types for convenience
+export { recordMoveUse, type MonsterMasteryData };

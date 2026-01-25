@@ -152,6 +152,10 @@ export function UnifiedMovePanel({
     if (move.type === 'heal') return true;
     if (move.effect?.includes('restore_stamina')) return true;
     if (move.effect?.includes('raise_')) return true; // Buff moves
+    // Attack moves can now be used on the map with targeting!
+    if (move.type === 'melee' || move.type === 'ranged') return true;
+    // Debuff status moves can target enemies
+    if (move.type === 'status' && move.effect?.includes('lower_')) return true;
     return false;
   };
 

@@ -62,6 +62,13 @@ interface DungeonRendererProps {
   }[]; // Path for click-to-move
   onDisarmTrap?: (x: number, y: number, success: boolean) => void;
   onTileClick?: (x: number, y: number) => void; // Click-to-move handler
+  // Targeting mode for attacks
+  targetingMode?: boolean;
+  targetingTiles?: { x: number; y: number }[]; // Valid target tiles
+  affectedTiles?: { x: number; y: number }[]; // Preview of affected area
+  hoveredTile?: { x: number; y: number } | null;
+  onTileHover?: (x: number, y: number) => void;
+  onTileHoverEnd?: () => void;
 }
 export interface DungeonRendererHandle {
   scrollToPlayer: () => void;
@@ -540,7 +547,13 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   unlockedMonsters = [],
   targetPath = [],
   onDisarmTrap,
-  onTileClick
+  onTileClick,
+  targetingMode = false,
+  targetingTiles = [],
+  affectedTiles = [],
+  hoveredTile,
+  onTileHover,
+  onTileHoverEnd,
 }, ref) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -612,9 +625,55 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
       
       {/* Dungeon grid - fills available space */}
       <div ref={scrollRef} className="flex-1 w-full overflow-auto">
-        <div className="inline-block min-w-full min-h-full">
+        <div className="inline-block min-w-full min-h-full relative">
           {dungeon.tiles.map((row, y) => <div key={y} className="flex">
-              {row.map((tile, x) => <Tile key={`${x}-${y}`} tile={tile} x={x} y={y} tiles={dungeon.tiles} enemies={dungeon.enemies} isPlayer={dungeon.playerPosition.x === x && dungeon.playerPosition.y === y} playerElement={playerElement} playerClass={playerClass} playerSpecies={playerSpecies} playerDexterity={playerDexterity} tileSize={tileSize} spriteSize={spriteSize} unlockedMonsters={unlockedMonsters} isOnPath={targetPath.some(p => p.x === x && p.y === y)} onDisarmTrap={onDisarmTrap} onClick={tile.explored && tile.type !== 'wall' ? () => onTileClick?.(x, y) : undefined} />)}
+              {row.map((tile, x) => {
+                const isTargetable = targetingTiles.some(t => t.x === x && t.y === y);
+                const isAffected = affectedTiles.some(t => t.x === x && t.y === y);
+                const isHovered = hoveredTile?.x === x && hoveredTile?.y === y;
+                
+                return (
+                  <div 
+                    key={`${x}-${y}`} 
+                    className="relative"
+                    onMouseEnter={() => targetingMode && onTileHover?.(x, y)}
+                    onMouseLeave={() => targetingMode && onTileHoverEnd?.()}
+                  >
+                    <Tile 
+                      tile={tile} 
+                      x={x} 
+                      y={y} 
+                      tiles={dungeon.tiles} 
+                      enemies={dungeon.enemies} 
+                      isPlayer={dungeon.playerPosition.x === x && dungeon.playerPosition.y === y} 
+                      playerElement={playerElement} 
+                      playerClass={playerClass} 
+                      playerSpecies={playerSpecies} 
+                      playerDexterity={playerDexterity} 
+                      tileSize={tileSize} 
+                      spriteSize={spriteSize} 
+                      unlockedMonsters={unlockedMonsters} 
+                      isOnPath={targetPath.some(p => p.x === x && p.y === y)} 
+                      onDisarmTrap={onDisarmTrap} 
+                      onClick={tile.explored && tile.type !== 'wall' ? () => onTileClick?.(x, y) : undefined} 
+                    />
+                    {/* Targeting overlay */}
+                    {targetingMode && isTargetable && (
+                      <div 
+                        className={`absolute inset-0 pointer-events-none z-10 border-2 ${
+                          isAffected 
+                            ? 'bg-destructive/40 border-destructive animate-pulse' 
+                            : 'bg-primary/20 border-primary/40'
+                        } ${isHovered ? 'ring-2 ring-offset-1 ring-destructive' : ''}`}
+                      />
+                    )}
+                    {/* Non-targetable range indicator */}
+                    {targetingMode && !isTargetable && tile.visible && tile.type !== 'wall' && (
+                      <div className="absolute inset-0 pointer-events-none z-5 bg-muted/30" />
+                    )}
+                  </div>
+                );
+              })}
             </div>)}
         </div>
       </div>

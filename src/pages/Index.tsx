@@ -47,6 +47,17 @@ import { CombatSwitchPanel } from '@/game/CombatSwitchPanel';
 import { LogMessage, createLogMessage, parseLogMessage } from '@/game/GameLog';
 import { TownShop } from '@/game/TownShop';
 import { ElevatorModal } from '@/game/ElevatorModal';
+import { 
+  getAttackConfig, 
+  getValidTargets, 
+  getAffectedTiles, 
+  calculateEnemyAction, 
+  moveEnemy, 
+  getEnemyPosition, 
+  canSeePlayer,
+  isInRange,
+} from '@/game/dungeonCombat';
+import { MoveInfoPanel } from '@/game/AttackTargeting';
 
 // Main Menu Component
 function MainMenu() {
@@ -450,6 +461,15 @@ function DungeonView({
   const [isPathWalking, setIsPathWalking] = useState(false);
   const pathWalkRef = useRef<Position[]>([]);
   
+  // Attack targeting state
+  const [targetingMove, setTargetingMove] = useState<Move | null>(null);
+  const [hoveredTile, setHoveredTile] = useState<Position | null>(null);
+  const [targetingTiles, setTargetingTiles] = useState<Position[]>([]);
+  const [affectedTiles, setAffectedTiles] = useState<Position[]>([]);
+  
+  // Ref for enemy processing to avoid circular dependency
+  const processEnemyTurnsRef = useRef<((dungeon: import('@/game/types').DungeonState | null) => void) | null>(null);
+  
   useEffect(() => {
     if (!dungeon) {
       const newDungeon = generateDungeon(1);
@@ -646,6 +666,14 @@ function DungeonView({
         quantity: 1
       });
       addLog(`🌿 Harvested ${result.plant.plantType.split('_').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}!`, 'loot');
+    }
+    
+    // Process enemy turns after player moves (if not entering battle/shop/etc.)
+    if (!result.blocked && !result.encounter && !result.shop && !result.elevator && !result.stairs) {
+      // Delay enemy processing slightly to allow UI update
+      setTimeout(() => {
+        processEnemyTurnsRef.current?.(result.dungeon);
+      }, 100);
     }
   }, [dungeon, dispatch, state.run]);
   // Auto-run logic - runs in intervals when active
@@ -911,9 +939,9 @@ function DungeonView({
     addLog(`✨ ${message}`, 'heal');
   };
 
-  // Use moves outside of combat (heals, buffs, stamina recovery)
+  // Use moves outside of combat (heals, buffs, stamina recovery, or ATTACKS with targeting)
   const handleUseMoveOutOfCombat = (move: Move) => {
-    if (!state.run) return;
+    if (!state.run || !dungeon) return;
     
     const monster = state.run.currentMonster;
     const maxStamina = monster.stats.stamina ?? 50;
@@ -923,6 +951,32 @@ function DungeonView({
     const staminaCost = move.staminaCost || 0;
     if (currentStamina < staminaCost) {
       toast.error('Not enough stamina!');
+      return;
+    }
+    
+    // For attack moves (melee/ranged), enter targeting mode instead of executing
+    if (move.type === 'melee' || move.type === 'ranged' || (move.type === 'status' && move.effect?.includes('lower_'))) {
+      // Enter targeting mode
+      const config = getAttackConfig(move);
+      const validTargets = getValidTargets(
+        dungeon.playerPosition, 
+        config, 
+        dungeon.tiles, 
+        dungeon.width, 
+        dungeon.height, 
+        true
+      );
+      
+      if (validTargets.length === 0) {
+        toast.error('No valid targets in range!');
+        return;
+      }
+      
+      setTargetingMove(move);
+      setTargetingTiles(validTargets);
+      setAffectedTiles([]);
+      setHoveredTile(null);
+      addLog(`🎯 Targeting ${move.name}... Click a tile to attack!`, 'system');
       return;
     }
     
@@ -964,7 +1018,6 @@ function DungeonView({
       // Buff moves - can use but no immediate effect outside combat
       message = `${move.name} prepared for next battle!`;
       canUse = true;
-      // Note: In a full implementation, we'd track the buff for the next combat
     }
     
     if (!canUse) {
@@ -1016,6 +1069,218 @@ function DungeonView({
     dispatch({ type: 'UPDATE_PLAYER_MONSTER', monster: updatedMonster });
     addLog(`✨ ${message} (⚡-${staminaCost})`, 'heal');
   };
+  
+  // Cancel targeting mode
+  const cancelTargeting = useCallback(() => {
+    setTargetingMove(null);
+    setTargetingTiles([]);
+    setAffectedTiles([]);
+    setHoveredTile(null);
+  }, []);
+  
+  // Handle tile hover during targeting
+  const handleTileHover = useCallback((x: number, y: number) => {
+    if (!targetingMove || !dungeon) return;
+    
+    const config = getAttackConfig(targetingMove);
+    const tiles = getAffectedTiles(
+      dungeon.playerPosition, 
+      { x, y }, 
+      config, 
+      dungeon.width, 
+      dungeon.height
+    );
+    
+    setHoveredTile({ x, y });
+    setAffectedTiles(tiles);
+  }, [targetingMove, dungeon]);
+  
+  // Execute attack on tile click during targeting mode
+  const handleTargetingClick = useCallback((x: number, y: number) => {
+    if (!targetingMove || !state.run || !dungeon) return;
+    
+    // Check if it's a valid target
+    const isValid = targetingTiles.some(t => t.x === x && t.y === y);
+    if (!isValid) {
+      addLog('❌ Invalid target!', 'info');
+      return;
+    }
+    
+    const config = getAttackConfig(targetingMove);
+    const affected = getAffectedTiles(dungeon.playerPosition, { x, y }, config, dungeon.width, dungeon.height);
+    
+    // Consume stamina
+    const monster = state.run.currentMonster;
+    const staminaCost = targetingMove.staminaCost || 0;
+    let newStamina = (monster.stats.currentStamina ?? monster.stats.stamina ?? 50) - staminaCost;
+    
+    // Calculate damage and apply to enemies in affected tiles
+    let totalDamage = 0;
+    let enemiesHit: Monster[] = [];
+    let newDungeon = { ...dungeon };
+    
+    for (const tile of affected) {
+      const dungeonTile = dungeon.tiles[tile.y]?.[tile.x];
+      if (dungeonTile?.type === 'enemy' && dungeonTile.enemyId) {
+        const enemy = dungeon.enemies.find(e => e.id === dungeonTile.enemyId);
+        if (enemy) {
+          // Calculate damage (simplified version)
+          const attackStat = targetingMove.type === 'melee' ? monster.stats.attack : monster.stats.special;
+          const baseDamage = targetingMove.power + attackStat;
+          const damage = Math.max(1, Math.floor(baseDamage - enemy.stats.defense * 0.3));
+          
+          totalDamage += damage;
+          enemiesHit.push(enemy);
+          
+          // Apply damage
+          const newEnemyHp = enemy.stats.currentHp - damage;
+          
+          if (newEnemyHp <= 0) {
+            // Enemy defeated - remove from dungeon
+            newDungeon = removeEnemy(newDungeon, enemy.id);
+            addLog(`💥 ${targetingMove.name} defeated ${enemy.name}! (+${damage} dmg)`, 'damage');
+          } else {
+            // Update enemy HP
+            const updatedEnemies = newDungeon.enemies.map(e => 
+              e.id === enemy.id ? { ...e, stats: { ...e.stats, currentHp: newEnemyHp } } : e
+            );
+            newDungeon = { ...newDungeon, enemies: updatedEnemies };
+            addLog(`⚔️ ${targetingMove.name} hit ${enemy.name} for ${damage} damage!`, 'damage');
+          }
+        }
+      }
+    }
+    
+    if (enemiesHit.length === 0) {
+      addLog(`⚔️ ${targetingMove.name} missed! No enemies in range.`, 'info');
+    }
+    
+    // Update dungeon state
+    dispatch({ type: 'SET_DUNGEON', dungeon: newDungeon });
+    
+    // Update player stamina and move mastery
+    const baseMoveId = (targetingMove as any).baseMoveId || targetingMove.id;
+    const currentMastery = monster.moveMastery || {};
+    const moveMasteryEntry = currentMastery[baseMoveId] || { uses: 0, currentTier: 'lesser' as const, hasAoE: false };
+    const newUses = moveMasteryEntry.uses + 1;
+    
+    const THRESHOLDS = { lesser: 0, minor: 10, base: 25, greater: 50, omega: 100 };
+    let newTier: 'lesser' | 'minor' | 'base' | 'greater' | 'omega' = 'lesser';
+    for (const tier of ['lesser', 'minor', 'base', 'greater', 'omega'] as const) {
+      if (newUses >= THRESHOLDS[tier]) newTier = tier;
+    }
+    const hasAoE = newUses >= 30;
+    
+    dispatch({
+      type: 'UPDATE_PLAYER_MONSTER',
+      monster: {
+        ...monster,
+        stats: { ...monster.stats, currentStamina: newStamina },
+        moveMastery: {
+          ...currentMastery,
+          [baseMoveId]: { uses: newUses, currentTier: newTier, hasAoE },
+        },
+      }
+    });
+    
+    // Exit targeting mode
+    cancelTargeting();
+    
+    // Process enemy turns after player attacks
+    processEnemyTurnsRef.current?.(newDungeon);
+  }, [targetingMove, targetingTiles, state.run, dungeon, dispatch, cancelTargeting]);
+  
+  // Process all visible enemy turns
+  const processEnemyTurns = useCallback((currentDungeon: typeof dungeon) => {
+    if (!currentDungeon || !state.run) return;
+    
+    let updatedDungeon = currentDungeon;
+    let playerDamage = 0;
+    
+    for (const enemy of currentDungeon.enemies) {
+      const enemyPos = getEnemyPosition(updatedDungeon, enemy.id);
+      if (!enemyPos) continue;
+      
+      // Only process visible enemies
+      if (!updatedDungeon.tiles[enemyPos.y]?.[enemyPos.x]?.visible) continue;
+      
+      // Can enemy see player?
+      if (!canSeePlayer(enemyPos, updatedDungeon.playerPosition, updatedDungeon.tiles)) continue;
+      
+      // Calculate action
+      const action = calculateEnemyAction(
+        enemy, 
+        enemyPos, 
+        updatedDungeon.playerPosition, 
+        updatedDungeon.tiles, 
+        updatedDungeon.width, 
+        updatedDungeon.height
+      );
+      
+      if (action.type === 'attack') {
+        // Enemy attacks player
+        const attackPower = enemy.stats.attack;
+        const playerDef = state.run.currentMonster.stats.defense;
+        const damage = Math.max(1, Math.floor(attackPower - playerDef * 0.3));
+        playerDamage += damage;
+        addLog(`👹 ${enemy.name} attacks for ${damage} damage!`, 'damage');
+      } else if (action.type === 'move' && action.direction) {
+        // Enemy moves
+        const result = moveEnemy(updatedDungeon, enemy.id, action.direction);
+        if (result.newPos) {
+          updatedDungeon = result.dungeon;
+        }
+      }
+    }
+    
+    // Apply damage to player
+    if (playerDamage > 0) {
+      const monster = state.run.currentMonster;
+      const newHp = Math.max(0, monster.stats.currentHp - playerDamage);
+      dispatch({
+        type: 'UPDATE_PLAYER_MONSTER',
+        monster: {
+          ...monster,
+          stats: { ...monster.stats, currentHp: newHp }
+        }
+      });
+      
+      if (newHp <= 0) {
+        dispatch({ type: 'END_RUN', victory: false });
+        dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
+        return;
+      }
+    }
+    
+    // Update dungeon with enemy movements
+    dispatch({ type: 'SET_DUNGEON', dungeon: updatedDungeon });
+  }, [state.run, dispatch]);
+  
+  // Keep the ref updated
+  useEffect(() => {
+    processEnemyTurnsRef.current = processEnemyTurns;
+  }, [processEnemyTurns]);
+  
+  // Modified tile click handler for targeting mode
+  const handleDungeonTileClick = useCallback((x: number, y: number) => {
+    if (targetingMove) {
+      handleTargetingClick(x, y);
+    } else {
+      handleTileClick(x, y);
+    }
+  }, [targetingMove, handleTargetingClick, handleTileClick]);
+  
+  // ESC to cancel targeting
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && targetingMove) {
+        cancelTargeting();
+        addLog('❌ Attack cancelled.', 'info');
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [targetingMove, cancelTargeting]);
 
   return <>
       <GameSidebar 
@@ -1118,7 +1383,13 @@ function DungeonView({
               zoom={settings.dungeonZoom}
               unlockedMonsters={state.saveData.unlockedMonsters}
               targetPath={targetPath}
-              onTileClick={handleTileClick}
+              onTileClick={handleDungeonTileClick}
+              targetingMode={!!targetingMove}
+              targetingTiles={targetingTiles}
+              affectedTiles={affectedTiles}
+              hoveredTile={hoveredTile}
+              onTileHover={handleTileHover}
+              onTileHoverEnd={() => setHoveredTile(null)}
               onDisarmTrap={(x, y, success) => {
                 dispatch({ type: 'DISARM_TRAP', x, y, success });
                 if (success) {
@@ -1149,6 +1420,11 @@ function DungeonView({
                 }
               }}
             />
+            
+            {/* Targeting mode UI */}
+            {targetingMove && (
+              <MoveInfoPanel move={targetingMove} onCancel={cancelTargeting} />
+            )}
           </div>
 
           {/* Bottom bar with controls, legend, and game log */}

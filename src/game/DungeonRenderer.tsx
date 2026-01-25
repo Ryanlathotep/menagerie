@@ -306,7 +306,11 @@ function Tile({
       const captureStatus = isCaptured(enemy, unlockedMonsters);
       return <Tooltip>
           <TooltipTrigger asChild>
-            <div className={`flex items-center justify-center ${getFloorVariant(x, y, true)} relative hover:scale-110 transition-transform cursor-pointer`} style={tileStyle}>
+            <div 
+              className={`flex items-center justify-center ${getFloorVariant(x, y, true)} relative hover:scale-110 transition-transform cursor-pointer`} 
+              style={tileStyle}
+              onClick={onClick}
+            >
               <MonsterSprite species={enemy.species} element={enemy.element} classType={enemy.class} size={spriteSize} />
             </div>
           </TooltipTrigger>

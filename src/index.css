@@ -154,6 +154,15 @@
   .element-badge {
     @apply px-3 py-1 rounded-full text-sm font-semibold uppercase tracking-wide;
   }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Element-specific styles - Anime style with gradients */

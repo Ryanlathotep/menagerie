@@ -89,6 +89,7 @@ interface EquipmentViewProps {
   onDrop: (itemId: string) => void;
   onBulkEquip: (partyIndex: number, equipment: MonsterEquipment, usedIds: string[]) => void;
   onClose: () => void;
+  onLog?: (text: string) => void;
 }
 
 export function EquipmentView({
@@ -101,6 +102,7 @@ export function EquipmentView({
   onDrop,
   onBulkEquip,
   onClose,
+  onLog,
 }: EquipmentViewProps) {
   const [selectedPartyIndex, setSelectedPartyIndex] = useState(activePartyIndex);
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot | null>(null);
@@ -155,7 +157,8 @@ export function EquipmentView({
       title: "Auto-Equipped!",
       description: `Equipped ${result.usedItemIds.length} items optimized for ${monster.class} class.`,
     });
-  }, [inventory, monster.class, monster.level, onBulkEquip, selectedPartyIndex]);
+    onLog?.(`🧰 Auto-equipped ${result.usedItemIds.length} items for ${monster.class}.`);
+  }, [inventory, monster.class, monster.level, onBulkEquip, onLog, selectedPartyIndex]);
   
   return (
     <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">

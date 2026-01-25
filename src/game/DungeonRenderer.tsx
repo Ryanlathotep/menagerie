@@ -592,13 +592,6 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
           ))}
         </div>
       </div>
-      
-      {/* Minimap legend */}
-      <div className="flex items-center gap-3 mt-3 text-[10px] text-muted-foreground justify-center">
-        <span>💎 Treasure</span>
-        <span>⬇️ Stairs</span>
-        <span>⚠️ Trap</span>
-      </div>
     </div>
     </TooltipProvider>
   );

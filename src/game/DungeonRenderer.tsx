@@ -260,19 +260,20 @@ function Tile({
     return <div className="flex items-center justify-center bg-background" style={tileStyle} onClick={onClick} />;
   }
 
-  // Wall tiles
+  // Wall tiles - texture fills the entire tile
   if (tile.type === 'wall') {
-    return <div className={`flex items-center justify-center ${getWallVariant(x, y, tiles)}`} style={tileStyle}>
-        {tile.visible && <span className="text-muted-foreground/30 text-center" style={{
-        fontSize: `${Math.max(6, tileSize * 0.3)}px`
-      }}>▓
-
-
-
-
-
-      </span>}
-      </div>;
+    return (
+      <div className={`flex items-center justify-center overflow-hidden ${getWallVariant(x, y, tiles)}`} style={tileStyle}>
+        {tile.visible && (
+          <span 
+            className="text-muted-foreground/30 flex items-center justify-center w-full h-full" 
+            style={{ fontSize: `${tileSize * 1.4}px`, lineHeight: 0.8 }}
+          >
+            ▓
+          </span>
+        )}
+      </div>
+    );
   }
 
   // Player tile - show player's monster sprite
@@ -427,6 +428,44 @@ function Tile({
                   Success chance: <span className={disarmChance >= 60 ? 'text-green-600' : disarmChance >= 30 ? 'text-yellow-600' : 'text-red-600'}>{disarmChance}%</span> (based on Dexterity)
                 </p>
               </div>}
+          </div>
+        </TooltipContent>
+      </Tooltip>;
+  }
+
+  // Plant tiles with tooltips
+  if (tile.type === 'plant' && tile.visible && tile.plantType) {
+    const plantInfo = getPlantInfo(tile.plantType);
+    const isHarvested = tile.harvested;
+    
+    return <Tooltip>
+        <TooltipTrigger asChild>
+          <div className={`flex items-center justify-center bg-gradient-to-br ${plantInfo.color} ${isHarvested ? 'opacity-40' : 'cursor-pointer hover:scale-110'} transition-transform ${pathOverlayClass}`} style={tileStyle} onClick={onClick}>
+            <span style={{
+            fontSize: `${Math.max(10, tileSize * 0.5)}px`
+          }}>
+              {isHarvested ? '·' : plantInfo.icon}
+            </span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[220px] p-2">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <p className="font-bold text-sm">{plantInfo.icon} {plantInfo.name}</p>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded capitalize ${
+                plantInfo.rarity === 'common' ? 'bg-green-100 text-green-700' :
+                plantInfo.rarity === 'uncommon' ? 'bg-teal-100 text-teal-700' :
+                plantInfo.rarity === 'rare' ? 'bg-amber-100 text-amber-700' :
+                'bg-purple-100 text-purple-700'
+              }`}>
+                {plantInfo.rarity}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">{plantInfo.description}</p>
+            {isHarvested ? 
+              <p className="text-xs text-muted-foreground italic">Already harvested</p> : 
+              <p className="text-xs text-primary font-medium">Walk over to harvest!</p>
+            }
           </div>
         </TooltipContent>
       </Tooltip>;

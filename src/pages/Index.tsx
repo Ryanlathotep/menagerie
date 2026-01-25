@@ -298,7 +298,7 @@ function CharacterSelect() {
         )}
         
         {/* Unlocked monster selection */}
-        <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex flex-col min-h-0 max-h-[40vh]">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-muted-foreground">
               Unlocked Monsters ({unlockedMonsters.length})
@@ -323,19 +323,19 @@ function CharacterSelect() {
           </div>
           
           <ScrollArea className="flex-1">
-            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
-              {sortedMonsters.map(monster => <Card key={monster.comboId} className={`p-3 cursor-pointer transition-all ${selectedMonster?.comboId === monster.comboId ? 'ring-2 ring-primary bg-primary/10' : 'hover:border-primary/50'}`} onClick={() => setSelectedMonster(monster)}>
+            <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
+              {sortedMonsters.map(monster => <Card key={monster.comboId} className={`p-2 cursor-pointer transition-all ${selectedMonster?.comboId === monster.comboId ? 'ring-2 ring-primary bg-primary/10' : 'hover:border-primary/50'}`} onClick={() => setSelectedMonster(monster)}>
                   <div className="text-center">
                     <div className="flex justify-center mb-1">
-                      <MonsterSprite species={monster.species} element={monster.element} classType={monster.classType} size={56} animated={false} />
+                      <MonsterSprite species={monster.species} element={monster.element} classType={monster.classType} size={40} animated={false} />
                     </div>
-                    <p className="text-xs font-medium capitalize">{monster.species}</p>
-                    <div className="flex gap-1 justify-center mt-1 flex-wrap">
-                      <span className={`element-badge element-${monster.element} text-[10px] px-1 py-0`}>
+                    <p className="text-[10px] font-medium capitalize truncate">{monster.species}</p>
+                    <div className="flex gap-0.5 justify-center mt-0.5 flex-wrap">
+                      <span className={`element-badge element-${monster.element} text-[8px] px-1 py-0`}>
                         {monster.element}
                       </span>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-1">
+                    <p className="text-[8px] text-muted-foreground mt-0.5">
                       Lv.{monster.level} • {monster.classType}
                     </p>
                   </div>

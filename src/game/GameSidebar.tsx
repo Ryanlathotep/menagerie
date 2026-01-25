@@ -6,17 +6,17 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-import { User, Backpack, Map, DoorOpen, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, ScrollText, Shirt, Gem, Users } from 'lucide-react';
+import { User, Backpack, Map, DoorOpen, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, Shirt, Gem, Users } from 'lucide-react';
 import { Monster, InventoryItem, MaterialInventory } from './types';
 import { MonsterSprite } from './sprites';
-import { getMonsterMoves, Move } from './moves';
+import { getMonsterMoves } from './moves';
 import { ExpandedStats } from './CharacterSheet';
 import { ITEMS } from './Inventory';
 import { MovePanel } from './MovePanel';
 import { SettingsPanel } from './Settings';
-import { MonsterEquipment, EquipmentItem, SLOT_INFO, RARITY_COLORS, calculateEquipmentBonuses, CRAFTING_MATERIALS } from './equipment';
+import { MonsterEquipment, EquipmentItem, RARITY_COLORS, CRAFTING_MATERIALS } from './equipment';
 import { PartyPanel } from './PartyPanel';
-import { GameLog, LogMessage } from './GameLog';
+
 
 // Helper functions to get item info when not in ITEMS database
 function getItemDescription(item: InventoryItem): string {
@@ -62,9 +62,6 @@ interface GameSidebarProps {
   experienceToNext?: number;
   expandedStats?: ExpandedStats;
   onPanelChange?: (isOpen: boolean) => void;
-  // Log props - unified for dungeon and battle
-  gameLog?: LogMessage[];
-  battleLog?: string[]; // Legacy - converted to LogMessage if gameLog not provided
   onUseItem?: (item: InventoryItem) => void;
   enemyMonster?: Monster | null;
   enemyExpandedStats?: ExpandedStats;
@@ -93,8 +90,6 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   experienceToNext = 100,
   expandedStats,
   onPanelChange,
-  gameLog = [],
-  battleLog = [],
   onUseItem,
   enemyMonster,
   enemyExpandedStats,
@@ -102,7 +97,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   activePartyIndex = 0,
   onPartySwitch,
 }, ref) => {
-  const [activePanel, setActivePanel] = useState<'character' | 'inventory' | 'moves' | 'log' | 'party' | null>(null);
+  const [activePanel, setActivePanel] = useState<'character' | 'inventory' | 'moves' | 'party' | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   
   const handlePanelChange = (panel: typeof activePanel) => {
@@ -229,21 +224,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             </Button>
           )}
           
-          {/* Game log button - always visible, shows unified log */}
-          <Button 
-            variant={activePanel === 'log' ? 'default' : 'ghost'} 
-            size="icon" 
-            className={`w-8 h-8 relative ${(gameLog.length > 0 || battleLog.length > 0) ? '' : ''}`} 
-            onClick={() => handlePanelChange('log')} 
-            title="Game Log"
-          >
-            <ScrollText className="w-4 h-4" />
-            {(gameLog.length > 0 || battleLog.length > 0) && (
-              <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                {gameLog.length || battleLog.length}
-              </span>
-            )}
-          </Button>
+          {/* Log is now always visible in the main view - no menu button needed */}
           
           {/* Party button - only show if party has more than 1 member */}
           {party.length > 1 && onPartySwitch && (
@@ -293,7 +274,6 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 {activePanel === 'character' && '📋 Character'}
                 {activePanel === 'moves' && '⚔️ Moves'}
                 {activePanel === 'inventory' && '🎒 Inventory'}
-                {activePanel === 'log' && '📜 Game Log'}
                 {activePanel === 'party' && '👥 Party'}
               </h2>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handlePanelChange(null)}>✕</Button>
@@ -482,23 +462,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
               </div>
             )}
             
-            {/* Game Log Panel - Unified for dungeon and battle */}
-            {activePanel === 'log' && (
-              <div className="max-h-48">
-                {gameLog.length > 0 ? (
-                  <GameLog messages={gameLog} maxHeight="180px" />
-                ) : battleLog.length > 0 ? (
-                  // Legacy: convert string log to display
-                  <div className="max-h-40 overflow-y-auto space-y-1">
-                    {battleLog.slice().reverse().map((msg, i) => (
-                      <p key={i} className="text-xs py-1 border-b border-muted/30 last:border-0">{msg}</p>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground text-center py-4">No events yet</p>
-                )}
-              </div>
-            )}
+            {/* Log panel removed - log is always visible in main view */}
             
             {/* Party Panel */}
             {activePanel === 'party' && onPartySwitch && (

@@ -828,7 +828,6 @@ function DungeonView({
         party={state.run?.party || []}
         activePartyIndex={state.run?.activePartyIndex || 0}
         onPartySwitch={handlePartySwitch}
-        gameLog={gameLog}
         expandedStats={state.run?.currentMonster ? {
           currentHp: state.run.currentMonster.stats.currentHp,
           maxHp: state.run.currentMonster.stats.maxHp,
@@ -2269,7 +2268,6 @@ function BattleView({
         inBattle={true}
         experience={experience}
         experienceToNext={experienceToNext}
-        gameLog={gameLog}
         onUseItem={handleUseItem}
         onPanelChange={setMenuOpen}
         expandedStats={{

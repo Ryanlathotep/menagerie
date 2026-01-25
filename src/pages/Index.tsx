@@ -1,11 +1,11 @@
 import { GameProvider, useGame } from '@/game/state';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { getComboId, UnlockedMonster, InventoryItem, MonsterStats, Monster, Position } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
-import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, LOOT_TABLE, generateLoot } from '@/game/dungeon';
+import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, LOOT_TABLE } from '@/game/dungeon';
 import { useEffect, useCallback, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ScrollText } from 'lucide-react';
 import { MonsterSprite } from '@/game/sprites';
 import { DungeonRenderer } from '@/game/DungeonRenderer';
@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import { SettingsProvider, SettingsButton, useSettings } from '@/game/Settings';
 import { MonsterStatsPreview } from '@/game/MonsterStatsPreview';
 import { LevelUpScreen } from '@/game/LevelUpScreen';
-import { EquipmentItem, EquipmentSlot, MonsterEquipment } from '@/game/equipment';
+import { EquipmentItem, MonsterEquipment } from '@/game/equipment';
 import { EquipmentView } from '@/game/EquipmentView';
 import { PreRunEquipment } from '@/game/PreRunEquipment';
 import { 
@@ -33,13 +33,11 @@ import {
   tickEffects,
   cureStatusEffect,
   cureAllStatusEffects,
-  StatusEffectType,
 } from '@/game/statusEffects';
 import { StatusIcons } from '@/game/StatusEffectDisplay';
 import { CraftingWorkshop } from '@/game/CraftingWorkshop';
 import { CraftingRecipe, ConsumableRecipe } from '@/game/equipment';
 import { findPath, getDirection } from '@/game/pathfinding';
-import { PartyPanel } from '@/game/PartyPanel';
 import { RecruitmentModal, calculateRecruitChance } from '@/game/RecruitmentModal';
 import { PartySwitchModal } from '@/game/PartySwitchModal';
 import { ReviveTargetModal } from '@/game/ReviveTargetModal';
@@ -55,9 +53,10 @@ import {
   moveEnemy, 
   getEnemyPosition, 
   canSeePlayer,
-  isInRange,
 } from '@/game/dungeonCombat';
 import { MoveInfoPanel } from '@/game/AttackTargeting';
+import { useAuth } from '@/hooks/useAuth';
+import { useCloudSave } from '@/hooks/useCloudSave';
 
 // Main Menu Component
 function MainMenu() {
@@ -67,6 +66,9 @@ function MainMenu() {
   } = useGame();
   const [showCrafting, setShowCrafting] = useState(false);
   const [showShop, setShowShop] = useState(false);
+  const { user, signOut, isAuthenticated } = useAuth();
+  const { syncSave, syncing, lastSyncTime } = useCloudSave();
+  const navigate = useNavigate();
   
   const handleResetSave = () => {
     if (confirm('Are you sure you want to reset all progress? This cannot be undone.')) {
@@ -177,6 +179,52 @@ function MainMenu() {
           <p>📦 Materials: {Object.keys(state.saveData.materials || {}).length} types</p>
           <p>🗃️ Stored Equipment: {state.saveData.storedEquipment?.length || 0} items</p>
           <p>🧪 Stored Consumables: {(state.saveData.storedItems || []).reduce((sum, item) => sum + (item.quantity || 1), 0)} items</p>
+        </div>
+        
+        {/* Account & Cloud Sync Status */}
+        <div className="pt-4 border-t border-border/50 space-y-2">
+          {isAuthenticated ? (
+            <>
+              <p className="text-sm text-green-500 flex items-center justify-center gap-2">
+                ☁️ {syncing ? 'Syncing...' : 'Cloud Save Active'}
+                {lastSyncTime && (
+                  <span className="text-xs text-muted-foreground">
+                    (Last: {lastSyncTime.toLocaleTimeString()})
+                  </span>
+                )}
+              </p>
+              <div className="flex gap-2 justify-center">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={async () => {
+                    const result = await syncSave(state.saveData);
+                    if (result.action === 'downloaded' && result.data) {
+                      dispatch({ type: 'LOAD_SAVE', saveData: result.data });
+                    }
+                  }}
+                  disabled={syncing}
+                >
+                  🔄 Sync Now
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={signOut}
+                >
+                  Sign Out
+                </Button>
+              </div>
+            </>
+          ) : (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => navigate('/auth')}
+            >
+              ☁️ Sign In for Cloud Saves
+            </Button>
+          )}
         </div>
 
         <div className="flex gap-2 justify-center">

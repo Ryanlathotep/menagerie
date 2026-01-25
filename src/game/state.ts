@@ -79,9 +79,11 @@ type GameAction =
   | { type: 'RESET_SAVE' }
   // Party management
   | { type: 'SWITCH_ACTIVE_MONSTER'; index: number }
+  | { type: 'SWITCH_ACTIVE_IN_BATTLE'; index: number }  // Switch during battle (updates battle.playerMonster too)
   | { type: 'ADD_TO_PARTY'; monster: Monster }
   | { type: 'UPDATE_PARTY_MONSTER'; index: number; monster: Monster }
   | { type: 'ADD_PARTY_XP'; xpGained: number; excludeActiveIndex: number }
+  | { type: 'REVIVE_PARTY_MEMBER'; index: number; hpPercent: number }  // Revive a fainted party member
   // Battle tracking
   | { type: 'UPDATE_BATTLE_STATS'; stats: Partial<{ turnsUsed: number; overkillDamage: number; statusEffectsApplied: number; criticalHits: number }> }
   | { type: 'RESET_BATTLE_STATS' };
@@ -619,6 +621,61 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           activePartyIndex: action.index,
         },
       };
+    
+    // Switch active monster during battle - also updates the battle state
+    case 'SWITCH_ACTIVE_IN_BATTLE': {
+      if (!state.run || action.index < 0 || action.index >= state.run.party.length) return state;
+      const switchedMonster = state.run.party[action.index];
+      if (switchedMonster.stats.currentHp <= 0) return state; // Can't switch to fainted
+      
+      // If there's an active battle, update the playerMonster in battle state too
+      const updatedBattle = state.run.battle ? {
+        ...state.run.battle,
+        playerMonster: switchedMonster,
+        log: [...state.run.battle.log, `Go, ${switchedMonster.name}!`],
+      } : null;
+      
+      return {
+        ...state,
+        run: {
+          ...state.run,
+          currentMonster: switchedMonster,
+          activePartyIndex: action.index,
+          battle: updatedBattle,
+        },
+      };
+    }
+    
+    // Revive a fainted party member
+    case 'REVIVE_PARTY_MEMBER': {
+      if (!state.run || action.index < 0 || action.index >= state.run.party.length) return state;
+      const targetMonster = state.run.party[action.index];
+      if (targetMonster.stats.currentHp > 0) return state; // Already alive
+      
+      const revivedHp = Math.max(1, Math.floor(targetMonster.stats.maxHp * (action.hpPercent / 100)));
+      const revivedMonster = {
+        ...targetMonster,
+        stats: {
+          ...targetMonster.stats,
+          currentHp: revivedHp,
+        },
+      };
+      
+      const partyWithRevived = [...state.run.party];
+      partyWithRevived[action.index] = revivedMonster;
+      
+      return {
+        ...state,
+        run: {
+          ...state.run,
+          party: partyWithRevived,
+          // Update currentMonster if reviving the active one
+          currentMonster: action.index === state.run.activePartyIndex 
+            ? revivedMonster 
+            : state.run.currentMonster,
+        },
+      };
+    }
     
     case 'ADD_TO_PARTY':
       if (!state.run) return state;

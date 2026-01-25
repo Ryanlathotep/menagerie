@@ -8,7 +8,7 @@ import { FullMonster, ExpandedStats } from './CharacterSheet';
 
 // Item types
 export type ItemType = 'consumable' | 'key' | 'material';
-export type ConsumableEffect = 'heal_hp' | 'heal_stamina' | 'cure_poison' | 'cure_burn' | 'cure_freeze' | 'cure_all' | 'boost_attack' | 'boost_defense' | 'boost_speed';
+export type ConsumableEffect = 'heal_hp' | 'heal_stamina' | 'cure_poison' | 'cure_burn' | 'cure_freeze' | 'cure_all' | 'boost_attack' | 'boost_defense' | 'boost_speed' | 'revive' | 'revive_full';
 
 export interface Item {
   id: string;
@@ -186,6 +186,43 @@ export const ITEMS: Record<string, Item> = {
     effect: 'boost_speed',
     effectValue: 25,
     duration: 5,
+  },
+  
+  // Revive items
+  revive_herb: {
+    id: 'revive_herb',
+    name: 'Revive Herb',
+    description: 'Revives a fainted party member with 25% HP',
+    type: 'consumable',
+    stackable: true,
+    maxStack: 5,
+    icon: '🌿',
+    rarity: 'uncommon',
+    effect: 'revive',
+    effectValue: 25,
+  },
+  phoenix_feather: {
+    id: 'phoenix_feather',
+    name: 'Phoenix Feather',
+    description: 'Revives a fainted party member with 50% HP',
+    type: 'consumable',
+    stackable: true,
+    maxStack: 3,
+    icon: '🔥',
+    rarity: 'rare',
+    effect: 'revive',
+    effectValue: 50,
+  },
+  miracle_elixir: {
+    id: 'miracle_elixir',
+    name: 'Miracle Elixir',
+    description: 'Revives a fainted party member with full HP',
+    type: 'consumable',
+    stackable: true,
+    maxStack: 2,
+    icon: '⭐',
+    rarity: 'epic',
+    effect: 'revive_full',
   },
 };
 

@@ -29,6 +29,8 @@ function getItemDescription(item: InventoryItem): string {
   if (item.effect === 'boost_attack') return 'Boosts attack for next battle';
   if (item.effect === 'boost_defense') return 'Boosts defense for next battle';
   if (item.effect === 'boost_speed') return 'Boosts speed for next battle';
+  if (item.effect === 'revive') return `Revives fainted ally with ${item.value}% HP`;
+  if (item.effect === 'revive_full') return 'Revives fainted ally with full HP';
   return item.name;
 }
 

@@ -12,7 +12,7 @@ import {
   UnlockedMonster,
   InventoryItem,
 } from './types';
-import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot } from './equipment';
+import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot, dismantleEquipment, getRecipeFromEquipment } from './equipment';
 import { xpToNextLevel } from './combat';
 import { calculateStats } from './utils';
 
@@ -35,6 +35,7 @@ const DEFAULT_SAVE_DATA: SaveData = {
   totalEnemiesDefeated: 0,
   materials: {},              // Crafting materials
   storedEquipment: [],        // Equipment storage
+  unlockedRecipes: [],        // Unlocked crafting recipes
 };
 
 // Initial game state
@@ -76,6 +77,8 @@ type GameAction =
   | { type: 'USE_MATERIALS'; materials: { materialId: string; quantity: number }[] }
   | { type: 'STORE_EQUIPMENT'; item: EquipmentItem }
   | { type: 'WITHDRAW_EQUIPMENT'; itemId: string }
+  | { type: 'DISMANTLE_EQUIPMENT'; itemId: string }  // Break equipment into materials
+  | { type: 'UNLOCK_RECIPE'; recipeId: string }      // Unlock a crafting recipe
   | { type: 'LOAD_SAVE'; saveData: SaveData }
   | { type: 'RESET_SAVE' }
   // Party management
@@ -221,6 +224,15 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         }
       }
       
+      // Unlock recipes for equipment brought back
+      const newUnlockedRecipes = [...state.saveData.unlockedRecipes];
+      for (const item of equipmentToStore) {
+        const matchingRecipe = getRecipeFromEquipment(item);
+        if (matchingRecipe && !newUnlockedRecipes.includes(matchingRecipe.id)) {
+          newUnlockedRecipes.push(matchingRecipe.id);
+        }
+      }
+      
       return {
         ...state,
         phase: 'run_summary',
@@ -233,6 +245,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           storedEquipment: [...state.saveData.storedEquipment, ...equipmentToStore],
           materials: mergedMaterials,
           unlockedMonsters: updatedUnlockedMonsters,
+          unlockedRecipes: newUnlockedRecipes,
         },
       };
     }
@@ -639,6 +652,41 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           storedEquipment: state.saveData.storedEquipment.filter(i => i.id !== action.itemId),
         },
       };
+    
+    case 'DISMANTLE_EQUIPMENT': {
+      // Break stored equipment into materials
+      const itemToDismantle = state.saveData.storedEquipment.find(i => i.id === action.itemId);
+      if (!itemToDismantle) return state;
+      
+      const dismantleResult = dismantleEquipment(itemToDismantle);
+      const updatedMaterials = { ...state.saveData.materials };
+      
+      for (const { materialId, quantity } of dismantleResult.materials) {
+        updatedMaterials[materialId] = (updatedMaterials[materialId] || 0) + quantity;
+      }
+      
+      return {
+        ...state,
+        saveData: {
+          ...state.saveData,
+          storedEquipment: state.saveData.storedEquipment.filter(i => i.id !== action.itemId),
+          materials: updatedMaterials,
+        },
+      };
+    }
+    
+    case 'UNLOCK_RECIPE': {
+      if (state.saveData.unlockedRecipes.includes(action.recipeId)) {
+        return state; // Already unlocked
+      }
+      return {
+        ...state,
+        saveData: {
+          ...state.saveData,
+          unlockedRecipes: [...state.saveData.unlockedRecipes, action.recipeId],
+        },
+      };
+    }
        
     case 'LOAD_SAVE':
       return {

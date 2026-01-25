@@ -811,6 +811,54 @@ export function craftEquipment(recipe: CraftingRecipe, playerLevel: number): Equ
   );
 }
 
+// Get matching recipe for an equipment item (for recipe unlocking)
+export function getRecipeFromEquipment(item: EquipmentItem): CraftingRecipe | null {
+  // Find a recipe that matches the item's slot, rarity, and element
+  return CRAFTING_RECIPES.find(recipe => 
+    recipe.resultSlot === item.slot &&
+    recipe.resultRarity === item.rarity &&
+    recipe.element === item.element
+  ) || null;
+}
+
+// Dismantle equipment into materials
+export interface DismantleResult {
+  materials: { materialId: string; quantity: number }[];
+  totalValue: number;
+}
+
+export function dismantleEquipment(item: EquipmentItem): DismantleResult {
+  const rarityMaterialMap: Record<Rarity, { materials: string[]; baseQty: number }> = {
+    common: { materials: ['iron_ore', 'soft_hide', 'cloth_scrap'], baseQty: 1 },
+    uncommon: { materials: ['silver_ore', 'tough_hide', 'silk'], baseQty: 2 },
+    rare: { materials: ['gold_ore', 'fire_essence', 'water_essence', 'earth_essence', 'air_essence'], baseQty: 2 },
+    epic: { materials: ['mythril_ore', 'void_essence', 'void_leather'], baseQty: 2 },
+    legendary: { materials: ['adamant_ore', 'dragon_scale', 'diamond'], baseQty: 3 },
+  };
+  
+  const config = rarityMaterialMap[item.rarity];
+  const result: DismantleResult = {
+    materials: [],
+    totalValue: 0,
+  };
+  
+  // Add 1-3 random materials based on rarity
+  const numMaterials = Math.min(config.materials.length, 1 + Math.floor(Math.random() * 2));
+  const shuffled = [...config.materials].sort(() => Math.random() - 0.5);
+  
+  for (let i = 0; i < numMaterials; i++) {
+    const materialId = shuffled[i];
+    const quantity = config.baseQty + Math.floor(Math.random() * 2);
+    result.materials.push({ materialId, quantity });
+    
+    // Calculate value from material
+    const material = CRAFTING_MATERIALS.find(m => m.id === materialId);
+    result.totalValue += (material?.value || 1) * quantity;
+  }
+  
+  return result;
+}
+
 // Generate random material drop based on floor
 export function generateMaterialDrop(floor: number): CraftingMaterial | null {
   // 40% chance to drop material

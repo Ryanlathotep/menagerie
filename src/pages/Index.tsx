@@ -75,6 +75,14 @@ function MainMenu() {
     toast.success(`Crafted ${result.name}!`);
   };
   
+  const handleDismantle = (itemId: string, materialsGained: { materialId: string; quantity: number }[]) => {
+    dispatch({ type: 'DISMANTLE_EQUIPMENT', itemId });
+    const materialNames = materialsGained.map(m => 
+      `${m.quantity}x ${m.materialId.split('_').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}`
+    ).join(', ');
+    toast.success(`Dismantled! Got ${materialNames}`);
+  };
+  
   return (
     <div className="game-container text-7xl font-serif text-center">
       <div className="text-center space-y-8">
@@ -122,7 +130,10 @@ function MainMenu() {
         <CraftingWorkshop
           materials={state.saveData.materials || {}}
           playerLevel={1}
+          storedEquipment={state.saveData.storedEquipment || []}
+          unlockedRecipes={state.saveData.unlockedRecipes || []}
           onCraft={handleCraft}
+          onDismantle={handleDismantle}
           onClose={() => setShowCrafting(false)}
         />
       )}

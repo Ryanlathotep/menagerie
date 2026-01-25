@@ -608,7 +608,7 @@ export function calculateEquipmentBonuses(equipment: MonsterEquipment): Equipmen
 }
 
 // ============= CRAFTING MATERIALS =============
-export type MaterialType = 'ore' | 'hide' | 'essence' | 'gem' | 'bone' | 'fabric';
+export type MaterialType = 'ore' | 'hide' | 'essence' | 'gem' | 'bone' | 'fabric' | 'herb';
 
 export interface CraftingMaterial {
   id: string;
@@ -617,6 +617,7 @@ export interface CraftingMaterial {
   rarity: Rarity;
   icon: string;
   value: number; // Gold value
+  description?: string; // For herbs/plants
 }
 
 export const CRAFTING_MATERIALS: CraftingMaterial[] = [
@@ -655,6 +656,26 @@ export const CRAFTING_MATERIALS: CraftingMaterial[] = [
   { id: 'cloth_scrap', name: 'Cloth Scrap', type: 'fabric', rarity: 'common', icon: '🧵', value: 2 },
   { id: 'silk', name: 'Silk', type: 'fabric', rarity: 'uncommon', icon: '🕸️', value: 15 },
   { id: 'enchanted_cloth', name: 'Enchanted Cloth', type: 'fabric', rarity: 'rare', icon: '✨', value: 40 },
+  
+  // ============= HERBS (for potion crafting) =============
+  // Common herbs - found on floors 1+
+  { id: 'healing_herb', name: 'Healing Herb', type: 'herb', rarity: 'common', icon: '🌿', value: 3, description: 'A common herb with restorative properties.' },
+  { id: 'stamina_root', name: 'Stamina Root', type: 'herb', rarity: 'common', icon: '🥕', value: 3, description: 'An energizing root that restores vitality.' },
+  { id: 'antidote_leaf', name: 'Antidote Leaf', type: 'herb', rarity: 'common', icon: '🍃', value: 4, description: 'A bitter leaf that neutralizes poison.' },
+  
+  // Uncommon herbs - found on floors 2+
+  { id: 'mana_blossom', name: 'Mana Blossom', type: 'herb', rarity: 'uncommon', icon: '🌸', value: 8, description: 'A mystical flower that enhances magical energy.' },
+  { id: 'fire_pepper', name: 'Fire Pepper', type: 'herb', rarity: 'uncommon', icon: '🌶️', value: 10, description: 'A spicy pepper that ignites inner power.' },
+  { id: 'ice_mint', name: 'Ice Mint', type: 'herb', rarity: 'uncommon', icon: '❄️', value: 10, description: 'A cooling mint that soothes burns.' },
+  { id: 'revive_moss', name: 'Revive Moss', type: 'herb', rarity: 'uncommon', icon: '🪴', value: 12, description: 'A rare moss with life-restoring properties.' },
+  
+  // Rare herbs - found on floors 4+
+  { id: 'golden_ginseng', name: 'Golden Ginseng', type: 'herb', rarity: 'rare', icon: '✨', value: 25, description: 'A prized root with powerful healing properties.' },
+  { id: 'phoenix_flower', name: 'Phoenix Flower', type: 'herb', rarity: 'rare', icon: '🔥', value: 30, description: 'A blazing flower said to revive the fallen.' },
+  { id: 'panacea_petal', name: 'Panacea Petal', type: 'herb', rarity: 'rare', icon: '🌺', value: 35, description: 'A miraculous petal that cures all ailments.' },
+  
+  // Epic herbs - found on floors 6+
+  { id: 'miracle_lotus', name: 'Miracle Lotus', type: 'herb', rarity: 'epic', icon: '🪷', value: 60, description: 'A legendary lotus with unmatched restorative power.' },
 ];
 
 // ============= CRAFTING RECIPES =============
@@ -798,6 +819,233 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     element: 'fire',
     icon: '🐲',
     description: 'A blade forged in dragon fire, of unmatched power.',
+  },
+];
+
+// ============= CONSUMABLE/POTION RECIPES =============
+export type ConsumableEffect = 'heal_hp' | 'heal_stamina' | 'heal_full' | 'cure_poison' | 'cure_burn' | 'cure_freeze' | 'cure_all' | 'boost_attack' | 'boost_defense' | 'boost_speed' | 'revive' | 'revive_full';
+
+export interface ConsumableRecipe {
+  id: string;
+  name: string;
+  resultId: string; // ID matching the InventoryItem id used in-game
+  rarity: Rarity;
+  materials: { materialId: string; quantity: number }[];
+  icon: string;
+  description: string;
+  effect: ConsumableEffect;
+  effectValue?: number;
+}
+
+export const CONSUMABLE_RECIPES: ConsumableRecipe[] = [
+  // ============= HEALING POTIONS =============
+  {
+    id: 'craft_small_potion',
+    name: 'Small Potion',
+    resultId: 'small_potion',
+    rarity: 'common',
+    materials: [{ materialId: 'healing_herb', quantity: 2 }],
+    icon: '🧪',
+    description: 'A basic healing potion. Restores 30 HP.',
+    effect: 'heal_hp',
+    effectValue: 30,
+  },
+  {
+    id: 'craft_medium_potion',
+    name: 'Medium Potion',
+    resultId: 'medium_potion',
+    rarity: 'uncommon',
+    materials: [
+      { materialId: 'healing_herb', quantity: 3 },
+      { materialId: 'mana_blossom', quantity: 1 },
+    ],
+    icon: '🧪',
+    description: 'A stronger healing potion. Restores 75 HP.',
+    effect: 'heal_hp',
+    effectValue: 75,
+  },
+  {
+    id: 'craft_large_potion',
+    name: 'Large Potion',
+    resultId: 'large_potion',
+    rarity: 'rare',
+    materials: [
+      { materialId: 'healing_herb', quantity: 4 },
+      { materialId: 'golden_ginseng', quantity: 2 },
+    ],
+    icon: '🧪',
+    description: 'A potent healing potion. Restores 150 HP.',
+    effect: 'heal_hp',
+    effectValue: 150,
+  },
+  
+  // ============= STAMINA POTIONS =============
+  {
+    id: 'craft_stamina_tonic',
+    name: 'Stamina Tonic',
+    resultId: 'stamina_tonic',
+    rarity: 'common',
+    materials: [{ materialId: 'stamina_root', quantity: 2 }],
+    icon: '⚗️',
+    description: 'Restores 20 Stamina.',
+    effect: 'heal_stamina',
+    effectValue: 20,
+  },
+  {
+    id: 'craft_energy_elixir',
+    name: 'Energy Elixir',
+    resultId: 'energy_elixir',
+    rarity: 'uncommon',
+    materials: [
+      { materialId: 'stamina_root', quantity: 3 },
+      { materialId: 'mana_blossom', quantity: 2 },
+    ],
+    icon: '⚗️',
+    description: 'Restores 50 Stamina.',
+    effect: 'heal_stamina',
+    effectValue: 50,
+  },
+  
+  // ============= STATUS CURES =============
+  {
+    id: 'craft_antidote',
+    name: 'Antidote',
+    resultId: 'antidote',
+    rarity: 'common',
+    materials: [{ materialId: 'antidote_leaf', quantity: 2 }],
+    icon: '💊',
+    description: 'Cures poison.',
+    effect: 'cure_poison',
+  },
+  {
+    id: 'craft_burn_salve',
+    name: 'Burn Salve',
+    resultId: 'burn_salve',
+    rarity: 'common',
+    materials: [
+      { materialId: 'ice_mint', quantity: 2 },
+      { materialId: 'healing_herb', quantity: 1 },
+    ],
+    icon: '🩹',
+    description: 'Cures burn.',
+    effect: 'cure_burn',
+  },
+  {
+    id: 'craft_thaw_crystal',
+    name: 'Thaw Crystal',
+    resultId: 'thaw_crystal',
+    rarity: 'common',
+    materials: [
+      { materialId: 'fire_pepper', quantity: 2 },
+      { materialId: 'healing_herb', quantity: 1 },
+    ],
+    icon: '💎',
+    description: 'Cures freeze.',
+    effect: 'cure_freeze',
+  },
+  {
+    id: 'craft_panacea',
+    name: 'Panacea',
+    resultId: 'panacea',
+    rarity: 'rare',
+    materials: [
+      { materialId: 'panacea_petal', quantity: 2 },
+      { materialId: 'golden_ginseng', quantity: 1 },
+      { materialId: 'mana_blossom', quantity: 2 },
+    ],
+    icon: '✨',
+    description: 'Cures all status effects.',
+    effect: 'cure_all',
+  },
+  
+  // ============= BUFF ITEMS =============
+  {
+    id: 'craft_battle_powder',
+    name: 'Battle Powder',
+    resultId: 'attack_boost',
+    rarity: 'uncommon',
+    materials: [
+      { materialId: 'fire_pepper', quantity: 3 },
+      { materialId: 'stamina_root', quantity: 1 },
+    ],
+    icon: '🔥',
+    description: '+25% Attack for 5 turns.',
+    effect: 'boost_attack',
+    effectValue: 25,
+  },
+  {
+    id: 'craft_iron_shell',
+    name: 'Iron Shell',
+    resultId: 'defense_boost',
+    rarity: 'uncommon',
+    materials: [
+      { materialId: 'iron_ore', quantity: 2 },
+      { materialId: 'earth_essence', quantity: 1 },
+    ],
+    icon: '🛡️',
+    description: '+25% Defense for 5 turns.',
+    effect: 'boost_defense',
+    effectValue: 25,
+  },
+  {
+    id: 'craft_swift_feather',
+    name: 'Swift Feather',
+    resultId: 'speed_boost',
+    rarity: 'uncommon',
+    materials: [
+      { materialId: 'air_essence', quantity: 2 },
+      { materialId: 'silk', quantity: 1 },
+    ],
+    icon: '🪶',
+    description: '+25% Speed for 5 turns.',
+    effect: 'boost_speed',
+    effectValue: 25,
+  },
+  
+  // ============= REVIVE ITEMS =============
+  {
+    id: 'craft_revive_herb',
+    name: 'Revive Herb',
+    resultId: 'revive_herb',
+    rarity: 'uncommon',
+    materials: [
+      { materialId: 'revive_moss', quantity: 3 },
+      { materialId: 'healing_herb', quantity: 2 },
+    ],
+    icon: '🌿',
+    description: 'Revives a fainted party member with 25% HP.',
+    effect: 'revive',
+    effectValue: 25,
+  },
+  {
+    id: 'craft_phoenix_feather',
+    name: 'Phoenix Feather',
+    resultId: 'phoenix_feather',
+    rarity: 'rare',
+    materials: [
+      { materialId: 'phoenix_flower', quantity: 2 },
+      { materialId: 'fire_essence', quantity: 2 },
+      { materialId: 'revive_moss', quantity: 2 },
+    ],
+    icon: '🔥',
+    description: 'Revives a fainted party member with 50% HP.',
+    effect: 'revive',
+    effectValue: 50,
+  },
+  {
+    id: 'craft_miracle_elixir',
+    name: 'Miracle Elixir',
+    resultId: 'miracle_elixir',
+    rarity: 'epic',
+    materials: [
+      { materialId: 'miracle_lotus', quantity: 2 },
+      { materialId: 'phoenix_flower', quantity: 1 },
+      { materialId: 'golden_ginseng', quantity: 2 },
+      { materialId: 'diamond', quantity: 1 },
+    ],
+    icon: '⭐',
+    description: 'Revives a fainted party member with full HP.',
+    effect: 'revive_full',
   },
 ];
 

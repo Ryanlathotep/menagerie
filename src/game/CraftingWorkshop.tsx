@@ -21,6 +21,8 @@ import {
   EquipmentItem,
   dismantleEquipment,
   CRAFTING_MATERIALS,
+  CONSUMABLE_RECIPES,
+  ConsumableRecipe,
 } from './equipment';
 
 interface MaterialInventory {

@@ -1,6 +1,6 @@
 // Dungeon generation and management
 
-import { DungeonState, DungeonTile, Position, Monster, SpeciesType, TrapType } from './types';
+import { DungeonState, DungeonTile, Position, Monster, SpeciesType, TrapType, PlantType } from './types';
 import { generateRandomMonster } from './utils';
 import { generateEquipment, generateMaterialDrop, CraftingMaterial, EquipmentItem } from './equipment';
 
@@ -250,6 +250,26 @@ export function generateDungeon(floor: number): DungeonState {
     }
   }
 
+  // Place harvestable plants
+  const numPlants = 3 + Math.floor(floor / 2) + Math.floor(Math.random() * 3);
+  for (let i = 0; i < numPlants; i++) {
+    let placed = false;
+    let attempts = 0;
+    
+    while (!placed && attempts < 50) {
+      const room = rooms[Math.floor(Math.random() * rooms.length)];
+      const px = room.x + Math.floor(Math.random() * room.width);
+      const py = room.y + Math.floor(Math.random() * room.height);
+      
+      if (tiles[py]?.[px]?.type === 'floor') {
+        tiles[py][px].type = 'plant';
+        tiles[py][px].plantType = getRandomPlantForFloor(floor);
+        placed = true;
+      }
+      attempts++;
+    }
+  }
+
   // Place a shop room every 3 floors
   if (floor % 3 === 0 && rooms.length > 2) {
     const shopRoom = rooms[Math.floor(rooms.length / 2)]; // Middle room
@@ -289,6 +309,39 @@ function getAvailableSpeciesForFloor(floor: number): SpeciesType[] {
   return allSpecies.slice(0, maxIndex);
 }
 
+// Get a random plant type based on floor level
+function getRandomPlantForFloor(floor: number): PlantType {
+  // Plants available by floor
+  const commonPlants: PlantType[] = ['healing_herb', 'stamina_root', 'antidote_leaf'];
+  const uncommonPlants: PlantType[] = ['mana_blossom', 'fire_pepper', 'ice_mint', 'revive_moss'];
+  const rarePlants: PlantType[] = ['golden_ginseng', 'phoenix_flower', 'panacea_petal'];
+  const epicPlants: PlantType[] = ['miracle_lotus'];
+  
+  // Build pool based on floor
+  let pool: PlantType[] = [...commonPlants];
+  if (floor >= 2) pool = pool.concat(uncommonPlants);
+  if (floor >= 4) pool = pool.concat(rarePlants);
+  if (floor >= 6) pool = pool.concat(epicPlants);
+  
+  // Weighted random - common plants more likely
+  const weights: number[] = pool.map(p => {
+    if (commonPlants.includes(p)) return 50;
+    if (uncommonPlants.includes(p)) return 30;
+    if (rarePlants.includes(p)) return 15;
+    return 5; // epic
+  });
+  
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  let roll = Math.random() * totalWeight;
+  
+  for (let i = 0; i < pool.length; i++) {
+    roll -= weights[i];
+    if (roll <= 0) return pool[i];
+  }
+  
+  return pool[0];
+}
+
 // Update visibility around a position
 export function updateVisibility(tiles: DungeonTile[][], position: Position, range: number = 3): void {
   // Reset visibility
@@ -323,6 +376,7 @@ export interface MoveResult {
   shop: boolean;
   loot: LootItem | null;
   blocked: boolean; // True if move was blocked by wall
+  plant: { plantType: PlantType; materialId: string } | null; // Harvested plant
 }
 
 // Check if a tile should stop auto-run
@@ -360,14 +414,14 @@ export function movePlayer(
 
   // Check bounds
   if (newX < 0 || newX >= dungeon.width || newY < 0 || newY >= dungeon.height) {
-    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, water: null, shop: false, loot: null, blocked: true };
+    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, water: null, shop: false, loot: null, blocked: true, plant: null };
   }
 
   const targetTile = tiles[newY][newX];
   
   // Can't move into walls
   if (targetTile.type === 'wall') {
-    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, water: null, shop: false, loot: null, blocked: true };
+    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, water: null, shop: false, loot: null, blocked: true, plant: null };
   }
 
   // Create new tiles array
@@ -383,7 +437,7 @@ export function movePlayer(
   let water: { damage: number } | null = null;
   let shop = false;
   let loot: LootItem | null = null;
-
+  let plant: { plantType: PlantType; materialId: string } | null = null;
   // Handle different tile types
   if (targetTile.type === 'enemy' && targetTile.enemyId) {
     encounter = enemies.find(e => e.id === targetTile.enemyId) || null;
@@ -408,6 +462,10 @@ export function movePlayer(
     water = { damage: waterDamage };
   } else if (targetTile.type === 'shop') {
     shop = true;
+  } else if (targetTile.type === 'plant' && !targetTile.harvested && targetTile.plantType) {
+    // Harvest plant
+    plant = { plantType: targetTile.plantType, materialId: targetTile.plantType };
+    newTiles[newY][newX].harvested = true;
   }
 
   // Set new position
@@ -429,6 +487,7 @@ export function movePlayer(
     water,
     shop,
     loot,
+    plant,
     blocked: false,
   };
 }

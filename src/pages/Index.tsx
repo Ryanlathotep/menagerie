@@ -540,6 +540,14 @@ function DungeonView({
       }
     } else if (result.shop) {
       setShowShop(true);
+    } else if (result.plant) {
+      // Harvest plant - add material to run materials
+      dispatch({
+        type: 'ADD_MATERIAL',
+        materialId: result.plant.materialId,
+        quantity: 1
+      });
+      addLog(`🌿 Harvested ${result.plant.plantType.split('_').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}!`, 'loot');
     }
   }, [dungeon, dispatch, state.run]);
   // Auto-run logic - runs in intervals when active

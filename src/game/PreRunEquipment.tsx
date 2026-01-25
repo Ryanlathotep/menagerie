@@ -1,27 +1,24 @@
 // Pre-Run Equipment Selection - Equip gear from town storage before starting a run
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { 
   EquipmentItem, 
   EquipmentSlot,
   MonsterEquipment, 
   SLOT_INFO, 
-  RARITY_COLORS,
   createEmptyEquipment,
   calculateEquipmentBonuses,
 } from './equipment';
 import { Monster } from './types';
 import { MonsterSprite } from './sprites';
 import { ArrowLeft, Play, Shirt } from 'lucide-react';
+import { EquippedSlotDisplay, DraggableEquipmentItem, DragData } from './DraggableEquipmentItem';
+import { EquipmentSortControls } from './EquipmentSortControls';
+import { sortEquipment, autoEquip, SortConfig } from './equipmentUtils';
+import { toast } from '@/hooks/use-toast';
 
 interface PreRunEquipmentProps {
   monster: Monster;
@@ -38,6 +35,12 @@ export function PreRunEquipment({
 }: PreRunEquipmentProps) {
   const [equipment, setEquipment] = useState<MonsterEquipment>(createEmptyEquipment());
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot | null>(null);
+  const [draggedItem, setDraggedItem] = useState<DragData | null>(null);
+  const [dragOverSlot, setDragOverSlot] = useState<EquipmentSlot | null>(null);
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ 
+    option: 'rarity', 
+    direction: 'desc' 
+  });
   
   // Track which items have been withdrawn from storage
   const equippedIds = Object.values(equipment).filter(Boolean).map(item => item!.id);
@@ -45,13 +48,14 @@ export function PreRunEquipment({
   // Available items = stored items not yet equipped
   const availableItems = storedEquipment.filter(item => !equippedIds.includes(item.id));
   
-  // Filter by selected slot
+  // Filter and sort by selected slot
   const filteredItems = selectedSlot 
     ? availableItems.filter(item => item.slot === selectedSlot)
     : availableItems;
   
-  const handleEquip = (item: EquipmentItem) => {
-    // Check level requirement
+  const sortedItems = sortEquipment(filteredItems, sortConfig);
+
+  const handleEquip = useCallback((item: EquipmentItem) => {
     if (monster.level < item.level) return;
     
     setEquipment(prev => ({
@@ -59,21 +63,66 @@ export function PreRunEquipment({
       [item.slot]: item,
     }));
     setSelectedSlot(null);
-  };
+  }, [monster.level]);
   
-  const handleUnequip = (slot: EquipmentSlot) => {
+  const handleUnequip = useCallback((slot: EquipmentSlot) => {
     setEquipment(prev => ({
       ...prev,
       [slot]: null,
     }));
-  };
+  }, []);
   
   const handleStart = () => {
     onStart(equipment, equippedIds);
   };
   
+  // Drag handlers
+  const handleDragStart = useCallback((data: DragData) => {
+    setDraggedItem(data);
+  }, []);
+  
+  const handleDragEnd = useCallback(() => {
+    setDraggedItem(null);
+    setDragOverSlot(null);
+  }, []);
+  
+  const handleSlotDragOver = useCallback((slot: EquipmentSlot) => {
+    if (draggedItem && draggedItem.item.slot === slot) {
+      setDragOverSlot(slot);
+    }
+  }, [draggedItem]);
+  
+  const handleSlotDrop = useCallback((slot: EquipmentSlot) => {
+    if (draggedItem && draggedItem.item.slot === slot) {
+      handleEquip(draggedItem.item);
+      setDraggedItem(null);
+      setDragOverSlot(null);
+    }
+  }, [draggedItem, handleEquip]);
+  
+  // Auto-equip handler
+  const handleAutoEquip = useCallback(() => {
+    const result = autoEquip(availableItems, monster.class, monster.level);
+    setEquipment(result.equipment);
+    toast({
+      title: "Auto-Equipped!",
+      description: `Equipped ${result.usedItemIds.length} items optimized for ${monster.class} class.`,
+    });
+  }, [availableItems, monster.class, monster.level]);
+  
   const totalBonuses = calculateEquipmentBonuses(equipment);
   const equippedCount = Object.values(equipment).filter(Boolean).length;
+  
+  // Helper to create slot props
+  const slotProps = (slot: EquipmentSlot) => ({
+    slot,
+    item: equipment[slot],
+    isSelected: selectedSlot === slot,
+    onSelect: () => setSelectedSlot(selectedSlot === slot ? null : slot),
+    isDragOver: dragOverSlot === slot,
+    onDragOver: () => handleSlotDragOver(slot),
+    onDrop: () => handleSlotDrop(slot),
+  });
   
   return (
     <div className="game-container">
@@ -89,7 +138,7 @@ export function PreRunEquipment({
         </div>
         
         <p className="text-center text-muted-foreground text-sm">
-          Equip gear from your storage before starting the run. Equipped items will be taken into the dungeon.
+          Equip gear from your storage before starting the run. Drag items to slots or click to equip.
         </p>
         
         <div className="grid md:grid-cols-2 gap-4">
@@ -109,69 +158,43 @@ export function PreRunEquipment({
                 <p className="text-sm text-muted-foreground">Level {monster.level}</p>
               </div>
               
-              {/* Equipment slots */}
+              {/* Equipment slots - updated layout with back slot */}
               <div className="w-full space-y-2">
                 {/* Top row: Helmet */}
                 <div className="flex justify-center">
-                  <EquipmentSlotButton 
-                    slot="helmet" 
-                    item={equipment.helmet}
-                    isSelected={selectedSlot === 'helmet'}
-                    onSelect={() => setSelectedSlot(selectedSlot === 'helmet' ? null : 'helmet')}
-                    onUnequip={() => handleUnequip('helmet')}
-                  />
+                  <EquippedSlotDisplay {...slotProps('helmet')} />
                 </div>
                 
                 {/* Middle row: Weapon, Armor, Off-hand */}
                 <div className="flex justify-center gap-2">
-                  <EquipmentSlotButton 
-                    slot="mainHand" 
-                    item={equipment.mainHand}
-                    isSelected={selectedSlot === 'mainHand'}
-                    onSelect={() => setSelectedSlot(selectedSlot === 'mainHand' ? null : 'mainHand')}
-                    onUnequip={() => handleUnequip('mainHand')}
-                  />
-                  <EquipmentSlotButton 
-                    slot="armor" 
-                    item={equipment.armor}
-                    isSelected={selectedSlot === 'armor'}
-                    onSelect={() => setSelectedSlot(selectedSlot === 'armor' ? null : 'armor')}
-                    onUnequip={() => handleUnequip('armor')}
-                  />
-                  <EquipmentSlotButton 
-                    slot="offHand" 
-                    item={equipment.offHand}
-                    isSelected={selectedSlot === 'offHand'}
-                    onSelect={() => setSelectedSlot(selectedSlot === 'offHand' ? null : 'offHand')}
-                    onUnequip={() => handleUnequip('offHand')}
-                  />
+                  <EquippedSlotDisplay {...slotProps('mainHand')} />
+                  <EquippedSlotDisplay {...slotProps('armor')} />
+                  <EquippedSlotDisplay {...slotProps('offHand')} />
                 </div>
                 
-                {/* Bottom row: Gloves, Boots, Accessory */}
+                {/* Third row: Gloves, Back, Boots */}
                 <div className="flex justify-center gap-2">
-                  <EquipmentSlotButton 
-                    slot="gloves" 
-                    item={equipment.gloves}
-                    isSelected={selectedSlot === 'gloves'}
-                    onSelect={() => setSelectedSlot(selectedSlot === 'gloves' ? null : 'gloves')}
-                    onUnequip={() => handleUnequip('gloves')}
-                  />
-                  <EquipmentSlotButton 
-                    slot="boots" 
-                    item={equipment.boots}
-                    isSelected={selectedSlot === 'boots'}
-                    onSelect={() => setSelectedSlot(selectedSlot === 'boots' ? null : 'boots')}
-                    onUnequip={() => handleUnequip('boots')}
-                  />
-                  <EquipmentSlotButton 
-                    slot="accessory" 
-                    item={equipment.accessory}
-                    isSelected={selectedSlot === 'accessory'}
-                    onSelect={() => setSelectedSlot(selectedSlot === 'accessory' ? null : 'accessory')}
-                    onUnequip={() => handleUnequip('accessory')}
-                  />
+                  <EquippedSlotDisplay {...slotProps('gloves')} />
+                  <EquippedSlotDisplay {...slotProps('back')} />
+                  <EquippedSlotDisplay {...slotProps('boots')} />
+                </div>
+                
+                {/* Bottom row: Accessory */}
+                <div className="flex justify-center">
+                  <EquippedSlotDisplay {...slotProps('accessory')} />
                 </div>
               </div>
+              
+              {/* Unequip selected */}
+              {selectedSlot && equipment[selectedSlot] && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleUnequip(selectedSlot)}
+                >
+                  Unequip {SLOT_INFO[selectedSlot].label}
+                </Button>
+              )}
               
               {/* Total bonuses */}
               {equippedCount > 0 && (
@@ -195,8 +218,8 @@ export function PreRunEquipment({
           </Card>
           
           {/* Right: Available equipment */}
-          <Card className="p-4">
-            <div className="flex items-center justify-between mb-3">
+          <Card className="p-4 flex flex-col">
+            <div className="flex items-center justify-between mb-2">
               <h3 className="font-semibold">
                 {selectedSlot ? `${SLOT_INFO[selectedSlot].label}s in Storage` : 'Town Storage'}
               </h3>
@@ -211,15 +234,28 @@ export function PreRunEquipment({
               )}
             </div>
             
-            <ScrollArea className="h-[300px]">
+            {/* Sort controls */}
+            <div className="mb-3">
+              <EquipmentSortControls
+                sortConfig={sortConfig}
+                onSortChange={setSortConfig}
+                onAutoEquip={handleAutoEquip}
+              />
+            </div>
+            
+            <ScrollArea className="flex-1 max-h-[280px]">
               <div className="space-y-2 pr-2">
-                {filteredItems.length > 0 ? (
-                  filteredItems.map(item => (
-                    <EquipmentItemCard
+                {sortedItems.length > 0 ? (
+                  sortedItems.map(item => (
+                    <DraggableEquipmentItem
                       key={item.id}
                       item={item}
-                      monsterLevel={monster.level}
+                      currentLevel={monster.level}
                       onEquip={() => handleEquip(item)}
+                      onDrop={() => {}} // No drop in pre-run (items return to storage)
+                      isDragging={draggedItem?.item.id === item.id}
+                      onDragStart={handleDragStart}
+                      onDragEnd={handleDragEnd}
                     />
                   ))
                 ) : (
@@ -261,117 +297,6 @@ export function PreRunEquipment({
             Start Adventure! ✨
           </Button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-// Slot button component
-interface EquipmentSlotButtonProps {
-  slot: EquipmentSlot;
-  item: EquipmentItem | null;
-  isSelected: boolean;
-  onSelect: () => void;
-  onUnequip: () => void;
-}
-
-function EquipmentSlotButton({ slot, item, isSelected, onSelect, onUnequip }: EquipmentSlotButtonProps) {
-  const info = SLOT_INFO[slot];
-  const rarityStyle = item ? RARITY_COLORS[item.rarity] : null;
-  
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            onClick={item ? onUnequip : onSelect}
-            className={`
-              w-14 h-14 rounded-lg border-2 flex items-center justify-center
-              transition-all hover:scale-105 active:scale-95
-              ${isSelected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}
-              ${item 
-                ? `${rarityStyle?.bg} ${rarityStyle?.border} ${rarityStyle?.glow ? `shadow-lg ${rarityStyle.glow}` : ''}` 
-                : 'bg-muted/50 border-dashed border-muted-foreground/30 hover:border-primary/50'
-              }
-            `}
-          >
-            <span className="text-2xl">{item?.icon || info.icon}</span>
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-[200px]">
-          {item ? (
-            <div className="space-y-1">
-              <p className={`font-semibold ${rarityStyle?.text}`}>{item.name}</p>
-              <p className="text-xs text-muted-foreground capitalize">{item.rarity} {info.label}</p>
-              <div className="text-xs space-y-0.5">
-                {Object.entries(item.stats).map(([stat, value]) => (
-                  value !== 0 && (
-                    <p key={stat} className={value > 0 ? 'text-green-400' : 'text-red-400'}>
-                      {value > 0 ? '+' : ''}{value} {stat.replace('max', '').toUpperCase()}
-                    </p>
-                  )
-                ))}
-              </div>
-              <p className="text-xs text-primary mt-1">Click to unequip</p>
-            </div>
-          ) : (
-            <div>
-              <p className="text-sm text-muted-foreground">Empty {info.label} slot</p>
-              <p className="text-xs text-primary">Click to select</p>
-            </div>
-          )}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
-// Item card component
-interface EquipmentItemCardProps {
-  item: EquipmentItem;
-  monsterLevel: number;
-  onEquip: () => void;
-}
-
-function EquipmentItemCard({ item, monsterLevel, onEquip }: EquipmentItemCardProps) {
-  const rarityStyle = RARITY_COLORS[item.rarity];
-  const canEquip = monsterLevel >= item.level;
-  
-  return (
-    <div className={`
-      p-3 rounded-lg border transition-all hover:scale-[1.02]
-      ${rarityStyle.bg} ${rarityStyle.border}
-    `}>
-      <div className="flex items-start gap-2">
-        <span className="text-2xl">{item.icon}</span>
-        <div className="flex-1 min-w-0">
-          <p className={`font-semibold text-sm truncate ${rarityStyle.text}`}>
-            {item.name}
-          </p>
-          <p className="text-xs text-muted-foreground capitalize">
-            {SLOT_INFO[item.slot].label} • Lv.{item.level}
-          </p>
-          <div className="flex flex-wrap gap-1 mt-1">
-            {Object.entries(item.stats).map(([stat, value]) => (
-              value !== 0 && (
-                <span 
-                  key={stat} 
-                  className={`text-[10px] px-1 rounded ${value > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
-                >
-                  {value > 0 ? '+' : ''}{value} {stat.replace('max', '').slice(0, 3).toUpperCase()}
-                </span>
-              )
-            ))}
-          </div>
-        </div>
-        <Button 
-          size="sm" 
-          className="h-8 text-xs"
-          disabled={!canEquip}
-          onClick={onEquip}
-        >
-          {canEquip ? 'Equip' : `Lv.${item.level}`}
-        </Button>
       </div>
     </div>
   );

@@ -398,15 +398,15 @@ function DungeonView({
     if (!dungeon || !state.run) return;
     const result = movePlayer(dungeon, direction);
     
-    // If not blocked, apply minor HP and Stamina regeneration
+    // If not blocked, apply minor HP and Stamina regeneration to ALL conscious party members
     if (!result.blocked) {
+      // Regenerate active monster
       const monster = state.run.currentMonster;
       const maxHp = monster.stats.maxHp;
       const maxStamina = monster.stats.stamina ?? 50;
       const currentHp = monster.stats.currentHp;
       const currentStamina = monster.stats.currentStamina ?? maxStamina;
       
-      // Regenerate 1 HP and 1 Stamina per step (if not at max)
       const regenHp = Math.min(1, maxHp - currentHp);
       const regenStamina = Math.min(1, maxStamina - currentStamina);
       
@@ -420,6 +420,37 @@ function DungeonView({
               currentHp: currentHp + regenHp,
               currentStamina: currentStamina + regenStamina,
             }
+          }
+        });
+      }
+      
+      // Regenerate all conscious inactive party members
+      if (state.run.party && state.run.party.length > 0) {
+        state.run.party.forEach((member, index) => {
+          if (index === state.run!.activePartyIndex) return; // Skip active (already handled)
+          if (member.stats.currentHp <= 0) return; // Skip fainted members
+          
+          const memberMaxHp = member.stats.maxHp;
+          const memberMaxStamina = member.stats.stamina ?? 50;
+          const memberCurrentHp = member.stats.currentHp;
+          const memberCurrentStamina = member.stats.currentStamina ?? memberMaxStamina;
+          
+          const memberRegenHp = Math.min(1, memberMaxHp - memberCurrentHp);
+          const memberRegenStamina = Math.min(1, memberMaxStamina - memberCurrentStamina);
+          
+          if (memberRegenHp > 0 || memberRegenStamina > 0) {
+            dispatch({
+              type: 'UPDATE_PARTY_MONSTER',
+              index,
+              monster: {
+                ...member,
+                stats: {
+                  ...member.stats,
+                  currentHp: memberCurrentHp + memberRegenHp,
+                  currentStamina: memberCurrentStamina + memberRegenStamina,
+                }
+              }
+            });
           }
         });
       }

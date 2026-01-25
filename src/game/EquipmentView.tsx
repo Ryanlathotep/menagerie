@@ -1,181 +1,24 @@
-// Equipment Management UI - Paper doll style equipment view
+// Equipment Management UI - Paper doll style equipment view with drag-drop, sorting, auto-equip
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { 
   EquipmentItem, 
   EquipmentSlot,
   MonsterEquipment, 
   SLOT_INFO, 
-  RARITY_COLORS,
   EquipmentStats,
   calculateEquipmentBonuses,
+  createEmptyEquipment,
 } from './equipment';
 import { Monster } from './types';
 import { MonsterSprite } from './sprites';
-
-// ============= SLOT COMPONENT =============
-interface EquipmentSlotProps {
-  slot: EquipmentSlot;
-  item: EquipmentItem | null;
-  onSelect: () => void;
-  isSelected: boolean;
-}
-
-function EquipmentSlotDisplay({ slot, item, onSelect, isSelected }: EquipmentSlotProps) {
-  const info = SLOT_INFO[slot];
-  const rarityStyle = item ? RARITY_COLORS[item.rarity] : null;
-  
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            onClick={onSelect}
-            className={`
-              w-14 h-14 rounded-lg border-2 flex items-center justify-center
-              transition-all hover:scale-105 active:scale-95
-              ${isSelected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}
-              ${item 
-                ? `${rarityStyle?.bg} ${rarityStyle?.border} ${rarityStyle?.glow ? `shadow-lg ${rarityStyle.glow}` : ''}` 
-                : 'bg-muted/50 border-dashed border-muted-foreground/30'
-              }
-            `}
-          >
-            <span className="text-2xl">{item?.icon || info.icon}</span>
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="right" className="max-w-[200px]">
-          {item ? (
-            <div className="space-y-1">
-              <p className={`font-semibold ${rarityStyle?.text}`}>{item.name}</p>
-              <p className="text-xs text-muted-foreground capitalize">{item.rarity} {info.label}</p>
-              <div className="text-xs space-y-0.5">
-                {Object.entries(item.stats).map(([stat, value]) => (
-                  value !== 0 && (
-                    <p key={stat} className={value > 0 ? 'text-green-400' : 'text-red-400'}>
-                      {value > 0 ? '+' : ''}{value} {stat.replace('max', '').toUpperCase()}
-                    </p>
-                  )
-                ))}
-              </div>
-              {item.element && (
-                <p className="text-xs text-primary">⚡ {item.element} element</p>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Empty {info.label} slot</p>
-          )}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
-// ============= INVENTORY ITEM =============
-interface InventoryItemProps {
-  item: EquipmentItem;
-  onEquip: () => void;
-  onDrop: () => void;
-  currentLevel: number;
-}
-
-function InventoryItemCard({ item, onEquip, onDrop, currentLevel }: InventoryItemProps) {
-  const rarityStyle = RARITY_COLORS[item.rarity];
-  const canEquip = currentLevel >= item.level;
-  
-  return (
-    <div className={`
-      p-3 rounded-lg border transition-all hover:scale-[1.02]
-      ${rarityStyle.bg} ${rarityStyle.border}
-    `}>
-      <div className="flex items-start gap-2">
-        <span className="text-2xl">{item.icon}</span>
-        <div className="flex-1 min-w-0">
-          <p className={`font-semibold text-sm truncate ${rarityStyle.text}`}>
-            {item.name}
-          </p>
-          <p className="text-xs text-muted-foreground capitalize">
-            {SLOT_INFO[item.slot].label} • Lv.{item.level}
-          </p>
-          <div className="flex flex-wrap gap-1 mt-1">
-            {Object.entries(item.stats).map(([stat, value]) => (
-              value !== 0 && (
-                <span 
-                  key={stat} 
-                  className={`text-[10px] px-1 rounded ${value > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
-                >
-                  {value > 0 ? '+' : ''}{value} {stat.replace('max', '').slice(0, 3).toUpperCase()}
-                </span>
-              )
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className="flex gap-2 mt-2">
-        <Button 
-          size="sm" 
-          className="flex-1 h-7 text-xs"
-          disabled={!canEquip}
-          onClick={onEquip}
-        >
-          {canEquip ? 'Equip' : `Req. Lv.${item.level}`}
-        </Button>
-        <Button 
-          size="sm" 
-          variant="destructive" 
-          className="h-7 text-xs px-2"
-          onClick={onDrop}
-        >
-          Drop
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// ============= STAT COMPARISON =============
-interface StatComparisonProps {
-  currentStats: EquipmentStats;
-  newItem: EquipmentItem | null;
-  currentEquipped: EquipmentItem | null;
-}
-
-function StatComparison({ currentStats, newItem, currentEquipped }: StatComparisonProps) {
-  if (!newItem) return null;
-  
-  const statOrder: (keyof EquipmentStats)[] = ['maxHp', 'attack', 'defense', 'speed', 'dodge', 'special', 'stamina'];
-  
-  return (
-    <div className="p-2 bg-muted/50 rounded-lg space-y-1">
-      <p className="text-xs font-semibold text-muted-foreground mb-2">Stat Changes</p>
-      {statOrder.map(stat => {
-        const current = currentEquipped?.stats[stat] || 0;
-        const newVal = newItem.stats[stat] || 0;
-        const diff = newVal - current;
-        
-        if (diff === 0) return null;
-        
-        return (
-          <div key={stat} className="flex justify-between text-xs">
-            <span className="text-muted-foreground">{stat.replace('max', '').toUpperCase()}</span>
-            <span className={diff > 0 ? 'text-green-400' : 'text-red-400'}>
-              {diff > 0 ? '▲' : '▼'} {Math.abs(diff)}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+import { EquippedSlotDisplay, DraggableEquipmentItem, DragData } from './DraggableEquipmentItem';
+import { EquipmentSortControls } from './EquipmentSortControls';
+import { sortEquipment, autoEquip, SortConfig } from './equipmentUtils';
+import { toast } from '@/hooks/use-toast';
 
 // ============= MAIN EQUIPMENT VIEW =============
 interface EquipmentViewProps {
@@ -186,6 +29,7 @@ interface EquipmentViewProps {
   onUnequip: (slot: EquipmentSlot) => void;
   onDrop: (itemId: string) => void;
   onClose: () => void;
+  onBulkEquip?: (equipment: MonsterEquipment, usedIds: string[]) => void;
 }
 
 export function EquipmentView({
@@ -196,16 +40,72 @@ export function EquipmentView({
   onUnequip,
   onDrop,
   onClose,
+  onBulkEquip,
 }: EquipmentViewProps) {
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot | null>(null);
-  const [selectedInventoryItem, setSelectedInventoryItem] = useState<EquipmentItem | null>(null);
+  const [draggedItem, setDraggedItem] = useState<DragData | null>(null);
+  const [dragOverSlot, setDragOverSlot] = useState<EquipmentSlot | null>(null);
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ 
+    option: 'rarity', 
+    direction: 'desc' 
+  });
   
   const totalBonuses = calculateEquipmentBonuses(equipment);
   
-  // Filter inventory to show items for selected slot
+  // Filter and sort inventory
   const filteredInventory = selectedSlot 
     ? inventory.filter(i => i.slot === selectedSlot)
     : inventory;
+  
+  const sortedInventory = sortEquipment(filteredInventory, sortConfig);
+  
+  // Drag handlers
+  const handleDragStart = useCallback((data: DragData) => {
+    setDraggedItem(data);
+  }, []);
+  
+  const handleDragEnd = useCallback(() => {
+    setDraggedItem(null);
+    setDragOverSlot(null);
+  }, []);
+  
+  const handleSlotDragOver = useCallback((slot: EquipmentSlot) => {
+    if (draggedItem && draggedItem.item.slot === slot) {
+      setDragOverSlot(slot);
+    }
+  }, [draggedItem]);
+  
+  const handleSlotDrop = useCallback((slot: EquipmentSlot) => {
+    if (draggedItem && draggedItem.item.slot === slot) {
+      onEquip(draggedItem.item);
+      setDraggedItem(null);
+      setDragOverSlot(null);
+    }
+  }, [draggedItem, onEquip]);
+  
+  // Auto-equip handler
+  const handleAutoEquip = useCallback(() => {
+    const result = autoEquip(inventory, monster.class, monster.level);
+    
+    if (onBulkEquip) {
+      onBulkEquip(result.equipment, result.usedItemIds);
+      toast({
+        title: "Auto-Equipped!",
+        description: `Equipped ${result.usedItemIds.length} items optimized for ${monster.class} class.`,
+      });
+    } else {
+      // Fallback: equip items one by one
+      const equippedCount = result.usedItemIds.length;
+      result.usedItemIds.forEach(id => {
+        const item = inventory.find(i => i.id === id);
+        if (item) onEquip(item);
+      });
+      toast({
+        title: "Auto-Equipped!",
+        description: `Equipped ${equippedCount} items.`,
+      });
+    }
+  }, [inventory, monster.class, monster.level, onEquip, onBulkEquip]);
   
   return (
     <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -224,21 +124,27 @@ export function EquipmentView({
             <div className="flex-1 flex flex-col items-center justify-center gap-4">
               {/* Top row: Helmet */}
               <div className="flex justify-center">
-                <EquipmentSlotDisplay 
+                <EquippedSlotDisplay 
                   slot="helmet" 
                   item={equipment.helmet}
-                  onSelect={() => setSelectedSlot('helmet')}
+                  onSelect={() => setSelectedSlot(selectedSlot === 'helmet' ? null : 'helmet')}
                   isSelected={selectedSlot === 'helmet'}
+                  isDragOver={dragOverSlot === 'helmet'}
+                  onDragOver={() => handleSlotDragOver('helmet')}
+                  onDrop={() => handleSlotDrop('helmet')}
                 />
               </div>
               
               {/* Middle row: Weapon, Monster, Off-hand */}
               <div className="flex items-center gap-4">
-                <EquipmentSlotDisplay 
+                <EquippedSlotDisplay 
                   slot="mainHand" 
                   item={equipment.mainHand}
-                  onSelect={() => setSelectedSlot('mainHand')}
+                  onSelect={() => setSelectedSlot(selectedSlot === 'mainHand' ? null : 'mainHand')}
                   isSelected={selectedSlot === 'mainHand'}
+                  isDragOver={dragOverSlot === 'mainHand'}
+                  onDragOver={() => handleSlotDragOver('mainHand')}
+                  onDrop={() => handleSlotDrop('mainHand')}
                 />
                 
                 {/* Monster sprite in center */}
@@ -249,52 +155,71 @@ export function EquipmentView({
                     classType={monster.class}
                     size={80}
                     animated
+                    equipment={equipment}
                   />
                 </div>
                 
-                <EquipmentSlotDisplay 
+                <EquippedSlotDisplay 
                   slot="offHand" 
                   item={equipment.offHand}
-                  onSelect={() => setSelectedSlot('offHand')}
+                  onSelect={() => setSelectedSlot(selectedSlot === 'offHand' ? null : 'offHand')}
                   isSelected={selectedSlot === 'offHand'}
+                  isDragOver={dragOverSlot === 'offHand'}
+                  onDragOver={() => handleSlotDragOver('offHand')}
+                  onDrop={() => handleSlotDrop('offHand')}
                 />
               </div>
               
               {/* Armor row with back slot */}
               <div className="flex gap-4">
-                <EquipmentSlotDisplay 
+                <EquippedSlotDisplay 
                   slot="gloves" 
                   item={equipment.gloves}
-                  onSelect={() => setSelectedSlot('gloves')}
+                  onSelect={() => setSelectedSlot(selectedSlot === 'gloves' ? null : 'gloves')}
                   isSelected={selectedSlot === 'gloves'}
+                  isDragOver={dragOverSlot === 'gloves'}
+                  onDragOver={() => handleSlotDragOver('gloves')}
+                  onDrop={() => handleSlotDrop('gloves')}
                 />
-                <EquipmentSlotDisplay 
+                <EquippedSlotDisplay 
                   slot="armor" 
                   item={equipment.armor}
-                  onSelect={() => setSelectedSlot('armor')}
+                  onSelect={() => setSelectedSlot(selectedSlot === 'armor' ? null : 'armor')}
                   isSelected={selectedSlot === 'armor'}
+                  isDragOver={dragOverSlot === 'armor'}
+                  onDragOver={() => handleSlotDragOver('armor')}
+                  onDrop={() => handleSlotDrop('armor')}
                 />
-                <EquipmentSlotDisplay 
+                <EquippedSlotDisplay 
                   slot="back" 
                   item={equipment.back}
-                  onSelect={() => setSelectedSlot('back')}
+                  onSelect={() => setSelectedSlot(selectedSlot === 'back' ? null : 'back')}
                   isSelected={selectedSlot === 'back'}
+                  isDragOver={dragOverSlot === 'back'}
+                  onDragOver={() => handleSlotDragOver('back')}
+                  onDrop={() => handleSlotDrop('back')}
                 />
               </div>
               
               {/* Bottom row: accessory and boots */}
               <div className="flex gap-4">
-                <EquipmentSlotDisplay 
+                <EquippedSlotDisplay 
                   slot="accessory" 
                   item={equipment.accessory}
-                  onSelect={() => setSelectedSlot('accessory')}
+                  onSelect={() => setSelectedSlot(selectedSlot === 'accessory' ? null : 'accessory')}
                   isSelected={selectedSlot === 'accessory'}
+                  isDragOver={dragOverSlot === 'accessory'}
+                  onDragOver={() => handleSlotDragOver('accessory')}
+                  onDrop={() => handleSlotDrop('accessory')}
                 />
-                <EquipmentSlotDisplay 
+                <EquippedSlotDisplay 
                   slot="boots" 
                   item={equipment.boots}
-                  onSelect={() => setSelectedSlot('boots')}
+                  onSelect={() => setSelectedSlot(selectedSlot === 'boots' ? null : 'boots')}
                   isSelected={selectedSlot === 'boots'}
+                  isDragOver={dragOverSlot === 'boots'}
+                  onDragOver={() => handleSlotDragOver('boots')}
+                  onDrop={() => handleSlotDrop('boots')}
                 />
               </div>
             </div>
@@ -333,9 +258,9 @@ export function EquipmentView({
           
           {/* Inventory Section */}
           <div className="w-1/2 p-4 flex flex-col">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-2">
               <h3 className="font-semibold">
-                {selectedSlot ? `${SLOT_INFO[selectedSlot].label}s in Inventory` : 'Inventory'}
+                {selectedSlot ? `${SLOT_INFO[selectedSlot].label}s` : 'Inventory'}
               </h3>
               {selectedSlot && (
                 <Button 
@@ -348,16 +273,28 @@ export function EquipmentView({
               )}
             </div>
             
+            {/* Sort controls */}
+            <div className="mb-3">
+              <EquipmentSortControls
+                sortConfig={sortConfig}
+                onSortChange={setSortConfig}
+                onAutoEquip={handleAutoEquip}
+              />
+            </div>
+            
             <ScrollArea className="flex-1">
               <div className="space-y-2 pr-4">
-                {filteredInventory.length > 0 ? (
-                  filteredInventory.map(item => (
-                    <InventoryItemCard
+                {sortedInventory.length > 0 ? (
+                  sortedInventory.map(item => (
+                    <DraggableEquipmentItem
                       key={item.id}
                       item={item}
                       currentLevel={monster.level}
                       onEquip={() => onEquip(item)}
                       onDrop={() => onDrop(item.id)}
+                      isDragging={draggedItem?.item.id === item.id}
+                      onDragStart={handleDragStart}
+                      onDragEnd={handleDragEnd}
                     />
                   ))
                 ) : (

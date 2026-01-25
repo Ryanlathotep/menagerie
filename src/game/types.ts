@@ -339,7 +339,7 @@ export interface RunState {
   itemsCollected: string[];
   inventory: InventoryItem[];
   equipmentInventory: import('./equipment').EquipmentItem[];  // Equipment items found
-  equipment: import('./equipment').MonsterEquipment;          // Currently equipped items
+  partyEquipment: import('./equipment').MonsterEquipment[];   // Equipment per party member (indexed by party position)
   runMaterials: MaterialInventory;                            // Materials found this run (kept on flee)
   enemiesDefeated: number;
   moveOrder: string[];      // Order of move IDs

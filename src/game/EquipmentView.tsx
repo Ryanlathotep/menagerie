@@ -1,4 +1,5 @@
 // Equipment Management UI - Paper doll style equipment view with drag-drop, sorting, auto-equip
+// Supports per-party-member equipment management
 
 import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,6 @@ import {
   EquipmentSlot,
   MonsterEquipment, 
   SLOT_INFO, 
-  EquipmentStats,
   calculateEquipmentBonuses,
   createEmptyEquipment,
 } from './equipment';
@@ -20,28 +20,87 @@ import { EquipmentSortControls } from './EquipmentSortControls';
 import { sortEquipment, autoEquip, SortConfig } from './equipmentUtils';
 import { toast } from '@/hooks/use-toast';
 
+// ============= PARTY MEMBER SELECTOR =============
+interface PartyMemberSelectorProps {
+  party: Monster[];
+  partyEquipment: MonsterEquipment[];
+  selectedIndex: number;
+  onSelect: (index: number) => void;
+}
+
+function PartyMemberSelector({ party, partyEquipment, selectedIndex, onSelect }: PartyMemberSelectorProps) {
+  return (
+    <div className="flex gap-2 p-2 bg-muted/30 rounded-lg mb-4">
+      {party.map((monster, index) => {
+        const equipment = partyEquipment[index] || createEmptyEquipment();
+        const equippedCount = Object.values(equipment).filter(Boolean).length;
+        const isSelected = index === selectedIndex;
+        const isDead = monster.stats.currentHp <= 0;
+        
+        return (
+          <button
+            key={monster.id}
+            onClick={() => onSelect(index)}
+            className={`
+              relative flex flex-col items-center p-2 rounded-lg transition-all min-w-[60px]
+              ${isSelected 
+                ? 'bg-primary/20 ring-2 ring-primary' 
+                : isDead 
+                  ? 'bg-muted/30 opacity-50' 
+                  : 'hover:bg-muted/50'
+              }
+            `}
+          >
+            <div className={`relative ${isDead ? 'grayscale' : ''}`}>
+              <MonsterSprite
+                species={monster.species}
+                element={monster.element}
+                classType={monster.class}
+                size={40}
+                animated={isSelected}
+                equipment={equipment}
+              />
+              {/* Equipped count badge */}
+              {equippedCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  {equippedCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] font-medium capitalize mt-1">{monster.species}</span>
+            <span className="text-[8px] text-muted-foreground">Lv.{monster.level}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ============= MAIN EQUIPMENT VIEW =============
 interface EquipmentViewProps {
-  monster: Monster;
-  equipment: MonsterEquipment;
+  party: Monster[];
+  activePartyIndex: number;
+  partyEquipment: MonsterEquipment[];
   inventory: EquipmentItem[];
-  onEquip: (item: EquipmentItem) => void;
-  onUnequip: (slot: EquipmentSlot) => void;
+  onEquip: (item: EquipmentItem, partyIndex: number) => void;
+  onUnequip: (slot: EquipmentSlot, partyIndex: number) => void;
   onDrop: (itemId: string) => void;
+  onBulkEquip: (partyIndex: number, equipment: MonsterEquipment, usedIds: string[]) => void;
   onClose: () => void;
-  onBulkEquip?: (equipment: MonsterEquipment, usedIds: string[]) => void;
 }
 
 export function EquipmentView({
-  monster,
-  equipment,
+  party,
+  activePartyIndex,
+  partyEquipment,
   inventory,
   onEquip,
   onUnequip,
   onDrop,
-  onClose,
   onBulkEquip,
+  onClose,
 }: EquipmentViewProps) {
+  const [selectedPartyIndex, setSelectedPartyIndex] = useState(activePartyIndex);
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot | null>(null);
   const [draggedItem, setDraggedItem] = useState<DragData | null>(null);
   const [dragOverSlot, setDragOverSlot] = useState<EquipmentSlot | null>(null);
@@ -50,6 +109,8 @@ export function EquipmentView({
     direction: 'desc' 
   });
   
+  const monster = party[selectedPartyIndex];
+  const equipment = partyEquipment[selectedPartyIndex] || createEmptyEquipment();
   const totalBonuses = calculateEquipmentBonuses(equipment);
   
   // Filter and sort inventory
@@ -77,35 +138,22 @@ export function EquipmentView({
   
   const handleSlotDrop = useCallback((slot: EquipmentSlot) => {
     if (draggedItem && draggedItem.item.slot === slot) {
-      onEquip(draggedItem.item);
+      onEquip(draggedItem.item, selectedPartyIndex);
       setDraggedItem(null);
       setDragOverSlot(null);
     }
-  }, [draggedItem, onEquip]);
+  }, [draggedItem, onEquip, selectedPartyIndex]);
   
   // Auto-equip handler
   const handleAutoEquip = useCallback(() => {
     const result = autoEquip(inventory, monster.class, monster.level);
     
-    if (onBulkEquip) {
-      onBulkEquip(result.equipment, result.usedItemIds);
-      toast({
-        title: "Auto-Equipped!",
-        description: `Equipped ${result.usedItemIds.length} items optimized for ${monster.class} class.`,
-      });
-    } else {
-      // Fallback: equip items one by one
-      const equippedCount = result.usedItemIds.length;
-      result.usedItemIds.forEach(id => {
-        const item = inventory.find(i => i.id === id);
-        if (item) onEquip(item);
-      });
-      toast({
-        title: "Auto-Equipped!",
-        description: `Equipped ${equippedCount} items.`,
-      });
-    }
-  }, [inventory, monster.class, monster.level, onEquip, onBulkEquip]);
+    onBulkEquip(selectedPartyIndex, result.equipment, result.usedItemIds);
+    toast({
+      title: "Auto-Equipped!",
+      description: `Equipped ${result.usedItemIds.length} items optimized for ${monster.class} class.`,
+    });
+  }, [inventory, monster.class, monster.level, onBulkEquip, selectedPartyIndex]);
   
   return (
     <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -117,6 +165,18 @@ export function EquipmentView({
           </h2>
           <Button variant="ghost" size="sm" onClick={onClose}>✕</Button>
         </div>
+        
+        {/* Party member selector - only show if party has more than 1 member */}
+        {party.length > 1 && (
+          <div className="px-4 pt-4">
+            <PartyMemberSelector
+              party={party}
+              partyEquipment={partyEquipment}
+              selectedIndex={selectedPartyIndex}
+              onSelect={setSelectedPartyIndex}
+            />
+          </div>
+        )}
         
         <div className="flex-1 overflow-hidden flex">
           {/* Paper Doll Section */}
@@ -247,7 +307,7 @@ export function EquipmentView({
                 variant="outline" 
                 className="mt-2"
                 onClick={() => {
-                  onUnequip(selectedSlot);
+                  onUnequip(selectedSlot, selectedPartyIndex);
                   setSelectedSlot(null);
                 }}
               >
@@ -290,7 +350,7 @@ export function EquipmentView({
                       key={item.id}
                       item={item}
                       currentLevel={monster.level}
-                      onEquip={() => onEquip(item)}
+                      onEquip={() => onEquip(item, selectedPartyIndex)}
                       onDrop={() => onDrop(item.id)}
                       isDragging={draggedItem?.item.id === item.id}
                       onDragStart={handleDragStart}

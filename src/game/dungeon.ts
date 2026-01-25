@@ -279,6 +279,20 @@ export function generateDungeon(floor: number): DungeonState {
       tiles[shopY][shopX].type = 'shop';
     }
   }
+  
+  // Place an elevator every 2 floors (different from shop floors for variety)
+  if (floor >= 2 && floor % 2 === 0 && rooms.length > 3) {
+    // Find a room that's not the start, end, or shop room
+    const eligibleRooms = rooms.slice(1, -1).filter((_, i) => i !== Math.floor(rooms.length / 2) - 1);
+    if (eligibleRooms.length > 0) {
+      const elevatorRoom = eligibleRooms[Math.floor(Math.random() * eligibleRooms.length)];
+      const elevatorX = elevatorRoom.x + Math.floor(elevatorRoom.width / 2);
+      const elevatorY = elevatorRoom.y + Math.floor(elevatorRoom.height / 2);
+      if (tiles[elevatorY][elevatorX].type === 'floor') {
+        tiles[elevatorY][elevatorX].type = 'elevator';
+      }
+    }
+  }
 
   // Reveal tiles around player
   updateVisibility(tiles, playerPosition);
@@ -374,6 +388,7 @@ export interface MoveResult {
   trap: { type: TrapType; damage?: number } | null;
   water: { damage: number } | null; // Water hazard damage (0 if immune)
   shop: boolean;
+  elevator: boolean; // Elevator to send party members back
   loot: LootItem | null;
   blocked: boolean; // True if move was blocked by wall
   plant: { plantType: PlantType; materialId: string } | null; // Harvested plant
@@ -395,6 +410,7 @@ export function shouldStopAutoRun(tiles: DungeonTile[][], x: number, y: number, 
   if (tile.type === 'trap' && !tile.triggered) return true;
   if (tile.type === 'stairs') return true;
   if (tile.type === 'shop') return true;
+  if (tile.type === 'elevator') return true;
   
   return false;
 }
@@ -414,14 +430,14 @@ export function movePlayer(
 
   // Check bounds
   if (newX < 0 || newX >= dungeon.width || newY < 0 || newY >= dungeon.height) {
-    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, water: null, shop: false, loot: null, blocked: true, plant: null };
+    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, water: null, shop: false, elevator: false, loot: null, blocked: true, plant: null };
   }
 
   const targetTile = tiles[newY][newX];
   
   // Can't move into walls
   if (targetTile.type === 'wall') {
-    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, water: null, shop: false, loot: null, blocked: true, plant: null };
+    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, water: null, shop: false, elevator: false, loot: null, blocked: true, plant: null };
   }
 
   // Create new tiles array
@@ -436,6 +452,7 @@ export function movePlayer(
   let trap: { type: TrapType; damage?: number } | null = null;
   let water: { damage: number } | null = null;
   let shop = false;
+  let elevator = false;
   let loot: LootItem | null = null;
   let plant: { plantType: PlantType; materialId: string } | null = null;
   // Handle different tile types
@@ -462,6 +479,8 @@ export function movePlayer(
     water = { damage: waterDamage };
   } else if (targetTile.type === 'shop') {
     shop = true;
+  } else if (targetTile.type === 'elevator') {
+    elevator = true;
   } else if (targetTile.type === 'plant' && !targetTile.harvested && targetTile.plantType) {
     // Harvest plant
     plant = { plantType: targetTile.plantType, materialId: targetTile.plantType };
@@ -486,6 +505,7 @@ export function movePlayer(
     trap,
     water,
     shop,
+    elevator,
     loot,
     plant,
     blocked: false,

@@ -129,11 +129,12 @@ export function calculateDamage(
   return Math.max(1, finalDamage);
 }
 
-// Items that enemies can carry
+// Items that enemies can carry - IDs match ITEMS database for recipe unlocking
 const ENEMY_ITEM_TABLE = [
-  { id: 'health_potion', name: 'Health Potion', type: 'potion' as const, value: 30, effect: 'heal_hp' },
-  { id: 'stamina_potion', name: 'Stamina Potion', type: 'potion' as const, value: 20, effect: 'heal_stamina' },
-  { id: 'power_berry', name: 'Power Berry', type: 'potion' as const, value: 25, effect: 'boost_attack' },
+  { id: 'small_potion', name: 'Small Potion', type: 'potion' as const, value: 30, effect: 'heal_hp' },
+  { id: 'stamina_tonic', name: 'Stamina Tonic', type: 'potion' as const, value: 20, effect: 'heal_stamina' },
+  { id: 'attack_boost', name: 'Battle Powder', type: 'potion' as const, value: 25, effect: 'boost_attack' },
+  { id: 'antidote', name: 'Antidote', type: 'potion' as const, value: 10, effect: 'cure_poison' },
   { id: 'gold_coin', name: 'Gold Coins', type: 'gold' as const, value: 15 },
   { id: 'gold_pile', name: 'Gold Pile', type: 'gold' as const, value: 30 },
 ];

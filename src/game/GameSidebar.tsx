@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-import { User, Backpack, Map, DoorOpen, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, ScrollText, Shirt, Gem } from 'lucide-react';
+import { User, Backpack, Map, DoorOpen, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, ScrollText, Shirt, Gem, Users } from 'lucide-react';
 import { Monster, InventoryItem, MaterialInventory } from './types';
 import { MonsterSprite } from './sprites';
 import { getMonsterMoves, Move } from './moves';
@@ -15,6 +15,7 @@ import { ITEMS } from './Inventory';
 import { MovePanel } from './MovePanel';
 import { SettingsPanel } from './Settings';
 import { MonsterEquipment, EquipmentItem, SLOT_INFO, RARITY_COLORS, calculateEquipmentBonuses, CRAFTING_MATERIALS } from './equipment';
+import { PartyPanel } from './PartyPanel';
 
 // Helper functions to get item info when not in ITEMS database
 function getItemDescription(item: InventoryItem): string {
@@ -63,6 +64,10 @@ interface GameSidebarProps {
   onUseItem?: (item: InventoryItem) => void;
   enemyMonster?: Monster | null;
   enemyExpandedStats?: ExpandedStats;
+  // Party props
+  party?: Monster[];
+  activePartyIndex?: number;
+  onPartySwitch?: (index: number) => void;
 }
 export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   monster,
@@ -87,9 +92,12 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   battleLog = [],
   onUseItem,
   enemyMonster,
-  enemyExpandedStats
+  enemyExpandedStats,
+  party = [],
+  activePartyIndex = 0,
+  onPartySwitch,
 }, ref) => {
-  const [activePanel, setActivePanel] = useState<'character' | 'inventory' | 'moves' | 'log' | null>(null);
+  const [activePanel, setActivePanel] = useState<'character' | 'inventory' | 'moves' | 'log' | 'party' | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   
   const handlePanelChange = (panel: typeof activePanel) => {
@@ -234,6 +242,22 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             </Button>
           )}
           
+          {/* Party button - only show if party has more than 1 member */}
+          {party.length > 1 && onPartySwitch && (
+            <Button 
+              variant={activePanel === 'party' ? 'default' : 'ghost'} 
+              size="icon" 
+              className="w-8 h-8 relative" 
+              onClick={() => handlePanelChange('party')} 
+              title="Party"
+            >
+              <Users className="w-4 h-4" />
+              <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                {party.length}
+              </span>
+            </Button>
+          )}
+          
           {/* Settings button */}
           <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => setShowSettings(true)} title="Settings">
             <Settings className="w-4 h-4" />
@@ -267,6 +291,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 {activePanel === 'moves' && '⚔️ Moves'}
                 {activePanel === 'inventory' && '🎒 Inventory'}
                 {activePanel === 'log' && '📜 Battle Log'}
+                {activePanel === 'party' && '👥 Party'}
               </h2>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handlePanelChange(null)}>✕</Button>
             </div>
@@ -465,6 +490,18 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                   ))
                 )}
               </div>
+            )}
+            
+            {/* Party Panel */}
+            {activePanel === 'party' && onPartySwitch && (
+              <PartyPanel
+                party={party}
+                activeIndex={activePartyIndex}
+                onSwitch={(index) => {
+                  onPartySwitch(index);
+                  handlePanelChange(null);
+                }}
+              />
             )}
           </div>
         </div>}

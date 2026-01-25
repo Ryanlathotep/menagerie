@@ -329,6 +329,8 @@ export interface InventoryItem {
 
 export interface RunState {
   currentMonster: Monster;
+  party: Monster[];                                            // Party of up to 6 monsters
+  activePartyIndex: number;                                    // Index of active monster in party
   dungeon: DungeonState | null;
   battle: BattleState | null;
   gold: number;
@@ -341,6 +343,13 @@ export interface RunState {
   enemiesDefeated: number;
   moveOrder: string[];      // Order of move IDs
   hiddenMoves: string[];    // IDs of hidden moves
+  // Battle tracking for recruitment
+  battleStats?: {
+    turnsUsed: number;
+    overkillDamage: number;
+    statusEffectsApplied: number;
+    criticalHits: number;
+  };
 }
 
 // Material inventory - persisted across runs (kept when fleeing)

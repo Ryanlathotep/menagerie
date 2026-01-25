@@ -43,6 +43,7 @@ import { PartySwitchModal } from '@/game/PartySwitchModal';
 import { ReviveTargetModal } from '@/game/ReviveTargetModal';
 import { CombatSwitchPanel } from '@/game/CombatSwitchPanel';
 import { LogMessage, createLogMessage, parseLogMessage } from '@/game/GameLog';
+import { TownShop } from '@/game/TownShop';
 
 // Main Menu Component
 function MainMenu() {
@@ -51,6 +52,7 @@ function MainMenu() {
     dispatch
   } = useGame();
   const [showCrafting, setShowCrafting] = useState(false);
+  const [showShop, setShowShop] = useState(false);
   
   const handleResetSave = () => {
     if (confirm('Are you sure you want to reset all progress? This cannot be undone.')) {
@@ -83,6 +85,23 @@ function MainMenu() {
     toast.success(`Dismantled! Got ${materialNames}`);
   };
   
+  const handleBuyItem = (item: InventoryItem, price: number) => {
+    dispatch({ type: 'SPEND_TOWN_GOLD', amount: price });
+    dispatch({ type: 'STORE_ITEM', item });
+    toast.success(`Bought ${item.name}!`);
+  };
+  
+  const handleBuyEquipment = (item: import('@/game/equipment').EquipmentItem, price: number) => {
+    dispatch({ type: 'SPEND_TOWN_GOLD', amount: price });
+    dispatch({ type: 'STORE_EQUIPMENT', item });
+    toast.success(`Bought ${item.name}!`);
+  };
+  
+  const handleSellEquipment = (itemId: string, price: number) => {
+    dispatch({ type: 'SELL_EQUIPMENT', itemId, price });
+    toast.success(`Sold for ${price} gold!`);
+  };
+  
   return (
     <div className="game-container text-7xl font-serif text-center">
       <div className="text-center space-y-8">
@@ -103,6 +122,13 @@ function MainMenu() {
             <Button 
               variant="outline" 
               className="w-32"
+              onClick={() => setShowShop(true)}
+            >
+              🏪 Shop
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-32"
               onClick={() => setShowCrafting(true)}
             >
               🔨 Crafting
@@ -111,6 +137,7 @@ function MainMenu() {
         </div>
 
         <div className="text-sm text-muted-foreground mt-8 space-y-1">
+          <p>💰 Gold: {state.saveData.gold || 0}</p>
           <p>🔓 Unlocked: {state.saveData.unlockedMonsters?.length || 1} / 720 monsters</p>
           <p>🏔️ Highest Floor: {state.saveData.highestFloor}</p>
           <p>🎮 Total Runs: {state.saveData.totalRuns}</p>
@@ -125,6 +152,17 @@ function MainMenu() {
           <SettingsButton />
         </div>
       </div>
+      
+      {showShop && (
+        <TownShop
+          gold={state.saveData.gold || 0}
+          storedEquipment={state.saveData.storedEquipment || []}
+          onBuyItem={handleBuyItem}
+          onBuyEquipment={handleBuyEquipment}
+          onSellEquipment={handleSellEquipment}
+          onClose={() => setShowShop(false)}
+        />
+      )}
       
       {showCrafting && (
         <CraftingWorkshop

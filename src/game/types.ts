@@ -387,8 +387,10 @@ export interface SaveData {
   highestFloor: number;
   totalRuns: number;
   totalEnemiesDefeated: number;
+  gold: number;                   // Town gold (persisted across runs)
   materials: MaterialInventory;   // Crafting materials (persisted across runs)
   storedEquipment: import('./equipment').EquipmentItem[]; // Equipment storage (persisted)
+  storedItems: InventoryItem[];   // Town item storage (persisted)
   unlockedRecipes: string[];      // Recipe IDs unlocked by bringing equipment back
 }
 

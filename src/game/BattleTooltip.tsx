@@ -4,18 +4,22 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Move } from './moves';
 import { Monster } from './types';
 import { calculateHitChance, calculateExpectedDamage, getEffectiveness } from './combat';
+import { getMasteryProgress, getHighestTier, TIER_COLORS, getTierDisplayName, MoveMastery } from './moveMastery';
+import { MasteryDisplay, TierBadge } from './MasteryDisplay';
 
 interface MoveTooltipProps {
   move: Move;
   attacker: Monster;
   defender: Monster;
   children: React.ReactNode;
+  mastery?: MoveMastery;
 }
 
-export function MoveTooltip({ move, attacker, defender, children }: MoveTooltipProps) {
+export function MoveTooltip({ move, attacker, defender, children, mastery }: MoveTooltipProps) {
   const hitChance = calculateHitChance(move, attacker, defender);
   const expectedDamage = calculateExpectedDamage(move, attacker, defender);
   const effectiveness = getEffectiveness(move, attacker, defender);
+  const masteryProgress = getMasteryProgress(mastery);
   
   const effectivenessColors = {
     super: 'text-green-500',
@@ -42,7 +46,10 @@ export function MoveTooltip({ move, attacker, defender, children }: MoveTooltipP
         {children}
       </TooltipTrigger>
       <TooltipContent className="max-w-xs p-3 space-y-2" side="top">
-        <div className="font-bold text-sm">{move.name}</div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="font-bold text-sm">{move.name}</div>
+          <TierBadge tier={masteryProgress.tier} />
+        </div>
         <p className="text-xs text-muted-foreground">{move.description}</p>
         
         <div className="border-t border-border pt-2 space-y-1 text-xs">
@@ -104,6 +111,13 @@ export function MoveTooltip({ move, attacker, defender, children }: MoveTooltipP
         {move.effect && (
           <div className="text-xs text-accent">
             ✨ Effect: {move.effect.replace(/_/g, ' ')}
+          </div>
+        )}
+        
+        {/* Mastery Progress */}
+        {mastery && (
+          <div className="border-t border-border pt-2">
+            <MasteryDisplay mastery={mastery} compact={false} />
           </div>
         )}
       </TooltipContent>

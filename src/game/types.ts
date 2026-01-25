@@ -232,6 +232,12 @@ export interface Monster {
   stats: MonsterStats;
   name: string;
   experience?: number; // Current XP for party members (passive leveling)
+  // Move mastery tracking - keyed by base move ID
+  moveMastery?: Record<string, {
+    uses: number;
+    currentTier: 'lesser' | 'minor' | 'base' | 'greater' | 'omega';
+    hasAoE: boolean;
+  }>;
   // Item the monster is carrying (can be stolen by Crow)
   carriedItem?: {
     id: string;

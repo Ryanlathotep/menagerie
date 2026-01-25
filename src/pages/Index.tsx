@@ -213,55 +213,8 @@ function CharacterSelect() {
         <p className="text-center text-muted-foreground text-sm">
           Defeat enemies to unlock them! Monsters are available at the level they were defeated.
         </p>
-        
-        {/* Unlocked monster selection */}
-        <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-muted-foreground">
-              Unlocked Monsters ({unlockedMonsters.length})
-            </h3>
-            
-            {/* Sort controls */}
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-muted-foreground mr-1">Sort:</span>
-              {(['recent', 'species', 'element', 'class', 'level'] as SortOption[]).map(option => (
-                <Button
-                  key={option}
-                  variant={sortBy === option ? 'default' : 'ghost'}
-                  size="sm"
-                  className="h-6 px-2 text-xs capitalize"
-                  onClick={() => setSortBy(option)}
-                >
-                  {option === 'recent' ? '🕐' : option === 'species' ? '🐾' : option === 'element' ? '🔥' : option === 'class' ? '⚔️' : '📈'}
-                  <span className="ml-1 hidden sm:inline">{option}</span>
-                </Button>
-              ))}
-            </div>
-          </div>
-          
-          <ScrollArea className="flex-1">
-            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
-              {sortedMonsters.map(monster => <Card key={monster.comboId} className={`p-3 cursor-pointer transition-all ${selectedMonster?.comboId === monster.comboId ? 'ring-2 ring-primary bg-primary/10' : 'hover:border-primary/50'}`} onClick={() => setSelectedMonster(monster)}>
-                  <div className="text-center">
-                    <div className="flex justify-center mb-1">
-                      <MonsterSprite species={monster.species} element={monster.element} classType={monster.classType} size={56} animated={false} />
-                    </div>
-                    <p className="text-xs font-medium capitalize">{monster.species}</p>
-                    <div className="flex gap-1 justify-center mt-1 flex-wrap">
-                      <span className={`element-badge element-${monster.element} text-[10px] px-1 py-0`}>
-                        {monster.element}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      Lv.{monster.level} • {monster.classType}
-                    </p>
-                  </div>
-                </Card>)}
-            </div>
-          </ScrollArea>
-        </div>
-        
-        {/* Preview with Stats */}
+
+        {/* Preview with Stats - Moved to top */}
         {selectedMonster && (
           <Card className="p-4">
             <div className="flex gap-4">
@@ -343,6 +296,53 @@ function CharacterSelect() {
             </div>
           </Card>
         )}
+        
+        {/* Unlocked monster selection */}
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-muted-foreground">
+              Unlocked Monsters ({unlockedMonsters.length})
+            </h3>
+            
+            {/* Sort controls */}
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground mr-1">Sort:</span>
+              {(['recent', 'species', 'element', 'class', 'level'] as SortOption[]).map(option => (
+                <Button
+                  key={option}
+                  variant={sortBy === option ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-6 px-2 text-xs capitalize"
+                  onClick={() => setSortBy(option)}
+                >
+                  {option === 'recent' ? '🕐' : option === 'species' ? '🐾' : option === 'element' ? '🔥' : option === 'class' ? '⚔️' : '📈'}
+                  <span className="ml-1 hidden sm:inline">{option}</span>
+                </Button>
+              ))}
+            </div>
+          </div>
+          
+          <ScrollArea className="flex-1">
+            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
+              {sortedMonsters.map(monster => <Card key={monster.comboId} className={`p-3 cursor-pointer transition-all ${selectedMonster?.comboId === monster.comboId ? 'ring-2 ring-primary bg-primary/10' : 'hover:border-primary/50'}`} onClick={() => setSelectedMonster(monster)}>
+                  <div className="text-center">
+                    <div className="flex justify-center mb-1">
+                      <MonsterSprite species={monster.species} element={monster.element} classType={monster.classType} size={56} animated={false} />
+                    </div>
+                    <p className="text-xs font-medium capitalize">{monster.species}</p>
+                    <div className="flex gap-1 justify-center mt-1 flex-wrap">
+                      <span className={`element-badge element-${monster.element} text-[10px] px-1 py-0`}>
+                        {monster.element}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Lv.{monster.level} • {monster.classType}
+                    </p>
+                  </div>
+                </Card>)}
+            </div>
+          </ScrollArea>
+        </div>
 
         <div className="flex gap-3">
           <Button variant="outline" onClick={() => dispatch({

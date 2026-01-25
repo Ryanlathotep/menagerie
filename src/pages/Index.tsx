@@ -42,6 +42,7 @@ import { RecruitmentModal, calculateRecruitChance } from '@/game/RecruitmentModa
 import { PartySwitchModal } from '@/game/PartySwitchModal';
 import { ReviveTargetModal } from '@/game/ReviveTargetModal';
 import { CombatSwitchPanel } from '@/game/CombatSwitchPanel';
+import { LogMessage, createLogMessage, parseLogMessage } from '@/game/GameLog';
 
 // Main Menu Component
 function MainMenu() {
@@ -362,6 +363,14 @@ function DungeonView() {
   const autoRunDirection = useRef<'up' | 'down' | 'left' | 'right' | null>(null);
   const lastKeyPress = useRef<{ key: string; time: number } | null>(null);
   
+  // Unified game log state
+  const [gameLog, setGameLog] = useState<LogMessage[]>([]);
+  
+  // Helper to add log messages
+  const addLog = useCallback((text: string, type: LogMessage['type'] = 'info') => {
+    setGameLog(prev => [...prev.slice(-99), createLogMessage(text, type)]); // Keep last 100 messages
+  }, []);
+  
   // Click-to-move state
   const [targetPath, setTargetPath] = useState<Position[]>([]);
   const [isPathWalking, setIsPathWalking] = useState(false);
@@ -423,20 +432,20 @@ function DungeonView() {
           type: 'ADD_GOLD',
           amount: result.loot.value
         });
-        toast.success(`Found ${result.loot.value} gold!`);
+        addLog(`💰 Found ${result.loot.value} gold!`, 'loot');
       } else if (result.loot.type === 'equipment' && result.loot.equipmentData) {
         dispatch({
           type: 'ADD_EQUIPMENT',
           item: result.loot.equipmentData
         });
-        toast.success(`Found ${result.loot.name}!`);
+        addLog(`⚔️ Found ${result.loot.name}!`, 'loot');
       } else if (result.loot.type === 'material' && result.loot.materialData) {
         dispatch({
           type: 'ADD_MATERIAL',
           materialId: result.loot.materialData.id,
           quantity: 1
         });
-        toast.success(`Found ${result.loot.name}!`);
+        addLog(`💎 Found ${result.loot.name}!`, 'loot');
       } else {
         // Regular consumables
         const lootItem: InventoryItem = {
@@ -451,7 +460,7 @@ function DungeonView() {
           type: 'ADD_ITEM',
           item: lootItem
         });
-        toast.success(`Found ${result.loot.name}!`);
+        addLog(`📦 Found ${result.loot.name}!`, 'loot');
       }
     } else if (result.stairs) {
       const newDungeon = generateDungeon(dungeon.floor + 1);
@@ -459,7 +468,7 @@ function DungeonView() {
         type: 'SET_DUNGEON',
         dungeon: newDungeon
       });
-      toast.success(`Descended to Floor ${dungeon.floor + 1}!`);
+      addLog(`⬇️ Descended to Floor ${dungeon.floor + 1}!`, 'system');
     } else if (result.trap) {
       if (result.trap.type === 'spike' && result.trap.damage) {
         const newHp = Math.max(0, state.run.currentMonster.stats.currentHp - result.trap.damage);
@@ -474,7 +483,7 @@ function DungeonView() {
           type: 'UPDATE_PLAYER_MONSTER',
           monster: updatedMonster
         });
-        toast.error(`Stepped on a spike trap! Took ${result.trap.damage} damage!`);
+        addLog(`⚠️ Spike trap! Took ${result.trap.damage} damage!`, 'damage');
         if (newHp <= 0) {
           dispatch({
             type: 'END_RUN',
@@ -486,17 +495,14 @@ function DungeonView() {
           });
         }
       } else if (result.trap.type === 'poison') {
-        toast.error('Poisoned by a trap!');
-        // Could add poison status effect here
+        addLog('☠️ Poisoned by a trap!', 'status');
       } else if (result.trap.type === 'alarm') {
-        toast.error('Alarm trap! Enemies alerted!');
-        // Could spawn additional enemies
+        addLog('🔔 Alarm trap! Enemies alerted!', 'status');
       }
     } else if (result.water) {
-      // Water hazard - Frogs are immune (Amphibious passive)
       const isFrog = state.run.currentMonster.species === 'frog';
       if (isFrog) {
-        toast.success('Your Amphibious nature lets you swim through unharmed! 🐸');
+        addLog('🐸 Amphibious nature lets you swim unharmed!', 'system');
       } else {
         const damage = result.water.damage;
         const newHp = Math.max(0, state.run.currentMonster.stats.currentHp - damage);
@@ -511,7 +517,7 @@ function DungeonView() {
           type: 'UPDATE_PLAYER_MONSTER',
           monster: updatedMonster
         });
-        toast.error(`Waded through water! Took ${damage} damage! 🌊`);
+        addLog(`🌊 Waded through water! Took ${damage} damage!`, 'damage');
         if (newHp <= 0) {
           dispatch({
             type: 'END_RUN',
@@ -592,7 +598,7 @@ function DungeonView() {
         autoRunDirection.current = direction;
         setIsAutoRunning(true);
         lastKeyPress.current = null;
-        toast.success(`Auto-running ${direction}! Press any key to stop.`);
+        addLog(`🏃 Auto-running ${direction}! Press any key to stop.`, 'system');
       } else {
         // Single press - normal move
         handleMove(direction);
@@ -613,7 +619,7 @@ function DungeonView() {
       type: 'SET_PHASE',
       phase: 'run_summary'
     });
-    toast.success('Escaped safely! Materials and equipment kept.');
+    addLog('🚪 Escaped safely! Materials and equipment kept.', 'system');
   };
   
   // Click-to-move handler
@@ -629,7 +635,7 @@ function DungeonView() {
       pathWalkRef.current = path;
       setIsPathWalking(true);
     } else {
-      toast.error("Can't reach that tile!");
+      addLog("❌ Can't reach that tile!", 'info');
     }
   }, [dungeon, isPathWalking, isAutoRunning]);
   
@@ -680,7 +686,7 @@ function DungeonView() {
   // Party switch handler
   const handlePartySwitch = useCallback((index: number) => {
     dispatch({ type: 'SWITCH_ACTIVE_MONSTER', index });
-    toast.success(`Switched to ${state.run?.party[index]?.species}!`);
+    addLog(`🔄 Switched to ${state.run?.party[index]?.species}!`, 'system');
   }, [dispatch, state.run?.party]);
   const handleBuyItem = (item: LootItem) => {
     const price = item.value * 1.5; // Shop markup
@@ -701,7 +707,7 @@ function DungeonView() {
         type: 'ADD_ITEM',
         item: lootItem
       });
-      toast.success(`Bought ${item.name}!`);
+      addLog(`🛒 Bought ${item.name}!`, 'loot');
     }
   };
   
@@ -715,7 +721,7 @@ function DungeonView() {
         type: 'ADD_EQUIPMENT',
         item
       });
-      toast.success(`Bought ${item.name}!`);
+      addLog(`🛒 Bought ${item.name}!`, 'loot');
     }
   };
   if (!dungeon) return <div className="game-container">Loading...</div>;
@@ -728,7 +734,7 @@ function DungeonView() {
       type: 'DROP_ITEM',
       itemId
     });
-    toast.success('Item dropped');
+    addLog('🗑️ Item dropped', 'info');
   };
 
   const handleUseItemOutOfCombat = (item: InventoryItem) => {
@@ -742,7 +748,10 @@ function DungeonView() {
       const hpBefore = monster.stats.currentHp;
       const newHp = Math.min(monster.stats.maxHp, monster.stats.currentHp + (item.value || 0));
       const healed = newHp - hpBefore;
-      if (healed <= 0) return toast.info('Already at full HP!');
+      if (healed <= 0) {
+        addLog('❤️ Already at full HP!', 'info');
+        return;
+      }
       updatedMonster = {
         ...monster,
         stats: { ...monster.stats, currentHp: newHp }
@@ -750,7 +759,10 @@ function DungeonView() {
       message = `Restored ${healed} HP!`;
     } else if (item.effect === 'heal_full') {
       const hpBefore = monster.stats.currentHp;
-      if (hpBefore >= monster.stats.maxHp) return toast.info('Already at full HP!');
+      if (hpBefore >= monster.stats.maxHp) {
+        addLog('❤️ Already at full HP!', 'info');
+        return;
+      }
       updatedMonster = {
         ...monster,
         stats: { ...monster.stats, currentHp: monster.stats.maxHp }
@@ -761,7 +773,10 @@ function DungeonView() {
       const staminaBefore = monster.stats.currentStamina ?? maxStamina;
       const newStamina = Math.min(maxStamina, staminaBefore + (item.value || 0));
       const restored = newStamina - staminaBefore;
-      if (restored <= 0) return toast.info('Already at full stamina!');
+      if (restored <= 0) {
+        addLog('⚡ Already at full stamina!', 'info');
+        return;
+      }
       updatedMonster = {
         ...monster,
         stats: { ...monster.stats, currentStamina: newStamina }
@@ -770,7 +785,7 @@ function DungeonView() {
     } else if (item.effect === 'cure_poison' || item.effect === 'cure_burn' || item.effect === 'cure_freeze' || item.effect === 'cure_all') {
       message = `Used ${item.name}!`;
     } else if (item.effect === 'boost_attack' || item.effect === 'boost_defense' || item.effect === 'boost_speed') {
-      toast.info(`${item.name} can only be used in battle.`);
+      addLog(`⚔️ ${item.name} can only be used in battle.`, 'info');
       return;
     } else {
       message = `Used ${item.name}!`;
@@ -778,7 +793,7 @@ function DungeonView() {
     
     dispatch({ type: 'UPDATE_PLAYER_MONSTER', monster: updatedMonster });
     dispatch({ type: 'USE_ITEM', itemId: item.id });
-    toast.success(message);
+    addLog(`✨ ${message}`, 'heal');
   };
 
   return <>
@@ -804,6 +819,7 @@ function DungeonView() {
         party={state.run?.party || []}
         activePartyIndex={state.run?.activePartyIndex || 0}
         onPartySwitch={handlePartySwitch}
+        gameLog={gameLog}
         expandedStats={state.run?.currentMonster ? {
           currentHp: state.run.currentMonster.stats.currentHp,
           maxHp: state.run.currentMonster.stats.maxHp,
@@ -854,7 +870,7 @@ function DungeonView() {
               onDisarmTrap={(x, y, success) => {
                 dispatch({ type: 'DISARM_TRAP', x, y, success });
                 if (success) {
-                  toast.success('Trap disarmed!');
+                  addLog('🔧 Trap disarmed!', 'system');
                 } else {
                   // Failed disarm triggers the trap
                   const tile = dungeon.tiles[y]?.[x];
@@ -868,15 +884,15 @@ function DungeonView() {
                         stats: { ...state.run!.currentMonster.stats, currentHp: newHp }
                       }
                     });
-                    toast.error(`Disarm failed! Triggered spike trap for ${damage} damage!`);
+                    addLog(`⚠️ Disarm failed! Spike trap dealt ${damage} damage!`, 'damage');
                     if (newHp <= 0) {
                       dispatch({ type: 'END_RUN', victory: false });
                       dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
                     }
                   } else if (tile?.trapType === 'poison') {
-                    toast.error('Disarm failed! You got poisoned!');
+                    addLog('☠️ Disarm failed! You got poisoned!', 'status');
                   } else if (tile?.trapType === 'alarm') {
-                    toast.error('Disarm failed! Alarm triggered!');
+                    addLog('🔔 Disarm failed! Alarm triggered!', 'status');
                   }
                 }
               }}

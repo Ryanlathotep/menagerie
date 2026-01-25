@@ -867,8 +867,6 @@ function DungeonView({
       addLog(`🛒 Bought ${item.name}!`, 'loot');
     }
   };
-  if (!dungeon) return <div className="game-container">Loading...</div>;
-
   // Bottom offset: 64px for menu bar + 260px for controls + ~200px when panel is open
   const bottomOffset = menuOpen ? 'bottom-[520px]' : 'bottom-[324px]';
   const controlsOffset = menuOpen ? 'bottom-16' : 'bottom-0';
@@ -1281,6 +1279,9 @@ function DungeonView({
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, [targetingMove, cancelTargeting]);
+
+  // Early return for loading state - MUST be after all hooks
+  if (!dungeon) return <div className="game-container">Loading...</div>;
 
   return <>
       <GameSidebar 

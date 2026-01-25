@@ -1,4 +1,4 @@
-// Combat Switch Panel - Quick party switching during battle
+// Close Combat Switch Panel - Quick party switching during turn-based battles
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';

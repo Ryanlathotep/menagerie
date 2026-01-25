@@ -50,7 +50,7 @@ const INITIAL_STATE: GameState = {
 // Action types
 type GameAction =
   | { type: 'SET_PHASE'; phase: GamePhase }
-  | { type: 'START_RUN'; monster: Monster; preEquipped?: MonsterEquipment; withdrawnIds?: string[] }
+  | { type: 'START_RUN'; monster: Monster; preEquipped?: MonsterEquipment; withdrawnIds?: string[]; preSelectedItems?: InventoryItem[] }
   | { type: 'END_RUN'; victory: boolean }
   | { type: 'FLEE_DUNGEON' }  // Flee safely - keeps materials and equipment
   | { type: 'SET_DUNGEON'; dungeon: DungeonState }
@@ -110,6 +110,32 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         ? state.saveData.storedEquipment.filter(item => !action.withdrawnIds!.includes(item.id))
         : state.saveData.storedEquipment;
       
+      // Build starting inventory from pre-selected items (if any) or default items
+      let startingInventory: InventoryItem[] = action.preSelectedItems && action.preSelectedItems.length > 0
+        ? [...action.preSelectedItems]
+        : [
+            { id: 'small_potion', name: 'Small Potion', type: 'potion', value: 30, effect: 'heal_hp', quantity: 2 },
+            { id: 'stamina_tonic', name: 'Stamina Tonic', type: 'potion', value: 20, effect: 'heal_stamina', quantity: 1 },
+          ];
+      
+      // Remove selected items from town storage (merge quantities for matching ids)
+      let remainingStoredItems = [...(state.saveData.storedItems || [])];
+      if (action.preSelectedItems && action.preSelectedItems.length > 0) {
+        for (const selectedItem of action.preSelectedItems) {
+          // Find the item in stored items and reduce quantity
+          const storedIndex = remainingStoredItems.findIndex(si => si.id === selectedItem.id);
+          if (storedIndex !== -1) {
+            const storedItem = remainingStoredItems[storedIndex];
+            const newQty = (storedItem.quantity || 1) - (selectedItem.quantity || 1);
+            if (newQty <= 0) {
+              remainingStoredItems.splice(storedIndex, 1);
+            } else {
+              remainingStoredItems[storedIndex] = { ...storedItem, quantity: newQty };
+            }
+          }
+        }
+      }
+      
       return {
         ...state,
         phase: 'dungeon',
@@ -122,10 +148,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           gold: 0,
           experience: 0,
           itemsCollected: [],
-          inventory: [
-            { id: 'small_potion', name: 'Small Potion', type: 'potion', value: 30, effect: 'heal_hp', quantity: 2 },
-            { id: 'stamina_tonic', name: 'Stamina Tonic', type: 'potion', value: 20, effect: 'heal_stamina', quantity: 1 },
-          ],
+          inventory: startingInventory,
           equipmentInventory: [],
           partyEquipment: [action.preEquipped || createEmptyEquipment()],  // One equipment set per party member
           runMaterials: {},
@@ -138,6 +161,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           ...state.saveData,
           totalRuns: state.saveData.totalRuns + 1,
           storedEquipment: remainingStorage,
+          storedItems: remainingStoredItems,
         },
       };
     }

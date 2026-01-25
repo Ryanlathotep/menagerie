@@ -162,6 +162,7 @@ function MainMenu() {
           <p>🎮 Total Runs: {state.saveData.totalRuns}</p>
           <p>📦 Materials: {Object.keys(state.saveData.materials || {}).length} types</p>
           <p>🗃️ Stored Equipment: {state.saveData.storedEquipment?.length || 0} items</p>
+          <p>🧪 Stored Consumables: {(state.saveData.storedItems || []).reduce((sum, item) => sum + (item.quantity || 1), 0)} items</p>
         </div>
 
         <div className="flex gap-2 justify-center">
@@ -241,13 +242,14 @@ function CharacterSelect() {
     setShowEquipmentSelect(true);
   };
   
-  const startRun = (equipment: MonsterEquipment, withdrawnIds: string[]) => {
+  const startRun = (equipment: MonsterEquipment, withdrawnIds: string[], selectedItems: import('@/game/types').InventoryItem[]) => {
     if (!monsterForRun) return;
     dispatch({
       type: 'START_RUN',
       monster: monsterForRun,
       preEquipped: equipment,
       withdrawnIds,
+      preSelectedItems: selectedItems,
     });
   };
   
@@ -257,6 +259,7 @@ function CharacterSelect() {
       <PreRunEquipment
         monster={monsterForRun}
         storedEquipment={state.saveData.storedEquipment || []}
+        storedItems={state.saveData.storedItems || []}
         onStart={startRun}
         onBack={() => setShowEquipmentSelect(false)}
       />

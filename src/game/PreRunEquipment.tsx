@@ -1,4 +1,4 @@
-// Pre-Run Equipment Selection - Equip gear from town storage before starting a run
+// Pre-Run Equipment Selection - Equip gear and select consumables from town storage before starting a run
 
 import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import {
   createEmptyEquipment,
   calculateEquipmentBonuses,
 } from './equipment';
-import { Monster } from './types';
+import { Monster, InventoryItem } from './types';
 import { MonsterSprite } from './sprites';
 import { ArrowLeft, Play, Shirt } from 'lucide-react';
 import { EquippedSlotDisplay, DraggableEquipmentItem, DragData } from './DraggableEquipmentItem';
@@ -23,13 +23,15 @@ import { toast } from '@/hooks/use-toast';
 interface PreRunEquipmentProps {
   monster: Monster;
   storedEquipment: EquipmentItem[];
-  onStart: (equipment: MonsterEquipment, withdrawnIds: string[]) => void;
+  storedItems: InventoryItem[];
+  onStart: (equipment: MonsterEquipment, withdrawnIds: string[], selectedItems: InventoryItem[]) => void;
   onBack: () => void;
 }
 
 export function PreRunEquipment({
   monster,
   storedEquipment,
+  storedItems,
   onStart,
   onBack,
 }: PreRunEquipmentProps) {
@@ -41,6 +43,9 @@ export function PreRunEquipment({
     option: 'rarity', 
     direction: 'desc' 
   });
+  
+  // Selected consumables to bring into the run
+  const [selectedItems, setSelectedItems] = useState<InventoryItem[]>([]);
   
   // Track which items have been withdrawn from storage
   const equippedIds = Object.values(equipment).filter(Boolean).map(item => item!.id);
@@ -54,6 +59,48 @@ export function PreRunEquipment({
     : availableItems;
   
   const sortedItems = sortEquipment(filteredItems, sortConfig);
+  
+  // Group stored consumables by id for display
+  const groupedConsumables = storedItems.reduce((acc, item) => {
+    const existing = acc.find(i => i.id === item.id);
+    if (existing) {
+      existing.quantity = (existing.quantity || 1) + (item.quantity || 1);
+    } else {
+      acc.push({ ...item, quantity: item.quantity || 1 });
+    }
+    return acc;
+  }, [] as InventoryItem[]);
+  
+  // Calculate remaining quantities after selection
+  const getRemainingQty = (itemId: string) => {
+    const stored = groupedConsumables.find(i => i.id === itemId);
+    const selected = selectedItems.find(i => i.id === itemId);
+    return (stored?.quantity || 0) - (selected?.quantity || 0);
+  };
+  
+  const handleAddItem = (item: InventoryItem) => {
+    const remaining = getRemainingQty(item.id);
+    if (remaining <= 0) return;
+    
+    setSelectedItems(prev => {
+      const existing = prev.find(i => i.id === item.id);
+      if (existing) {
+        return prev.map(i => i.id === item.id ? { ...i, quantity: (i.quantity || 1) + 1 } : i);
+      }
+      return [...prev, { ...item, quantity: 1 }];
+    });
+  };
+  
+  const handleRemoveItem = (itemId: string) => {
+    setSelectedItems(prev => {
+      const existing = prev.find(i => i.id === itemId);
+      if (!existing) return prev;
+      if ((existing.quantity || 1) <= 1) {
+        return prev.filter(i => i.id !== itemId);
+      }
+      return prev.map(i => i.id === itemId ? { ...i, quantity: (i.quantity || 1) - 1 } : i);
+    });
+  };
 
   const handleEquip = useCallback((item: EquipmentItem) => {
     if (monster.level < item.level) return;
@@ -73,7 +120,7 @@ export function PreRunEquipment({
   }, []);
   
   const handleStart = () => {
-    onStart(equipment, equippedIds);
+    onStart(equipment, equippedIds, selectedItems);
   };
   
   // Drag handlers
@@ -124,24 +171,26 @@ export function PreRunEquipment({
     onDrop: () => handleSlotDrop(slot),
   });
   
+  const totalSelectedItems = selectedItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+  
   return (
     <div className="game-container">
-      <div className="space-y-6 max-w-4xl">
+      <div className="space-y-4 max-w-5xl">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={onBack}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent flex items-center gap-2">
-            <Shirt className="w-6 h-6 text-primary" />
-            Prepare Equipment
+          <h2 className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent flex items-center gap-2">
+            <Shirt className="w-5 h-5 text-primary" />
+            Prepare for Adventure
           </h2>
         </div>
         
-        <p className="text-center text-muted-foreground text-sm">
-          Equip gear from your storage before starting the run. Drag items to slots or click to equip.
+        <p className="text-center text-muted-foreground text-xs">
+          Equip gear and select consumables from your storage before starting the run.
         </p>
         
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-3 gap-3">
           {/* Left: Paper doll with monster */}
           <Card className="p-4">
             <div className="flex flex-col items-center gap-4">
@@ -283,11 +332,98 @@ export function PreRunEquipment({
               {storedEquipment.length} items in storage • {equippedCount} equipped
             </p>
           </Card>
+          
+          {/* Third column: Consumables */}
+          <Card className="p-3 flex flex-col">
+            <h3 className="font-semibold text-sm mb-2">🧪 Consumables</h3>
+            
+            {/* Selected items */}
+            {selectedItems.length > 0 && (
+              <div className="mb-2 p-2 bg-primary/10 rounded border border-primary/20">
+                <p className="text-[10px] font-medium text-muted-foreground mb-1">Selected ({totalSelectedItems})</p>
+                <div className="flex flex-wrap gap-1">
+                  {selectedItems.map(item => (
+                    <button
+                      key={item.id}
+                      onClick={() => handleRemoveItem(item.id)}
+                      className="text-xs px-1.5 py-0.5 bg-background rounded border hover:bg-destructive/20 transition-colors"
+                    >
+                      {item.name} ×{item.quantity}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            <ScrollArea className="flex-1 max-h-[280px]">
+              <div className="space-y-1 pr-2">
+                {groupedConsumables.length > 0 ? (
+                  groupedConsumables.map(item => {
+                    const remaining = getRemainingQty(item.id);
+                    const selected = selectedItems.find(i => i.id === item.id);
+                    
+                    return (
+                      <div
+                        key={item.id}
+                        className={`p-2 rounded border text-left transition-all ${remaining > 0 ? 'hover:bg-muted/50 cursor-pointer' : 'opacity-50'}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">
+                            {item.effect === 'heal_hp' ? '❤️' : 
+                             item.effect === 'heal_stamina' ? '⚡' :
+                             item.effect?.startsWith('cure_') ? '💊' :
+                             item.effect?.startsWith('boost_') ? '✨' :
+                             item.effect?.startsWith('revive') ? '🌟' : '🧪'}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium truncate">{item.name}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              In storage: {remaining}{selected ? ` (${selected.quantity} selected)` : ''}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              disabled={remaining <= 0}
+                              onClick={() => handleAddItem(item)}
+                            >
+                              +
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              disabled={!selected || (selected.quantity || 0) <= 0}
+                              onClick={() => handleRemoveItem(item.id)}
+                            >
+                              -
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center text-muted-foreground py-6">
+                    <p className="text-2xl mb-1">🧪</p>
+                    <p className="text-xs">No consumables in storage</p>
+                    <p className="text-[10px] mt-1">Craft potions or buy from the shop!</p>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+            
+            <p className="text-[10px] text-muted-foreground text-center mt-2">
+              {groupedConsumables.reduce((sum, i) => sum + (i.quantity || 1), 0)} in storage • {totalSelectedItems} selected
+            </p>
+          </Card>
         </div>
         
         <div className="flex gap-3">
           <Button variant="outline" onClick={onBack}>
-            Back to Selection
+            Back
           </Button>
           <Button 
             className="flex-1 bg-gradient-to-r from-primary to-secondary" 

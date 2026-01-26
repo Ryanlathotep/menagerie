@@ -219,13 +219,13 @@ export function svgToPixelArt(
 
 /**
  * Convert pixel art back to SVG path data (simplified outline)
- * This creates a traced outline of the pixel art
+ * Uses contour tracing to generate a smooth outline path
  */
 export function pixelArtToSvgPath(spriteData: SpriteData): { outline: string; filled: string } {
   const { width, height, layers } = spriteData;
   
   // Merge all visible layers into one
-  const merged: string[][] = Array(height).fill(null).map(() => Array(width).fill('transparent'));
+  const merged: boolean[][] = Array(height).fill(null).map(() => Array(width).fill(false));
   
   for (const layer of layers) {
     if (!layer.visible) continue;
@@ -233,7 +233,7 @@ export function pixelArtToSvgPath(spriteData: SpriteData): { outline: string; fi
       for (let x = 0; x < width; x++) {
         const pixel = layer.pixels[y]?.[x];
         if (pixel && pixel !== 'transparent') {
-          merged[y][x] = pixel;
+          merged[y][x] = true;
         }
       }
     }
@@ -243,11 +243,75 @@ export function pixelArtToSvgPath(spriteData: SpriteData): { outline: string; fi
   const scaleX = 100 / width;
   const scaleY = 100 / height;
   
-  // Generate filled rectangles for each pixel
+  // Trace outer contour using clockwise edge following
+  // Find the topmost-leftmost filled pixel as starting point
+  let startX = -1, startY = -1;
+  outerLoop: for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (merged[y][x]) {
+        startX = x;
+        startY = y;
+        break outerLoop;
+      }
+    }
+  }
+  
+  if (startX === -1) {
+    return { outline: '', filled: '' };
+  }
+  
+  // Moore-neighbor tracing algorithm
+  const directions = [
+    [0, -1],  // N
+    [1, -1],  // NE
+    [1, 0],   // E
+    [1, 1],   // SE
+    [0, 1],   // S
+    [-1, 1],  // SW
+    [-1, 0],  // W
+    [-1, -1], // NW
+  ];
+  
+  const contour: [number, number][] = [];
+  let x = startX, y = startY;
+  let dir = 7; // Start looking west (coming from left edge)
+  
+  const isFilled = (px: number, py: number) => 
+    px >= 0 && px < width && py >= 0 && py < height && merged[py][px];
+  
+  do {
+    contour.push([x, y]);
+    
+    // Look for next boundary pixel (clockwise from current direction)
+    let found = false;
+    for (let i = 0; i < 8; i++) {
+      const checkDir = (dir + i) % 8;
+      const [dx, dy] = directions[checkDir];
+      const nx = x + dx;
+      const ny = y + dy;
+      
+      if (isFilled(nx, ny)) {
+        x = nx;
+        y = ny;
+        dir = (checkDir + 6) % 8; // Turn left for next search
+        found = true;
+        break;
+      }
+    }
+    
+    if (!found || contour.length > width * height) break;
+  } while (x !== startX || y !== startY);
+  
+  // Convert contour to smooth SVG path
+  if (contour.length < 3) {
+    return { outline: '', filled: '' };
+  }
+  
+  // Build a smooth path using the pixel centers
   const rects: string[] = [];
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      if (merged[y][x] !== 'transparent') {
+      if (merged[y][x]) {
         const sx = x * scaleX;
         const sy = y * scaleY;
         rects.push(`M${sx},${sy} h${scaleX} v${scaleY} h${-scaleX} Z`);
@@ -255,31 +319,37 @@ export function pixelArtToSvgPath(spriteData: SpriteData): { outline: string; fi
     }
   }
   
-  // Simple edge detection for outline
-  const edges: string[] = [];
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const isFilled = merged[y][x] !== 'transparent';
-      if (!isFilled) continue;
-      
-      const sx = x * scaleX;
-      const sy = y * scaleY;
-      
-      // Check each edge
-      const top = y === 0 || merged[y - 1][x] === 'transparent';
-      const bottom = y === height - 1 || merged[y + 1][x] === 'transparent';
-      const left = x === 0 || merged[y][x - 1] === 'transparent';
-      const right = x === width - 1 || merged[y][x + 1] === 'transparent';
-      
-      if (top) edges.push(`M${sx},${sy} h${scaleX}`);
-      if (bottom) edges.push(`M${sx},${sy + scaleY} h${scaleX}`);
-      if (left) edges.push(`M${sx},${sy} v${scaleY}`);
-      if (right) edges.push(`M${sx + scaleX},${sy} v${scaleY}`);
+  // Generate smooth outline path from contour
+  const outlinePath = contour.map(([px, py], i) => {
+    const sx = (px + 0.5) * scaleX;
+    const sy = (py + 0.5) * scaleY;
+    return i === 0 ? `M${sx.toFixed(1)},${sy.toFixed(1)}` : `L${sx.toFixed(1)},${sy.toFixed(1)}`;
+  }).join(' ') + ' Z';
+  
+  // Also create a simplified cubic bezier version for smoother scaling
+  const simplified: string[] = [];
+  const step = Math.max(1, Math.floor(contour.length / 20)); // Sample ~20 points
+  
+  for (let i = 0; i < contour.length; i += step) {
+    const [px, py] = contour[i];
+    const sx = (px + 0.5) * scaleX;
+    const sy = (py + 0.5) * scaleY;
+    
+    if (i === 0) {
+      simplified.push(`M${sx.toFixed(1)},${sy.toFixed(1)}`);
+    } else {
+      // Get control points for smooth curve
+      const prevIdx = Math.max(0, i - step);
+      const [ppx, ppy] = contour[prevIdx];
+      const cpx = ((ppx + px) / 2 + 0.5) * scaleX;
+      const cpy = ((ppy + py) / 2 + 0.5) * scaleY;
+      simplified.push(`Q${cpx.toFixed(1)},${cpy.toFixed(1)} ${sx.toFixed(1)},${sy.toFixed(1)}`);
     }
   }
+  simplified.push('Z');
   
   return {
-    outline: edges.join(' '),
+    outline: simplified.join(' '),
     filled: rects.join(' '),
   };
 }

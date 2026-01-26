@@ -5,8 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
-import { Settings as SettingsIcon, X, Download, Upload } from 'lucide-react';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Settings as SettingsIcon, X, Download, Upload, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAdminRole } from '@/hooks/useAdminRole';
+import { AdminPanel } from '@/admin/AdminPanel';
 
 // Settings interface
 export interface GameSettings {
@@ -243,6 +246,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               Export your save to a file or restore from a backup. Refresh after importing.
             </p>
           </div>
+
+          {/* Admin Panel Access */}
+          <AdminPanelButton />
         </div>
 
         <div className="flex gap-2 mt-6">
@@ -254,6 +260,37 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           </Button>
         </div>
       </Card>
+    </div>
+  );
+}
+
+// Admin Panel Button - only visible to admins
+function AdminPanelButton() {
+  const { isAdmin, loading } = useAdminRole();
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (loading || !isAdmin) return null;
+
+  return (
+    <div className="space-y-3 pt-4 border-t">
+      <Label className="text-base flex items-center gap-2">
+        <Shield className="w-4 h-4 text-primary" />
+        Admin Tools
+      </Label>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" className="w-full gap-2">
+            <Shield className="w-4 h-4" />
+            Open Admin Panel
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-6xl h-[90vh] p-0 overflow-hidden">
+          <AdminPanel />
+        </DialogContent>
+      </Dialog>
+      <p className="text-xs text-muted-foreground">
+        Edit game data, sprites, and configurations
+      </p>
     </div>
   );
 }

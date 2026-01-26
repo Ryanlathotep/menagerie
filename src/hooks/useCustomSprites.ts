@@ -28,12 +28,13 @@ let globalCacheLoaded = false;
 let globalCachePromise: Promise<void> | null = null;
 
 // Convert pixel art to SVG path data for rendering in MonsterSprite
-// Uses marching squares to generate a smooth outline path from pixel data
+// Uses contour tracing to generate smooth bezier curves from pixel data
 function pixelArtToSvgPaths(spriteData: SpriteData): { body: string; detail: string; face: string } {
   const { width, height, layers } = spriteData;
   
   // Merge all visible layers into a single grid
   const mergedGrid: boolean[][] = Array(height).fill(null).map(() => Array(width).fill(false));
+  const colorGrid: string[][] = Array(height).fill(null).map(() => Array(width).fill('transparent'));
   
   for (const layer of layers) {
     if (layer.visible === false) continue;
@@ -42,6 +43,7 @@ function pixelArtToSvgPaths(spriteData: SpriteData): { body: string; detail: str
         const color = layer.pixels[y][x];
         if (color && color !== 'transparent') {
           mergedGrid[y][x] = true;
+          colorGrid[y][x] = color;
         }
       }
     }
@@ -51,7 +53,7 @@ function pixelArtToSvgPaths(spriteData: SpriteData): { body: string; detail: str
   const scaleX = 100 / width;
   const scaleY = 100 / height;
   
-  // Find the bounding box and generate an outline path
+  // Find bounding box
   let minX = width, maxX = 0, minY = height, maxY = 0;
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -65,91 +67,125 @@ function pixelArtToSvgPaths(spriteData: SpriteData): { body: string; detail: str
   }
   
   if (minX > maxX) {
-    // No pixels found, return empty
     return { body: '', detail: '', face: '' };
   }
   
-  // Generate outline edges using edge detection
-  const edges: string[] = [];
+  // Moore-neighbor contour tracing for smooth outline
+  const directions: [number, number][] = [
+    [0, -1], [1, -1], [1, 0], [1, 1],
+    [0, 1], [-1, 1], [-1, 0], [-1, -1],
+  ];
   
-  for (let y = minY; y <= maxY + 1; y++) {
-    for (let x = minX; x <= maxX + 1; x++) {
-      const current = y < height && x < width && mergedGrid[y]?.[x];
-      const left = x > 0 && y < height && mergedGrid[y]?.[x - 1];
-      const above = y > 0 && x < width && mergedGrid[y - 1]?.[x];
+  const isFilled = (x: number, y: number) =>
+    x >= 0 && x < width && y >= 0 && y < height && mergedGrid[y][x];
+  
+  // Find starting point
+  let startX = -1, startY = -1;
+  outerLoop: for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (mergedGrid[y][x]) {
+        startX = x;
+        startY = y;
+        break outerLoop;
+      }
+    }
+  }
+  
+  if (startX === -1) {
+    return { body: '', detail: '', face: '' };
+  }
+  
+  // Trace contour
+  const contour: { x: number; y: number }[] = [];
+  let x = startX, y = startY;
+  let dir = 7;
+  
+  do {
+    contour.push({ x: x + 0.5, y: y + 0.5 });
+    
+    let found = false;
+    for (let i = 0; i < 8; i++) {
+      const checkDir = (dir + i) % 8;
+      const [dx, dy] = directions[checkDir];
+      const nx = x + dx;
+      const ny = y + dy;
       
-      const sx = x * scaleX;
-      const sy = y * scaleY;
-      
-      // Vertical edge (between left and current)
-      if (current !== left) {
-        edges.push(`M${sx},${sy} v${scaleY}`);
-      }
-      // Horizontal edge (between above and current)
-      if (current !== above) {
-        edges.push(`M${sx},${sy} h${scaleX}`);
-      }
-    }
-  }
-  
-  // Create a filled body shape using a simplified convex hull approach
-  // Find outline points
-  const outlinePoints: [number, number][] = [];
-  
-  // Top edge - scan from top
-  for (let x = minX; x <= maxX; x++) {
-    for (let y = minY; y <= maxY; y++) {
-      if (mergedGrid[y][x]) {
-        outlinePoints.push([x * scaleX + scaleX / 2, y * scaleY]);
+      if (isFilled(nx, ny)) {
+        x = nx;
+        y = ny;
+        dir = (checkDir + 6) % 8;
+        found = true;
         break;
       }
     }
+    
+    if (!found || contour.length > width * height * 2) break;
+  } while (x !== startX || y !== startY);
+  
+  // Convert contour to smooth bezier path
+  if (contour.length < 3) {
+    return { body: '', detail: '', face: '' };
   }
   
-  // Right edge - scan from right
-  for (let y = minY; y <= maxY; y++) {
-    for (let x = maxX; x >= minX; x--) {
-      if (mergedGrid[y][x]) {
-        outlinePoints.push([(x + 1) * scaleX, y * scaleY + scaleY / 2]);
-        break;
+  const step = Math.max(1, Math.floor(contour.length / 30));
+  const sampled: { x: number; y: number }[] = [];
+  for (let i = 0; i < contour.length; i += step) {
+    sampled.push(contour[i]);
+  }
+  if (sampled.length < 3) sampled.push(...contour);
+  
+  const pathParts: string[] = [];
+  const first = sampled[0];
+  pathParts.push(`M${(first.x * scaleX).toFixed(1)},${(first.y * scaleY).toFixed(1)}`);
+  
+  for (let i = 0; i < sampled.length; i++) {
+    const curr = sampled[i];
+    const next = sampled[(i + 1) % sampled.length];
+    const midX = (curr.x + next.x) / 2;
+    const midY = (curr.y + next.y) / 2;
+    pathParts.push(`Q${(curr.x * scaleX).toFixed(1)},${(curr.y * scaleY).toFixed(1)} ${(midX * scaleX).toFixed(1)},${(midY * scaleY).toFixed(1)}`);
+  }
+  pathParts.push('Z');
+  
+  const bodyPath = pathParts.join(' ');
+  
+  // Extract detail paths from dark pixels (brightness < 0.4)
+  const detailPaths: string[] = [];
+  const facePaths: string[] = [];
+  const faceY = Math.floor(height * 0.5);
+  
+  const getBrightness = (hex: string): number => {
+    if (!hex || hex === 'transparent' || hex.length < 7) return 1;
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+    return 0.299 * r + 0.587 * g + 0.114 * b;
+  };
+  
+  for (let py = 0; py < height; py++) {
+    for (let px = 0; px < width; px++) {
+      const pixel = colorGrid[py]?.[px];
+      if (pixel && pixel !== 'transparent') {
+        const brightness = getBrightness(pixel);
+        const sx = (px + 0.5) * scaleX;
+        const sy = (py + 0.5) * scaleY;
+        const r = Math.min(scaleX, scaleY) * 0.4;
+        
+        // Very dark pixels in upper half are face features
+        if (brightness < 0.2 && py < faceY) {
+          facePaths.push(`M${sx.toFixed(1)},${sy.toFixed(1)} m-${r.toFixed(1)},0 a${r.toFixed(1)},${r.toFixed(1)} 0 1,1 ${(r * 2).toFixed(1)},0 a${r.toFixed(1)},${r.toFixed(1)} 0 1,1 -${(r * 2).toFixed(1)},0`);
+        } else if (brightness < 0.4) {
+          // Dark pixels are detail lines
+          detailPaths.push(`M${sx.toFixed(1)},${sy.toFixed(1)} l${(scaleX * 0.3).toFixed(1)},0`);
+        }
       }
     }
-  }
-  
-  // Bottom edge - scan from bottom (reverse)
-  for (let x = maxX; x >= minX; x--) {
-    for (let y = maxY; y >= minY; y--) {
-      if (mergedGrid[y][x]) {
-        outlinePoints.push([x * scaleX + scaleX / 2, (y + 1) * scaleY]);
-        break;
-      }
-    }
-  }
-  
-  // Left edge - scan from left (reverse)
-  for (let y = maxY; y >= minY; y--) {
-    for (let x = minX; x <= maxX; x++) {
-      if (mergedGrid[y][x]) {
-        outlinePoints.push([x * scaleX, y * scaleY + scaleY / 2]);
-        break;
-      }
-    }
-  }
-  
-  // Build body path from outline points
-  let bodyPath = '';
-  if (outlinePoints.length > 2) {
-    bodyPath = `M${outlinePoints[0][0]},${outlinePoints[0][1]}`;
-    for (let i = 1; i < outlinePoints.length; i++) {
-      bodyPath += ` L${outlinePoints[i][0]},${outlinePoints[i][1]}`;
-    }
-    bodyPath += ' Z';
   }
   
   return {
     body: bodyPath,
-    detail: edges.join(' '), // Use edges as detail overlay
-    face: '',
+    detail: detailPaths.join(' '),
+    face: facePaths.join(' '),
   };
 }
 

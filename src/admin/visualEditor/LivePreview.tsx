@@ -32,16 +32,22 @@ export function LivePreview({
   // Get colors for selected element
   const colors = ELEMENT_COLORS[previewElement];
   
-  // Generate paths from current sprite data (if editing)
+  // Generate paths from current sprite data (if editing species)
   const customPaths = useMemo(() => {
-    if (!spriteData || editingMode !== 'species') return null;
+    if (!spriteData) return null;
+    // Only use custom paths when editing species
+    if (editingMode !== 'species') return null;
     
     // Check if there's any actual content
     const merged = mergeVisibleLayers(spriteData);
-    const hasContent = merged.some(row => row.some(p => p !== 'transparent'));
+    const hasContent = merged.some(row => row.some(p => p && p !== 'transparent'));
     if (!hasContent) return null;
     
-    return generateSvgPaths(spriteData);
+    const paths = generateSvgPaths(spriteData);
+    // Validate we got usable paths
+    if (!paths.body || paths.body.length < 10) return null;
+    
+    return paths;
   }, [spriteData, editingMode]);
   
   // Use custom paths if editing species, otherwise use hardcoded

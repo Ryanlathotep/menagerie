@@ -19,7 +19,8 @@ import {
   Eye,
   EyeOff,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Search
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -127,6 +128,7 @@ export function SpriteEditor() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [savedSprites, setSavedSprites] = useState<SavedSprite[]>([]);
   const [loadingSprites, setLoadingSprites] = useState(true);
+  const [spriteSearch, setSpriteSearch] = useState('');
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -161,8 +163,10 @@ export function SpriteEditor() {
     loadSavedSprites();
   }, [loadSavedSprites]);
 
-  // Use all sprites (search removed for simplicity)
-  const filteredSprites = savedSprites;
+  // Filter sprites by search term
+  const filteredSprites = savedSprites.filter(sprite =>
+    sprite.sprite_key.toLowerCase().includes(spriteSearch.toLowerCase())
+  );
 
   function createEmptySprite(width: number, height: number): SpriteData {
     return {
@@ -602,8 +606,17 @@ export function SpriteEditor() {
 
         {/* Saved Sprites with Thumbnails */}
         <div>
-          <Label>Saved Sprites ({savedSprites.length})</Label>
-          <ScrollArea className="h-48 mt-2">
+          <Label>Saved Sprites ({filteredSprites.length}/{savedSprites.length})</Label>
+          <div className="relative mt-2">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={spriteSearch}
+              onChange={(e) => setSpriteSearch(e.target.value)}
+              placeholder="Search sprites..."
+              className="pl-8 h-8"
+            />
+          </div>
+          <ScrollArea className="h-40 mt-2">
             <div className="space-y-1">
               {loadingSprites ? (
                 <div className="text-sm text-muted-foreground p-2">Loading...</div>

@@ -28,11 +28,12 @@ let globalCacheLoaded = false;
 let globalCachePromise: Promise<void> | null = null;
 
 // Convert pixel art to SVG path data for rendering in MonsterSprite
+// Uses marching squares to generate a smooth outline path from pixel data
 function pixelArtToSvgPaths(spriteData: SpriteData): { body: string; detail: string; face: string } {
   const { width, height, layers } = spriteData;
   
   // Merge all visible layers into a single grid
-  const mergedGrid: string[][] = Array(height).fill(null).map(() => Array(width).fill('transparent'));
+  const mergedGrid: boolean[][] = Array(height).fill(null).map(() => Array(width).fill(false));
   
   for (const layer of layers) {
     if (layer.visible === false) continue;
@@ -40,7 +41,7 @@ function pixelArtToSvgPaths(spriteData: SpriteData): { body: string; detail: str
       for (let x = 0; x < Math.min(layer.pixels[y]?.length || 0, width); x++) {
         const color = layer.pixels[y][x];
         if (color && color !== 'transparent') {
-          mergedGrid[y][x] = color;
+          mergedGrid[y][x] = true;
         }
       }
     }
@@ -50,21 +51,104 @@ function pixelArtToSvgPaths(spriteData: SpriteData): { body: string; detail: str
   const scaleX = 100 / width;
   const scaleY = 100 / height;
   
-  // Generate filled rectangles for each non-transparent pixel
-  let pathData = '';
+  // Find the bounding box and generate an outline path
+  let minX = width, maxX = 0, minY = height, maxY = 0;
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      if (mergedGrid[y][x] !== 'transparent') {
-        const sx = x * scaleX;
-        const sy = y * scaleY;
-        pathData += `M${sx},${sy} h${scaleX} v${scaleY} h-${scaleX} Z `;
+      if (mergedGrid[y][x]) {
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
       }
     }
   }
   
+  if (minX > maxX) {
+    // No pixels found, return empty
+    return { body: '', detail: '', face: '' };
+  }
+  
+  // Generate outline edges using edge detection
+  const edges: string[] = [];
+  
+  for (let y = minY; y <= maxY + 1; y++) {
+    for (let x = minX; x <= maxX + 1; x++) {
+      const current = y < height && x < width && mergedGrid[y]?.[x];
+      const left = x > 0 && y < height && mergedGrid[y]?.[x - 1];
+      const above = y > 0 && x < width && mergedGrid[y - 1]?.[x];
+      
+      const sx = x * scaleX;
+      const sy = y * scaleY;
+      
+      // Vertical edge (between left and current)
+      if (current !== left) {
+        edges.push(`M${sx},${sy} v${scaleY}`);
+      }
+      // Horizontal edge (between above and current)
+      if (current !== above) {
+        edges.push(`M${sx},${sy} h${scaleX}`);
+      }
+    }
+  }
+  
+  // Create a filled body shape using a simplified convex hull approach
+  // Find outline points
+  const outlinePoints: [number, number][] = [];
+  
+  // Top edge - scan from top
+  for (let x = minX; x <= maxX; x++) {
+    for (let y = minY; y <= maxY; y++) {
+      if (mergedGrid[y][x]) {
+        outlinePoints.push([x * scaleX + scaleX / 2, y * scaleY]);
+        break;
+      }
+    }
+  }
+  
+  // Right edge - scan from right
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = maxX; x >= minX; x--) {
+      if (mergedGrid[y][x]) {
+        outlinePoints.push([(x + 1) * scaleX, y * scaleY + scaleY / 2]);
+        break;
+      }
+    }
+  }
+  
+  // Bottom edge - scan from bottom (reverse)
+  for (let x = maxX; x >= minX; x--) {
+    for (let y = maxY; y >= minY; y--) {
+      if (mergedGrid[y][x]) {
+        outlinePoints.push([x * scaleX + scaleX / 2, (y + 1) * scaleY]);
+        break;
+      }
+    }
+  }
+  
+  // Left edge - scan from left (reverse)
+  for (let y = maxY; y >= minY; y--) {
+    for (let x = minX; x <= maxX; x++) {
+      if (mergedGrid[y][x]) {
+        outlinePoints.push([x * scaleX, y * scaleY + scaleY / 2]);
+        break;
+      }
+    }
+  }
+  
+  // Build body path from outline points
+  let bodyPath = '';
+  if (outlinePoints.length > 2) {
+    bodyPath = `M${outlinePoints[0][0]},${outlinePoints[0][1]}`;
+    for (let i = 1; i < outlinePoints.length; i++) {
+      bodyPath += ` L${outlinePoints[i][0]},${outlinePoints[i][1]}`;
+    }
+    bodyPath += ' Z';
+  }
+  
   return {
-    body: pathData.trim(),
-    detail: '',
+    body: bodyPath,
+    detail: edges.join(' '), // Use edges as detail overlay
     face: '',
   };
 }

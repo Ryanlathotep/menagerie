@@ -233,13 +233,11 @@ export function useCustomSprites() {
 
 // Singleton context for sprite overrides - can be used without React context
 export function getGlobalSpriteOverride(speciesKey: string, elementKey: string): { body: string; detail: string; face: string } | null {
-  // Try multiple key formats for backwards compatibility
+  // ONLY return override if we have an exact match for species+element combo
+  // Don't fall back to generic species keys - that would incorrectly override all element variations
   const specificKey = `${speciesKey} (${elementKey})`;
-  const underscoreKey = `species_${speciesKey}_${elementKey}`;
   
-  const spriteData = globalSpriteCache.get(specificKey) 
-    || globalSpriteCache.get(underscoreKey)
-    || globalSpriteCache.get(speciesKey);
+  const spriteData = globalSpriteCache.get(specificKey);
   
   if (!spriteData) return null;
   

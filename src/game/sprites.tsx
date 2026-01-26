@@ -4,11 +4,12 @@
 
 import React, { forwardRef } from 'react';
 import { SpeciesType, ElementType, ClassType, ELEMENT_COLORS } from './types';
-import { MonsterEquipment, EquipmentSlot, Rarity, RARITY_COLORS } from './equipment';
+import { MonsterEquipment, EquipmentSlot, Rarity } from './equipment';
+import { getGlobalSpriteOverride } from '@/hooks/useCustomSprites';
 
 // SVG path data for each species - centered bodies with standardized positions
 // All bodies centered at x=50, legs at y=75-90, arms at x=25-35 and x=65-75
-const SPECIES_PATHS: Record<SpeciesType, { body: string; detail: string; face: string }> = {
+export const SPECIES_PATHS: Record<SpeciesType, { body: string; detail: string; face: string }> = {
   // Fantasy creatures
   slime: {
     body: 'M50,85 C20,85 10,60 15,40 C20,20 35,12 50,12 C65,12 80,20 85,40 C90,60 80,85 50,85',
@@ -240,7 +241,12 @@ export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({
   equipment = null,
 }, ref) => {
   const colors = ELEMENT_COLORS[element];
-  const paths = SPECIES_PATHS[species];
+  
+  // Check for custom sprite override first, fall back to hardcoded paths
+  const customPaths = getGlobalSpriteOverride(species, element);
+  const paths = customPaths || SPECIES_PATHS[species];
+  const isCustomSprite = !!customPaths;
+  
   const overlay = CLASS_OVERLAYS[classType];
   const classColor = overlay.color;
   

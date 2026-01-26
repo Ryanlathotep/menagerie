@@ -30,6 +30,7 @@ import {
 import { toast } from 'sonner';
 import { svgToPixelArt, pixelArtToSvgPath, getAvailableSpecies } from './spriteConversion';
 import { ElementType, SpeciesType, ELEMENT_COLORS } from '@/game/types';
+import { preloadCustomSprites } from '@/hooks/useCustomSprites';
 
 interface Layer {
   id: string;
@@ -468,6 +469,8 @@ export function SpriteEditor() {
       toast.success(`Saved sprite: ${spriteKey}`);
       // Refresh the list to get updated thumbnails
       loadSavedSprites();
+      // Invalidate and reload the global sprite cache so game uses new sprite immediately
+      await preloadCustomSprites(true);
     } catch (err) {
       console.error('Failed to save sprite:', err);
       toast.error('Failed to save sprite');

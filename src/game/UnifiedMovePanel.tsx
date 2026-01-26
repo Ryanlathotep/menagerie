@@ -470,13 +470,15 @@ function UnifiedMoveCard({
   
   const mastery = monster.moveMastery?.[move.id];
   const masteryProgress = getMasteryProgress(mastery);
+  const availableTiers = getAvailableTiers(mastery, monster.level);
   const hasTierOptions = move.power > 0 && (
-    getAvailableTiers(mastery, monster.level).length > 1 ||
+    availableTiers.length > 1 ||
     hasAoEUnlocked(mastery)
   );
   
-  // Calculate display values using best tier
-  const displayMove = hasTierOptions && mastery
+  // Always create evolved move for attack moves (power > 0) to show tier prefix
+  // Status/heal moves (power = 0) use base move without tier
+  const displayMove = move.power > 0
     ? createEvolvedMove(move, getHighestTier(mastery, monster.level), 'single', monster.level)
     : move;
   

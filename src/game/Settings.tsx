@@ -248,7 +248,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           </div>
 
           {/* Admin Panel Access */}
-          <AdminPanelButton />
+          <AdminPanelButton onOpenAdmin={onClose} />
         </div>
 
         <div className="flex gap-2 mt-6">
@@ -265,9 +265,16 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 }
 
 // Admin Panel Button - only visible to admins
-function AdminPanelButton() {
+function AdminPanelButton({ onOpenAdmin }: { onOpenAdmin: () => void }) {
   const { isAdmin, loading } = useAdminRole();
   const [isOpen, setIsOpen] = useState(false);
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open) {
+      onOpenAdmin(); // Close settings panel when admin panel opens
+    }
+  };
 
   if (loading || !isAdmin) return null;
 
@@ -277,7 +284,7 @@ function AdminPanelButton() {
         <Shield className="w-4 h-4 text-primary" />
         Admin Tools
       </Label>
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>
           <Button variant="outline" className="w-full gap-2">
             <Shield className="w-4 h-4" />

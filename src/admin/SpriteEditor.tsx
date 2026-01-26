@@ -36,11 +36,18 @@ interface SpriteData {
   layers: Layer[];
 }
 
+interface SavedSprite {
+  sprite_key: string;
+  sprite_data: SpriteData;
+  updated_at: string;
+}
+
 type Tool = 'brush' | 'eraser' | 'fill' | 'picker';
 
 const DEFAULT_SIZE = 16;
 const MAX_SIZE = 64;
 const ZOOM_LEVELS = [4, 8, 12, 16, 24, 32];
+const THUMBNAIL_SIZE = 48;
 
 const PRESET_COLORS = [
   '#000000', '#ffffff', '#ff0000', '#00ff00', '#0000ff',
@@ -48,6 +55,65 @@ const PRESET_COLORS = [
   '#800000', '#008000', '#000080', '#808000', '#800080',
   '#008080', '#ff8000', '#ff0080', '#80ff00', '#0080ff',
 ];
+
+// Sprite Thumbnail Component - renders a small preview of sprite data
+function SpriteThumbnail({ data }: { data: SpriteData }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Calculate scale to fit sprite in thumbnail
+    const scale = Math.min(THUMBNAIL_SIZE / data.width, THUMBNAIL_SIZE / data.height);
+    const offsetX = (THUMBNAIL_SIZE - data.width * scale) / 2;
+    const offsetY = (THUMBNAIL_SIZE - data.height * scale) / 2;
+
+    // Draw checkerboard background
+    ctx.fillStyle = '#e0e0e0';
+    ctx.fillRect(0, 0, THUMBNAIL_SIZE, THUMBNAIL_SIZE);
+    for (let y = 0; y < THUMBNAIL_SIZE; y += 4) {
+      for (let x = 0; x < THUMBNAIL_SIZE; x += 4) {
+        if ((x + y) % 8 === 0) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(x, y, 4, 4);
+        }
+      }
+    }
+
+    // Draw layers from bottom to top
+    for (const layer of data.layers) {
+      if (!layer.visible) continue;
+      for (let y = 0; y < data.height; y++) {
+        for (let x = 0; x < data.width; x++) {
+          const pixelColor = layer.pixels[y]?.[x];
+          if (pixelColor && pixelColor !== 'transparent') {
+            ctx.fillStyle = pixelColor;
+            ctx.fillRect(
+              offsetX + x * scale,
+              offsetY + y * scale,
+              Math.ceil(scale),
+              Math.ceil(scale)
+            );
+          }
+        }
+      }
+    }
+  }, [data]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={THUMBNAIL_SIZE}
+      height={THUMBNAIL_SIZE}
+      className="border rounded shrink-0"
+      style={{ imageRendering: 'pixelated' }}
+    />
+  );
+}
 
 export function SpriteEditor() {
   const [spriteKey, setSpriteKey] = useState('');
@@ -59,24 +125,44 @@ export function SpriteEditor() {
   const [history, setHistory] = useState<SpriteData[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [savedSprites, setSavedSprites] = useState<string[]>([]);
+  const [savedSprites, setSavedSprites] = useState<SavedSprite[]>([]);
+  const [loadingSprites, setLoadingSprites] = useState(true);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
 
-  // Load saved sprite keys
-  useEffect(() => {
-    async function loadSavedSprites() {
-      const { data } = await supabase
+  // Load saved sprites with full data for thumbnails
+  const loadSavedSprites = useCallback(async () => {
+    setLoadingSprites(true);
+    try {
+      const { data, error } = await supabase
         .from('custom_sprites')
-        .select('sprite_key');
+        .select('sprite_key, sprite_data, updated_at')
+        .order('updated_at', { ascending: false });
+      
+      if (error) throw error;
       
       if (data) {
-        setSavedSprites(data.map(s => s.sprite_key));
+        setSavedSprites(data.map(s => ({
+          sprite_key: s.sprite_key,
+          sprite_data: s.sprite_data as unknown as SpriteData,
+          updated_at: s.updated_at,
+        })));
       }
+    } catch (err) {
+      console.error('Failed to load sprites:', err);
+      toast.error('Failed to load saved sprites');
+    } finally {
+      setLoadingSprites(false);
     }
-    loadSavedSprites();
   }, []);
+
+  useEffect(() => {
+    loadSavedSprites();
+  }, [loadSavedSprites]);
+
+  // Use all sprites (search removed for simplicity)
+  const filteredSprites = savedSprites;
 
   function createEmptySprite(width: number, height: number): SpriteData {
     return {
@@ -365,33 +451,44 @@ export function SpriteEditor() {
       }
       
       toast.success(`Saved sprite: ${spriteKey}`);
-      if (!savedSprites.includes(spriteKey)) {
-        setSavedSprites([...savedSprites, spriteKey]);
-      }
+      // Refresh the list to get updated thumbnails
+      loadSavedSprites();
     } catch (err) {
       console.error('Failed to save sprite:', err);
       toast.error('Failed to save sprite');
     }
   };
 
-  const handleLoad = async (key: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('custom_sprites')
-        .select('sprite_data')
-        .eq('sprite_key', key)
-        .single();
+  const handleLoad = (sprite: SavedSprite) => {
+    setSpriteKey(sprite.sprite_key);
+    setSpriteData(sprite.sprite_data);
+    setHistory([]);
+    setHistoryIndex(-1);
+    toast.success(`Loaded sprite: ${sprite.sprite_key}`);
+  };
 
+  const handleDeleteSprite = async (key: string) => {
+    if (!confirm(`Delete sprite "${key}"?`)) return;
+    
+    try {
+      const { error } = await supabase
+        .from('custom_sprites')
+        .delete()
+        .eq('sprite_key', key);
+      
       if (error) throw error;
       
-      setSpriteKey(key);
-      setSpriteData(data.sprite_data as unknown as SpriteData);
-      setHistory([]);
-      setHistoryIndex(-1);
-      toast.success(`Loaded sprite: ${key}`);
+      toast.success(`Deleted sprite: ${key}`);
+      loadSavedSprites();
+      
+      // Clear editor if we deleted the current sprite
+      if (spriteKey === key) {
+        setSpriteKey('');
+        setSpriteData(createEmptySprite(DEFAULT_SIZE, DEFAULT_SIZE));
+      }
     } catch (err) {
-      console.error('Failed to load sprite:', err);
-      toast.error('Failed to load sprite');
+      console.error('Failed to delete sprite:', err);
+      toast.error('Failed to delete sprite');
     }
   };
 
@@ -503,22 +600,46 @@ export function SpriteEditor() {
           </Button>
         </div>
 
-        {/* Saved Sprites */}
+        {/* Saved Sprites with Thumbnails */}
         <div>
-          <Label>Saved Sprites</Label>
-          <ScrollArea className="h-32 mt-2">
+          <Label>Saved Sprites ({savedSprites.length})</Label>
+          <ScrollArea className="h-48 mt-2">
             <div className="space-y-1">
-              {savedSprites.map((key) => (
-                <button
-                  key={key}
-                  onClick={() => handleLoad(key)}
-                  className={`w-full text-left p-2 rounded text-sm hover:bg-muted transition-colors ${
-                    spriteKey === key ? 'bg-primary/20' : ''
-                  }`}
-                >
-                  {key}
-                </button>
-              ))}
+              {loadingSprites ? (
+                <div className="text-sm text-muted-foreground p-2">Loading...</div>
+              ) : filteredSprites.length === 0 ? (
+                <div className="text-sm text-muted-foreground p-2">No sprites saved yet</div>
+              ) : (
+                filteredSprites.map((sprite) => (
+                  <div
+                    key={sprite.sprite_key}
+                    className={`flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors cursor-pointer ${
+                      spriteKey === sprite.sprite_key ? 'bg-primary/20' : ''
+                    }`}
+                    onClick={() => handleLoad(sprite)}
+                  >
+                    {/* Thumbnail Preview */}
+                    <SpriteThumbnail data={sprite.sprite_data} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{sprite.sprite_key}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {sprite.sprite_data.width}×{sprite.sprite_data.height} • {sprite.sprite_data.layers.length} layer{sprite.sprite_data.layers.length !== 1 ? 's' : ''}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteSprite(sprite.sprite_key);
+                      }}
+                    >
+                      <Trash2 className="w-3 h-3 text-destructive" />
+                    </Button>
+                  </div>
+                ))
+              )}
             </div>
           </ScrollArea>
         </div>

@@ -248,7 +248,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           </div>
 
           {/* Admin Panel Access */}
-          <AdminPanelButton onOpenAdmin={onClose} />
+          <AdminPanelTrigger onOpenAdmin={() => {
+            onClose();
+            // Small delay to let settings close first, then open admin
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('open-admin-panel'));
+            }, 50);
+          }} />
         </div>
 
         <div className="flex gap-2 mt-6">
@@ -264,17 +270,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   );
 }
 
-// Admin Panel Button - only visible to admins
-function AdminPanelButton({ onOpenAdmin }: { onOpenAdmin: () => void }) {
+// Admin Panel Trigger Button - only visible to admins (just the button, no dialog)
+function AdminPanelTrigger({ onOpenAdmin }: { onOpenAdmin: () => void }) {
   const { isAdmin, loading } = useAdminRole();
-  const [isOpen, setIsOpen] = useState(false);
-
-  const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
-    if (open) {
-      onOpenAdmin(); // Close settings panel when admin panel opens
-    }
-  };
 
   if (loading || !isAdmin) return null;
 
@@ -284,17 +282,10 @@ function AdminPanelButton({ onOpenAdmin }: { onOpenAdmin: () => void }) {
         <Shield className="w-4 h-4 text-primary" />
         Admin Tools
       </Label>
-      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-        <DialogTrigger asChild>
-          <Button variant="outline" className="w-full gap-2">
-            <Shield className="w-4 h-4" />
-            Open Admin Panel
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="max-w-6xl h-[90vh] p-0 overflow-hidden">
-          <AdminPanel />
-        </DialogContent>
-      </Dialog>
+      <Button variant="outline" className="w-full gap-2" onClick={onOpenAdmin}>
+        <Shield className="w-4 h-4" />
+        Open Admin Panel
+      </Button>
       <p className="text-xs text-muted-foreground">
         Edit game data, sprites, and configurations
       </p>
@@ -302,9 +293,28 @@ function AdminPanelButton({ onOpenAdmin }: { onOpenAdmin: () => void }) {
   );
 }
 
+// Standalone Admin Panel Dialog - lives outside settings
+function AdminPanelDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-6xl h-[90vh] p-0 overflow-hidden">
+        <AdminPanel />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // Settings Button (for use in menus)
 export function SettingsButton() {
   const [isOpen, setIsOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
+
+  // Listen for admin panel open event
+  useEffect(() => {
+    const handleOpenAdmin = () => setAdminOpen(true);
+    window.addEventListener('open-admin-panel', handleOpenAdmin);
+    return () => window.removeEventListener('open-admin-panel', handleOpenAdmin);
+  }, []);
 
   return (
     <>
@@ -313,6 +323,7 @@ export function SettingsButton() {
         Settings
       </Button>
       <SettingsPanel isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      <AdminPanelDialog isOpen={adminOpen} onClose={() => setAdminOpen(false)} />
     </>
   );
 }

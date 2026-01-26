@@ -360,6 +360,26 @@ export function VisualEditor() {
   // Save sprite
   const handleSave = async () => {
     try {
+      // Ensure we have valid data to save
+      if (!spriteData || !spriteData.layers || spriteData.layers.length === 0) {
+        toast.error('No sprite data to save');
+        return;
+      }
+      
+      // Create a clean copy of the data for storage
+      const dataToSave = {
+        width: spriteData.width,
+        height: spriteData.height,
+        layers: spriteData.layers.map(layer => ({
+          id: layer.id,
+          name: layer.name,
+          visible: layer.visible !== false,
+          pixels: layer.pixels,
+        })),
+      };
+      
+      console.log(`[SpriteEditor] Saving sprite: ${spriteKey}`, dataToSave);
+      
       const { data: existing } = await supabase
         .from('custom_sprites')
         .select('id')
@@ -369,25 +389,30 @@ export function VisualEditor() {
       if (existing) {
         const { error } = await supabase
           .from('custom_sprites')
-          .update({ sprite_data: spriteData as unknown as Record<string, never> })
+          .update({ 
+            sprite_data: dataToSave as unknown as Record<string, never>,
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', existing.id);
         if (error) throw error;
+        console.log(`[SpriteEditor] Updated existing sprite: ${spriteKey}`);
       } else {
         const { error } = await supabase
           .from('custom_sprites')
           .insert([{
             sprite_key: spriteKey,
-            sprite_data: spriteData as unknown as Record<string, never>,
+            sprite_data: dataToSave as unknown as Record<string, never>,
           }]);
         if (error) throw error;
+        console.log(`[SpriteEditor] Created new sprite: ${spriteKey}`);
       }
       
       toast.success(`Saved: ${spriteKey}`);
-      loadSavedSprites();
+      await loadSavedSprites();
       await preloadCustomSprites(true);
     } catch (err) {
-      console.error('Save failed:', err);
-      toast.error('Failed to save');
+      console.error('[SpriteEditor] Save failed:', err);
+      toast.error(`Failed to save: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
   

@@ -96,12 +96,6 @@ function chaikinSmooth(points: { x: number; y: number }[], iterations: number = 
 
 // Convert pixel art to SVG path data using RDP + Chaikin smoothing
 function pixelArtToSvgPaths(spriteData: SpriteData): { body: string; detail: string; face: string } {
-  // Check if this is direct SVG data (not pixel art)
-  const data = spriteData as any;
-  if (data._type === 'direct_svg' && data.paths) {
-    return data.paths;
-  }
-  
   const { width, height, layers } = spriteData;
   
   // Merge all visible layers into a single grid

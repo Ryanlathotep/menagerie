@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,17 +6,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
-import { preloadCustomSprites } from "@/hooks/useCustomSprites";
 
 const queryClient = new QueryClient();
 
-const App = () => {
-  // Preload custom sprites on app start
-  useEffect(() => {
-    preloadCustomSprites();
-  }, []);
-
-  return (
+const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -32,7 +24,6 @@ const App = () => {
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
-  );
-};
+);
 
 export default App;

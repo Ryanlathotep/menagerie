@@ -5,8 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Slider } from '@/components/ui/slider';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Paintbrush, 
@@ -21,16 +19,9 @@ import {
   Eye,
   EyeOff,
   ChevronUp,
-  ChevronDown,
-  Search,
-  Download,
-  Upload,
-  Code
+  ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { svgToPixelArt, pixelArtToSvgPath, getAvailableSpecies } from './spriteConversion';
-import { ElementType, SpeciesType, ELEMENT_COLORS } from '@/game/types';
-import { preloadCustomSprites } from '@/hooks/useCustomSprites';
 
 interface Layer {
   id: string;
@@ -136,11 +127,6 @@ export function SpriteEditor() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [savedSprites, setSavedSprites] = useState<SavedSprite[]>([]);
   const [loadingSprites, setLoadingSprites] = useState(true);
-  const [spriteSearch, setSpriteSearch] = useState('');
-  const [importSpecies, setImportSpecies] = useState<SpeciesType>('slime');
-  const [importElement, setImportElement] = useState<ElementType>('normal');
-  const [importSize, setImportSize] = useState(32);
-  const [importingFromCode, setImportingFromCode] = useState(false);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -175,10 +161,8 @@ export function SpriteEditor() {
     loadSavedSprites();
   }, [loadSavedSprites]);
 
-  // Filter sprites by search term
-  const filteredSprites = savedSprites.filter(sprite =>
-    sprite.sprite_key.toLowerCase().includes(spriteSearch.toLowerCase())
-  );
+  // Use all sprites (search removed for simplicity)
+  const filteredSprites = savedSprites;
 
   function createEmptySprite(width: number, height: number): SpriteData {
     return {
@@ -469,8 +453,6 @@ export function SpriteEditor() {
       toast.success(`Saved sprite: ${spriteKey}`);
       // Refresh the list to get updated thumbnails
       loadSavedSprites();
-      // Invalidate and reload the global sprite cache so game uses new sprite immediately
-      await preloadCustomSprites(true);
     } catch (err) {
       console.error('Failed to save sprite:', err);
       toast.error('Failed to save sprite');
@@ -516,56 +498,16 @@ export function SpriteEditor() {
     toast.success('Canvas cleared');
   };
 
-  // Import a species sprite from code as pixel art
-  const handleImportFromCode = async () => {
-    setImportingFromCode(true);
-    try {
-      const pixelData = await svgToPixelArt(importSpecies, importSize, importElement, true);
-      setSpriteData(pixelData);
-      // Use the format that the game expects: "species (element)"
-      setSpriteKey(`${importSpecies} (${importElement})`);
-      setHistory([]);
-      setHistoryIndex(-1);
-      setActiveLayerIndex(0);
-      toast.success(`Imported ${importSpecies} (${importElement}) as ${importSize}x${importSize} pixel art`);
-    } catch (err) {
-      console.error('Failed to import sprite:', err);
-      toast.error('Failed to import sprite from code');
-    } finally {
-      setImportingFromCode(false);
-    }
-  };
-
-  // Export current pixel art to SVG path data for sprites.tsx
-  const handleExportToSvg = () => {
-    const { outline, filled } = pixelArtToSvgPath(spriteData);
-    
-    // Parse the sprite key to extract species name
-    const match = spriteKey.match(/^(\w+)\s*\((\w+)\)$/);
-    const speciesName = match ? match[1] : spriteKey.replace(/[^a-z]/gi, '');
-    
-    // Generate code that can be copied into sprites.tsx
-    const svgCode = `// Add/replace this in SPECIES_PATHS in src/game/sprites.tsx:
-${speciesName}: {
-  body: '${filled}',
-  detail: '${outline}',
-  face: '', // Add face features as needed
-},`;
-    
-    navigator.clipboard.writeText(svgCode);
-    toast.success('SVG code copied! Paste into sprites.tsx to make permanent.');
-  };
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {/* Tools Panel */}
       <Card className="p-4 space-y-4">
         <div>
-          <Label>Sprite Key (format: "species (element)" e.g. "slime (normal)")</Label>
+          <Label>Sprite Key</Label>
           <Input
             value={spriteKey}
             onChange={(e) => setSpriteKey(e.target.value)}
-            placeholder="e.g., slime (normal), goblin (fire)"
+            placeholder="e.g., species_slime, element_fire"
           />
         </div>
 
@@ -658,150 +600,49 @@ ${speciesName}: {
           </Button>
         </div>
 
-        {/* Tabs for Saved Sprites and Import from Code */}
-        <Tabs defaultValue="saved" className="w-full">
-          <TabsList className="w-full grid grid-cols-2">
-            <TabsTrigger value="saved" className="text-xs gap-1">
-              <Save className="w-3 h-3" />
-              Saved
-            </TabsTrigger>
-            <TabsTrigger value="import" className="text-xs gap-1">
-              <Code className="w-3 h-3" />
-              From Code
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="saved" className="mt-2 space-y-2">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                value={spriteSearch}
-                onChange={(e) => setSpriteSearch(e.target.value)}
-                placeholder="Search sprites..."
-                className="pl-8 h-8"
-              />
-            </div>
-            <ScrollArea className="h-36">
-              <div className="space-y-1">
-                {loadingSprites ? (
-                  <div className="text-sm text-muted-foreground p-2">Loading...</div>
-                ) : filteredSprites.length === 0 ? (
-                  <div className="text-sm text-muted-foreground p-2">
-                    {savedSprites.length === 0 ? 'No sprites saved yet' : 'No matches found'}
-                  </div>
-                ) : (
-                  filteredSprites.map((sprite) => (
-                    <div
-                      key={sprite.sprite_key}
-                      className={`flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors cursor-pointer ${
-                        spriteKey === sprite.sprite_key ? 'bg-primary/20' : ''
-                      }`}
-                      onClick={() => handleLoad(sprite)}
-                    >
-                      <SpriteThumbnail data={sprite.sprite_data} />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">{sprite.sprite_key}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {sprite.sprite_data.width}×{sprite.sprite_data.height} • {sprite.sprite_data.layers.length} layer{sprite.sprite_data.layers.length !== 1 ? 's' : ''}
-                        </div>
+        {/* Saved Sprites with Thumbnails */}
+        <div>
+          <Label>Saved Sprites ({savedSprites.length})</Label>
+          <ScrollArea className="h-48 mt-2">
+            <div className="space-y-1">
+              {loadingSprites ? (
+                <div className="text-sm text-muted-foreground p-2">Loading...</div>
+              ) : filteredSprites.length === 0 ? (
+                <div className="text-sm text-muted-foreground p-2">No sprites saved yet</div>
+              ) : (
+                filteredSprites.map((sprite) => (
+                  <div
+                    key={sprite.sprite_key}
+                    className={`flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors cursor-pointer ${
+                      spriteKey === sprite.sprite_key ? 'bg-primary/20' : ''
+                    }`}
+                    onClick={() => handleLoad(sprite)}
+                  >
+                    {/* Thumbnail Preview */}
+                    <SpriteThumbnail data={sprite.sprite_data} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{sprite.sprite_key}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {sprite.sprite_data.width}×{sprite.sprite_data.height} • {sprite.sprite_data.layers.length} layer{sprite.sprite_data.layers.length !== 1 ? 's' : ''}
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 shrink-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteSprite(sprite.sprite_key);
-                        }}
-                      >
-                        <Trash2 className="w-3 h-3 text-destructive" />
-                      </Button>
                     </div>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
-          </TabsContent>
-          
-          <TabsContent value="import" className="mt-2 space-y-3">
-            <div className="text-xs text-muted-foreground">
-              Import existing game sprites as editable pixel art
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteSprite(sprite.sprite_key);
+                      }}
+                    >
+                      <Trash2 className="w-3 h-3 text-destructive" />
+                    </Button>
+                  </div>
+                ))
+              )}
             </div>
-            
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label className="text-xs">Species</Label>
-                <Select value={importSpecies} onValueChange={(v) => setImportSpecies(v as SpeciesType)}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getAvailableSpecies().map(({ species, name, category }) => (
-                      <SelectItem key={species} value={species} className="text-xs">
-                        {name} <span className="text-muted-foreground">({category})</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <Label className="text-xs">Element</Label>
-                <Select value={importElement} onValueChange={(v) => setImportElement(v as ElementType)}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(['normal', 'fire', 'water', 'earth', 'air', 'void'] as ElementType[]).map((el) => (
-                      <SelectItem key={el} value={el} className="text-xs capitalize">
-                        {el}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div>
-              <Label className="text-xs">Size: {importSize}×{importSize}</Label>
-              <Slider
-                value={[importSize]}
-                min={16}
-                max={64}
-                step={8}
-                onValueChange={([v]) => setImportSize(v)}
-                className="mt-1"
-              />
-            </div>
-            
-            <Button 
-              onClick={handleImportFromCode} 
-              disabled={importingFromCode}
-              className="w-full gap-2"
-              size="sm"
-            >
-              <Download className="w-4 h-4" />
-              {importingFromCode ? 'Importing...' : 'Import to Editor'}
-            </Button>
-            
-            <div className="border-t pt-3 mt-3">
-              <Label className="text-xs">Export Current Sprite</Label>
-              <Button 
-                onClick={handleExportToSvg} 
-                variant="outline"
-                className="w-full gap-2 mt-2"
-                size="sm"
-                disabled={spriteData.layers.every(l => l.pixels.flat().every(p => p === 'transparent'))}
-              >
-                <Upload className="w-4 h-4" />
-                Copy SVG Path Data
-              </Button>
-              <p className="text-xs text-muted-foreground mt-1">
-                Copies SVG path code for use in sprites.tsx
-              </p>
-            </div>
-          </TabsContent>
-        </Tabs>
+          </ScrollArea>
+        </div>
       </Card>
 
       {/* Canvas */}

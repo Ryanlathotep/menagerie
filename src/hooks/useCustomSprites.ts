@@ -207,10 +207,9 @@ export function useCustomSprites() {
     fetchSprites();
   }, [fetchSprites]);
 
-  const getSpriteOverride = useCallback((speciesKey: string, elementKey: string): { body: string; detail: string; face: string } | null => {
-    // Look for species-element specific sprite first, then fall back to species-only
-    const specificKey = `${speciesKey} (${elementKey})`;
-    const spriteData = sprites.get(specificKey) || sprites.get(speciesKey);
+  const getSpriteOverride = useCallback((speciesKey: string, _elementKey: string): { body: string; detail: string; face: string } | null => {
+    // Look up by species only - custom sprites are base shapes colored by element system
+    const spriteData = sprites.get(speciesKey);
     
     if (!spriteData) return null;
     
@@ -231,13 +230,10 @@ export function useCustomSprites() {
   };
 }
 
-// Singleton context for sprite overrides - can be used without React context
-export function getGlobalSpriteOverride(speciesKey: string, elementKey: string): { body: string; detail: string; face: string } | null {
-  // ONLY return override if we have an exact match for species+element combo
-  // Don't fall back to generic species keys - that would incorrectly override all element variations
-  const specificKey = `${speciesKey} (${elementKey})`;
-  
-  const spriteData = globalSpriteCache.get(specificKey);
+// Singleton context for sprite overrides - looks up by species only
+export function getGlobalSpriteOverride(speciesKey: string, _elementKey: string): { body: string; detail: string; face: string } | null {
+  // Look up by species only - custom sprites provide base shapes that game colorizes with elements
+  const spriteData = globalSpriteCache.get(speciesKey);
   
   if (!spriteData) return null;
   

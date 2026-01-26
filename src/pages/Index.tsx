@@ -13,7 +13,8 @@ import { GameSidebar } from '@/game/GameSidebar';
 import { getMonsterMoves, Move, STRUGGLE_MOVE, getNewMovesAtLevel } from '@/game/moves';
 import { MoveTooltip } from '@/game/BattleTooltip';
 import { MoveTierSelector } from '@/game/MoveTierSelector';
-import { getAvailableTiers, hasAoEUnlocked, createEvolvedMove, getHighestTier } from '@/game/moveMastery';
+import { UnifiedMovePanel } from '@/game/UnifiedMovePanel';
+import { getAvailableTiers, hasAoEUnlocked, createEvolvedMove, getHighestTier, EvolvedMove } from '@/game/moveMastery';
 import { ShopView } from '@/game/ShopView';
 import { executeCombat, calculateXpReward, xpToNextLevel, checkLevelUp, getEffectiveness, hasPassive, checkSkeletonSurvival, applyMushroomRegen, checkImpSteal } from '@/game/combat';
 import { toast } from 'sonner';
@@ -2845,43 +2846,6 @@ function BattleView({
     }
   };
 
-  // Get effectiveness indicator and aura class for each move
-  const getMoveEffectiveness = (move: Move) => {
-    const eff = getEffectiveness(move, battle.playerMonster, battle.enemyMonster);
-    return {
-      indicator: eff.overall === 'super-effective' ? '🔥' : eff.overall === 'effective' ? '✨' : eff.overall === 'weak' ? '⬇️' : '',
-      auraClass: eff.overall === 'super-effective' 
-        ? 'ring-2 ring-orange-500 shadow-[0_0_12px_rgba(249,115,22,0.6)] animate-pulse' 
-        : eff.overall === 'effective'
-        ? 'ring-2 ring-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.5)]'
-        : eff.overall === 'weak'
-        ? 'opacity-60 border-muted'
-        : '',
-      overall: eff.overall
-    };
-  };
-
-  // Apply user's move order and filter hidden moves
-  const moveOrder = state.run?.moveOrder || [];
-  const hiddenMoves = state.run?.hiddenMoves || [];
-  
-  const orderedMoves = [...playerMoves]
-    .filter(move => !hiddenMoves.includes(move.id))
-    .sort((a, b) => {
-      const aIndex = moveOrder.indexOf(a.id);
-      const bIndex = moveOrder.indexOf(b.id);
-      // Moves not in order go to end, maintaining original order
-      if (aIndex === -1 && bIndex === -1) return 0;
-      if (aIndex === -1) return 1;
-      if (bIndex === -1) return -1;
-      return aIndex - bIndex;
-    });
-
-  // Check if any VISIBLE move is affordable
-  const canAffordAnyMove = orderedMoves.some(m => (m.staminaCost || 0) <= currentStamina);
-
-  // Moves to show - include struggle if out of stamina for visible moves
-  const availableMoves = canAffordAnyMove ? orderedMoves : [...orderedMoves, STRUGGLE_MOVE];
   const inventory = state.run.inventory || [];
   
   // Bottom offset based on menu state
@@ -3132,85 +3096,31 @@ function BattleView({
               onSwitch={handleCombatSwitch}
               onCancel={() => setShowCombatSwitch(false)}
             />
-          ) : selectedMoveForTier ? (
-            /* Tier selector for a move */
-            <MoveTierSelector
-              move={selectedMoveForTier}
-              mastery={battle.playerMonster.moveMastery?.[selectedMoveForTier.id]}
-              monster={battle.playerMonster}
-              enemy={battle.enemyMonster}
-              currentStamina={currentStamina}
-              onSelectMove={(evolvedMove) => {
-                executeMove(evolvedMove);
-                setSelectedMoveForTier(null);
-              }}
-              onBack={() => setSelectedMoveForTier(null)}
-            />
           ) : (
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {availableMoves.map(move => {
-                const canAfford = (move.staminaCost || 0) <= currentStamina;
-                const effectiveness = getMoveEffectiveness(move);
-                const mastery = battle.playerMonster.moveMastery?.[move.id];
-                const hasTierOptions = move.power > 0 && (
-                  getAvailableTiers(mastery, battle.playerMonster.level).length > 1 ||
-                  hasAoEUnlocked(mastery)
-                );
-                
-                // For moves with tier options, use best tier by default
-                const displayMove = hasTierOptions && mastery
-                  ? createEvolvedMove(move, getHighestTier(mastery, battle.playerMonster.level), 'single', battle.playerMonster.level)
-                  : move;
-                const displayCost = displayMove.staminaCost;
-                const canAffordBest = displayCost <= currentStamina;
-                
-                return (
-                  <MoveTooltip 
-                    key={move.id} 
-                    move={displayMove} 
-                    attacker={battle.playerMonster} 
-                    defender={battle.enemyMonster}
-                    mastery={mastery}
-                  >
-                    <div className="relative flex-shrink-0">
-                      <Button 
-                        variant={canAffordBest ? "outline" : "ghost"} 
-                        className={`h-auto py-2 px-3 text-left transition-all ${!canAffordBest && move.id !== 'struggle' ? 'opacity-50' : ''} ${move.id === 'struggle' ? 'border-destructive text-destructive' : ''} ${canAffordBest ? effectiveness.auraClass : ''}`} 
-                        onClick={() => {
-                          if (hasTierOptions) {
-                            setSelectedMoveForTier(move);
-                          } else {
-                            executeMove(move);
-                          }
-                        }} 
-                        disabled={!canAfford && move.id !== 'struggle'}
-                      >
-                        <div>
-                          <p className="font-semibold text-xs">
-                            {effectiveness.indicator && <span className="mr-1">{effectiveness.indicator}</span>}
-                            {displayMove.name}
-                            {hasTierOptions && <span className="ml-1 text-primary">▼</span>}
-                          </p>
-                          <p className="text-[9px] opacity-70">
-                            {displayMove.power > 0 ? `⚔️${displayMove.power} ` : ''} 
-                            🎯{displayMove.accuracy}% 
-                            ⚡{displayCost}
-                            {move.type === 'heal' ? ' 💚' : ''}
-                            {move.effect?.includes('stamina') ? ' ⚡+' : ''}
-                          </p>
-                        </div>
-                      </Button>
-                      {/* Tier indicator badge */}
-                      {hasTierOptions && mastery && (
-                        <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[8px] px-1 rounded-full">
-                          {getAvailableTiers(mastery, battle.playerMonster.level).length}
-                        </div>
-                      )}
-                    </div>
-                  </MoveTooltip>
-                );
-              })}
-            </div>
+            <UnifiedMovePanel
+              moves={playerMoves}
+              monster={battle.playerMonster}
+              expandedStats={{
+                currentHp: battle.playerMonster.stats.currentHp,
+                maxHp: battle.playerMonster.stats.maxHp,
+                currentStamina,
+                stamina: maxStamina,
+                melee: battle.playerMonster.stats.attack,
+                ranged: battle.playerMonster.stats.special,
+                defense: battle.playerMonster.stats.defense,
+                speed: battle.playerMonster.stats.speed,
+                dodge: Math.floor(battle.playerMonster.stats.speed * 0.5),
+              }}
+              moveOrder={state.run.moveOrder}
+              hiddenMoves={state.run.hiddenMoves}
+              onReorder={(order) => dispatch({ type: 'SET_MOVE_ORDER', order })}
+              onToggleHide={(moveId) => dispatch({ type: 'TOGGLE_HIDE_MOVE', moveId })}
+              inBattle={true}
+              currentStamina={currentStamina}
+              enemyMonster={battle.enemyMonster}
+              onUseMove={(move) => executeMove(move)}
+              autoAddStruggle={true}
+            />
           )}
         </div>
       </div>

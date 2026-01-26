@@ -1,6 +1,6 @@
 // SVG ↔ Pixel Art Conversion Utilities
 
-import { SPECIES_DATA, SpeciesType, ElementType, ClassType, ELEMENT_COLORS } from '@/game/types';
+import { SPECIES_DATA, SpeciesType, ElementType, ClassType } from '@/game/types';
 
 // SVG path data copied from sprites.tsx for conversion purposes
 export const SPECIES_SVG_PATHS: Record<SpeciesType, { body: string; detail: string; face: string }> = {
@@ -131,7 +131,6 @@ export function svgToPixelArt(
 ): Promise<SpriteData> {
   return new Promise((resolve) => {
     const paths = SPECIES_SVG_PATHS[species];
-    const colors = ELEMENT_COLORS[element];
     
     // Create an offscreen canvas
     const canvas = document.createElement('canvas');
@@ -145,16 +144,16 @@ export function svgToPixelArt(
     // Clear with transparent
     ctx.clearRect(0, 0, size, size);
     
-    // Helper to draw an SVG path
-    const drawPath = (pathData: string, fillColor: string | null, strokeColor: string, strokeWidth: number) => {
+    // Helper to draw an SVG path - base shapes only (no element colors)
+    const drawPath = (pathData: string, fillStyle: string, strokeStyle: string, strokeWidth: number) => {
       const path = new Path2D(pathData);
       ctx.save();
       ctx.scale(scale, scale);
-      if (fillColor) {
-        ctx.fillStyle = fillColor;
+      if (fillStyle) {
+        ctx.fillStyle = fillStyle;
         ctx.fill(path);
       }
-      ctx.strokeStyle = strokeColor;
+      ctx.strokeStyle = strokeStyle;
       ctx.lineWidth = strokeWidth;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -162,20 +161,17 @@ export function svgToPixelArt(
       ctx.restore();
     };
     
-    // Convert HSL string to CSS
-    const hslToColor = (hsl: string, alpha: number = 1) => `hsla(${hsl} / ${alpha})`;
-    
-    // Draw body fill with element color
-    drawPath(paths.body, hslToColor(colors.primary, 0.6), hslToColor('0 0% 10%', 1), 3.5);
+    // Draw neutral gray base - game will apply element colors
+    drawPath(paths.body, 'rgba(160, 160, 160, 0.8)', 'rgba(20, 20, 20, 1)', 3.5);
     
     // Draw details
     if (includeDetails && paths.detail) {
-      drawPath(paths.detail, null, hslToColor('0 0% 15%', 1), 2.5);
+      drawPath(paths.detail, '', 'rgba(35, 35, 35, 1)', 2.5);
     }
     
     // Draw face
     if (paths.face) {
-      drawPath(paths.face, hslToColor('0 0% 8%', 1), hslToColor('0 0% 5%', 1), 2.5);
+      drawPath(paths.face, 'rgba(20, 20, 20, 1)', 'rgba(10, 10, 10, 1)', 2.5);
     }
     
     // Sample pixels from canvas
@@ -204,7 +200,7 @@ export function svgToPixelArt(
     
     const layer: Layer = {
       id: crypto.randomUUID(),
-      name: `${species} (${element})`,
+      name: species,
       visible: true,
       pixels,
     };

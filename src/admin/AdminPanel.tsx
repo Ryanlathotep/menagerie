@@ -7,7 +7,7 @@ import { MovesEditor } from './MovesEditor';
 import { EquipmentEditor } from './EquipmentEditor';
 import { RecipesEditor } from './RecipesEditor';
 import { MonstersEditor } from './MonstersEditor';
-import { SpriteEditor } from './SpriteEditor';
+import { VisualEditor } from './visualEditor';
 import { Shield, Swords, Package, Ghost, Palette } from 'lucide-react';
 
 export function AdminPanel() {
@@ -84,7 +84,7 @@ export function AdminPanel() {
             <MonstersEditor />
           </TabsContent>
           <TabsContent value="sprites" className="p-4 m-0">
-            <SpriteEditor />
+            <VisualEditor />
           </TabsContent>
         </ScrollArea>
       </Tabs>

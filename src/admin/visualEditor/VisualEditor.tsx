@@ -546,7 +546,7 @@ export function VisualEditor() {
               </Select>
             </div>
             <p className="text-xs text-muted-foreground">
-              Element colors use HSL pickers (coming soon)
+              Element colors are defined in code. Use pixel editor for custom element visuals or the game data overrides for color tweaks.
             </p>
           </TabsContent>
         </Tabs>
@@ -653,17 +653,45 @@ export function VisualEditor() {
           <Button variant="outline" size="icon" onClick={handleClear} className="h-8 w-8">
             <Trash2 className="w-4 h-4" />
           </Button>
-          <Button onClick={handleSave} className="flex-1 h-8 text-xs">
-            <Save className="w-3 h-3 mr-1" />
-            Save
-          </Button>
         </div>
         
-        {/* Export SVG */}
-        <Button variant="outline" onClick={handleExportSvg} className="w-full h-8 text-xs">
-          <Copy className="w-3 h-3 mr-1" />
-          Copy SVG Path Code
-        </Button>
+        {/* Save & Export Actions */}
+        <div className="space-y-2">
+          <Button onClick={handleSave} className="w-full h-9">
+            <Save className="w-3 h-3 mr-1" />
+            Save to Database
+          </Button>
+          
+          <Button variant="outline" onClick={handleExportSvg} className="w-full h-9">
+            <Download className="w-3 h-3 mr-1" />
+            Export SVG Code
+          </Button>
+          
+          {existingSave && (
+            <Button 
+              variant="destructive" 
+              onClick={async () => {
+                if (!confirm(`Delete saved sprite: ${spriteKey}?`)) return;
+                try {
+                  const { error } = await supabase
+                    .from('custom_sprites')
+                    .delete()
+                    .eq('sprite_key', spriteKey);
+                  if (error) throw error;
+                  toast.success('Deleted saved sprite');
+                  await loadSavedSprites();
+                  await preloadCustomSprites(true);
+                } catch (err) {
+                  toast.error('Failed to delete');
+                }
+              }}
+              className="w-full h-9"
+            >
+              <Trash2 className="w-3 h-3 mr-1" />
+              Delete Saved
+            </Button>
+          )}
+        </div>
         
         <div className="text-xs text-muted-foreground">
           Key: <code className="bg-muted px-1 rounded">{spriteKey}</code>

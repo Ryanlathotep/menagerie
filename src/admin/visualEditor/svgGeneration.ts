@@ -10,7 +10,7 @@ interface Point {
 
 /**
  * Generate smooth SVG paths from pixel art using contour tracing
- * Returns body path (filled shape) and detail path (internal lines)
+ * Returns body path (ALL filled shapes including disconnected regions) and detail/face paths
  */
 export function generateSvgPaths(spriteData: SpriteData): {
   body: string;
@@ -31,33 +31,24 @@ export function generateSvgPaths(spriteData: SpriteData): {
   // Scale factor from pixel grid to 100x100 SVG viewBox
   const scaleX = SVG_VIEWBOX_SIZE / width;
   const scaleY = SVG_VIEWBOX_SIZE / height;
+
+  // Find all connected regions (separate shapes like body, ears, tail, etc.)
+  const regions = findConnectedRegions(binaryGrid, width, height);
   
-  // Find bounding box
-  let minX = width, maxX = 0, minY = height, maxY = 0;
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      if (binaryGrid[y][x]) {
-        minX = Math.min(minX, x);
-        maxX = Math.max(maxX, x);
-        minY = Math.min(minY, y);
-        maxY = Math.max(maxY, y);
-      }
+  if (regions.length === 0) {
+    return { body: '', detail: '', face: '' };
+  }
+  
+  // Trace contour for each region and combine into a single path
+  const bodyPaths: string[] = [];
+  
+  for (const region of regions) {
+    const contour = traceRegionContour(region, width, height);
+    if (contour.length >= 3) {
+      const path = contourToSmoothPath(contour, scaleX, scaleY);
+      if (path) bodyPaths.push(path);
     }
   }
-  
-  if (minX > maxX) {
-    return { body: '', detail: '', face: '' };
-  }
-  
-  // Trace outer contour using Moore-neighbor algorithm
-  const contour = traceContour(binaryGrid, width, height);
-  
-  if (contour.length < 3) {
-    return { body: '', detail: '', face: '' };
-  }
-  
-  // Convert contour to smooth bezier path
-  const bodyPath = contourToSmoothPath(contour, scaleX, scaleY);
   
   // Find internal details (darker pixels for outlines/features)
   const detailPath = extractDetailPaths(merged, width, height, scaleX, scaleY);
@@ -66,16 +57,50 @@ export function generateSvgPaths(spriteData: SpriteData): {
   const facePath = extractFacePath(merged, width, height, scaleX, scaleY);
   
   return {
-    body: bodyPath,
+    body: bodyPaths.join(' '),
     detail: detailPath,
     face: facePath,
   };
 }
 
 /**
- * Moore-neighbor contour tracing algorithm
+ * Find all connected regions (separate shapes in the sprite)
  */
-function traceContour(grid: boolean[][], width: number, height: number): Point[] {
+function findConnectedRegions(grid: boolean[][], width: number, height: number): boolean[][][] {
+  const visited = Array(height).fill(null).map(() => Array(width).fill(false));
+  const regions: boolean[][][] = [];
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (grid[y][x] && !visited[y][x]) {
+        // Found new region - flood fill to mark all connected pixels
+        const region = Array(height).fill(null).map(() => Array(width).fill(false));
+        const stack: [number, number][] = [[x, y]];
+        
+        while (stack.length > 0) {
+          const [px, py] = stack.pop()!;
+          if (px < 0 || px >= width || py < 0 || py >= height) continue;
+          if (visited[py][px] || !grid[py][px]) continue;
+          
+          visited[py][px] = true;
+          region[py][px] = true;
+          
+          // 4-connected neighbors
+          stack.push([px + 1, py], [px - 1, py], [px, py + 1], [px, py - 1]);
+        }
+        
+        regions.push(region);
+      }
+    }
+  }
+  
+  return regions;
+}
+
+/**
+ * Moore-neighbor contour tracing for a single region
+ */
+function traceRegionContour(grid: boolean[][], width: number, height: number): Point[] {
   // Find starting point (topmost-leftmost filled pixel)
   let startX = -1, startY = -1;
   outerLoop: for (let y = 0; y < height; y++) {

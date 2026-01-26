@@ -628,7 +628,9 @@ export function calculateEquipmentBonuses(equipment: MonsterEquipment): Equipmen
 }
 
 // ============= CRAFTING MATERIALS =============
-export type MaterialType = 'ore' | 'hide' | 'essence' | 'gem' | 'bone' | 'fabric' | 'herb';
+export type MaterialType = 
+  | 'ore' | 'hide' | 'essence' | 'gem' | 'bone' | 'fabric' | 'herb'
+  | 'wood' | 'metal' | 'mote' | 'monster' | 'species' | 'class' | 'element';
 
 export interface CraftingMaterial {
   id: string;
@@ -638,44 +640,148 @@ export interface CraftingMaterial {
   icon: string;
   value: number; // Gold value
   description?: string; // For herbs/plants
+  // Affinity tags for species/class/element specific materials
+  speciesAffinity?: import('./types').SpeciesType;
+  classAffinity?: import('./types').ClassType;
+  elementAffinity?: import('./types').ElementType;
 }
 
 export const CRAFTING_MATERIALS: CraftingMaterial[] = [
-  // Ores
+  // ============= BASIC ORES =============
   { id: 'iron_ore', name: 'Iron Ore', type: 'ore', rarity: 'common', icon: '🪨', value: 5 },
+  { id: 'copper_ore', name: 'Copper Ore', type: 'ore', rarity: 'common', icon: '🟤', value: 4, description: 'A soft, malleable ore useful for basic crafting.' },
   { id: 'silver_ore', name: 'Silver Ore', type: 'ore', rarity: 'uncommon', icon: '🪙', value: 15 },
   { id: 'gold_ore', name: 'Gold Ore', type: 'ore', rarity: 'rare', icon: '✨', value: 30 },
   { id: 'mythril_ore', name: 'Mythril Ore', type: 'ore', rarity: 'epic', icon: '💠', value: 75 },
   { id: 'adamant_ore', name: 'Adamant Ore', type: 'ore', rarity: 'legendary', icon: '⬛', value: 200 },
   
-  // Hides
+  // ============= PROCESSED METALS =============
+  { id: 'steel_ingot', name: 'Steel Ingot', type: 'metal', rarity: 'uncommon', icon: '🔩', value: 18, description: 'Refined iron, stronger and more durable.' },
+  { id: 'mythril_ingot', name: 'Mythril Ingot', type: 'metal', rarity: 'epic', icon: '💎', value: 90, description: 'Refined mythril with magical conductivity.' },
+  { id: 'adamantine_ingot', name: 'Adamantine Ingot', type: 'metal', rarity: 'legendary', icon: '⚫', value: 250, description: 'The hardest metal known to exist.' },
+  
+  // ============= WOOD =============
+  { id: 'wood_log', name: 'Wood Log', type: 'wood', rarity: 'common', icon: '🪵', value: 3, description: 'Common lumber for basic crafting.' },
+  { id: 'hardwood', name: 'Hardwood', type: 'wood', rarity: 'uncommon', icon: '🌳', value: 10, description: 'Dense wood from ancient trees.' },
+  { id: 'ironwood', name: 'Ironwood', type: 'wood', rarity: 'rare', icon: '🪓', value: 28, description: 'Wood as hard as iron.' },
+  { id: 'spiritwood', name: 'Spiritwood', type: 'wood', rarity: 'epic', icon: '🌲', value: 70, description: 'Wood infused with spiritual energy.' },
+  { id: 'worldtree_branch', name: 'Worldtree Branch', type: 'wood', rarity: 'legendary', icon: '🌴', value: 180, description: 'A branch from the mythical Worldtree.' },
+  
+  // ============= HIDES & LEATHER =============
   { id: 'soft_hide', name: 'Soft Hide', type: 'hide', rarity: 'common', icon: '🟫', value: 3 },
+  { id: 'leather', name: 'Leather', type: 'hide', rarity: 'common', icon: '👜', value: 5, description: 'Processed hide, ready for crafting.' },
   { id: 'tough_hide', name: 'Tough Hide', type: 'hide', rarity: 'uncommon', icon: '🦎', value: 10 },
+  { id: 'hardened_leather', name: 'Hardened Leather', type: 'hide', rarity: 'uncommon', icon: '🧥', value: 15, description: 'Treated leather with improved durability.' },
   { id: 'dragon_scale', name: 'Dragon Scale', type: 'hide', rarity: 'rare', icon: '🐉', value: 40 },
   { id: 'void_leather', name: 'Void Leather', type: 'hide', rarity: 'epic', icon: '🌑', value: 80 },
+  { id: 'primordial_hide', name: 'Primordial Hide', type: 'hide', rarity: 'legendary', icon: '🦖', value: 200, description: 'Hide from creatures of the old world.' },
   
-  // Essences
-  { id: 'fire_essence', name: 'Fire Essence', type: 'essence', rarity: 'uncommon', icon: '🔥', value: 20 },
-  { id: 'water_essence', name: 'Water Essence', type: 'essence', rarity: 'uncommon', icon: '💧', value: 20 },
-  { id: 'earth_essence', name: 'Earth Essence', type: 'essence', rarity: 'uncommon', icon: '🌍', value: 20 },
-  { id: 'air_essence', name: 'Air Essence', type: 'essence', rarity: 'uncommon', icon: '💨', value: 20 },
-  { id: 'void_essence', name: 'Void Essence', type: 'essence', rarity: 'rare', icon: '🌀', value: 50 },
+  // ============= FABRICS =============
+  { id: 'cloth_scrap', name: 'Cloth Scrap', type: 'fabric', rarity: 'common', icon: '🧵', value: 2 },
+  { id: 'linen', name: 'Linen', type: 'fabric', rarity: 'common', icon: '🧶', value: 4, description: 'Simple woven fabric.' },
+  { id: 'silk', name: 'Silk', type: 'fabric', rarity: 'uncommon', icon: '🕸️', value: 15 },
+  { id: 'enchanted_cloth', name: 'Enchanted Cloth', type: 'fabric', rarity: 'rare', icon: '✨', value: 40 },
+  { id: 'celestial_silk', name: 'Celestial Silk', type: 'fabric', rarity: 'epic', icon: '🌟', value: 85, description: 'Silk woven from starlight.' },
+  { id: 'ethereal_weave', name: 'Ethereal Weave', type: 'fabric', rarity: 'legendary', icon: '👻', value: 190, description: 'Fabric that exists between realms.' },
   
-  // Gems
+  // ============= ELEMENTAL ESSENCES =============
+  { id: 'fire_essence', name: 'Fire Essence', type: 'essence', rarity: 'uncommon', icon: '🔥', value: 20, elementAffinity: 'fire' },
+  { id: 'water_essence', name: 'Water Essence', type: 'essence', rarity: 'uncommon', icon: '💧', value: 20, elementAffinity: 'water' },
+  { id: 'earth_essence', name: 'Earth Essence', type: 'essence', rarity: 'uncommon', icon: '🌍', value: 20, elementAffinity: 'earth' },
+  { id: 'air_essence', name: 'Air Essence', type: 'essence', rarity: 'uncommon', icon: '💨', value: 20, elementAffinity: 'air' },
+  { id: 'void_essence', name: 'Void Essence', type: 'essence', rarity: 'rare', icon: '🌀', value: 50, elementAffinity: 'void' },
+  { id: 'normal_essence', name: 'Neutral Essence', type: 'essence', rarity: 'uncommon', icon: '⚪', value: 18, elementAffinity: 'normal', description: 'A balanced, unaspected essence.' },
+  
+  // ============= ELEMENTAL MOTES (smaller essence fragments) =============
+  { id: 'fire_mote', name: 'Fire Mote', type: 'mote', rarity: 'common', icon: '🌋', value: 6, elementAffinity: 'fire', description: 'A tiny ember of elemental fire.' },
+  { id: 'water_mote', name: 'Water Mote', type: 'mote', rarity: 'common', icon: '🫧', value: 6, elementAffinity: 'water', description: 'A droplet of pure elemental water.' },
+  { id: 'earth_mote', name: 'Earth Mote', type: 'mote', rarity: 'common', icon: '🪨', value: 6, elementAffinity: 'earth', description: 'A fragment of elemental earth.' },
+  { id: 'wind_mote', name: 'Wind Mote', type: 'mote', rarity: 'common', icon: '🌬️', value: 6, elementAffinity: 'air', description: 'A whisper of elemental wind.' },
+  { id: 'void_mote', name: 'Void Mote', type: 'mote', rarity: 'uncommon', icon: '🕳️', value: 12, elementAffinity: 'void', description: 'A speck of the endless void.' },
+  
+  // ============= ELEMENTAL CATALYSTS (rare crafting components) =============
+  { id: 'fire_catalyst', name: 'Inferno Core', type: 'element', rarity: 'rare', icon: '☀️', value: 45, elementAffinity: 'fire', description: 'Concentrated fire for powerful crafting.' },
+  { id: 'water_catalyst', name: 'Abyssal Pearl', type: 'element', rarity: 'rare', icon: '🐚', value: 45, elementAffinity: 'water', description: 'A pearl from the deepest waters.' },
+  { id: 'earth_catalyst', name: 'Seismic Crystal', type: 'element', rarity: 'rare', icon: '💠', value: 45, elementAffinity: 'earth', description: 'A crystal vibrating with tectonic power.' },
+  { id: 'air_catalyst', name: 'Tempest Feather', type: 'element', rarity: 'rare', icon: '🪶', value: 45, elementAffinity: 'air', description: 'A feather from a storm elemental.' },
+  { id: 'void_catalyst', name: 'Null Shard', type: 'element', rarity: 'epic', icon: '🔮', value: 95, elementAffinity: 'void', description: 'A shard of crystallized nothingness.' },
+  
+  // ============= GEMS =============
   { id: 'ruby', name: 'Ruby', type: 'gem', rarity: 'rare', icon: '❤️', value: 35 },
   { id: 'sapphire', name: 'Sapphire', type: 'gem', rarity: 'rare', icon: '💙', value: 35 },
   { id: 'emerald', name: 'Emerald', type: 'gem', rarity: 'rare', icon: '💚', value: 35 },
+  { id: 'topaz', name: 'Topaz', type: 'gem', rarity: 'rare', icon: '💛', value: 32, description: 'A golden gem of clarity.' },
+  { id: 'amethyst', name: 'Amethyst', type: 'gem', rarity: 'rare', icon: '💜', value: 32, description: 'A purple gem of mystical power.' },
   { id: 'diamond', name: 'Diamond', type: 'gem', rarity: 'epic', icon: '💎', value: 100 },
+  { id: 'prismatic_gem', name: 'Prismatic Gem', type: 'gem', rarity: 'legendary', icon: '🌈', value: 220, description: 'A gem containing all colors of light.' },
   
-  // Bones
+  // ============= BONES =============
   { id: 'bone_fragment', name: 'Bone Fragment', type: 'bone', rarity: 'common', icon: '🦴', value: 4 },
   { id: 'monster_bone', name: 'Monster Bone', type: 'bone', rarity: 'uncommon', icon: '💀', value: 12 },
   { id: 'elder_bone', name: 'Elder Bone', type: 'bone', rarity: 'rare', icon: '☠️', value: 45 },
+  { id: 'ancient_fossil', name: 'Ancient Fossil', type: 'bone', rarity: 'epic', icon: '🦕', value: 88, description: 'Bones from creatures long extinct.' },
   
-  // Fabrics
-  { id: 'cloth_scrap', name: 'Cloth Scrap', type: 'fabric', rarity: 'common', icon: '🧵', value: 2 },
-  { id: 'silk', name: 'Silk', type: 'fabric', rarity: 'uncommon', icon: '🕸️', value: 15 },
-  { id: 'enchanted_cloth', name: 'Enchanted Cloth', type: 'fabric', rarity: 'rare', icon: '✨', value: 40 },
+  // ============= DRAGON MATERIALS =============
+  { id: 'dragon_blood', name: 'Dragon Blood', type: 'monster', rarity: 'epic', icon: '🩸', value: 95, speciesAffinity: 'dragon', description: 'The searing blood of a dragon.' },
+  { id: 'dragon_claw', name: 'Dragon Claw', type: 'monster', rarity: 'rare', icon: '🦅', value: 55, speciesAffinity: 'dragon', description: 'A razor-sharp dragon talon.' },
+  { id: 'dragon_fang', name: 'Dragon Fang', type: 'monster', rarity: 'rare', icon: '🦷', value: 52, speciesAffinity: 'dragon', description: 'A tooth that can pierce anything.' },
+  { id: 'dragon_heart', name: 'Dragon Heart', type: 'monster', rarity: 'legendary', icon: '❤️‍🔥', value: 300, speciesAffinity: 'dragon', description: 'The still-beating heart of an ancient dragon.' },
+  
+  // ============= SPECIES-SPECIFIC MATERIALS =============
+  // Fantasy species
+  { id: 'slime_core', name: 'Slime Core', type: 'species', rarity: 'uncommon', icon: '🟢', value: 14, speciesAffinity: 'slime', description: 'The nucleus of a slime creature.' },
+  { id: 'living_ichor', name: 'Living Ichor', type: 'species', rarity: 'rare', icon: '🧪', value: 38, speciesAffinity: 'slime', description: 'Sentient slime essence that pulses with life.' },
+  { id: 'skeleton_dust', name: 'Skeleton Dust', type: 'species', rarity: 'common', icon: '💨', value: 5, speciesAffinity: 'skeleton', description: 'Powdered remains of undead bones.' },
+  { id: 'soul_shard', name: 'Soul Shard', type: 'species', rarity: 'rare', icon: '👻', value: 42, speciesAffinity: 'skeleton', description: 'A fragment of bound spirit.' },
+  { id: 'goblin_trinket', name: 'Goblin Trinket', type: 'species', rarity: 'common', icon: '🪤', value: 6, speciesAffinity: 'goblin', description: 'A shiny bauble hoarded by goblins.' },
+  { id: 'goblin_ingenuity', name: 'Goblin Blueprint', type: 'species', rarity: 'rare', icon: '📜', value: 35, speciesAffinity: 'goblin', description: 'Clever goblin engineering plans.' },
+  { id: 'spore_cluster', name: 'Spore Cluster', type: 'species', rarity: 'common', icon: '🍄', value: 5, speciesAffinity: 'mushroom', description: 'A cluster of magical fungal spores.' },
+  { id: 'mycelia_heart', name: 'Mycelia Heart', type: 'species', rarity: 'rare', icon: '💗', value: 40, speciesAffinity: 'mushroom', description: 'The core network of a fungal being.' },
+  { id: 'ectoplasm', name: 'Ectoplasm', type: 'species', rarity: 'uncommon', icon: '🫠', value: 16, speciesAffinity: 'ghost', description: 'Spectral residue left by ghosts.' },
+  { id: 'phantom_essence', name: 'Phantom Essence', type: 'species', rarity: 'epic', icon: '💠', value: 75, speciesAffinity: 'ghost', description: 'Pure incorporeal energy.' },
+  { id: 'imp_horn', name: 'Imp Horn', type: 'species', rarity: 'uncommon', icon: '📛', value: 14, speciesAffinity: 'imp', description: 'A small but potent demon horn.' },
+  { id: 'demon_contract', name: 'Demon Contract', type: 'species', rarity: 'rare', icon: '📃', value: 48, speciesAffinity: 'imp', description: 'A binding contract with infernal power.' },
+  { id: 'golem_core', name: 'Golem Core', type: 'species', rarity: 'rare', icon: '⚙️', value: 45, speciesAffinity: 'golem', description: 'The animating core of a golem.' },
+  { id: 'primordial_clay', name: 'Primordial Clay', type: 'species', rarity: 'epic', icon: '🏺', value: 82, speciesAffinity: 'golem', description: 'The clay from which life was first shaped.' },
+  { id: 'wisp_light', name: 'Wisp Light', type: 'species', rarity: 'uncommon', icon: '✨', value: 18, speciesAffinity: 'wisp', description: 'Captured light from a will-o-wisp.' },
+  { id: 'radiant_core', name: 'Radiant Core', type: 'species', rarity: 'epic', icon: '☀️', value: 78, speciesAffinity: 'wisp', description: 'Pure concentrated light energy.' },
+  { id: 'chimera_gland', name: 'Chimera Gland', type: 'species', rarity: 'rare', icon: '🧬', value: 50, speciesAffinity: 'chimera', description: 'An adaptive organ from a chimera.' },
+  { id: 'hybrid_essence', name: 'Hybrid Essence', type: 'species', rarity: 'epic', icon: '🔀', value: 88, speciesAffinity: 'chimera', description: 'Essence containing multiple forms.' },
+  
+  // Real species
+  { id: 'rat_tail', name: 'Rat Tail', type: 'species', rarity: 'common', icon: '🐀', value: 3, speciesAffinity: 'rat', description: 'A scavenged rat appendage.' },
+  { id: 'plague_vial', name: 'Plague Vial', type: 'species', rarity: 'rare', icon: '🧫', value: 38, speciesAffinity: 'rat', description: 'Concentrated disease essence.' },
+  { id: 'spider_silk_gland', name: 'Spider Silk Gland', type: 'species', rarity: 'uncommon', icon: '🕷️', value: 15, speciesAffinity: 'spider', description: 'The silk-producing organ of a spider.' },
+  { id: 'venom_sac', name: 'Venom Sac', type: 'species', rarity: 'rare', icon: '☠️', value: 42, speciesAffinity: 'spider', description: 'Potent spider venom.' },
+  { id: 'bat_wing', name: 'Bat Wing', type: 'species', rarity: 'common', icon: '🦇', value: 5, speciesAffinity: 'bat', description: 'Leathery wing membrane.' },
+  { id: 'echo_crystal', name: 'Echo Crystal', type: 'species', rarity: 'rare', icon: '🔊', value: 40, speciesAffinity: 'bat', description: 'A crystal that resonates with sound.' },
+  { id: 'snake_fang', name: 'Snake Fang', type: 'species', rarity: 'common', icon: '🐍', value: 5, speciesAffinity: 'snake', description: 'A venomous serpent tooth.' },
+  { id: 'serpent_scale', name: 'Serpent Scale', type: 'species', rarity: 'uncommon', icon: '🪭', value: 16, speciesAffinity: 'snake', description: 'Iridescent snake scales.' },
+  { id: 'wolf_pelt', name: 'Wolf Pelt', type: 'species', rarity: 'uncommon', icon: '🐺', value: 14, speciesAffinity: 'wolf', description: 'Thick fur from a wolf.' },
+  { id: 'alpha_fang', name: 'Alpha Fang', type: 'species', rarity: 'rare', icon: '🦴', value: 45, speciesAffinity: 'wolf', description: 'A fang from a pack leader.' },
+  { id: 'beetle_shell', name: 'Beetle Shell', type: 'species', rarity: 'common', icon: '🪲', value: 6, speciesAffinity: 'beetle', description: 'A hard chitinous shell.' },
+  { id: 'armored_carapace', name: 'Armored Carapace', type: 'species', rarity: 'rare', icon: '🛡️', value: 48, speciesAffinity: 'beetle', description: 'An impenetrable beetle shell.' },
+  { id: 'crow_feather', name: 'Crow Feather', type: 'species', rarity: 'common', icon: '🪶', value: 4, speciesAffinity: 'crow', description: 'A sleek black feather.' },
+  { id: 'omen_eye', name: 'Omen Eye', type: 'species', rarity: 'rare', icon: '👁️', value: 44, speciesAffinity: 'crow', description: 'An eye that sees beyond.' },
+  { id: 'shark_tooth', name: 'Shark Tooth', type: 'species', rarity: 'uncommon', icon: '🦈', value: 16, speciesAffinity: 'shark', description: 'A serrated predator tooth.' },
+  { id: 'blood_frenzy_gland', name: 'Frenzy Gland', type: 'species', rarity: 'epic', icon: '🩸', value: 80, speciesAffinity: 'shark', description: 'The source of shark blood rage.' },
+  { id: 'frog_mucus', name: 'Frog Mucus', type: 'species', rarity: 'common', icon: '🐸', value: 4, speciesAffinity: 'frog', description: 'Slippery amphibian secretion.' },
+  { id: 'toxic_gland', name: 'Toxic Gland', type: 'species', rarity: 'rare', icon: '☣️', value: 38, speciesAffinity: 'frog', description: 'A gland filled with potent toxins.' },
+  { id: 'jellyfish_bell', name: 'Jellyfish Bell', type: 'species', rarity: 'uncommon', icon: '🪼', value: 12, speciesAffinity: 'jellyfish', description: 'The translucent body of a jellyfish.' },
+  { id: 'stinging_tendril', name: 'Stinging Tendril', type: 'species', rarity: 'rare', icon: '⚡', value: 42, speciesAffinity: 'jellyfish', description: 'A tendril crackling with energy.' },
+  
+  // ============= CLASS-SPECIFIC MATERIALS =============
+  { id: 'kinetic_core', name: 'Kinetic Core', type: 'class', rarity: 'rare', icon: '💪', value: 42, classAffinity: 'kinetic', description: 'A core of pure physical energy.' },
+  { id: 'momentum_crystal', name: 'Momentum Crystal', type: 'class', rarity: 'epic', icon: '🏃', value: 85, classAffinity: 'kinetic', description: 'A crystal storing motion energy.' },
+  { id: 'energy_cell', name: 'Energy Cell', type: 'class', rarity: 'rare', icon: '🔋', value: 42, classAffinity: 'energy', description: 'A cell of condensed energy.' },
+  { id: 'plasma_core', name: 'Plasma Core', type: 'class', rarity: 'epic', icon: '⚡', value: 85, classAffinity: 'energy', description: 'Superheated plasma in solid form.' },
+  { id: 'bio_sample', name: 'Bio Sample', type: 'class', rarity: 'rare', icon: '🧬', value: 42, classAffinity: 'biological', description: 'A sample of living tissue.' },
+  { id: 'vital_essence', name: 'Vital Essence', type: 'class', rarity: 'epic', icon: '❤️', value: 85, classAffinity: 'biological', description: 'Pure life force in liquid form.' },
+  { id: 'reagent_vial', name: 'Reagent Vial', type: 'class', rarity: 'rare', icon: '⚗️', value: 42, classAffinity: 'chemical', description: 'A vial of reactive chemicals.' },
+  { id: 'catalyst_compound', name: 'Catalyst Compound', type: 'class', rarity: 'epic', icon: '💊', value: 85, classAffinity: 'chemical', description: 'A compound that accelerates reactions.' },
+  { id: 'influence_sigil', name: 'Influence Sigil', type: 'class', rarity: 'rare', icon: '📜', value: 42, classAffinity: 'political', description: 'A symbol of social power.' },
+  { id: 'authority_seal', name: 'Authority Seal', type: 'class', rarity: 'epic', icon: '👑', value: 85, classAffinity: 'political', description: 'A seal granting absolute authority.' },
+  { id: 'balanced_core', name: 'Balanced Core', type: 'class', rarity: 'uncommon', icon: '☯️', value: 18, classAffinity: 'normal', description: 'A perfectly balanced energy core.' },
   
   // ============= HERBS (for potion crafting) =============
   // Common herbs - found on floors 1+

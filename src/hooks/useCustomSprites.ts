@@ -149,8 +149,13 @@ export function useCustomSprites() {
 
 // Singleton context for sprite overrides - can be used without React context
 export function getGlobalSpriteOverride(speciesKey: string, elementKey: string): { body: string; detail: string; face: string } | null {
+  // Try multiple key formats for backwards compatibility
   const specificKey = `${speciesKey} (${elementKey})`;
-  const spriteData = globalSpriteCache.get(specificKey) || globalSpriteCache.get(speciesKey);
+  const underscoreKey = `species_${speciesKey}_${elementKey}`;
+  
+  const spriteData = globalSpriteCache.get(specificKey) 
+    || globalSpriteCache.get(underscoreKey)
+    || globalSpriteCache.get(speciesKey);
   
   if (!spriteData) return null;
   
@@ -187,6 +192,10 @@ export async function preloadCustomSprites(force = false): Promise<void> {
     
     globalSpriteCache = newCache;
     globalCacheLoaded = true;
+    
+    if (newCache.size > 0) {
+      console.log(`[CustomSprites] Loaded ${newCache.size} custom sprites:`, Array.from(newCache.keys()));
+    }
   } catch (err) {
     console.error('Failed to preload custom sprites:', err);
   }

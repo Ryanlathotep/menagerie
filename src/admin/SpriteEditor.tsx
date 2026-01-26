@@ -522,7 +522,8 @@ export function SpriteEditor() {
     try {
       const pixelData = await svgToPixelArt(importSpecies, importSize, importElement, true);
       setSpriteData(pixelData);
-      setSpriteKey(`species_${importSpecies}_${importElement}`);
+      // Use the format that the game expects: "species (element)"
+      setSpriteKey(`${importSpecies} (${importElement})`);
       setHistory([]);
       setHistoryIndex(-1);
       setActiveLayerIndex(0);
@@ -535,18 +536,24 @@ export function SpriteEditor() {
     }
   };
 
-  // Export current pixel art to SVG path data
+  // Export current pixel art to SVG path data for sprites.tsx
   const handleExportToSvg = () => {
     const { outline, filled } = pixelArtToSvgPath(spriteData);
     
-    // Copy to clipboard
-    const svgCode = `// Filled path (for solid fill)
-body: '${filled}',
-// Outline path (for stroke)
-detail: '${outline}',`;
+    // Parse the sprite key to extract species name
+    const match = spriteKey.match(/^(\w+)\s*\((\w+)\)$/);
+    const speciesName = match ? match[1] : spriteKey.replace(/[^a-z]/gi, '');
+    
+    // Generate code that can be copied into sprites.tsx
+    const svgCode = `// Add/replace this in SPECIES_PATHS in src/game/sprites.tsx:
+${speciesName}: {
+  body: '${filled}',
+  detail: '${outline}',
+  face: '', // Add face features as needed
+},`;
     
     navigator.clipboard.writeText(svgCode);
-    toast.success('SVG path data copied to clipboard!');
+    toast.success('SVG code copied! Paste into sprites.tsx to make permanent.');
   };
 
   return (
@@ -554,11 +561,11 @@ detail: '${outline}',`;
       {/* Tools Panel */}
       <Card className="p-4 space-y-4">
         <div>
-          <Label>Sprite Key</Label>
+          <Label>Sprite Key (format: "species (element)" e.g. "slime (normal)")</Label>
           <Input
             value={spriteKey}
             onChange={(e) => setSpriteKey(e.target.value)}
-            placeholder="e.g., species_slime, element_fire"
+            placeholder="e.g., slime (normal), goblin (fire)"
           />
         </div>
 

@@ -1,5 +1,6 @@
 // Unified Move Panel - Works in both combat and exploration
-// Supports tier selection, move usage, sorting, filtering, and drag-and-drop reordering
+// Supports tier selection, move usage, sorting, filtering, drag-and-drop reordering,
+// and effectiveness indicators when enemy is present
 
 import { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
@@ -8,12 +9,13 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ChevronDown, GripVertical, Eye, EyeOff, Zap, Target, Heart, Sparkles, ChevronLeft } from 'lucide-react';
-import { Move } from './moves';
+import { Move, STRUGGLE_MOVE } from './moves';
 import { Monster } from './types';
 import { ExpandedStats } from './CharacterSheet';
+import { calculateHitChance, calculateExpectedDamage, getEffectiveness } from './combat';
 import { 
   getAvailableTiers, 
-  hasAoEUnlocked, 
+  hasAoEUnlocked,
   createEvolvedMove, 
   getHighestTier,
   getMasteryProgress,
@@ -44,6 +46,8 @@ interface UnifiedMovePanelProps {
   enemyMonster?: Monster | null;
   // Move execution
   onUseMove?: (move: Move | EvolvedMove) => void;
+  // Add struggle automatically when out of stamina
+  autoAddStruggle?: boolean;
 }
 
 export function UnifiedMovePanel({ 
@@ -58,6 +62,7 @@ export function UnifiedMovePanel({
   currentStamina = monster.stats.currentStamina || monster.stats.stamina || 50,
   enemyMonster,
   onUseMove,
+  autoAddStruggle = false,
 }: UnifiedMovePanelProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -77,6 +82,14 @@ export function UnifiedMovePanel({
   
   const visibleMoves = processedMoves.filter(m => !hiddenMoves.includes(m.id));
   const hiddenMovesList = processedMoves.filter(m => hiddenMoves.includes(m.id));
+  
+  // Check if player can afford any visible move (for struggle)
+  const canAffordAnyVisibleMove = visibleMoves.some(m => (m.staminaCost || 0) <= currentStamina);
+  
+  // Add struggle if needed
+  const displayMoves = autoAddStruggle && !canAffordAnyVisibleMove 
+    ? [...visibleMoves, STRUGGLE_MOVE] 
+    : visibleMoves;
   
   // Drag handlers
   const handleDragStart = (e: React.DragEvent, moveId: string) => {
@@ -315,11 +328,12 @@ export function UnifiedMovePanel({
         onDragLeave={() => setDragOverSection(null)}
         onDrop={(e) => handleDropOnSection(e, 'visible')}
       >
-        {visibleMoves.map(move => (
+        {displayMoves.map(move => (
           <UnifiedMoveCard
             key={move.id}
             move={move}
             monster={monster}
+            enemyMonster={enemyMonster}
             expandedStats={expandedStats}
             currentStamina={currentStamina}
             isDragging={draggedId === move.id}
@@ -336,7 +350,7 @@ export function UnifiedMovePanel({
             onUseMove={onUseMove ? () => handleMoveClick(move) : undefined}
           />
         ))}
-        {visibleMoves.length === 0 && (
+        {displayMoves.length === 0 && (
           <div className="col-span-full text-center py-4 text-muted-foreground text-xs">
             Drag moves here to show them
           </div>
@@ -372,6 +386,7 @@ export function UnifiedMovePanel({
                 key={move.id}
                 move={move}
                 monster={monster}
+                enemyMonster={enemyMonster}
                 expandedStats={expandedStats}
                 currentStamina={currentStamina}
                 isDragging={draggedId === move.id}
@@ -403,6 +418,7 @@ export function UnifiedMovePanel({
 interface UnifiedMoveCardProps {
   move: Move;
   monster: Monster;
+  enemyMonster?: Monster | null;
   expandedStats?: ExpandedStats;
   currentStamina: number;
   isDragging: boolean;
@@ -422,6 +438,7 @@ interface UnifiedMoveCardProps {
 function UnifiedMoveCard({
   move,
   monster,
+  enemyMonster,
   expandedStats,
   currentStamina,
   isDragging,
@@ -472,6 +489,41 @@ function UnifiedMoveCard({
     : move.type === 'ranged' 
       ? (expandedStats?.ranged ?? monster.stats.special) 
       : 0;
+  
+  // Calculate effectiveness when enemy is present
+  const effectiveness = enemyMonster 
+    ? getEffectiveness(displayMove, monster, enemyMonster)
+    : null;
+  
+  const hitChance = enemyMonster 
+    ? calculateHitChance(displayMove, monster, enemyMonster)
+    : null;
+  
+  const expectedDamage = enemyMonster && displayMove.power > 0
+    ? calculateExpectedDamage(displayMove, monster, enemyMonster)
+    : null;
+  
+  // Get effectiveness aura class
+  const getEffectivenessAura = () => {
+    if (!effectiveness || !canAfford) return '';
+    switch (effectiveness.overall) {
+      case 'super-effective':
+        return 'ring-2 ring-orange-500 shadow-[0_0_12px_rgba(249,115,22,0.6)] animate-pulse';
+      case 'effective':
+        return 'ring-2 ring-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.5)]';
+      case 'weak':
+        return 'opacity-60 border-muted';
+      default:
+        return '';
+    }
+  };
+  
+  const effectivenessIndicator = effectiveness 
+    ? effectiveness.overall === 'super-effective' ? '🔥' 
+    : effectiveness.overall === 'effective' ? '✨' 
+    : effectiveness.overall === 'weak' ? '⬇️' 
+    : ''
+    : '';
 
   return (
     <Tooltip>
@@ -494,6 +546,10 @@ function UnifiedMoveCard({
             isUsable ? 'cursor-pointer hover:bg-primary/10 hover:border-primary' : 'cursor-grab active:cursor-grabbing'
           } ${
             !canAfford && canUse ? 'opacity-50' : ''
+          } ${
+            getEffectivenessAura()
+          } ${
+            move.id === 'struggle' ? 'border-destructive text-destructive' : ''
           }`}
         >
           <div className="flex items-start gap-1">
@@ -501,6 +557,7 @@ function UnifiedMoveCard({
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-1 gap-1">
                 <h4 className="font-semibold text-[11px] truncate flex items-center gap-1">
+                  {effectivenessIndicator && <span>{effectivenessIndicator}</span>}
                   {displayMove.name}
                   {hasTierOptions && <span className="text-primary text-[9px]">▼</span>}
                 </h4>
@@ -557,21 +614,90 @@ function UnifiedMoveCard({
           </div>
         </Card>
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-[220px] z-[100] bg-popover">
-        <p className="font-semibold text-sm">{move.name}</p>
+      <TooltipContent side="top" className="max-w-[260px] z-[100] bg-popover p-3 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-bold text-sm">{move.name}</p>
+          {mastery && (
+            <Badge 
+              variant="outline" 
+              className={`text-[8px] px-1.5 py-0 ${TIER_COLORS[masteryProgress.tier]} ${TIER_BG_COLORS[masteryProgress.tier]} border-0`}
+            >
+              {getTierDisplayName(masteryProgress.tier)}
+            </Badge>
+          )}
+        </div>
         <p className="text-xs text-muted-foreground">{move.description}</p>
-        {move.effect && (
-          <p className="text-xs text-accent mt-1">✨ {move.effect.replace(/_/g, ' ')}</p>
+        
+        {/* Combat Stats - shown when enemy is present */}
+        {enemyMonster && (
+          <div className="border-t border-border pt-2 space-y-1 text-xs">
+            {expectedDamage !== null && (
+              <div className="flex justify-between">
+                <span>Expected Damage:</span>
+                <span className="font-mono font-bold">{expectedDamage}</span>
+              </div>
+            )}
+            {hitChance !== null && (
+              <div className="flex justify-between">
+                <span>Hit Chance:</span>
+                <span className="font-mono font-bold">{hitChance}%</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span>Stamina Cost:</span>
+              <span className="font-mono">⚡{displayMove.staminaCost}</span>
+            </div>
+            {displayMove.speedMod !== 0 && (
+              <div className="flex justify-between">
+                <span>Priority:</span>
+                <span className="font-mono">{displayMove.speedMod > 0 ? '+' : ''}{displayMove.speedMod}</span>
+              </div>
+            )}
+          </div>
         )}
+        
+        {/* Effectiveness indicators */}
+        {effectiveness && (effectiveness.element !== 'normal' || effectiveness.class !== 'normal') && (
+          <div className="border-t border-border pt-2 space-y-1 text-xs">
+            {move.element && effectiveness.element !== 'normal' && (
+              <div className={`flex items-center gap-1 ${effectiveness.element === 'super' ? 'text-green-500' : 'text-red-500'}`}>
+                <span>{effectiveness.element === 'super' ? '🔥' : '🛡️'}</span>
+                <span>Element: {effectiveness.element === 'super' ? 'Super Effective!' : 'Not Very Effective'}</span>
+              </div>
+            )}
+            {move.classBonus && effectiveness.class !== 'normal' && (
+              <div className={`flex items-center gap-1 ${effectiveness.class === 'super' ? 'text-green-500' : 'text-red-500'}`}>
+                <span>{effectiveness.class === 'super' ? '⚔️' : '🛡️'}</span>
+                <span>Class: {effectiveness.class === 'super' ? 'Super Effective!' : 'Not Very Effective'}</span>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Overall effectiveness */}
+        {effectiveness && (
+          <div className={`text-center font-bold ${
+            effectiveness.overall === 'super-effective' ? 'text-green-400' :
+            effectiveness.overall === 'effective' ? 'text-green-500' :
+            effectiveness.overall === 'weak' ? 'text-red-500' :
+            'text-muted-foreground'
+          }`}>
+            {effectiveness.overall === 'super-effective' && '✨ SUPER EFFECTIVE! ✨'}
+            {effectiveness.overall === 'effective' && '🔥 Effective!'}
+            {effectiveness.overall === 'weak' && '⚠️ Not Very Effective...'}
+          </div>
+        )}
+        
+        {move.effect && (
+          <p className="text-xs text-accent">✨ {move.effect.replace(/_/g, ' ')}</p>
+        )}
+        
+        {/* Mastery Progress */}
         {mastery && (
-          <div className="mt-2 pt-2 border-t border-border text-xs">
+          <div className="border-t border-border pt-2 text-xs">
             <div className="flex justify-between">
               <span>Uses:</span>
               <span className="font-mono">{mastery.uses}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Tier:</span>
-              <span className={TIER_COLORS[masteryProgress.tier]}>{getTierDisplayName(masteryProgress.tier)}</span>
             </div>
             {masteryProgress.nextTier && (
               <div className="flex justify-between text-muted-foreground">

@@ -503,6 +503,7 @@ function DungeonView({
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAutoRunning, setIsAutoRunning] = useState(false);
   const autoRunDirection = useRef<'up' | 'down' | 'left' | 'right' | null>(null);
+ const stopAutoRun = useRef(false); // Immediate stop flag for auto-run
   const lastKeyPress = useRef<{ key: string; time: number } | null>(null);
   
   // Click-to-move state
@@ -756,7 +757,18 @@ function DungeonView({
   useEffect(() => {
     if (!isAutoRunning || !autoRunDirection.current) return;
     
+   // Reset stop flag when starting auto-run
+   stopAutoRun.current = false;
+   
     const interval = setInterval(() => {
+     // Check stop flag first (immediate response)
+     if (stopAutoRun.current) {
+       setIsAutoRunning(false);
+       autoRunDirection.current = null;
+       stopAutoRun.current = false;
+       return;
+     }
+     
       const currentDungeon = dungeonRef.current;
       if (!autoRunDirection.current || !currentDungeon) {
         setIsAutoRunning(false);
@@ -789,6 +801,7 @@ function DungeonView({
       
       // If auto-running or path-walking, any key stops it
       if (isAutoRunning) {
+       stopAutoRun.current = true; // Stop immediately
         setIsAutoRunning(false);
         autoRunDirection.current = null;
         return;
@@ -844,7 +857,19 @@ function DungeonView({
   
   // Click-to-move handler
   const handleTileClick = useCallback((x: number, y: number) => {
-    if (!dungeon || isPathWalking || isAutoRunning) return;
+   if (!dungeon) return;
+   
+   // Cancel any active auto-run or path-walking first
+   if (isAutoRunning) {
+     stopAutoRun.current = true; // Stop immediately
+     setIsAutoRunning(false);
+     autoRunDirection.current = null;
+   }
+   if (isPathWalking) {
+     setIsPathWalking(false);
+     setTargetPath([]);
+     pathWalkRef.current = [];
+   }
     
     // Don't path to current position
     if (dungeon.playerPosition.x === x && dungeon.playerPosition.y === y) return;
@@ -857,7 +882,7 @@ function DungeonView({
     } else {
       addLog("❌ Can't reach that tile!", 'info');
     }
-  }, [dungeon, isPathWalking, isAutoRunning]);
+ }, [dungeon, isPathWalking, isAutoRunning, setIsPathWalking, setIsAutoRunning]);
   
   // Path walking effect - walk one step at a time (uses dungeonRef for fresh state)
   useEffect(() => {

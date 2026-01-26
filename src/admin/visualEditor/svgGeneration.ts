@@ -161,42 +161,127 @@ function traceRegionContour(grid: boolean[][], width: number, height: number): P
 }
 
 /**
- * Convert contour points to smooth SVG path with quadratic bezier curves
+ * Ramer-Douglas-Peucker algorithm for path simplification
+ * Reduces points while preserving overall shape
+ */
+function rdpSimplify(points: Point[], epsilon: number): Point[] {
+  if (points.length <= 2) return points;
+  
+  // Find point with max distance from line between first and last
+  let maxDist = 0;
+  let maxIndex = 0;
+  const first = points[0];
+  const last = points[points.length - 1];
+  
+  for (let i = 1; i < points.length - 1; i++) {
+    const dist = perpendicularDistance(points[i], first, last);
+    if (dist > maxDist) {
+      maxDist = dist;
+      maxIndex = i;
+    }
+  }
+  
+  // If max distance exceeds epsilon, recursively simplify
+  if (maxDist > epsilon) {
+    const left = rdpSimplify(points.slice(0, maxIndex + 1), epsilon);
+    const right = rdpSimplify(points.slice(maxIndex), epsilon);
+    return [...left.slice(0, -1), ...right];
+  }
+  
+  return [first, last];
+}
+
+/**
+ * Calculate perpendicular distance from point to line
+ */
+function perpendicularDistance(point: Point, lineStart: Point, lineEnd: Point): number {
+  const dx = lineEnd.x - lineStart.x;
+  const dy = lineEnd.y - lineStart.y;
+  
+  if (dx === 0 && dy === 0) {
+    return Math.sqrt((point.x - lineStart.x) ** 2 + (point.y - lineStart.y) ** 2);
+  }
+  
+  const t = ((point.x - lineStart.x) * dx + (point.y - lineStart.y) * dy) / (dx * dx + dy * dy);
+  const nearestX = lineStart.x + t * dx;
+  const nearestY = lineStart.y + t * dy;
+  
+  return Math.sqrt((point.x - nearestX) ** 2 + (point.y - nearestY) ** 2);
+}
+
+/**
+ * Chaikin corner-cutting algorithm for curve smoothing
+ * Creates smooth curves by iteratively cutting corners
+ */
+function chaikinSmooth(points: Point[], iterations: number = 2): Point[] {
+  if (points.length < 3) return points;
+  
+  let result = [...points];
+  
+  for (let iter = 0; iter < iterations; iter++) {
+    const smoothed: Point[] = [];
+    
+    for (let i = 0; i < result.length; i++) {
+      const curr = result[i];
+      const next = result[(i + 1) % result.length];
+      
+      // 1/4 and 3/4 points between curr and next
+      smoothed.push({
+        x: curr.x * 0.75 + next.x * 0.25,
+        y: curr.y * 0.75 + next.y * 0.25,
+      });
+      smoothed.push({
+        x: curr.x * 0.25 + next.x * 0.75,
+        y: curr.y * 0.25 + next.y * 0.75,
+      });
+    }
+    
+    result = smoothed;
+  }
+  
+  return result;
+}
+
+/**
+ * Convert contour points to smooth SVG path with cubic bezier curves
+ * Uses RDP simplification + Chaikin smoothing for high-quality output
  */
 function contourToSmoothPath(contour: Point[], scaleX: number, scaleY: number): string {
   if (contour.length < 3) return '';
   
-  // Sample points for smoother curves (skip some for simplification)
-  const step = Math.max(1, Math.floor(contour.length / 30));
-  const sampled: Point[] = [];
+  // Step 1: Simplify with RDP to remove redundant points
+  // Epsilon of 0.3 preserves shape while removing noise
+  const simplified = rdpSimplify(contour, 0.3);
   
-  for (let i = 0; i < contour.length; i += step) {
-    sampled.push(contour[i]);
-  }
+  if (simplified.length < 3) return '';
   
-  if (sampled.length < 3) {
-    sampled.length = 0;
-    sampled.push(...contour);
-  }
+  // Step 2: Apply Chaikin smoothing (2 iterations for nice curves)
+  const smoothed = chaikinSmooth(simplified, 2);
   
-  // Build path with smooth quadratic curves
+  if (smoothed.length < 3) return '';
+  
+  // Step 3: Build cubic bezier path for maximum smoothness
   const path: string[] = [];
   
   // Start at first point
-  const first = sampled[0];
+  const first = smoothed[0];
   path.push(`M${(first.x * scaleX).toFixed(1)},${(first.y * scaleY).toFixed(1)}`);
   
-  // Use quadratic beziers through midpoints
-  for (let i = 0; i < sampled.length; i++) {
-    const curr = sampled[i];
-    const next = sampled[(i + 1) % sampled.length];
+  // Use cubic beziers with Catmull-Rom to bezier conversion for smooth curves
+  for (let i = 0; i < smoothed.length; i++) {
+    const p0 = smoothed[(i - 1 + smoothed.length) % smoothed.length];
+    const p1 = smoothed[i];
+    const p2 = smoothed[(i + 1) % smoothed.length];
+    const p3 = smoothed[(i + 2) % smoothed.length];
     
-    // Midpoint between current and next
-    const midX = (curr.x + next.x) / 2;
-    const midY = (curr.y + next.y) / 2;
+    // Catmull-Rom to cubic bezier conversion
+    const tension = 6; // Higher = tighter curves
+    const cp1x = p1.x + (p2.x - p0.x) / tension;
+    const cp1y = p1.y + (p2.y - p0.y) / tension;
+    const cp2x = p2.x - (p3.x - p1.x) / tension;
+    const cp2y = p2.y - (p3.y - p1.y) / tension;
     
-    // Quadratic curve to midpoint, with current as control
-    path.push(`Q${(curr.x * scaleX).toFixed(1)},${(curr.y * scaleY).toFixed(1)} ${(midX * scaleX).toFixed(1)},${(midY * scaleY).toFixed(1)}`);
+    path.push(`C${(cp1x * scaleX).toFixed(1)},${(cp1y * scaleY).toFixed(1)} ${(cp2x * scaleX).toFixed(1)},${(cp2y * scaleY).toFixed(1)} ${(p2.x * scaleX).toFixed(1)},${(p2.y * scaleY).toFixed(1)}`);
   }
   
   path.push('Z');

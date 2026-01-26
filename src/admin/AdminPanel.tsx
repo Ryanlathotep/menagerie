@@ -84,7 +84,35 @@ export function AdminPanel() {
             <MonstersEditor />
           </TabsContent>
           <TabsContent value="sprites" className="p-4 m-0">
-            <VisualEditor />
+            <div className="space-y-4">
+              <div className="bg-yellow-100 dark:bg-yellow-900/20 p-4 rounded-lg border-2 border-yellow-500 space-y-3">
+                <h3 className="font-bold text-lg flex items-center gap-2">
+                  ⚠️ Important: Sprite Quality Workflow
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <p><strong>Why imported sprites look pixelated:</strong></p>
+                  <p>Clean SVG → Rasterize to pixels → Edit → Convert back to SVG = <strong>Quality Loss</strong></p>
+                  
+                  <hr className="my-2" />
+                  
+                  <p><strong>For BEST quality (like existing sprites):</strong></p>
+                  <ul className="list-disc ml-6 space-y-1">
+                    <li>Use the <strong>Direct SVG Editor</strong> below</li>
+                    <li>Hand-craft bezier curves</li>
+                    <li>Copy existing sprite code as a starting point</li>
+                    <li>No pixel conversion = No quality loss</li>
+                  </ul>
+                  
+                  <p className="mt-2"><strong>Pixel Editor is for:</strong></p>
+                  <ul className="list-disc ml-6 space-y-1">
+                    <li>Creating <strong>NEW</strong> sprites from scratch</li>
+                    <li>NOT for editing existing hand-crafted sprites</li>
+                  </ul>
+                </div>
+              </div>
+              
+              <VisualEditor />
+            </div>
           </TabsContent>
         </ScrollArea>
       </Tabs>

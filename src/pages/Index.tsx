@@ -1597,6 +1597,7 @@ function DungeonView({
         party={state.run?.party || []}
         activePartyIndex={state.run?.activePartyIndex || 0}
         onPartySwitch={handlePartySwitch}
+        partyEffects={(state.run?.partyEffects || []) as CombatEffects[]}
         expandedStats={state.run?.currentMonster ? {
           currentHp: state.run.currentMonster.stats.currentHp,
           maxHp: state.run.currentMonster.stats.maxHp,
@@ -1920,13 +1921,29 @@ function BattleView({
     criticalHits: 0,
   });
   
-  // Combat effects tracking (local state synced with battle)
+  // Combat effects tracking (local state synced with battle and partyEffects)
+  // Initialize from partyEffects if available, otherwise from battle or empty
+  const activeIndex = state.run?.activePartyIndex ?? 0;
+  const storedEffects = state.run?.partyEffects?.[activeIndex];
   const [playerEffects, setPlayerEffects] = useState<CombatEffects>(
-    battle?.playerEffects as CombatEffects || EMPTY_COMBAT_EFFECTS
+    storedEffects && (storedEffects.statusEffects.length > 0 || storedEffects.statModifiers.length > 0)
+      ? storedEffects as CombatEffects
+      : (battle?.playerEffects as CombatEffects || EMPTY_COMBAT_EFFECTS)
   );
   const [enemyEffects, setEnemyEffects] = useState<CombatEffects>(
     battle?.enemyEffects as CombatEffects || EMPTY_COMBAT_EFFECTS
   );
+  
+  // Sync playerEffects to partyEffects whenever they change
+  useEffect(() => {
+    if (state.run && playerEffects) {
+      dispatch({ 
+        type: 'SET_PARTY_EFFECTS', 
+        partyIndex: state.run.activePartyIndex, 
+        effects: playerEffects 
+      });
+    }
+  }, [playerEffects, state.run?.activePartyIndex, dispatch]);
   
   if (!battle || !state.run) return null;
   const playerMoves = getMonsterMoves(battle.playerMonster.species, battle.playerMonster.element, battle.playerMonster.class, battle.playerMonster.level);
@@ -3328,6 +3345,9 @@ function BattleView({
           speed: battle.enemyMonster.stats.speed,
           dodge: Math.floor(battle.enemyMonster.stats.speed * 0.5),
         }}
+        party={state.run.party}
+        activePartyIndex={state.run.activePartyIndex}
+        partyEffects={(state.run.partyEffects || []) as CombatEffects[]}
       />
     </div>
     </>

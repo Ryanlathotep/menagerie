@@ -760,6 +760,9 @@ function DungeonView({
   }, [handleMove]);
 
   // Auto-run logic - uses requestAnimationFrame for smooth timing
+  // Track if a move is currently being processed to prevent overlapping moves
+  const isMovingRef = useRef(false);
+  
   useEffect(() => {
     if (!isAutoRunning || !autoRunDirection.current) return;
     
@@ -784,6 +787,12 @@ function DungeonView({
         return;
       }
       
+      // Skip if a move is still being processed
+      if (isMovingRef.current) {
+        animationFrameId = requestAnimationFrame(runStep);
+        return;
+      }
+      
       // Only move after enough time has passed
       if (timestamp - lastMoveTime >= settings.autoRunSpeed) {
         const direction = autoRunDirection.current;
@@ -799,7 +808,12 @@ function DungeonView({
           return;
         }
         
+        isMovingRef.current = true;
         handleMoveRef.current(direction);
+        // Allow next move after a short delay for state to settle
+        requestAnimationFrame(() => {
+          isMovingRef.current = false;
+        });
         lastMoveTime = timestamp;
       }
       
@@ -907,7 +921,7 @@ function DungeonView({
     }
  }, [dungeon, isPathWalking, isAutoRunning, setIsPathWalking, setIsAutoRunning]);
   
-  // Path walking effect - walk one step at a time (uses dungeonRef for fresh state)
+  // Path walking effect - uses requestAnimationFrame for smooth timing
   useEffect(() => {
     if (!isPathWalking || pathWalkRef.current.length === 0) {
       if (isPathWalking) {
@@ -917,42 +931,71 @@ function DungeonView({
       return;
     }
     
-    const walkInterval = setInterval(() => {
+    let lastMoveTime = 0;
+    let animationFrameId: number;
+    
+    const walkStep = (timestamp: number) => {
       const currentDungeon = dungeonRef.current;
       const currentPath = pathWalkRef.current;
+      
       if (currentPath.length === 0 || !currentDungeon) {
         setIsPathWalking(false);
         setTargetPath([]);
         return;
       }
       
-      const nextPos = currentPath[0];
-      const direction = getDirection(currentDungeon.playerPosition, nextPos);
-      
-      if (!direction) {
-        setIsPathWalking(false);
-        setTargetPath([]);
-        pathWalkRef.current = [];
+      // Skip if a move is still being processed
+      if (isMovingRef.current) {
+        animationFrameId = requestAnimationFrame(walkStep);
         return;
       }
       
-      // Check if we should stop (enemy, trap, etc.)
-      if (shouldStopAutoRun(currentDungeon.tiles, nextPos.x, nextPos.y, currentDungeon.width, currentDungeon.height)) {
-        // Still move to this tile, but stop after
-        handleMove(direction);
-        setIsPathWalking(false);
-        setTargetPath([]);
-        pathWalkRef.current = [];
-        return;
+      // Only move after enough time has passed
+      if (timestamp - lastMoveTime >= settings.autoRunSpeed) {
+        const nextPos = currentPath[0];
+        const direction = getDirection(currentDungeon.playerPosition, nextPos);
+        
+        if (!direction) {
+          setIsPathWalking(false);
+          setTargetPath([]);
+          pathWalkRef.current = [];
+          return;
+        }
+        
+        // Check if we should stop (enemy, trap, etc.)
+        const shouldStop = shouldStopAutoRun(currentDungeon.tiles, nextPos.x, nextPos.y, currentDungeon.width, currentDungeon.height);
+        
+        isMovingRef.current = true;
+        handleMoveRef.current(direction);
+        requestAnimationFrame(() => {
+          isMovingRef.current = false;
+        });
+        lastMoveTime = timestamp;
+        
+        pathWalkRef.current = currentPath.slice(1);
+        setTargetPath(pathWalkRef.current);
+        
+        if (shouldStop || pathWalkRef.current.length === 0) {
+          setIsPathWalking(false);
+          setTargetPath([]);
+          pathWalkRef.current = [];
+          return;
+        }
       }
       
-      handleMove(direction);
-      pathWalkRef.current = currentPath.slice(1);
-      setTargetPath(pathWalkRef.current);
-    }, settings.autoRunSpeed);
+      // Continue the loop
+      animationFrameId = requestAnimationFrame(walkStep);
+    };
     
-    return () => clearInterval(walkInterval);
-  }, [isPathWalking, handleMove, settings.autoRunSpeed]);
+    // Start the animation loop
+    animationFrameId = requestAnimationFrame(walkStep);
+    
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [isPathWalking, settings.autoRunSpeed]);
   
   // Party switch handler
   const handlePartySwitch = useCallback((index: number) => {

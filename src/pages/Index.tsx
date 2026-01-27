@@ -22,6 +22,7 @@ import { SettingsProvider, SettingsButton, useSettings } from '@/game/Settings';
 import { MonsterStatsPreview } from '@/game/MonsterStatsPreview';
 import { LevelUpScreen } from '@/game/LevelUpScreen';
 import { EquipmentItem, MonsterEquipment } from '@/game/equipment';
+import { calculateMonsterDrops, getEnemyEquipmentDrops } from '@/game/monsterDrops';
 import { EquipmentView } from '@/game/EquipmentView';
 import { PreRunEquipment } from '@/game/PreRunEquipment';
 import { 
@@ -2599,6 +2600,27 @@ function BattleView({
         amount: baseGold
       });
       
+      // Species-specific material drops
+      const isRatScavenger = battle.playerMonster.species === 'rat';
+      const materialDrops = calculateMonsterDrops(
+        battle.enemyMonster.species,
+        state.run?.dungeon?.floor || 1,
+        isRatScavenger
+      );
+      
+      for (const material of materialDrops) {
+        dispatch({
+          type: 'ADD_MATERIAL',
+          materialId: material.id,
+          quantity: 1,
+        });
+      }
+      
+      if (materialDrops.length > 0) {
+        const dropNames = materialDrops.map(m => m.name).join(', ');
+        toast.success(`💎 Dropped: ${dropNames}`);
+      }
+      
       // Calculate recruitment chance
       const playerHpPercent = (newPlayerHp / battle.playerMonster.stats.maxHp) * 100;
       const calculatedRecruitChance = calculateRecruitChance({
@@ -2696,6 +2718,17 @@ function BattleView({
         setShowRecruitment(true);
         // Don't end battle yet - wait for recruitment decision
         return;
+      }
+      
+      // Party full - enemy drops their equipment since not recruited
+      if (battle.enemyMonster.equipment) {
+        const equipmentDrops = getEnemyEquipmentDrops(battle.enemyMonster.equipment);
+        for (const item of equipmentDrops) {
+          dispatch({ type: 'ADD_EQUIPMENT', item });
+        }
+        if (equipmentDrops.length > 0) {
+          toast.success(`⚔️ Enemy dropped ${equipmentDrops.length} equipment piece(s)!`);
+        }
       }
       
       dispatch({
@@ -2978,6 +3011,7 @@ function BattleView({
     
     if (success) {
       // Create a fresh copy of the defeated enemy for the party
+      // When recruited, the monster keeps their equipment (added to party equipment)
       const recruitedMonster: Monster = {
         ...defeatedEnemy,
         id: `party_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -2985,13 +3019,40 @@ function BattleView({
           ...defeatedEnemy.stats,
           currentHp: Math.floor(defeatedEnemy.stats.maxHp * 0.5), // Joins at 50% HP
           currentStamina: Math.floor((defeatedEnemy.stats.stamina || 50) * 0.5),
-        }
+        },
+        // Clear equipment from monster - it will be added to party equipment separately
+        equipment: undefined,
       };
       
       dispatch({ type: 'ADD_TO_PARTY', monster: recruitedMonster });
-      toast.success(`🎉 ${defeatedEnemy.name} joined your party!`);
+      
+      // If the recruited monster had equipment, add it to the new party member's equipment slot
+      if (defeatedEnemy.equipment) {
+        const equipmentDrops = getEnemyEquipmentDrops(defeatedEnemy.equipment);
+        for (const item of equipmentDrops) {
+          dispatch({ type: 'ADD_EQUIPMENT', item });
+        }
+        if (equipmentDrops.length > 0) {
+          toast.success(`🎉 ${defeatedEnemy.name} joined with ${equipmentDrops.length} equipment piece(s)!`);
+        } else {
+          toast.success(`🎉 ${defeatedEnemy.name} joined your party!`);
+        }
+      } else {
+        toast.success(`🎉 ${defeatedEnemy.name} joined your party!`);
+      }
     } else {
       toast.error(`${defeatedEnemy.name} wasn't impressed enough to join...`);
+      
+      // Failed recruitment - drop enemy equipment as loot
+      if (defeatedEnemy.equipment) {
+        const equipmentDrops = getEnemyEquipmentDrops(defeatedEnemy.equipment);
+        for (const item of equipmentDrops) {
+          dispatch({ type: 'ADD_EQUIPMENT', item });
+        }
+        if (equipmentDrops.length > 0) {
+          toast.success(`⚔️ Enemy dropped ${equipmentDrops.length} equipment piece(s)!`);
+        }
+      }
     }
     
     setShowRecruitment(false);
@@ -3006,6 +3067,17 @@ function BattleView({
   
   // Handle dismissing recruitment
   const handleDismissRecruitment = () => {
+    // Player chose not to recruit - drop enemy equipment as loot
+    if (defeatedEnemy?.equipment) {
+      const equipmentDrops = getEnemyEquipmentDrops(defeatedEnemy.equipment);
+      for (const item of equipmentDrops) {
+        dispatch({ type: 'ADD_EQUIPMENT', item });
+      }
+      if (equipmentDrops.length > 0) {
+        toast.success(`⚔️ Enemy dropped ${equipmentDrops.length} equipment piece(s)!`);
+      }
+    }
+    
     setShowRecruitment(false);
     setDefeatedEnemy(null);
     setBattleStats({ turnsUsed: 0, overkillDamage: 0, statusEffectsApplied: 0, criticalHits: 0 });

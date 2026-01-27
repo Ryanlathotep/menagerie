@@ -11,6 +11,8 @@ import {
   ELEMENT_ADVANTAGES,
   CLASS_ADVANTAGES_CORRECTED
 } from './types';
+import { MonsterEquipment } from './equipment';
+import { generateEnemyEquipment } from './monsterDrops';
 
 // Generate a unique ID
 export function generateId(): string {
@@ -67,7 +69,8 @@ export function createMonster(
   species: SpeciesType, 
   classType: ClassType, 
   element: ElementType, 
-  level: number = 1
+  level: number = 1,
+  equipment?: MonsterEquipment
 ): Monster {
   const speciesData = SPECIES_DATA[species];
   
@@ -79,6 +82,7 @@ export function createMonster(
     level,
     stats: calculateStats(species, classType, level),
     name: `${element.charAt(0).toUpperCase() + element.slice(1)} ${speciesData.name}`,
+    equipment,
   };
 }
 
@@ -139,7 +143,7 @@ const ENEMY_ITEM_TABLE = [
   { id: 'gold_pile', name: 'Gold Pile', type: 'gold' as const, value: 30 },
 ];
 
-// Generate a random monster for dungeon
+// Generate a random monster for dungeon (with equipment based on floor)
 export function generateRandomMonster(
   allowedSpecies: SpeciesType[],
   level: number
@@ -153,7 +157,10 @@ export function generateRandomMonster(
   const classType = Math.random() < 0.1 ? 'normal' : classes[1 + Math.floor(Math.random() * 5)] as ClassType;
   const element = Math.random() < 0.1 ? 'normal' : elements[1 + Math.floor(Math.random() * 5)] as ElementType;
   
-  const monster = createMonster(species, classType, element, level);
+  // Generate equipment for enemy (based on level/floor)
+  const equipment = generateEnemyEquipment(level);
+  
+  const monster = createMonster(species, classType, element, level, equipment);
   
   // 30% chance enemy carries an item (can be stolen by Crow)
   if (Math.random() < 0.3) {

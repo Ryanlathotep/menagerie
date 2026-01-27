@@ -1,30 +1,143 @@
 // Dungeon Combat System - Attack targeting, enemy AI, and real-time combat on the map
 
 import { DungeonState, Monster, Position, DungeonTile } from './types';
-import { Move } from './moves';
+import { Move, TargetingPattern } from './moves';
 import { EvolvedMove } from './moveMastery';
 
-// Attack pattern shapes
-export type AttackPattern = 'single' | 'line' | 'cone' | 'cross' | 'area' | 'self';
+// Attack pattern shapes (internal representation)
+export type AttackPattern = 'single' | 'line' | 'cone' | 'cross' | 'area' | 'aura' | 'self';
 
 // Attack range and pattern configuration
 export interface AttackConfig {
   pattern: AttackPattern;
   range: number;
-  width?: number; // For cone/area patterns
+  width?: number;           // For cone/area patterns
+  piercing?: boolean;       // Hits all enemies in line
+  wallPenetrate?: boolean;  // Can pass through walls (very rare)
 }
 
-// Get attack configuration based on move type
-export function getAttackConfig(move: Move | EvolvedMove): AttackConfig {
-  const isAoE = 'isAoE' in move && move.isAoE;
+// Check line of sight between two positions (returns true if unblocked)
+export function hasLineOfSight(
+  from: Position,
+  to: Position,
+  tiles: DungeonTile[][],
+  width: number,
+  height: number,
+  ignoreWalls: boolean = false
+): boolean {
+  if (ignoreWalls) return true;
   
-  if (move.type === 'heal' || move.type === 'status') {
-    // Self-targeting for buffs and heals
-    if (!move.effect?.includes('lower_') && move.type !== 'status') {
-      return { pattern: 'self', range: 0 };
+  // Use Bresenham's line algorithm to trace the path
+  let x0 = from.x;
+  let y0 = from.y;
+  const x1 = to.x;
+  const y1 = to.y;
+  
+  const dx = Math.abs(x1 - x0);
+  const dy = Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1;
+  const sy = y0 < y1 ? 1 : -1;
+  let err = dx - dy;
+  
+  while (true) {
+    // Check if current position is a wall (but not the starting or ending position)
+    if ((x0 !== from.x || y0 !== from.y) && (x0 !== to.x || y0 !== to.y)) {
+      if (x0 < 0 || x0 >= width || y0 < 0 || y0 >= height) return false;
+      if (tiles[y0][x0].type === 'wall') return false;
+    }
+    
+    if (x0 === x1 && y0 === y1) break;
+    
+    const e2 = 2 * err;
+    if (e2 > -dy) {
+      err -= dy;
+      x0 += sx;
+    }
+    if (e2 < dx) {
+      err += dx;
+      y0 += sy;
     }
   }
   
+  return true;
+}
+
+// Get tiles hit by a line attack (stops at wall unless piercing through walls)
+export function getLineHitTiles(
+  from: Position,
+  direction: Position, // normalized direction
+  range: number,
+  tiles: DungeonTile[][],
+  width: number,
+  height: number,
+  piercing: boolean = false,
+  wallPenetrate: boolean = false
+): Position[] {
+  const hitTiles: Position[] = [];
+  
+  for (let i = 1; i <= range; i++) {
+    const x = from.x + direction.x * i;
+    const y = from.y + direction.y * i;
+    
+    if (x < 0 || x >= width || y < 0 || y >= height) break;
+    
+    const tile = tiles[y][x];
+    
+    // Wall blocks unless we can penetrate
+    if (tile.type === 'wall' && !wallPenetrate) break;
+    
+    hitTiles.push({ x, y });
+    
+    // If not piercing and we hit an enemy, stop
+    if (!piercing && tile.type === 'enemy') break;
+  }
+  
+  return hitTiles;
+}
+
+// Get attack configuration based on move type and targeting properties
+export function getAttackConfig(move: Move | EvolvedMove): AttackConfig {
+  const isAoE = 'isAoE' in move && move.isAoE;
+  const targeting = 'targeting' in move ? (move as Move).targeting : undefined;
+  const aoeRadius = 'aoeRadius' in move ? (move as Move).aoeRadius : undefined;
+  const piercing = 'piercing' in move ? (move as Move).piercing : false;
+  const wallPenetrate = 'wallPenetrate' in move ? (move as Move).wallPenetrate : false;
+  
+  // Self-targeting for buffs and heals (unless they target enemies)
+  if (move.type === 'heal') {
+    return { pattern: 'self', range: 0 };
+  }
+  
+  if (move.type === 'status' && !move.effect?.includes('lower_')) {
+    return { pattern: 'self', range: 0 };
+  }
+  
+  // Use explicit targeting pattern if set
+  if (targeting) {
+    switch (targeting) {
+      case 'self':
+        return { pattern: 'self', range: 0 };
+      case 'single':
+        return { 
+          pattern: 'single', 
+          range: move.type === 'melee' ? 1 : 5,
+          piercing,
+          wallPenetrate 
+        };
+      case 'piercing':
+        return { pattern: 'line', range: 5, piercing: true, wallPenetrate };
+      case 'cone':
+        return { pattern: 'cone', range: 3, width: 2, wallPenetrate };
+      case 'aura':
+        return { pattern: 'aura', range: aoeRadius || 2, wallPenetrate: true }; // Auras ignore walls
+      case 'area':
+        return { pattern: 'area', range: 4, width: aoeRadius || 2, wallPenetrate };
+      case 'arc':
+        return { pattern: 'single', range: 4, wallPenetrate: true }; // Arc ignores walls
+    }
+  }
+  
+  // Fallback to inferred targeting based on move type
   if (move.type === 'melee') {
     if (isAoE) {
       return { pattern: 'cross', range: 1, width: 1 };
@@ -36,46 +149,72 @@ export function getAttackConfig(move: Move | EvolvedMove): AttackConfig {
     if (isAoE) {
       return { pattern: 'area', range: 4, width: 2 };
     }
-    return { pattern: 'line', range: 5 };
+    // Default ranged: straight line, hits first target only, blocked by walls
+    return { pattern: 'single', range: 5, piercing: false, wallPenetrate: false };
   }
   
   // Status moves that target enemies
   if (move.type === 'status' && move.effect?.includes('lower_')) {
-    return { pattern: 'single', range: 3 };
+    return { pattern: 'single', range: 3, wallPenetrate: false };
   }
   
   return { pattern: 'single', range: 1 };
 }
 
-// Get all tiles affected by an attack pattern
+// Get all tiles affected by an attack pattern (with wall blocking)
 export function getAffectedTiles(
   origin: Position,
   target: Position,
   config: AttackConfig,
   dungeonWidth: number,
-  dungeonHeight: number
+  dungeonHeight: number,
+  tiles?: DungeonTile[][]
 ): Position[] {
-  const tiles: Position[] = [];
+  const affectedTiles: Position[] = [];
   
   switch (config.pattern) {
     case 'self':
-      tiles.push(origin);
+      affectedTiles.push(origin);
       break;
       
-    case 'single':
-      tiles.push(target);
+    case 'single': {
+      // For ranged single-target, check line of sight
+      if (tiles && !config.wallPenetrate) {
+        const hasLOS = hasLineOfSight(origin, target, tiles, dungeonWidth, dungeonHeight, false);
+        if (hasLOS) {
+          affectedTiles.push(target);
+        }
+      } else {
+        affectedTiles.push(target);
+      }
       break;
+    }
       
     case 'line': {
-      // Line from origin towards target
+      // Line from origin towards target - respects walls unless wallPenetrate
       const dx = Math.sign(target.x - origin.x);
       const dy = Math.sign(target.y - origin.y);
       
-      for (let i = 1; i <= config.range; i++) {
-        const x = origin.x + dx * i;
-        const y = origin.y + dy * i;
-        if (x >= 0 && x < dungeonWidth && y >= 0 && y < dungeonHeight) {
-          tiles.push({ x, y });
+      if (tiles) {
+        const hitTiles = getLineHitTiles(
+          origin,
+          { x: dx, y: dy },
+          config.range,
+          tiles,
+          dungeonWidth,
+          dungeonHeight,
+          config.piercing || false,
+          config.wallPenetrate || false
+        );
+        affectedTiles.push(...hitTiles);
+      } else {
+        // Fallback without tile data
+        for (let i = 1; i <= config.range; i++) {
+          const x = origin.x + dx * i;
+          const y = origin.y + dy * i;
+          if (x >= 0 && x < dungeonWidth && y >= 0 && y < dungeonHeight) {
+            affectedTiles.push({ x, y });
+          }
         }
       }
       break;
@@ -85,10 +224,8 @@ export function getAffectedTiles(
       // Cone spreading from origin towards target
       const dx = Math.sign(target.x - origin.x);
       const dy = Math.sign(target.y - origin.y);
-      const width = config.width || 1;
       
       for (let i = 1; i <= config.range; i++) {
-        // Central line
         const centerX = origin.x + dx * i;
         const centerY = origin.y + dy * i;
         
@@ -105,7 +242,34 @@ export function getAffectedTiles(
           }
           
           if (x >= 0 && x < dungeonWidth && y >= 0 && y < dungeonHeight) {
-            tiles.push({ x, y });
+            // Check LOS for each tile in cone (unless wall penetrate)
+            if (tiles && !config.wallPenetrate) {
+              if (hasLineOfSight(origin, { x, y }, tiles, dungeonWidth, dungeonHeight, false)) {
+                affectedTiles.push({ x, y });
+              }
+            } else {
+              affectedTiles.push({ x, y });
+            }
+          }
+        }
+      }
+      break;
+    }
+    
+    case 'aura': {
+      // Circle around the caster (always ignores walls - it's around you!)
+      const radius = config.range || 2;
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          // Circular check
+          if (dx * dx + dy * dy <= radius * radius) {
+            const x = origin.x + dx;
+            const y = origin.y + dy;
+            if (x >= 0 && x < dungeonWidth && y >= 0 && y < dungeonHeight) {
+              if (x !== origin.x || y !== origin.y) { // Don't include self
+                affectedTiles.push({ x, y });
+              }
+            }
           }
         }
       }
@@ -114,12 +278,12 @@ export function getAffectedTiles(
     
     case 'cross': {
       // Cross pattern centered on target
-      tiles.push(target);
+      affectedTiles.push(target);
       const directions = [
-        { dx: 0, dy: -1 }, // up
-        { dx: 0, dy: 1 },  // down
-        { dx: -1, dy: 0 }, // left
-        { dx: 1, dy: 0 },  // right
+        { dx: 0, dy: -1 },
+        { dx: 0, dy: 1 },
+        { dx: -1, dy: 0 },
+        { dx: 1, dy: 0 },
       ];
       
       for (const dir of directions) {
@@ -127,7 +291,7 @@ export function getAffectedTiles(
           const x = target.x + dir.dx * i;
           const y = target.y + dir.dy * i;
           if (x >= 0 && x < dungeonWidth && y >= 0 && y < dungeonHeight) {
-            tiles.push({ x, y });
+            affectedTiles.push({ x, y });
           }
         }
       }
@@ -135,14 +299,20 @@ export function getAffectedTiles(
     }
     
     case 'area': {
-      // Square area centered on target
+      // Square area centered on target - check LOS to target first
+      if (tiles && !config.wallPenetrate) {
+        if (!hasLineOfSight(origin, target, tiles, dungeonWidth, dungeonHeight, false)) {
+          break; // Can't target an area you can't see
+        }
+      }
+      
       const radius = config.width || 1;
       for (let dy = -radius; dy <= radius; dy++) {
         for (let dx = -radius; dx <= radius; dx++) {
           const x = target.x + dx;
           const y = target.y + dy;
           if (x >= 0 && x < dungeonWidth && y >= 0 && y < dungeonHeight) {
-            tiles.push({ x, y });
+            affectedTiles.push({ x, y });
           }
         }
       }
@@ -150,7 +320,7 @@ export function getAffectedTiles(
     }
   }
   
-  return tiles;
+  return affectedTiles;
 }
 
 // Check if a position is within attack range
@@ -159,7 +329,7 @@ export function isInRange(origin: Position, target: Position, range: number): bo
   return distance <= range;
 }
 
-// Get valid target tiles for an attack
+// Get valid target tiles for an attack (respects line of sight unless wallPenetrate)
 export function getValidTargets(
   origin: Position,
   config: AttackConfig,
@@ -182,6 +352,13 @@ export function getValidTargets(
       
       // For player attacks, only target visible tiles
       if (targetEnemies && !tile.visible) continue;
+      
+      // Check line of sight (unless attack penetrates walls)
+      if (!config.wallPenetrate && config.pattern !== 'self' && config.pattern !== 'aura') {
+        if (!hasLineOfSight(origin, { x, y }, tiles, width, height, false)) {
+          continue; // Can't target through walls
+        }
+      }
       
       // Check if tile has a valid target
       if (config.pattern === 'self') {

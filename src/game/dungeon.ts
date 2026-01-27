@@ -415,6 +415,19 @@ export function shouldStopAutoRun(tiles: DungeonTile[][], x: number, y: number, 
   return false;
 }
 
+// Check if any enemy is visible in the current view (for stopping auto-run on enemy sight)
+export function hasVisibleEnemy(tiles: DungeonTile[][]): boolean {
+  for (let y = 0; y < tiles.length; y++) {
+    for (let x = 0; x < tiles[y].length; x++) {
+      const tile = tiles[y][x];
+      if (tile.visible && tile.type === 'enemy') {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 // Move player in dungeon
 export function movePlayer(
   dungeon: DungeonState, 

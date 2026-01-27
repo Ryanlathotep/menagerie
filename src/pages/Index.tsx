@@ -747,52 +747,75 @@ function DungeonView({
       }, 100);
     }
   }, [dungeon, dispatch, state.run]);
-  // Use a ref to always have fresh dungeon state for auto-run
+  // Use refs to always have fresh state for auto-run (avoids stale closures)
   const dungeonRef = useRef(dungeon);
+  const handleMoveRef = useRef(handleMove);
+  
   useEffect(() => {
     dungeonRef.current = dungeon;
   }, [dungeon]);
+  
+  useEffect(() => {
+    handleMoveRef.current = handleMove;
+  }, [handleMove]);
 
-  // Auto-run logic - runs in intervals when active
+  // Auto-run logic - uses requestAnimationFrame for smooth timing
   useEffect(() => {
     if (!isAutoRunning || !autoRunDirection.current) return;
     
-   // Reset stop flag when starting auto-run
-   stopAutoRun.current = false;
-   
-    const interval = setInterval(() => {
-     // Check stop flag first (immediate response)
-     if (stopAutoRun.current) {
-       setIsAutoRunning(false);
-       autoRunDirection.current = null;
-       stopAutoRun.current = false;
-       return;
-     }
-     
+    // Reset stop flag when starting auto-run
+    stopAutoRun.current = false;
+    
+    let lastMoveTime = 0;
+    let animationFrameId: number;
+    
+    const runStep = (timestamp: number) => {
+      // Check stop flag first (immediate response)
+      if (stopAutoRun.current) {
+        setIsAutoRunning(false);
+        autoRunDirection.current = null;
+        stopAutoRun.current = false;
+        return;
+      }
+      
       const currentDungeon = dungeonRef.current;
       if (!autoRunDirection.current || !currentDungeon) {
         setIsAutoRunning(false);
         return;
       }
       
-      const direction = autoRunDirection.current;
-      const dx = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
-      const dy = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
-      const nextX = currentDungeon.playerPosition.x + dx;
-      const nextY = currentDungeon.playerPosition.y + dy;
-      
-      // Check if we should stop before moving
-      if (shouldStopAutoRun(currentDungeon.tiles, nextX, nextY, currentDungeon.width, currentDungeon.height)) {
-        setIsAutoRunning(false);
-        autoRunDirection.current = null;
-        return;
+      // Only move after enough time has passed
+      if (timestamp - lastMoveTime >= settings.autoRunSpeed) {
+        const direction = autoRunDirection.current;
+        const dx = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
+        const dy = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
+        const nextX = currentDungeon.playerPosition.x + dx;
+        const nextY = currentDungeon.playerPosition.y + dy;
+        
+        // Check if we should stop before moving
+        if (shouldStopAutoRun(currentDungeon.tiles, nextX, nextY, currentDungeon.width, currentDungeon.height)) {
+          setIsAutoRunning(false);
+          autoRunDirection.current = null;
+          return;
+        }
+        
+        handleMoveRef.current(direction);
+        lastMoveTime = timestamp;
       }
       
-      handleMove(direction);
-    }, settings.autoRunSpeed); // Use settings for speed
+      // Continue the loop
+      animationFrameId = requestAnimationFrame(runStep);
+    };
     
-    return () => clearInterval(interval);
-  }, [isAutoRunning, handleMove, settings.autoRunSpeed]);
+    // Start the animation loop
+    animationFrameId = requestAnimationFrame(runStep);
+    
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [isAutoRunning, settings.autoRunSpeed]);
 
   // Keyboard input with double-tap detection
   useEffect(() => {

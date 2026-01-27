@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 
 import { User, Backpack, Map, DoorOpen, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, Shirt, Gem, Users } from 'lucide-react';
 import { Monster, InventoryItem, MaterialInventory } from './types';
+import { CombatEffects } from './statusEffects';
 import { MonsterSprite } from './sprites';
 import { getMonsterMoves, Move } from './moves';
 import { ExpandedStats } from './CharacterSheet';
@@ -71,6 +72,7 @@ interface GameSidebarProps {
   party?: Monster[];
   activePartyIndex?: number;
   onPartySwitch?: (index: number) => void;
+  partyEffects?: CombatEffects[];
 }
 export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   monster,
@@ -99,6 +101,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   party = [],
   activePartyIndex = 0,
   onPartySwitch,
+  partyEffects = [],
 }, ref) => {
   const [activePanel, setActivePanel] = useState<'character' | 'inventory' | 'moves' | 'party' | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -481,6 +484,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                   onPartySwitch(index);
                   handlePanelChange(null);
                 }}
+                partyEffects={partyEffects}
               />
             )}
           </div>

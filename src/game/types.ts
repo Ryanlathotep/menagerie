@@ -355,6 +355,8 @@ export interface RunState {
   enemiesDefeated: number;
   moveOrder: string[];      // Order of move IDs
   hiddenMoves: string[];    // IDs of hidden moves
+  // Combat effects for each party member (indexed by party position)
+  partyEffects?: PartyEffects[];
   // Battle tracking for recruitment
   battleStats?: {
     turnsUsed: number;
@@ -362,6 +364,12 @@ export interface RunState {
     statusEffectsApplied: number;
     criticalHits: number;
   };
+}
+
+// Combat effects for a party member
+export interface PartyEffects {
+  statusEffects: Array<{ type: string; turnsRemaining: number; source: string }>;
+  statModifiers: Array<{ stat: string; direction: 'buff' | 'debuff'; percentage: number; turnsRemaining: number; source: string; stacks?: number }>;
 }
 
 // Material inventory - persisted across runs (kept when fleeing)

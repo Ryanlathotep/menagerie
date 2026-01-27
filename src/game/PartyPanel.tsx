@@ -4,6 +4,8 @@ import { Monster } from './types';
 import { MonsterSprite } from './sprites';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { xpToNextLevel } from './combat';
+import { CombatEffects, EMPTY_COMBAT_EFFECTS } from './statusEffects';
+import { StatusIcons } from './StatusEffectDisplay';
 import {
   Tooltip,
   TooltipContent,
@@ -17,6 +19,8 @@ interface PartyPanelProps {
   activeXp?: number; // Current XP of the active monster (from run.experience)
   onSwitch: (index: number) => void;
   maxPartySize?: number;
+  // Combat effects for each party member (indexed by party position)
+  partyEffects?: CombatEffects[];
 }
 
 export function PartyPanel({
@@ -25,6 +29,7 @@ export function PartyPanel({
   activeXp = 0,
   onSwitch,
   maxPartySize = 6,
+  partyEffects = [],
 }: PartyPanelProps) {
   return (
     <div className="space-y-2">
@@ -40,6 +45,8 @@ export function PartyPanel({
             const isActive = index === activeIndex;
             const isDead = monster.stats.currentHp <= 0;
             const hpPercent = (monster.stats.currentHp / monster.stats.maxHp) * 100;
+            const effects = partyEffects[index] || EMPTY_COMBAT_EFFECTS;
+            const hasEffects = effects.statusEffects.length > 0 || effects.statModifiers.length > 0;
             
             // XP: use activeXp for active monster, monster.experience for others
             const currentXp = isActive ? activeXp : (monster.experience || 0);
@@ -113,6 +120,12 @@ export function PartyPanel({
                         <p className="text-[8px] text-muted-foreground text-center">
                           {monster.stats.currentHp}/{monster.stats.maxHp}
                         </p>
+                        {/* Status effects/buffs display */}
+                        {hasEffects && (
+                          <div className="mt-0.5">
+                            <StatusIcons effects={effects} showTurns={true} />
+                          </div>
+                        )}
                       </div>
                     </button>
                   </TooltipTrigger>

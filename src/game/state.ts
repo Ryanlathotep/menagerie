@@ -11,6 +11,7 @@ import {
   SpeciesType,
   UnlockedMonster,
   InventoryItem,
+  PartyEffects,
 } from './types';
 import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot, dismantleEquipment, getRecipeFromEquipment, getConsumableRecipeFromItem } from './equipment';
 import { xpToNextLevel } from './combat';
@@ -98,7 +99,10 @@ type GameAction =
   | { type: 'SEND_PARTY_MEMBER_TO_TOWN'; partyIndex: number }
   // Battle tracking
   | { type: 'UPDATE_BATTLE_STATS'; stats: Partial<{ turnsUsed: number; overkillDamage: number; statusEffectsApplied: number; criticalHits: number }> }
-  | { type: 'RESET_BATTLE_STATS' };
+  | { type: 'RESET_BATTLE_STATS' }
+  // Party effects (buffs/debuffs for each party member)
+  | { type: 'SET_PARTY_EFFECTS'; partyIndex: number; effects: PartyEffects }
+  | { type: 'CLEAR_ALL_PARTY_EFFECTS' };
 
 // Reducer
 function gameReducer(state: GameState, action: GameAction): GameState {
@@ -170,6 +174,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           enemiesDefeated: 0,
           moveOrder: [],
           hiddenMoves: [],
+          partyEffects: [{ statusEffects: [], statModifiers: [] }],  // Effects for each party member
           battleStats: undefined,
         },
         saveData: {
@@ -1045,6 +1050,35 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         run: {
           ...state.run,
           battleStats: undefined,
+        },
+      };
+    
+    case 'SET_PARTY_EFFECTS': {
+      if (!state.run) return state;
+      const { partyIndex, effects } = action;
+      const currentEffects = state.run.partyEffects || [];
+      const newEffects = [...currentEffects];
+      // Expand array if needed
+      while (newEffects.length <= partyIndex) {
+        newEffects.push({ statusEffects: [], statModifiers: [] });
+      }
+      newEffects[partyIndex] = effects;
+      return {
+        ...state,
+        run: {
+          ...state.run,
+          partyEffects: newEffects,
+        },
+      };
+    }
+    
+    case 'CLEAR_ALL_PARTY_EFFECTS':
+      if (!state.run) return state;
+      return {
+        ...state,
+        run: {
+          ...state.run,
+          partyEffects: state.run.party.map(() => ({ statusEffects: [], statModifiers: [] })),
         },
       };
     

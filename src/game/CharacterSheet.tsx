@@ -44,8 +44,8 @@ export interface Equipment {
   boots: EquipmentItem | null;
 }
 
-// Extended monster with full stats
-export interface FullMonster extends Omit<Monster, 'stats'> {
+// Extended monster with full stats (uses local Equipment type for this component)
+export interface FullMonster extends Omit<Monster, 'stats' | 'equipment'> {
   stats: ExpandedStats;
   equipment: Equipment;
   experience: number;

@@ -251,6 +251,8 @@ export interface Monster {
     element: ElementType;
     turnsRemaining: number;
   }>;
+  // Enemy equipment (drops on defeat if not recruited)
+  equipment?: import('./equipment').MonsterEquipment;
 }
 
 // ============= MOVES/ABILITIES =============

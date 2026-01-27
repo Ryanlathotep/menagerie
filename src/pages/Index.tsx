@@ -45,6 +45,13 @@ import { PartySwitchModal } from '@/game/PartySwitchModal';
 import { ReviveTargetModal } from '@/game/ReviveTargetModal';
 import { CombatSwitchPanel } from '@/game/CombatSwitchPanel';
 import { LogMessage, createLogMessage, parseLogMessage } from '@/game/GameLog';
+import { 
+  RESPAWN_CONFIG, 
+  spawnMonsterInHiddenRoom, 
+  calculateNextInterval, 
+  shouldWarnAttention,
+  getAttentionLevel,
+} from '@/game/respawnSystem';
 import { TownShop } from '@/game/TownShop';
 import { ElevatorModal } from '@/game/ElevatorModal';
 import { 
@@ -539,6 +546,11 @@ function DungeonView({
     criticalHits: 0,
   });
   
+  // Respawn timer state - tracks interval acceleration per floor
+  const [respawnInterval, setRespawnInterval] = useState(RESPAWN_CONFIG.baseInterval);
+  const lastFloorRef = useRef<number>(dungeon?.floor ?? 1);
+  const respawnTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
   // Ref for enemy processing to avoid circular dependency
   const processEnemyTurnsRef = useRef<((dungeon: import('@/game/types').DungeonState | null) => void) | null>(null);
   
@@ -551,6 +563,60 @@ function DungeonView({
       });
     }
   }, [dungeon, dispatch]);
+  
+  // Reset respawn timer when floor changes
+  useEffect(() => {
+    if (dungeon && dungeon.floor !== lastFloorRef.current) {
+      lastFloorRef.current = dungeon.floor;
+      setRespawnInterval(RESPAWN_CONFIG.baseInterval);
+      addLog('🔄 Respawn timer reset on new floor.', 'system');
+    }
+  }, [dungeon?.floor, addLog]);
+  
+  // Respawn timer - spawns monsters in hidden rooms over time
+  useEffect(() => {
+    if (!dungeon) return;
+    
+    // Clear existing timer
+    if (respawnTimerRef.current) {
+      clearTimeout(respawnTimerRef.current);
+    }
+    
+    const scheduleRespawn = () => {
+      respawnTimerRef.current = setTimeout(() => {
+        // Attempt to spawn a monster
+        const result = spawnMonsterInHiddenRoom(dungeon);
+        
+        if (result.spawned && result.monster) {
+          dispatch({
+            type: 'SET_DUNGEON',
+            dungeon: result.dungeon
+          });
+          
+          // Check if we should warn about attracting attention
+          const nextInterval = calculateNextInterval(respawnInterval);
+          if (shouldWarnAttention(nextInterval) && !shouldWarnAttention(respawnInterval)) {
+            addLog('⚠️ You are attracting more attention! Monsters spawn faster now.', 'status');
+          } else if (getAttentionLevel(nextInterval) > 0.8) {
+            addLog('🚨 The dungeon is swarming with activity!', 'status');
+          } else {
+            addLog(`👁️ Something stirs in the darkness...`, 'info');
+          }
+          
+          setRespawnInterval(nextInterval);
+        }
+        // If no spawn location, the timer will re-trigger on next dungeon update
+      }, respawnInterval);
+    };
+    
+    scheduleRespawn();
+    
+    return () => {
+      if (respawnTimerRef.current) {
+        clearTimeout(respawnTimerRef.current);
+      }
+    };
+  }, [dungeon, respawnInterval, dispatch, addLog]);
   const handleMove = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
     if (!dungeon || !state.run) return;
     const result = movePlayer(dungeon, direction);

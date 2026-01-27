@@ -29,15 +29,15 @@ function getAvailableSpeciesForFloor(floor: number): SpeciesType[] {
   return allSpecies.slice(0, maxIndex);
 }
 
-// Find all floor tiles that are not visible to the player
+// Find all floor tiles that are not visible to the player (explored or not)
 function getHiddenFloorTiles(tiles: DungeonTile[][]): Position[] {
   const hiddenTiles: Position[] = [];
   
   for (let y = 0; y < tiles.length; y++) {
     for (let x = 0; x < tiles[y].length; x++) {
       const tile = tiles[y][x];
-      // Only spawn on floor tiles that are explored but not currently visible
-      if (tile.type === 'floor' && tile.explored && !tile.visible) {
+      // Spawn on any floor tile the player can't currently see
+      if (tile.type === 'floor' && !tile.visible) {
         hiddenTiles.push({ x, y });
       }
     }

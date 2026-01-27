@@ -546,6 +546,10 @@ function DungeonView({
     criticalHits: 0,
   });
   
+  // Dungeon revive modal state
+  const [showDungeonReviveModal, setShowDungeonReviveModal] = useState(false);
+  const [pendingDungeonReviveItem, setPendingDungeonReviveItem] = useState<InventoryItem | null>(null);
+  
   // Respawn timer state - tracks interval acceleration per floor
   const [respawnInterval, setRespawnInterval] = useState(RESPAWN_CONFIG.baseInterval);
   const lastFloorRef = useRef<number>(dungeon?.floor ?? 1);
@@ -1112,8 +1116,12 @@ function DungeonView({
       addLog(`🛒 Bought ${item.name}!`, 'loot');
     }
   };
-  // Bottom offset: 64px for menu bar + 260px for controls + ~200px when panel is open
-  const bottomOffset = menuOpen ? 'bottom-[520px]' : 'bottom-[324px]';
+  // Use flexible bottom positioning that fills available space
+  // When menu is open: need more space for expanded sidebar panel
+  // When menu is closed: just need space for the compact controls bar
+  const dungeonBottomStyle = menuOpen 
+    ? { bottom: '520px' } // Expanded: sidebar panel + controls
+    : { bottom: '280px' }; // Collapsed: just controls + move panel
   const controlsOffset = menuOpen ? 'bottom-16' : 'bottom-0';
   const handleDropItem = (itemId: string) => {
     dispatch({
@@ -1170,6 +1178,17 @@ function DungeonView({
       message = `Restored ${restored} Stamina!`;
     } else if (item.effect === 'cure_poison' || item.effect === 'cure_burn' || item.effect === 'cure_freeze' || item.effect === 'cure_all') {
       message = `Used ${item.name}!`;
+    } else if (item.effect === 'revive' || item.effect === 'revive_full') {
+      // Check if there are fainted party members
+      const hasFainted = state.run!.party.some(m => m.stats.currentHp <= 0);
+      if (!hasFainted) {
+        addLog('🌿 No fainted party members to revive!', 'info');
+        return;
+      }
+      // Show revive target modal
+      setPendingDungeonReviveItem(item);
+      setShowDungeonReviveModal(true);
+      return; // Don't consume item yet - wait for selection
     } else if (item.effect === 'boost_attack' || item.effect === 'boost_defense' || item.effect === 'boost_speed') {
       addLog(`⚔️ ${item.name} can only be used in close combat.`, 'info');
       return;
@@ -1181,8 +1200,28 @@ function DungeonView({
     dispatch({ type: 'USE_ITEM', itemId: item.id });
     addLog(`✨ ${message}`, 'heal');
   };
+  
+  // Handle revive target selection in dungeon
+  const handleDungeonReviveTarget = (partyIndex: number) => {
+    if (!pendingDungeonReviveItem || !state.run) return;
+    
+    const revivePercent = pendingDungeonReviveItem.effect === 'revive_full' ? 100 : (pendingDungeonReviveItem.value || 25);
+    
+    // Revive the party member
+    dispatch({ type: 'REVIVE_PARTY_MEMBER', index: partyIndex, hpPercent: revivePercent });
+    
+    // Consume the item
+    dispatch({ type: 'USE_ITEM', itemId: pendingDungeonReviveItem.id });
+    
+    const revivedMonster = state.run.party[partyIndex];
+    const revivedHp = Math.max(1, Math.floor(revivedMonster.stats.maxHp * (revivePercent / 100)));
+    addLog(`🌿 ${revivedMonster.species} was revived with ${revivedHp} HP!`, 'heal');
+    toast.success(`${revivedMonster.species} revived!`);
+    
+    setShowDungeonReviveModal(false);
+    setPendingDungeonReviveItem(null);
+  };
 
-  // Use moves outside of combat (heals, buffs, stamina recovery, or ATTACKS with targeting)
   const handleUseMoveOutOfCombat = (move: Move) => {
     if (!state.run || !dungeon) return;
     
@@ -1809,7 +1848,20 @@ function DungeonView({
         />
       )}
       
-      <div className={`fixed inset-0 ${bottomOffset} overflow-hidden transition-all duration-300`}>
+      {/* Dungeon Revive Target Modal */}
+      <ReviveTargetModal
+        open={showDungeonReviveModal}
+        onClose={() => {
+          setShowDungeonReviveModal(false);
+          setPendingDungeonReviveItem(null);
+        }}
+        party={state.run?.party || []}
+        revivePercent={pendingDungeonReviveItem?.effect === 'revive_full' ? 100 : (pendingDungeonReviveItem?.value || 25)}
+        itemName={pendingDungeonReviveItem?.name || 'Revive'}
+        onRevive={handleDungeonReviveTarget}
+      />
+      
+      <div className="fixed inset-0 overflow-hidden transition-all duration-300" style={dungeonBottomStyle}>
         <div className="h-full flex flex-col">
           {/* Scrollable dungeon viewport - fills available space */}
           <div className="flex-1 overflow-hidden bg-card border-b-2 border-primary/20">

@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getComboId, UnlockedMonster, InventoryItem, MonsterStats, Monster, Position } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
-import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, LOOT_TABLE } from '@/game/dungeon';
+import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, hasVisibleEnemy, LOOT_TABLE } from '@/game/dungeon';
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScrollText } from 'lucide-react';
@@ -860,20 +860,27 @@ function DungeonView({
         return;
       }
       
-      // Only move after enough time has passed
-      if (timestamp - lastMoveTime >= settings.autoRunSpeed) {
-        const direction = autoRunDirection.current;
-        const dx = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
-        const dy = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
-        const nextX = currentDungeon.playerPosition.x + dx;
-        const nextY = currentDungeon.playerPosition.y + dy;
-        
-        // Check if we should stop before moving
-        if (shouldStopAutoRun(currentDungeon.tiles, nextX, nextY, currentDungeon.width, currentDungeon.height)) {
-          setIsAutoRunning(false);
-          autoRunDirection.current = null;
-          return;
-        }
+        // Only move after enough time has passed
+        if (timestamp - lastMoveTime >= settings.autoRunSpeed) {
+          const direction = autoRunDirection.current;
+          const dx = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
+          const dy = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
+          const nextX = currentDungeon.playerPosition.x + dx;
+          const nextY = currentDungeon.playerPosition.y + dy;
+          
+          // Check if we should stop before moving
+          if (shouldStopAutoRun(currentDungeon.tiles, nextX, nextY, currentDungeon.width, currentDungeon.height)) {
+            setIsAutoRunning(false);
+            autoRunDirection.current = null;
+            return;
+          }
+          
+          // Also stop if any enemy is currently visible (spotted!)
+          if (hasVisibleEnemy(currentDungeon.tiles)) {
+            setIsAutoRunning(false);
+            autoRunDirection.current = null;
+            return;
+          }
         
         isMovingRef.current = true;
         handleMoveRef.current(direction);

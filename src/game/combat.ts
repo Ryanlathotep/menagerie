@@ -3,6 +3,7 @@
 import { Monster, ElementType, ClassType, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED, SpeciesType } from './types';
 import { Move } from './moves';
 import { recordMoveUse, MonsterMasteryData, MoveTier } from './moveMastery';
+import { TerrainType, isMonsterFavoredOnTerrain, TERRAIN_DAMAGE_BONUS } from './terrain';
 
 export interface CombatResult {
   damage: number;
@@ -106,13 +107,14 @@ export function calculateHitChance(move: Move, attacker: Monster, defender: Mons
 }
 
 // Calculate expected damage after defense
-// Includes passive ability modifiers
+// Includes passive ability modifiers and terrain bonuses
 export function calculateExpectedDamage(
   move: Move, 
   attacker: Monster, 
   defender: Monster,
   isFirstHitThisTurn: boolean = true,
-  temporaryResistances: TemporaryResistance[] = []
+  temporaryResistances: TemporaryResistance[] = [],
+  attackerTerrain?: TerrainType // Terrain the attacker is standing on
 ): number {
   if (move.power === 0) return 0;
   
@@ -154,6 +156,11 @@ export function calculateExpectedDamage(
   // Wolf's Pack Hunter: +10% damage (flat bonus since no party system)
   if (hasPassive(attacker.species, 'pack_hunter')) {
     baseDamage = Math.floor(baseDamage * 1.1);
+  }
+  
+  // Terrain bonus: +15% damage when on favored terrain
+  if (attackerTerrain && isMonsterFavoredOnTerrain(attacker, attackerTerrain)) {
+    baseDamage = Math.floor(baseDamage * (1 + TERRAIN_DAMAGE_BONUS));
   }
   
   // Defense reduces damage (never to 0)
@@ -249,11 +256,14 @@ export function getEffectiveness(move: Move, attacker: Monster, defender: Monste
 
 // Full combat calculation
 // isFirstHitThisTurn is used for Beetle's Carapace passive
+// attackerTerrain/defenderTerrain are the terrain types the monsters are standing on
 export function executeCombat(
   move: Move, 
   attacker: Monster, 
   defender: Monster,
-  isFirstHitThisTurn: boolean = true
+  isFirstHitThisTurn: boolean = true,
+  attackerTerrain?: TerrainType,
+  defenderTerrain?: TerrainType
 ): CombatResult {
   const hitChance = calculateHitChance(move, attacker, defender);
   const hitRoll = Math.random() * 100;
@@ -283,8 +293,8 @@ export function executeCombat(
     };
   }
   
-  // Calculate damage with passive modifiers
-  const damage = calculateExpectedDamage(move, attacker, defender, isFirstHitThisTurn);
+  // Calculate damage with passive modifiers and terrain bonus
+  const damage = calculateExpectedDamage(move, attacker, defender, isFirstHitThisTurn, [], attackerTerrain);
   const effectiveness = getEffectiveness(move, attacker, defender);
   const elementMult = move.element ? getElementMultiplier(move.element, defender.element) : 1.0;
   const classMult = move.classBonus ? getClassMultiplier(move.classBonus, defender.class) : 1.0;
@@ -337,6 +347,12 @@ export function executeCombat(
   if (hasPassive(attacker.species, 'echolocation')) {
     passiveMessages.push(`🦇 ${attacker.name}'s Echolocation: +15% accuracy!`);
   }
+  
+  // Terrain bonus message
+  if (attackerTerrain && isMonsterFavoredOnTerrain(attacker, attackerTerrain)) {
+    passiveMessages.push(`✨ ${attacker.name}'s Terrain Advantage: +15% damage!`);
+  }
+  
   if (hasPassive(defender.species, 'amorphous') && move.type === 'melee') {
     passiveMessages.push(`🟢 ${defender.name}'s Amorphous: -20% melee damage!`);
   }

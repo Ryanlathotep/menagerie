@@ -5,6 +5,7 @@ import { DungeonState, DungeonTile, TileType, ElementType, ClassType, Monster, S
 import { CRAFTING_MATERIALS } from './equipment';
 import { MonsterSprite } from './sprites';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TERRAIN_CONFIG } from './terrain';
 
 // Check if a monster combo has been captured at equal or lower level
 function isCaptured(enemy: Monster, unlockedMonsters: UnlockedMonster[]): {
@@ -119,8 +120,8 @@ const TILE_VISUALS: Record<TileType, {
     content: '🏪',
     glow: 'shadow-lg shadow-green-300/50'
   },
-  water: {
-    bg: 'bg-gradient-to-br from-blue-300 to-cyan-400',
+  terrain: {
+    bg: 'bg-gradient-to-br from-blue-300 to-cyan-400', // Default, overridden by terrain type
     content: '🌊',
     glow: 'shadow-md shadow-blue-400/40'
   },
@@ -487,7 +488,39 @@ function Tile({
       </Tooltip>;
   }
 
-  // Special tiles with tooltips (excluding traps which are handled above)
+  // Terrain tiles with dynamic visuals and tooltips
+  if (tile.type === 'terrain' && tile.visible && tile.terrainType) {
+    const terrainConfig = TERRAIN_CONFIG[tile.terrainType];
+    
+    return <Tooltip>
+      <TooltipTrigger asChild>
+        <div 
+          className={`flex items-center justify-center bg-gradient-to-br ${terrainConfig.color.from} ${terrainConfig.color.to} shadow-md ${terrainConfig.glowColor} ${pathOverlayClass} cursor-pointer hover:brightness-110`} 
+          style={tileStyle}
+          onClick={onClick}
+        >
+          <span style={{ fontSize: `${Math.max(10, tileSize * 0.5)}px` }}>
+            {terrainConfig.icon}
+          </span>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[240px] p-2">
+        <p className="font-bold text-sm">{terrainConfig.icon} {terrainConfig.name}</p>
+        <p className="text-xs text-muted-foreground">{terrainConfig.description}</p>
+        <div className="mt-1 pt-1 border-t border-border">
+          {terrainConfig.favoredElement && (
+            <p className="text-[10px] text-green-600">✨ {terrainConfig.favoredElement.charAt(0).toUpperCase() + terrainConfig.favoredElement.slice(1)} element immune & gets damage bonus</p>
+          )}
+          {terrainConfig.favoredClass && (
+            <p className="text-[10px] text-green-600">✨ {terrainConfig.favoredClass.charAt(0).toUpperCase() + terrainConfig.favoredClass.slice(1)} class immune & gets damage bonus</p>
+          )}
+          <p className="text-[10px] text-destructive">⚠️ Others take 2 damage when ending turn here</p>
+        </div>
+      </TooltipContent>
+    </Tooltip>;
+  }
+
+  // Special tiles with tooltips (excluding traps and terrain which are handled above)
   const visual = TILE_VISUALS[tile.type];
   const floorClass = getFloorVariant(x, y, tile.visible);
 
@@ -503,10 +536,6 @@ function Tile({
     stairs: {
       title: '⬇️ Stairs',
       description: 'Descend to the next floor'
-    },
-    water: {
-      title: '🌊 Water Hazard',
-      description: 'Deals damage when walked through. Frogs are immune!'
     },
     shop: {
       title: '🏪 Shop',

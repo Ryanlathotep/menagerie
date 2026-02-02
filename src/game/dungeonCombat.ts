@@ -367,7 +367,7 @@ export function getValidTargets(
         }
       } else if (targetEnemies) {
         // Valid if floor, enemy, or we can path there
-        if (tile.type === 'floor' || tile.type === 'enemy' || tile.type === 'water' || tile.type === 'plant') {
+        if (tile.type === 'floor' || tile.type === 'enemy' || tile.type === 'terrain' || tile.type === 'plant') {
           validTiles.push({ x, y });
         }
       } else {
@@ -519,8 +519,8 @@ function canMoveTo(x: number, y: number, tiles: DungeonTile[][], width: number, 
   if (x < 0 || x >= width || y < 0 || y >= height) return false;
   
   const tile = tiles[y][x];
-  // Enemies can move through floor, water (with damage?), plants, but not walls, other enemies, player, treasure, etc.
-  return tile.type === 'floor' || tile.type === 'water' || (tile.type === 'plant' && tile.harvested);
+  // Enemies can move through floor, terrain (with damage?), plants, but not walls, other enemies, player, treasure, etc.
+  return tile.type === 'floor' || tile.type === 'terrain' || (tile.type === 'plant' && tile.harvested);
 }
 
 // Move an enemy in the dungeon

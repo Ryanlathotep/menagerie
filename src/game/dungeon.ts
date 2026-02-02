@@ -3,6 +3,7 @@
 import { DungeonState, DungeonTile, Position, Monster, SpeciesType, TrapType, PlantType } from './types';
 import { generateRandomMonster } from './utils';
 import { generateEquipment, generateMaterialDrop, CraftingMaterial, EquipmentItem } from './equipment';
+import { getRandomTerrainType, TerrainType } from './terrain';
 
 // Larger dungeons with scrolling viewport
 const DUNGEON_WIDTH = 30;
@@ -223,14 +224,14 @@ export function generateDungeon(floor: number): DungeonState {
     }
   }
 
-  // Place water hazards (inside rooms only, never in corridors to avoid blocking paths)
-  const numWaterTiles = 2 + Math.floor(floor / 3) + Math.floor(Math.random() * 3);
-  for (let i = 0; i < numWaterTiles; i++) {
+  // Place terrain hazards (inside rooms only, in center areas to avoid blocking paths)
+  const numTerrainTiles = 4 + Math.floor(floor / 2) + Math.floor(Math.random() * 4);
+  for (let i = 0; i < numTerrainTiles; i++) {
     let placed = false;
     let attempts = 0;
     
     while (!placed && attempts < 50) {
-      // Only place water inside rooms, not in first room (player start) or last room (stairs)
+      // Only place terrain inside rooms, not in first room (player start) or last room (stairs)
       const roomIndex = 1 + Math.floor(Math.random() * Math.max(1, rooms.length - 2));
       if (roomIndex >= rooms.length - 1) {
         attempts++;
@@ -238,12 +239,19 @@ export function generateDungeon(floor: number): DungeonState {
       }
       
       const room = rooms[roomIndex];
-      // Place inside room, not on edges
+      // Only place in rooms that are at least 4x4 to have a proper center
+      if (room.width < 4 || room.height < 4) {
+        attempts++;
+        continue;
+      }
+      
+      // Place in center of room, not on edges (at least 1 tile from walls)
       const wx = room.x + 1 + Math.floor(Math.random() * Math.max(1, room.width - 2));
       const wy = room.y + 1 + Math.floor(Math.random() * Math.max(1, room.height - 2));
       
       if (tiles[wy]?.[wx]?.type === 'floor') {
-        tiles[wy][wx].type = 'water';
+        tiles[wy][wx].type = 'terrain';
+        tiles[wy][wx].terrainType = getRandomTerrainType();
         placed = true;
       }
       attempts++;
@@ -386,7 +394,7 @@ export interface MoveResult {
   treasure: boolean;
   stairs: boolean;
   trap: { type: TrapType; damage?: number } | null;
-  water: { damage: number } | null; // Water hazard damage (0 if immune)
+  terrain: { type: TerrainType } | null; // Terrain tile stepped on
   shop: boolean;
   elevator: boolean; // Elevator to send party members back
   loot: LootItem | null;
@@ -443,27 +451,33 @@ export function movePlayer(
 
   // Check bounds
   if (newX < 0 || newX >= dungeon.width || newY < 0 || newY >= dungeon.height) {
-    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, water: null, shop: false, elevator: false, loot: null, blocked: true, plant: null };
+    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null };
   }
 
   const targetTile = tiles[newY][newX];
   
   // Can't move into walls
   if (targetTile.type === 'wall') {
-    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, water: null, shop: false, elevator: false, loot: null, blocked: true, plant: null };
+    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null };
   }
 
   // Create new tiles array
   const newTiles = tiles.map(row => row.map(tile => ({ ...tile })));
   
-  // Clear old position
-  newTiles[playerPosition.y][playerPosition.x].type = 'floor';
+  // Clear old position - restore terrain if player was on one
+  const oldTile = tiles[playerPosition.y][playerPosition.x];
+  if (oldTile.terrainType) {
+    // Player was on terrain - restore it
+    newTiles[playerPosition.y][playerPosition.x].type = 'terrain';
+  } else {
+    newTiles[playerPosition.y][playerPosition.x].type = 'floor';
+  }
   
   let encounter: Monster | null = null;
   let treasure = false;
   let stairs = false;
   let trap: { type: TrapType; damage?: number } | null = null;
-  let water: { damage: number } | null = null;
+  let terrain: { type: TerrainType } | null = null;
   let shop = false;
   let elevator = false;
   let loot: LootItem | null = null;
@@ -486,10 +500,9 @@ export function movePlayer(
     const damage = trapType === 'spike' ? 10 + Math.floor(dungeon.floor * 2) : 0;
     trap = { type: trapType, damage };
     newTiles[newY][newX].triggered = true;
-  } else if (targetTile.type === 'water') {
-    // Water hazard - damage is calculated in Index.tsx based on species immunity
-    const waterDamage = 5 + Math.floor(dungeon.floor * 1.5);
-    water = { damage: waterDamage };
+  } else if (targetTile.type === 'terrain' && targetTile.terrainType) {
+    // Terrain hazard - damage is calculated in Index.tsx based on creature immunity
+    terrain = { type: targetTile.terrainType };
   } else if (targetTile.type === 'shop') {
     shop = true;
   } else if (targetTile.type === 'elevator') {
@@ -500,8 +513,14 @@ export function movePlayer(
     newTiles[newY][newX].harvested = true;
   }
 
-  // Set new position
-  newTiles[newY][newX].type = 'player';
+  // Set new position (terrain tiles persist - don't overwrite them)
+  if (targetTile.type === 'terrain') {
+    // Keep terrain type when standing on it
+    newTiles[newY][newX].type = 'player';
+    // terrainType stays preserved
+  } else {
+    newTiles[newY][newX].type = 'player';
+  }
   
   const newPosition = { x: newX, y: newY };
   updateVisibility(newTiles, newPosition);
@@ -516,7 +535,7 @@ export function movePlayer(
     treasure,
     stairs,
     trap,
-    water,
+    terrain,
     shop,
     elevator,
     loot,
@@ -530,7 +549,13 @@ export function removeEnemy(dungeon: DungeonState, enemyId: string): DungeonStat
   const newTiles = dungeon.tiles.map(row => 
     row.map(tile => {
       if (tile.enemyId === enemyId) {
-        return { ...tile, type: 'floor' as const, enemyId: undefined };
+        // Restore terrain if enemy was on one, otherwise floor
+        const newType = tile.terrainType ? 'terrain' : 'floor';
+        return { 
+          ...tile, 
+          type: newType as 'terrain' | 'floor', 
+          enemyId: undefined 
+        };
       }
       return tile;
     })

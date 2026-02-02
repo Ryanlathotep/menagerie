@@ -45,9 +45,10 @@ import { PartySwitchModal } from '@/game/PartySwitchModal';
 import { ReviveTargetModal } from '@/game/ReviveTargetModal';
 import { CombatSwitchPanel } from '@/game/CombatSwitchPanel';
 import { LogMessage, createLogMessage, parseLogMessage } from '@/game/GameLog';
+import { isMonsterFavoredOnTerrain, calculateTerrainDamage, TERRAIN_CONFIG } from '@/game/terrain';
 import { 
   RESPAWN_CONFIG, 
-  spawnMonsterInHiddenRoom, 
+  spawnMonsterInHiddenRoom,
   calculateNextInterval, 
   shouldWarnAttention,
   getAttentionLevel,
@@ -766,34 +767,38 @@ function DungeonView({
       } else if (result.trap.type === 'alarm') {
         addLog('🔔 Alarm trap! Enemies alerted!', 'status');
       }
-    } else if (result.water) {
-      const isFrog = state.run.currentMonster.species === 'frog';
-      if (isFrog) {
-        addLog('🐸 Amphibious nature lets you swim unharmed!', 'system');
+    } else if (result.terrain) {
+      const terrainConfig = TERRAIN_CONFIG[result.terrain.type];
+      const isFavored = isMonsterFavoredOnTerrain(state.run.currentMonster, result.terrain.type);
+      
+      if (isFavored) {
+        addLog(`${terrainConfig.icon} You thrive on ${terrainConfig.name}! Damage bonus active!`, 'system');
       } else {
-        const damage = result.water.damage;
-        const newHp = Math.max(0, state.run.currentMonster.stats.currentHp - damage);
-        const updatedMonster = {
-          ...state.run.currentMonster,
-          stats: {
-            ...state.run.currentMonster.stats,
-            currentHp: newHp
+        const damage = calculateTerrainDamage(state.run.currentMonster, result.terrain.type);
+        if (damage > 0) {
+          const newHp = Math.max(0, state.run.currentMonster.stats.currentHp - damage);
+          const updatedMonster = {
+            ...state.run.currentMonster,
+            stats: {
+              ...state.run.currentMonster.stats,
+              currentHp: newHp
+            }
+          };
+          dispatch({
+            type: 'UPDATE_PLAYER_MONSTER',
+            monster: updatedMonster
+          });
+          addLog(`${terrainConfig.icon} ${terrainConfig.name} hazard! Took ${damage} damage!`, 'damage');
+          if (newHp <= 0) {
+            dispatch({
+              type: 'END_RUN',
+              victory: false
+            });
+            dispatch({
+              type: 'SET_PHASE',
+              phase: 'run_summary'
+            });
           }
-        };
-        dispatch({
-          type: 'UPDATE_PLAYER_MONSTER',
-          monster: updatedMonster
-        });
-        addLog(`🌊 Waded through water! Took ${damage} damage!`, 'damage');
-        if (newHp <= 0) {
-          dispatch({
-            type: 'END_RUN',
-            victory: false
-          });
-          dispatch({
-            type: 'SET_PHASE',
-            phase: 'run_summary'
-          });
         }
       }
     } else if (result.shop) {

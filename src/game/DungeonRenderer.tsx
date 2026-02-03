@@ -1,4 +1,4 @@
-// Enhanced Dungeon Renderer with visual tiles - Bright Anime Style
+// Enhanced Dungeon Renderer with hand-drawn ink/watercolor tile graphics
 
 import { forwardRef, useEffect, useRef, useImperativeHandle } from 'react';
 import { DungeonState, DungeonTile, TileType, ElementType, ClassType, Monster, SpeciesType, SPECIES_DATA, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED, TrapType, PlantType, UnlockedMonster } from './types';
@@ -6,6 +6,18 @@ import { CRAFTING_MATERIALS } from './equipment';
 import { MonsterSprite } from './sprites';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TERRAIN_CONFIG } from './terrain';
+import { 
+  FloorTile, 
+  WallTile, 
+  TerrainTile, 
+  StairsTile, 
+  TreasureTile, 
+  TrapTile, 
+  PlantTile, 
+  ShopTile, 
+  ElevatorTile,
+  DoorTile 
+} from './TileGraphics';
 
 // Check if a monster combo has been captured at equal or lower level
 function isCaptured(enemy: Monster, unlockedMonsters: UnlockedMonster[]): {
@@ -75,154 +87,43 @@ export interface DungeonRendererHandle {
   scrollToPlayer: () => void;
 }
 
-// Tile visual configurations - Bright anime colors
-const TILE_VISUALS: Record<TileType, {
-  bg: string;
-  content: string;
-  glow?: string;
-}> = {
-  floor: {
-    bg: 'bg-tile-floor',
-    content: ''
-  },
-  wall: {
-    bg: 'bg-tile-wall',
-    content: ''
-  },
-  door: {
-    bg: 'bg-tile-floor',
-    content: '🚪'
-  },
-  stairs: {
-    bg: 'bg-gradient-to-br from-amber-200 to-yellow-300',
-    content: '⬇️',
-    glow: 'shadow-lg shadow-amber-300/50'
-  },
-  trap: {
-    bg: 'bg-red-200/80',
-    content: '⚠️'
-  },
-  treasure: {
-    bg: 'bg-gradient-to-br from-yellow-100 to-amber-200',
-    content: '💎',
-    glow: 'shadow-lg shadow-yellow-300/50'
-  },
-  enemy: {
-    bg: 'bg-tile-visible',
-    content: ''
-  },
-  player: {
-    bg: 'bg-gradient-to-br from-pink-200 to-primary/30',
-    content: ''
-  },
-  shop: {
-    bg: 'bg-gradient-to-br from-green-200 to-emerald-300',
-    content: '🏪',
-    glow: 'shadow-lg shadow-green-300/50'
-  },
-  terrain: {
-    bg: 'bg-gradient-to-br from-blue-300 to-cyan-400', // Default, overridden by terrain type
-    content: '🌊',
-    glow: 'shadow-md shadow-blue-400/40'
-  },
-  plant: {
-    bg: 'bg-gradient-to-br from-green-100 to-emerald-200',
-    content: '🌿',
-    glow: 'shadow-md shadow-green-300/40'
-  },
-  elevator: {
-    bg: 'bg-gradient-to-br from-indigo-200 to-violet-300',
-    content: '🛗',
-    glow: 'shadow-lg shadow-violet-400/50'
-  }
-};
-
-// Trap info for tooltips and visuals
+// Trap info for tooltips
 const TRAP_INFO: Record<TrapType, {
   name: string;
   icon: string;
   description: string;
-  color: string;
 }> = {
   spike: {
     name: 'Spike Trap',
     icon: '🔺',
     description: 'Deals physical damage when triggered',
-    color: 'from-red-200 to-red-300'
   },
   poison: {
     name: 'Poison Trap',
     icon: '☠️',
     description: 'Inflicts poison status when triggered',
-    color: 'from-purple-200 to-purple-300'
   },
   alarm: {
     name: 'Alarm Trap',
     icon: '🔔',
     description: 'Alerts nearby enemies when triggered',
-    color: 'from-yellow-200 to-orange-300'
   }
 };
 
-// Plant info for tooltips and visuals
+// Plant info for tooltips
 function getPlantInfo(plantType: PlantType): {
   name: string;
   icon: string;
   description: string;
   rarity: string;
-  color: string;
 } {
   const material = CRAFTING_MATERIALS.find(m => m.id === plantType);
-  const rarityColors: Record<string, string> = {
-    common: 'from-green-100 to-green-200',
-    uncommon: 'from-emerald-100 to-teal-200',
-    rare: 'from-amber-100 to-yellow-200',
-    epic: 'from-purple-100 to-violet-200'
-  };
   return {
     name: material?.name || plantType,
     icon: material?.icon || '🌿',
     description: material?.description || 'A harvestable plant.',
     rarity: material?.rarity || 'common',
-    color: rarityColors[material?.rarity || 'common'] || rarityColors.common
   };
-}
-function getWallVariant(x: number, y: number, tiles: DungeonTile[][]): string {
-  const hash = (x * 7 + y * 13) % 4;
-  const baseClasses = 'bg-tile-wall';
-
-  // Check if this is an edge wall (adjacent to floor)
-  const isEdge = y > 0 && tiles[y - 1]?.[x]?.type !== 'wall' || y < tiles.length - 1 && tiles[y + 1]?.[x]?.type !== 'wall' || x > 0 && tiles[y]?.[x - 1]?.type !== 'wall' || x < tiles[y].length - 1 && tiles[y]?.[x + 1]?.type !== 'wall';
-  if (isEdge) {
-    return `${baseClasses} border-2 border-muted-foreground/20`;
-  }
-
-  // Interior walls get subtle variation
-  switch (hash) {
-    case 0:
-      return `${baseClasses} opacity-95`;
-    case 1:
-      return `${baseClasses} opacity-90`;
-    case 2:
-      return `${baseClasses} opacity-85`;
-    default:
-      return baseClasses;
-  }
-}
-
-// Floor texture variation
-function getFloorVariant(x: number, y: number, visible: boolean): string {
-  const hash = (x * 11 + y * 17) % 6;
-  const baseClasses = visible ? 'bg-tile-visible' : 'bg-tile-explored';
-
-  // Occasional floor details
-  if (hash === 0) {
-    return `${baseClasses} opacity-90`;
-  }
-  if (hash === 1 && visible) {
-    return `${baseClasses} opacity-95`;
-  }
-  return baseClasses;
 }
 interface TileProps {
   tile: DungeonTile;
@@ -273,30 +174,39 @@ function Tile({
     return <div className="flex items-center justify-center bg-background" style={tileStyle} onClick={onClick} />;
   }
 
-  // Wall tiles - texture fills the entire tile
+  const tileSeed = x * 127 + y * 311; // Consistent seed per tile position
+
+  // Wall tiles - SVG ink texture
   if (tile.type === 'wall') {
     return (
-      <div className={`flex items-center justify-center overflow-hidden ${getWallVariant(x, y, tiles)}`} style={tileStyle}>
-        {tile.visible && (
-          <span 
-            className="text-muted-foreground/30 flex items-center justify-center w-full h-full" 
-            style={{ fontSize: `${tileSize * 1.4}px`, lineHeight: 0.8 }}
-          >
-            ▓
-          </span>
+      <div className={`flex items-center justify-center overflow-hidden ${pathOverlayClass}`} style={tileStyle}>
+        {tile.visible ? (
+          <WallTile size={tileSize} seed={tileSeed} />
+        ) : (
+          <div className="w-full h-full bg-tile-wall opacity-60" />
         )}
       </div>
     );
   }
 
-  // Player tile - show player's monster sprite
+  // Player tile - show player's monster sprite on floor graphic
   if (isPlayer && playerElement && playerSpecies) {
-    return <div className={`flex items-center justify-center bg-gradient-to-br from-pink-100 to-primary/20 ${tile.visible ? 'ring-2 ring-primary shadow-lg shadow-primary/30' : ''}`} style={tileStyle}>
-        <MonsterSprite species={playerSpecies} element={playerElement} classType={playerClass || 'normal'} size={spriteSize} />
-      </div>;
+    return (
+      <div 
+        className={`flex items-center justify-center relative ${tile.visible ? 'ring-2 ring-primary shadow-lg shadow-primary/30' : ''}`} 
+        style={tileStyle}
+      >
+        <div className="absolute inset-0">
+          <FloorTile size={tileSize} seed={tileSeed} />
+        </div>
+        <div className="relative z-10">
+          <MonsterSprite species={playerSpecies} element={playerElement} classType={playerClass || 'normal'} size={spriteSize} />
+        </div>
+      </div>
+    );
   }
 
-  // Enemy tiles - show monster sprite with enhanced tooltip
+  // Enemy tiles - show monster sprite with enhanced tooltip on floor background
   if (tile.type === 'enemy' && tile.enemyId && tile.visible) {
     const enemy = enemies.find(e => e.id === tile.enemyId);
     if (enemy) {
@@ -308,11 +218,16 @@ function Tile({
       return <Tooltip>
           <TooltipTrigger asChild>
             <div 
-              className={`flex items-center justify-center ${getFloorVariant(x, y, true)} relative hover:scale-110 transition-transform cursor-pointer`} 
+              className={`flex items-center justify-center relative hover:scale-110 transition-transform cursor-pointer`} 
               style={tileStyle}
               onClick={onClick}
             >
-              <MonsterSprite species={enemy.species} element={enemy.element} classType={enemy.class} size={spriteSize} />
+              <div className="absolute inset-0">
+                <FloorTile size={tileSize} seed={tileSeed} />
+              </div>
+              <div className="relative z-10">
+                <MonsterSprite species={enemy.species} element={enemy.element} classType={enemy.class} size={spriteSize} />
+              </div>
             </div>
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-[260px] p-3">
@@ -427,12 +342,12 @@ function Tile({
     };
     return <Tooltip>
         <TooltipTrigger asChild>
-          <div className={`flex items-center justify-center bg-gradient-to-br ${trapInfo.color} ${isTriggered ? 'opacity-50' : 'cursor-pointer hover:scale-110'} transition-transform`} style={tileStyle} onContextMenu={handleRightClick}>
-            <span style={{
-            fontSize: `${Math.max(10, tileSize * 0.5)}px`
-          }}>
-              {isTriggered ? '✓' : trapInfo.icon}
-            </span>
+          <div 
+            className={`flex items-center justify-center relative ${isTriggered ? 'opacity-50' : 'cursor-pointer hover:scale-105'} transition-transform`} 
+            style={tileStyle} 
+            onContextMenu={handleRightClick}
+          >
+            <TrapTile size={tileSize} trapType={trapType} triggered={isTriggered} seed={tileSeed} />
           </div>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-[220px] p-2">
@@ -457,12 +372,12 @@ function Tile({
     
     return <Tooltip>
         <TooltipTrigger asChild>
-          <div className={`flex items-center justify-center bg-gradient-to-br ${plantInfo.color} ${isHarvested ? 'opacity-40' : 'cursor-pointer hover:scale-110'} transition-transform ${pathOverlayClass}`} style={tileStyle} onClick={onClick}>
-            <span style={{
-            fontSize: `${Math.max(10, tileSize * 0.5)}px`
-          }}>
-              {isHarvested ? '·' : plantInfo.icon}
-            </span>
+          <div 
+            className={`flex items-center justify-center relative ${isHarvested ? 'opacity-60' : 'cursor-pointer hover:scale-105'} transition-transform ${pathOverlayClass}`} 
+            style={tileStyle} 
+            onClick={onClick}
+          >
+            <PlantTile size={tileSize} plantType={tile.plantType} harvested={isHarvested} seed={tileSeed} />
           </div>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-[220px] p-2">
@@ -488,20 +403,18 @@ function Tile({
       </Tooltip>;
   }
 
-  // Terrain tiles with dynamic visuals and tooltips
+  // Terrain tiles with SVG watercolor graphics and tooltips
   if (tile.type === 'terrain' && tile.visible && tile.terrainType) {
     const terrainConfig = TERRAIN_CONFIG[tile.terrainType];
     
     return <Tooltip>
       <TooltipTrigger asChild>
         <div 
-          className={`flex items-center justify-center bg-gradient-to-br ${terrainConfig.color.from} ${terrainConfig.color.to} shadow-md ${terrainConfig.glowColor} ${pathOverlayClass} cursor-pointer hover:brightness-110`} 
+          className={`flex items-center justify-center relative ${pathOverlayClass} cursor-pointer hover:brightness-110`} 
           style={tileStyle}
           onClick={onClick}
         >
-          <span style={{ fontSize: `${Math.max(10, tileSize * 0.5)}px` }}>
-            {terrainConfig.icon}
-          </span>
+          <TerrainTile size={tileSize} terrainType={tile.terrainType} seed={tileSeed} />
         </div>
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-[240px] p-2">
@@ -520,10 +433,7 @@ function Tile({
     </Tooltip>;
   }
 
-  // Special tiles with tooltips (excluding traps and terrain which are handled above)
-  const visual = TILE_VISUALS[tile.type];
-  const floorClass = getFloorVariant(x, y, tile.visible);
-
+  // Special tiles with SVG graphics and tooltips
   // Tiles that should have tooltips
   const tileTooltips: Partial<Record<TileType, {
     title: string;
@@ -540,16 +450,48 @@ function Tile({
     shop: {
       title: '🏪 Shop',
       description: 'Buy items and equipment'
+    },
+    elevator: {
+      title: '🛗 Elevator',
+      description: 'Send party members back to town'
+    },
+    door: {
+      title: '🚪 Door',
+      description: 'A passageway'
     }
   };
+  
   const tooltipInfo = tile.visible ? tileTooltips[tile.type] : null;
-  if (tooltipInfo) {
+  
+  // Render special tile types with SVG graphics
+  const renderSpecialTile = () => {
+    switch (tile.type) {
+      case 'treasure':
+        return <TreasureTile size={tileSize} seed={tileSeed} />;
+      case 'stairs':
+        return <StairsTile size={tileSize} seed={tileSeed} />;
+      case 'shop':
+        return <ShopTile size={tileSize} seed={tileSeed} />;
+      case 'elevator':
+        return <ElevatorTile size={tileSize} seed={tileSeed} />;
+      case 'door':
+        return <DoorTile size={tileSize} seed={tileSeed} />;
+      default:
+        return null;
+    }
+  };
+  
+  const specialTileGraphic = tile.visible ? renderSpecialTile() : null;
+  
+  if (tooltipInfo && specialTileGraphic) {
     return <Tooltip>
         <TooltipTrigger asChild>
-          <div className={`flex items-center justify-center ${tile.type === 'floor' ? floorClass : visual.bg} ${visual.glow || ''} cursor-pointer`} style={tileStyle}>
-            {visual.content && <span style={{
-            fontSize: `${Math.max(10, tileSize * 0.5)}px`
-          }}>{visual.content}</span>}
+          <div 
+            className={`flex items-center justify-center relative cursor-pointer hover:scale-105 transition-transform ${pathOverlayClass}`} 
+            style={tileStyle}
+            onClick={onClick}
+          >
+            {specialTileGraphic}
           </div>
         </TooltipTrigger>
         <TooltipContent side="top" className="p-2">
@@ -558,17 +500,30 @@ function Tile({
         </TooltipContent>
       </Tooltip>;
   }
-  return <div className={`flex items-center justify-center ${tile.type === 'floor' ? floorClass : visual.bg} ${visual.glow || ''} ${pathOverlayClass} ${onClick ? 'cursor-pointer hover:brightness-110' : ''}`} style={tileStyle} onClick={onClick}>
-      {tile.visible && visual.content && <span style={{
-      fontSize: `${Math.max(10, tileSize * 0.5)}px`
-    }}>{visual.content}</span>}
-      {tile.visible && tile.type === 'floor' && !isOnPath && <span className="text-muted-foreground/20" style={{
-      fontSize: `${Math.max(4, tileSize * 0.2)}px`
-    }}>·</span>}
-      {isOnPath && <span className="text-amber-400" style={{
-      fontSize: `${Math.max(6, tileSize * 0.3)}px`
-    }}>•</span>}
-    </div>;
+  
+  // Floor tiles with SVG graphics
+  return (
+    <div 
+      className={`flex items-center justify-center relative ${pathOverlayClass} ${onClick ? 'cursor-pointer hover:brightness-110' : ''}`} 
+      style={tileStyle} 
+      onClick={onClick}
+    >
+      {tile.visible ? (
+        <>
+          <FloorTile size={tileSize} seed={tileSeed} />
+          {isOnPath && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-amber-600" style={{ fontSize: `${Math.max(6, tileSize * 0.3)}px` }}>•</span>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="w-full h-full bg-tile-explored opacity-70">
+          <FloorTile size={tileSize} seed={tileSeed} />
+        </div>
+      )}
+    </div>
+  );
 }
 export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRendererProps>(({
   dungeon,

@@ -6,114 +6,122 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 20%;
+    /* Sepia-toned parchment theme */
+    --background: 40 30% 92%;
+    --foreground: 30 25% 20%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 20%;
+    --card: 42 35% 95%;
+    --card-foreground: 30 25% 20%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 20%;
+    --popover: 42 35% 95%;
+    --popover-foreground: 30 25% 20%;
 
     --primary: 330 85% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 200 95% 65%;
-    --secondary-foreground: 222 47% 15%;
+    --secondary: 200 70% 55%;
+    --secondary-foreground: 30 25% 15%;
 
-    --muted: 210 30% 92%;
-    --muted-foreground: 220 15% 45%;
+    --muted: 38 25% 88%;
+    --muted-foreground: 30 15% 45%;
 
-    --accent: 45 95% 60%;
-    --accent-foreground: 222 47% 15%;
+    --accent: 45 80% 55%;
+    --accent-foreground: 30 25% 15%;
 
-    --destructive: 0 75% 55%;
+    --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 20% 85%;
-    --input: 220 20% 90%;
+    --border: 35 20% 78%;
+    --input: 38 25% 88%;
     --ring: 330 85% 60%;
 
     --radius: 0.75rem;
 
-    /* Element Colors - Bright and saturated */
-    --element-fire: 15 95% 55%;
-    --element-fire-glow: 25 100% 65%;
-    --element-water: 200 90% 55%;
-    --element-water-glow: 190 95% 65%;
-    --element-earth: 35 80% 45%;
-    --element-earth-glow: 30 85% 55%;
-    --element-air: 175 70% 60%;
-    --element-air-glow: 180 80% 70%;
-    --element-void: 270 70% 55%;
-    --element-void-glow: 280 75% 65%;
+    /* Element Colors - Watercolor style */
+    --element-fire: 15 80% 50%;
+    --element-fire-glow: 25 85% 60%;
+    --element-water: 190 70% 50%;
+    --element-water-glow: 185 75% 60%;
+    --element-earth: 35 60% 40%;
+    --element-earth-glow: 30 65% 50%;
+    --element-air: 175 50% 55%;
+    --element-air-glow: 180 60% 65%;
+    --element-void: 270 55% 45%;
+    --element-void-glow: 280 60% 55%;
 
-    /* Class Colors - Vibrant */
-    --class-kinetic: 0 0% 55%;
-    --class-energy: 55 90% 55%;
-    --class-biological: 140 70% 45%;
-    --class-chemical: 290 75% 55%;
-    --class-political: 210 80% 55%;
+    /* Class Colors - Ink wash style */
+    --class-kinetic: 0 5% 45%;
+    --class-energy: 50 75% 50%;
+    --class-biological: 140 55% 40%;
+    --class-chemical: 290 60% 50%;
+    --class-political: 210 65% 50%;
 
-    /* Stats Colors - Cheerful */
-    --stat-hp: 350 85% 55%;
-    --stat-attack: 25 90% 55%;
-    --stat-defense: 210 75% 55%;
-    --stat-speed: 160 80% 45%;
-    --stat-special: 280 70% 60%;
+    /* Stats Colors */
+    --stat-hp: 350 70% 50%;
+    --stat-attack: 25 75% 50%;
+    --stat-defense: 210 60% 50%;
+    --stat-speed: 160 65% 40%;
+    --stat-special: 280 55% 55%;
 
-    /* Dungeon Colors - Light and airy */
-    --tile-floor: 45 30% 92%;
-    --tile-wall: 220 25% 75%;
-    --tile-explored: 45 20% 88%;
-    --tile-visible: 45 40% 95%;
+    /* Dungeon Colors - Sepia parchment */
+    --tile-floor: 40 35% 88%;
+    --tile-wall: 220 15% 35%;
+    --tile-explored: 38 25% 80%;
+    --tile-visible: 42 40% 92%;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 47% 25%;
+    --sidebar-background: 42 30% 95%;
+    --sidebar-foreground: 30 25% 25%;
     --sidebar-primary: 330 85% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 200 95% 92%;
-    --sidebar-accent-foreground: 222 47% 20%;
-    --sidebar-border: 220 20% 88%;
+    --sidebar-accent: 38 35% 90%;
+    --sidebar-accent-foreground: 30 25% 20%;
+    --sidebar-border: 35 20% 82%;
     --sidebar-ring: 330 85% 60%;
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
+    /* Dark sepia/parchment theme */
+    --background: 30 20% 12%;
+    --foreground: 40 30% 90%;
 
-    --card: 222 47% 15%;
-    --card-foreground: 210 40% 98%;
+    --card: 30 18% 16%;
+    --card-foreground: 40 30% 90%;
 
-    --popover: 222 47% 13%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 30 18% 14%;
+    --popover-foreground: 40 30% 90%;
 
     --primary: 330 85% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 200 95% 55%;
+    --secondary: 200 70% 50%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 220 25% 20%;
-    --muted-foreground: 220 15% 55%;
+    --muted: 30 15% 22%;
+    --muted-foreground: 35 20% 55%;
 
-    --accent: 45 95% 55%;
-    --accent-foreground: 222 47% 15%;
+    --accent: 45 80% 50%;
+    --accent-foreground: 30 20% 12%;
 
-    --destructive: 0 75% 55%;
+    --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 20% 25%;
-    --input: 220 20% 20%;
+    --border: 30 15% 28%;
+    --input: 30 15% 22%;
     --ring: 330 85% 60%;
     
-    --sidebar-background: 222 47% 13%;
-    --sidebar-foreground: 210 40% 90%;
+    /* Dark dungeon tiles */
+    --tile-floor: 35 20% 25%;
+    --tile-wall: 220 12% 22%;
+    --tile-explored: 32 15% 20%;
+    --tile-visible: 38 25% 30%;
+    
+    --sidebar-background: 30 18% 14%;
+    --sidebar-foreground: 40 25% 85%;
     --sidebar-primary: 330 85% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 25% 20%;
-    --sidebar-accent-foreground: 210 40% 90%;
-    --sidebar-border: 220 20% 25%;
+    --sidebar-accent: 30 15% 22%;
+    --sidebar-accent-foreground: 40 25% 85%;
+    --sidebar-border: 30 15% 28%;
     --sidebar-ring: 330 85% 60%;
   }
 }

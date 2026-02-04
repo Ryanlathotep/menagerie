@@ -570,59 +570,52 @@ function DungeonView({
     }
   }, [dungeon, dispatch]);
   
-  // Reset respawn timer when floor changes
+  // Reset respawn counter when floor changes
   useEffect(() => {
     if (dungeon && dungeon.floor !== lastFloorRef.current) {
       lastFloorRef.current = dungeon.floor;
-      setRespawnInterval(RESPAWN_CONFIG.baseInterval);
-      addLog('🔄 Respawn timer reset on new floor.', 'system');
+      setStepsSinceLastSpawn(0);
+      setRespawnStepThreshold(RESPAWN_CONFIG.baseSteps);
+      addLog('🔄 Respawn counter reset on new floor.', 'system');
     }
   }, [dungeon?.floor, addLog]);
   
-  // Respawn timer - spawns monsters in hidden rooms over time
-  useEffect(() => {
+  // Step-based respawn check - called when player moves
+  const checkStepRespawn = useCallback(() => {
     if (!dungeon) return;
     
-    // Clear existing timer
-    if (respawnTimerRef.current) {
-      clearTimeout(respawnTimerRef.current);
-    }
+    const newStepCount = stepsSinceLastSpawn + 1;
     
-    const scheduleRespawn = () => {
-      respawnTimerRef.current = setTimeout(() => {
-        // Attempt to spawn a monster
-        const result = spawnMonsterInHiddenRoom(dungeon);
+    if (shouldRespawn(newStepCount, respawnStepThreshold)) {
+      // Attempt to spawn a monster
+      const result = spawnMonsterInHiddenRoom(dungeon);
+      
+      if (result.spawned && result.monster) {
+        dispatch({
+          type: 'SET_DUNGEON',
+          dungeon: result.dungeon
+        });
         
-        if (result.spawned && result.monster) {
-          dispatch({
-            type: 'SET_DUNGEON',
-            dungeon: result.dungeon
-          });
-          
-          // Check if we should warn about attracting attention
-          const nextInterval = calculateNextInterval(respawnInterval);
-          if (shouldWarnAttention(nextInterval) && !shouldWarnAttention(respawnInterval)) {
-            addLog('⚠️ You are attracting more attention! Monsters spawn faster now.', 'status');
-          } else if (getAttentionLevel(nextInterval) > 0.8) {
-            addLog('🚨 The dungeon is swarming with activity!', 'status');
-          } else {
-            addLog(`👁️ Something stirs in the darkness...`, 'info');
-          }
-          
-          setRespawnInterval(nextInterval);
+        // Check if we should warn about attracting attention
+        const nextThreshold = calculateNextStepThreshold(respawnStepThreshold);
+        if (shouldWarnAttention(nextThreshold) && !shouldWarnAttention(respawnStepThreshold)) {
+          addLog('⚠️ You are attracting more attention! Monsters spawn faster now.', 'status');
+        } else if (getAttentionLevel(nextThreshold) > 0.8) {
+          addLog('🚨 The dungeon is swarming with activity!', 'status');
+        } else {
+          addLog(`👁️ Something stirs in the darkness...`, 'info');
         }
-        // If no spawn location, the timer will re-trigger on next dungeon update
-      }, respawnInterval);
-    };
-    
-    scheduleRespawn();
-    
-    return () => {
-      if (respawnTimerRef.current) {
-        clearTimeout(respawnTimerRef.current);
+        
+        setRespawnStepThreshold(nextThreshold);
+        setStepsSinceLastSpawn(0); // Reset step counter after spawn
+      } else {
+        // No spawn location available, keep counting
+        setStepsSinceLastSpawn(newStepCount);
       }
-    };
-  }, [dungeon, respawnInterval, dispatch, addLog]);
+    } else {
+      setStepsSinceLastSpawn(newStepCount);
+    }
+  }, [dungeon, stepsSinceLastSpawn, respawnStepThreshold, dispatch, addLog]);
   const handleMove = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
     if (!dungeon || !state.run) return;
     const result = movePlayer(dungeon, direction);

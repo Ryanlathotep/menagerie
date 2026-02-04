@@ -49,9 +49,10 @@ import { isMonsterFavoredOnTerrain, calculateTerrainDamage, TERRAIN_CONFIG } fro
 import { 
   RESPAWN_CONFIG, 
   spawnMonsterInHiddenRoom,
-  calculateNextInterval, 
+  calculateNextStepThreshold, 
   shouldWarnAttention,
   getAttentionLevel,
+  shouldRespawn,
 } from '@/game/respawnSystem';
 import { TownShop } from '@/game/TownShop';
 import { ElevatorModal } from '@/game/ElevatorModal';

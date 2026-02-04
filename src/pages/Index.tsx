@@ -552,10 +552,10 @@ function DungeonView({
   const [showDungeonReviveModal, setShowDungeonReviveModal] = useState(false);
   const [pendingDungeonReviveItem, setPendingDungeonReviveItem] = useState<InventoryItem | null>(null);
   
-  // Respawn timer state - tracks interval acceleration per floor
-  const [respawnInterval, setRespawnInterval] = useState(RESPAWN_CONFIG.baseInterval);
+  // Respawn state - tracks steps and threshold for step-based spawning
+  const [stepsSinceLastSpawn, setStepsSinceLastSpawn] = useState(0);
+  const [respawnStepThreshold, setRespawnStepThreshold] = useState(RESPAWN_CONFIG.baseSteps);
   const lastFloorRef = useRef<number>(dungeon?.floor ?? 1);
-  const respawnTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Ref for enemy processing to avoid circular dependency
   const processEnemyTurnsRef = useRef<((dungeon: import('@/game/types').DungeonState | null) => void) | null>(null);

@@ -1,16 +1,15 @@
-// Respawn system - spawns new monsters in unseen rooms over time
-// Timer accelerates the longer player stays on a floor
+// Respawn system - spawns new monsters in unseen rooms based on steps taken
+// Spawn rate accelerates the more steps player takes on a floor
 
 import { DungeonState, DungeonTile, Monster, SpeciesType, Position } from './types';
 import { generateRandomMonster } from './utils';
-import { generateId } from './utils';
 
-// Respawn configuration
+// Respawn configuration (step-based)
 export const RESPAWN_CONFIG = {
-  baseInterval: 30000,      // 30 seconds initial respawn interval
-  minInterval: 8000,        // 8 seconds minimum (fastest spawn rate)
-  accelerationRate: 0.92,   // Multiply interval by this each spawn
-  warningThreshold: 0.7,    // Show "attracting attention" when interval is below this % of base
+  baseSteps: 25,            // 25 steps before first respawn
+  minSteps: 8,              // 8 steps minimum (fastest spawn rate)
+  accelerationRate: 0.85,   // Multiply steps by this each spawn
+  warningThreshold: 0.7,    // Show "attracting attention" when steps below this % of base
 };
 
 // Get species available for the current floor
@@ -91,23 +90,26 @@ export function spawnMonsterInHiddenRoom(dungeon: DungeonState): {
   };
 }
 
-// Calculate the next respawn interval based on time spent on floor
-export function calculateNextInterval(
-  currentInterval: number,
-): number {
-  const nextInterval = currentInterval * RESPAWN_CONFIG.accelerationRate;
-  return Math.max(RESPAWN_CONFIG.minInterval, nextInterval);
+// Calculate the next respawn step threshold based on steps taken on floor
+export function calculateNextStepThreshold(currentThreshold: number): number {
+  const nextThreshold = Math.floor(currentThreshold * RESPAWN_CONFIG.accelerationRate);
+  return Math.max(RESPAWN_CONFIG.minSteps, nextThreshold);
 }
 
 // Check if player should be warned about attracting attention
-export function shouldWarnAttention(currentInterval: number): boolean {
-  const threshold = RESPAWN_CONFIG.baseInterval * RESPAWN_CONFIG.warningThreshold;
-  return currentInterval <= threshold;
+export function shouldWarnAttention(currentThreshold: number): boolean {
+  const threshold = RESPAWN_CONFIG.baseSteps * RESPAWN_CONFIG.warningThreshold;
+  return currentThreshold <= threshold;
 }
 
 // Get attention level for UI display (0 = safe, 1 = max danger)
-export function getAttentionLevel(currentInterval: number): number {
-  const range = RESPAWN_CONFIG.baseInterval - RESPAWN_CONFIG.minInterval;
-  const fromMin = currentInterval - RESPAWN_CONFIG.minInterval;
+export function getAttentionLevel(currentThreshold: number): number {
+  const range = RESPAWN_CONFIG.baseSteps - RESPAWN_CONFIG.minSteps;
+  const fromMin = currentThreshold - RESPAWN_CONFIG.minSteps;
   return 1 - (fromMin / range);
+}
+
+// Check if a respawn should occur based on steps taken
+export function shouldRespawn(stepsTaken: number, stepThreshold: number): boolean {
+  return stepsTaken >= stepThreshold;
 }

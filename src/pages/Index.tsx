@@ -809,6 +809,11 @@ function DungeonView({
       addLog(`🌿 Harvested ${result.plant.plantType.split('_').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}!`, 'loot');
     }
     
+    // Check for step-based respawn (only on successful moves)
+    if (!result.blocked) {
+      checkStepRespawn();
+    }
+    
     // Process enemy turns after player moves (if not entering battle/shop/etc.)
     if (!result.blocked && !result.encounter && !result.shop && !result.elevator && !result.stairs) {
       // Delay enemy processing slightly to allow UI update
@@ -816,7 +821,7 @@ function DungeonView({
         processEnemyTurnsRef.current?.(result.dungeon);
       }, 100);
     }
-  }, [dungeon, dispatch, state.run]);
+  }, [dungeon, dispatch, state.run, checkStepRespawn]);
   // Use refs to always have fresh state for auto-run (avoids stale closures)
   const dungeonRef = useRef(dungeon);
   const handleMoveRef = useRef(handleMove);

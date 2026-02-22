@@ -20,6 +20,7 @@ interface OverworldRendererProps {
   playerSpecies?: string;
   zoom?: number;
   unlockedMonsters?: UnlockedMonster[];
+  party?: Monster[];
   onTileClick?: (worldX: number, worldY: number) => void;
   onTileRightClick?: (worldX: number, worldY: number) => void;
   // Targeting
@@ -71,6 +72,7 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
   playerSpecies,
   zoom = 100,
   unlockedMonsters = [],
+  party = [],
   onTileClick,
   onTileRightClick,
   targetingMode,
@@ -214,6 +216,20 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
                   />
                 </div>
               ) : null}
+              {/* Assigned monster on scout towers */}
+              {tile.type === 'player_building' && playerBuilding?.type === 'scout_tower' && playerBuilding.assignedMonsterId && (() => {
+                const assigned = party.find(m => m.id === playerBuilding.assignedMonsterId);
+                return assigned ? (
+                  <div className="absolute inset-0 flex items-end justify-center" style={{ paddingBottom: tileSize * 0.05 }}>
+                    <MonsterSprite
+                      species={assigned.species}
+                      element={assigned.element}
+                      classType={assigned.class}
+                      size={tileSize * 0.5}
+                    />
+                  </div>
+                ) : null;
+              })()}
             </div>
           );
         })}

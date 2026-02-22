@@ -46,6 +46,8 @@ import { ScrollText } from 'lucide-react';
 import { toast } from 'sonner';
 import { EvolvedMove } from './moveMastery';
 import { CombatEffects } from './statusEffects';
+import { BuildingAssignModal } from './BuildingAssignModal';
+import { FARM_OUTPUTS, FARM_GROWTH_STEPS } from './buildings';
 
 interface OverworldViewProps {
   gameLog: LogMessage[];
@@ -93,6 +95,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [buildMode, setBuildMode] = useState(false);
   const [selectedBuildType, setSelectedBuildType] = useState<PlayerBuildingType | null>(null);
   const [showBuildPanel, setShowBuildPanel] = useState(false);
+  
+  // Monster assignment modal state
+  const [assignBuilding, setAssignBuilding] = useState<PlayerBuilding | null>(null);
   
   // Targeting state
   const [targetingMove, setTargetingMove] = useState<Move | null>(null);
@@ -230,8 +235,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             }
             result.building.harvestReady = false;
             result.building.harvestOutput = [];
-            result.building.growthProgress = 30;
+            result.building.growthProgress = FARM_GROWTH_STEPS;
             toast.success('Farm harvested!');
+          }
+          // Show assign modal for towers and farms
+          if (result.building.type === 'scout_tower' || result.building.type === 'farm') {
+            setAssignBuilding(result.building);
           }
           break;
       }
@@ -531,6 +540,15 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
     }
     
+    // Click on player building (scout tower / farm) to open assign modal
+    if (tile?.type === 'player_building' && tile.playerBuildingId) {
+      const building = overworld.playerBuildings?.find(b => b.id === tile.playerBuildingId);
+      if (building && (building.type === 'scout_tower' || building.type === 'farm')) {
+        setAssignBuilding(building);
+        return;
+      }
+    }
+    
     // Normal movement to adjacent tile
     const dx = worldX - overworld.playerPosition.x;
     const dy = worldY - overworld.playerPosition.y;
@@ -770,6 +788,53 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const baseInfo = BUILDING_UPGRADES[overworld.homeBase.buildingType];
   const canUpgrade = canUpgradeBase(overworld);
   const upgradeInfo = baseInfo.next ? BUILDING_UPGRADES[baseInfo.next] : null;
+  
+  // Get IDs of monsters already assigned to buildings
+  const assignedMonsterIds = (overworld.playerBuildings || [])
+    .filter(b => b.assignedMonsterId && (!assignBuilding || b.id !== assignBuilding.id))
+    .map(b => b.assignedMonsterId!);
+  
+  const handleAssignMonster = useCallback((monsterId: string) => {
+    if (!assignBuilding || !state.run) return;
+    setOverworld(prev => {
+      const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
+      const b = newOw.playerBuildings?.find(pb => pb.id === assignBuilding.id);
+      if (!b) return prev;
+      b.assignedMonsterId = monsterId;
+      // For farms, set element based on the monster
+      if (b.type === 'farm') {
+        const m = state.run!.party.find(p => p.id === monsterId);
+        if (m) {
+          b.farmElement = m.element;
+          b.growthProgress = FARM_GROWTH_STEPS;
+          b.harvestReady = false;
+        }
+      }
+      addLog(`🐾 Assigned monster to ${BUILDING_DEFINITIONS[b.type].name}!`, 'system');
+      toast.success('Monster assigned!');
+      saveOverworld(newOw);
+      return newOw;
+    });
+    setAssignBuilding(null);
+  }, [assignBuilding, state.run, addLog, saveOverworld]);
+  
+  const handleUnassignMonster = useCallback(() => {
+    if (!assignBuilding) return;
+    setOverworld(prev => {
+      const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
+      const b = newOw.playerBuildings?.find(pb => pb.id === assignBuilding.id);
+      if (!b) return prev;
+      b.assignedMonsterId = undefined;
+      b.farmElement = undefined;
+      b.growthProgress = undefined;
+      b.harvestReady = false;
+      b.harvestOutput = undefined;
+      addLog(`🐾 Removed monster from ${BUILDING_DEFINITIONS[b.type].name}.`, 'system');
+      saveOverworld(newOw);
+      return newOw;
+    });
+    setAssignBuilding(null);
+  }, [assignBuilding, addLog, saveOverworld]);
   
   // Dynamic bottom positioning matching DungeonView
   const dungeonBottomStyle = menuOpen 
@@ -1096,6 +1161,19 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           Cancel (ESC)
         </Button>
       </div>
+    )}
+    
+    {/* Monster Assignment Modal */}
+    {assignBuilding && state.run && (
+      <BuildingAssignModal
+        building={assignBuilding}
+        party={state.run.party}
+        activePartyIndex={state.run.activePartyIndex}
+        assignedMonsterIds={assignedMonsterIds}
+        onAssign={handleAssignMonster}
+        onUnassign={handleUnassignMonster}
+        onClose={() => setAssignBuilding(null)}
+      />
     )}
   </>;
 }

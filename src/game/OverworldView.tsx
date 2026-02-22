@@ -53,6 +53,7 @@ export function OverworldView({ addLog }: OverworldViewProps) {
   const handleMove = useCallback((dx: number, dy: number) => {
     setOverworld(prev => {
       const newState = JSON.parse(JSON.stringify(prev)) as OverworldState;
+      ensureChunksLoaded(newState, newState.playerPosition.x + dx, newState.playerPosition.y + dy);
       const result = movePlayer(newState, dx, dy);
       
       switch (result.type) {

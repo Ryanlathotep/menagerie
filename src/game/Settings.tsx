@@ -14,7 +14,7 @@ import { AdminPanel } from '@/admin/AdminPanel';
 // Settings interface
 export interface GameSettings {
   autoRunDelay: number;      // ms for double-tap detection (100-500)
-  autoRunSpeed: number;      // ms between auto-run steps (50-200)
+  autoRunSpeed: number;      // ms between auto-run steps (100-200)
   dungeonZoom: number;       // zoom level for dungeon tiles (50-400, 100 = default)
   showDamageNumbers: boolean;
   soundEnabled: boolean;
@@ -212,7 +212,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             <Slider
               value={[settings.autoRunSpeed]}
               onValueChange={([value]) => updateSetting('autoRunSpeed', value)}
-              min={50}
+              min={100}
               max={200}
               step={10}
               className="w-full"

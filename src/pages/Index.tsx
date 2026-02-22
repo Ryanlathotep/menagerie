@@ -296,11 +296,45 @@ function CharacterSelect() {
 
   // Get all unlocked monsters (specific combos with levels)
   const unlockedMonsters = state.saveData.unlockedMonsters || [];
-  const [selectedParty, setSelectedParty] = useState<typeof unlockedMonsters>([]);
+  
+  // Restore last party selection from localStorage
+  const [selectedParty, setSelectedParty] = useState<typeof unlockedMonsters>(() => {
+    try {
+      const saved = localStorage.getItem('menagerie_last_party');
+      if (saved) {
+        const savedIds: string[] = JSON.parse(saved);
+        // Re-hydrate from current unlocked monsters (levels may have changed)
+        return savedIds
+          .map(id => unlockedMonsters.find(m => m.comboId === id))
+          .filter(Boolean) as typeof unlockedMonsters;
+      }
+    } catch {}
+    return [];
+  });
   const [previewMonster, setPreviewMonster] = useState<typeof unlockedMonsters[0] | null>(unlockedMonsters.length > 0 ? unlockedMonsters[0] : null);
-  const [sortBy, setSortBy] = useState<SortOption>('recent');
+  
+  // Restore last sort option
+  const [sortBy, setSortBy] = useState<SortOption>(() => {
+    try {
+      const saved = localStorage.getItem('menagerie_party_sort');
+      if (saved && ['recent', 'species', 'element', 'class', 'level'].includes(saved)) {
+        return saved as SortOption;
+      }
+    } catch {}
+    return 'recent';
+  });
+  
   const [showEquipmentSelect, setShowEquipmentSelect] = useState(false);
   const [partyForRun, setPartyForRun] = useState<ReturnType<typeof createMonster>[]>([]);
+  
+  // Persist party selection and sort to localStorage
+  useEffect(() => {
+    localStorage.setItem('menagerie_last_party', JSON.stringify(selectedParty.map(m => m.comboId)));
+  }, [selectedParty]);
+  
+  useEffect(() => {
+    localStorage.setItem('menagerie_party_sort', sortBy);
+  }, [sortBy]);
   
   const MAX_PARTY_SIZE = 6;
   

@@ -399,6 +399,18 @@ export interface UnlockedMonster {
   level: number; // Level when defeated
 }
 
+// ============= DUNGEON ENTRANCE (Persistent Dungeons) =============
+export interface DungeonEntrance {
+  id: string;                     // e.g. "dungeon_5_-3"
+  worldX: number;
+  worldY: number;
+  seed: number;                   // Deterministic generation seed
+  deepestFloor: number;           // Deepest floor reached
+  difficulty: number;             // Base difficulty (scales with distance)
+  element?: ElementType;          // Biome-themed element (Phase 2)
+  // Future: savedFloors for persistence
+}
+
 export interface SaveData {
   unlockedSpecies: SpeciesType[]; // Keep for backwards compat - starts with slime
   unlockedCombos: string[];       // Legacy - specific combos unlocked (e.g. "slime_fire_kinetic")
@@ -412,6 +424,7 @@ export interface SaveData {
   storedItems: InventoryItem[];   // Town item storage (persisted)
   unlockedRecipes: string[];      // Recipe IDs unlocked by bringing equipment back
   overworldState?: import('./overworld').OverworldState; // Persisted overworld
+  dungeonEntrances: Record<string, DungeonEntrance>; // Persistent dungeon data
 }
 
 export interface GameState {

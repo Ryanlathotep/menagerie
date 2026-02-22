@@ -36,7 +36,7 @@ const TILE_SIZE = 40;
 const VIEW_RANGE = 8;
 
 // Tile rendering
-function renderTileGraphic(tile: OverworldTile, tileSize: number, seed: number): React.ReactNode {
+function renderTileGraphic(tile: OverworldTile, tileSize: number, seed: number, dungeonDepth?: number): React.ReactNode {
   if (!tile.visible && !tile.explored) {
     return <OverworldFogTile size={tileSize} />;
   }
@@ -48,7 +48,7 @@ function renderTileGraphic(tile: OverworldTile, tileSize: number, seed: number):
     case 'rock': return <OverworldRockTile size={tileSize} seed={seed} />;
     case 'water': return <OverworldWaterTile size={tileSize} seed={seed} />;
     case 'building': return <OverworldBuildingTile size={tileSize} buildingType={tile.buildingType} seed={seed} />;
-    case 'dungeon_entrance': return <OverworldDungeonTile size={tileSize} seed={seed} />;
+    case 'dungeon_entrance': return <OverworldDungeonTile size={tileSize} seed={seed} depth={dungeonDepth} />;
     case 'enemy': return <OverworldGrassTile size={tileSize} seed={seed} />;
     case 'player': return <OverworldGrassTile size={tileSize} seed={seed} />;
     default: return <OverworldFogTile size={tileSize} />;
@@ -146,6 +146,11 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
           
           const tileSeed = worldX * 1000 + worldY;
           
+          // Look up dungeon depth if this is a dungeon entrance
+          const dungeonDepth = tile.type === 'dungeon_entrance' && tile.dungeonId
+            ? overworld.dungeonEntrances?.[tile.dungeonId]?.deepestFloor
+            : undefined;
+          
           return (
             <div
               key={`${worldX},${worldY}`}
@@ -169,7 +174,7 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
               onMouseLeave={() => onTileHoverEnd?.()}
             >
               {/* Background tile graphic */}
-              {renderTileGraphic(tile, tileSize, tileSeed)}
+              {renderTileGraphic(tile, tileSize, tileSeed, dungeonDepth)}
               {/* Overlay: player or enemy sprite */}
               {isPlayer ? (
                 <div className="absolute inset-0 flex items-center justify-center">

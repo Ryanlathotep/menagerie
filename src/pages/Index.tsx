@@ -159,10 +159,10 @@ function MainMenu() {
         <p className="text-muted-foreground text-lg">Play as the monsters. Unlock them all.</p>
         
         <div className="space-y-4">
-          <Button size="lg" className="w-64 bg-gradient-to-r from-primary to-secondary hover:opacity-90" onClick={() => dispatch({
-            type: 'SET_PHASE',
-            phase: 'character_select'
-          })}>
+          <Button size="lg" className="w-64 bg-gradient-to-r from-primary to-secondary hover:opacity-90" onClick={() => {
+            localStorage.setItem('menagerie_run_destination', 'dungeon');
+            dispatch({ type: 'SET_PHASE', phase: 'character_select' });
+          }}>
             ✨ Start Run
           </Button>
           
@@ -170,7 +170,10 @@ function MainMenu() {
             <Button 
               variant="outline" 
               className="w-32"
-              onClick={() => dispatch({ type: 'SET_PHASE', phase: 'overworld' })}
+              onClick={() => {
+                localStorage.setItem('menagerie_run_destination', 'overworld');
+                dispatch({ type: 'SET_PHASE', phase: 'character_select' });
+              }}
             >
               🗺️ Overworld
             </Button>
@@ -372,6 +375,8 @@ function CharacterSelect() {
     setShowEquipmentSelect(true);
   };
   
+  const runDestination = (localStorage.getItem('menagerie_run_destination') || 'dungeon') as 'dungeon' | 'overworld';
+  
   const startRun = (partyEquipment: MonsterEquipment[], withdrawnIds: string[], selectedItems: import('@/game/types').InventoryItem[]) => {
     if (partyForRun.length === 0) return;
     dispatch({
@@ -381,6 +386,7 @@ function CharacterSelect() {
       partyPreEquipped: partyEquipment,
       withdrawnIds,
       preSelectedItems: selectedItems,
+      destination: runDestination,
     });
   };
   
@@ -402,7 +408,7 @@ function CharacterSelect() {
   return <div className="min-h-screen w-full bg-background flex flex-col p-4">
       <div className="flex-1 flex flex-col w-full max-w-7xl mx-auto space-y-4">
         <h2 className="text-3xl font-bold text-center bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-          Build Your Party
+          Build Your Party {runDestination === 'overworld' ? '🗺️' : '🗼'}
         </h2>
         
         <p className="text-center text-muted-foreground text-sm">

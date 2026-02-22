@@ -2,7 +2,7 @@
 // Supports tier selection, move usage, sorting, filtering, drag-and-drop reordering,
 // and effectiveness indicators when enemy is present
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +31,11 @@ import {
   sortMoves, 
   filterMoves 
 } from './MoveSortFilter';
+import { loadMoveFilters, saveMoveFilters } from './persistedFilters';
+import { 
+  loadKeybinds, saveKeybinds, getMonsterKeybinds, setMoveKeybind, 
+  removeMoveKeybind, VALID_KEYBIND_KEYS 
+} from './keybinds';
 
 interface UnifiedMovePanelProps {
   moves: Move[];
@@ -70,9 +75,46 @@ export function UnifiedMovePanel({
   const [dragOverSection, setDragOverSection] = useState<'visible' | 'hidden' | null>(null);
   const [selectedMoveForTier, setSelectedMoveForTier] = useState<Move | null>(null);
   
-  // Sorting and filtering state
-  const [sortOption, setSortOption] = useState<MoveSortOption>('custom');
-  const [filters, setFilters] = useState<MoveFilterOption[]>(['all']);
+  // Sorting and filtering state - persisted to localStorage
+  const [sortOption, setSortOption] = useState<MoveSortOption>(() => loadMoveFilters().sortOption);
+  const [filters, setFilters] = useState<MoveFilterOption[]>(() => loadMoveFilters().filters);
+  
+  // Keybind state
+  const [keybindData, setKeybindData] = useState(() => loadKeybinds());
+  const [assigningKeybind, setAssigningKeybind] = useState<string | null>(null); // moveId being assigned
+  const monsterKeybinds = getMonsterKeybinds(keybindData, monster.id);
+  
+  // Persist sort/filter changes
+  const handleSortChange = (option: MoveSortOption) => {
+    setSortOption(option);
+    saveMoveFilters({ sortOption: option, filters });
+  };
+  const handleFilterChange = (newFilters: MoveFilterOption[]) => {
+    setFilters(newFilters);
+    saveMoveFilters({ sortOption, filters: newFilters });
+  };
+  
+  // Keybind assignment
+  useEffect(() => {
+    if (!assigningKeybind) return;
+    const handler = (e: KeyboardEvent) => {
+      e.preventDefault();
+      const key = e.key.toLowerCase();
+      if (key === 'escape') {
+        // Remove keybind
+        const updated = removeMoveKeybind(keybindData, monster.id, assigningKeybind);
+        setKeybindData(updated);
+        saveKeybinds(updated);
+      } else if (VALID_KEYBIND_KEYS.includes(key)) {
+        const updated = setMoveKeybind(keybindData, monster.id, assigningKeybind, key);
+        setKeybindData(updated);
+        saveKeybinds(updated);
+      }
+      setAssigningKeybind(null);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [assigningKeybind, keybindData, monster.id]);
   
   // Apply sorting and filtering
   const processedMoves = useMemo(() => {
@@ -315,8 +357,8 @@ export function UnifiedMovePanel({
       <MoveSortFilter
         sortOption={sortOption}
         filters={filters}
-        onSortChange={setSortOption}
-        onFilterChange={setFilters}
+        onSortChange={handleSortChange}
+        onFilterChange={handleFilterChange}
       />
       
       {/* Visible Moves */}
@@ -348,6 +390,9 @@ export function UnifiedMovePanel({
             inBattle={inBattle}
             canUseOutsideCombat={canUseOutsideCombat(move)}
             onUseMove={onUseMove ? () => handleMoveClick(move) : undefined}
+            keybind={monsterKeybinds[move.id]}
+            isAssigningKeybind={assigningKeybind === move.id}
+            onAssignKeybind={() => setAssigningKeybind(assigningKeybind === move.id ? null : move.id)}
           />
         ))}
         {displayMoves.length === 0 && (
@@ -401,6 +446,9 @@ export function UnifiedMovePanel({
                 inBattle={inBattle}
                 canUseOutsideCombat={canUseOutsideCombat(move)}
                 onUseMove={onUseMove ? () => handleMoveClick(move) : undefined}
+                keybind={monsterKeybinds[move.id]}
+                isAssigningKeybind={assigningKeybind === move.id}
+                onAssignKeybind={() => setAssigningKeybind(assigningKeybind === move.id ? null : move.id)}
               />
             ))}
             {hiddenMovesList.length === 0 && (
@@ -433,6 +481,9 @@ interface UnifiedMoveCardProps {
   onDragEnd: () => void;
   onToggleHide: () => void;
   onUseMove?: () => void;
+  keybind?: string;
+  isAssigningKeybind?: boolean;
+  onAssignKeybind?: () => void;
 }
 
 function UnifiedMoveCard({
@@ -453,6 +504,9 @@ function UnifiedMoveCard({
   onDragEnd,
   onToggleHide,
   onUseMove,
+  keybind,
+  isAssigningKeybind,
+  onAssignKeybind,
 }: UnifiedMoveCardProps) {
   const typeColors: Record<Move['type'], string> = {
     melee: 'bg-orange-500/20 text-orange-600',
@@ -555,7 +609,26 @@ function UnifiedMoveCard({
           }`}
         >
           <div className="flex items-start gap-1">
-            <GripVertical className="w-3 h-3 text-muted-foreground/50 mt-0.5 flex-shrink-0" />
+            {/* Keybind badge */}
+            {move.id !== 'struggle' && (
+              <button
+                className={`w-5 h-5 flex-shrink-0 mt-0.5 rounded text-[9px] font-bold flex items-center justify-center border transition-all ${
+                  isAssigningKeybind
+                    ? 'bg-primary text-primary-foreground border-primary animate-pulse'
+                    : keybind
+                    ? 'bg-muted border-border text-foreground hover:bg-primary/20'
+                    : 'bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted'
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAssignKeybind?.();
+                }}
+                title={isAssigningKeybind ? 'Press a key to bind (Esc to clear)' : keybind ? `Keybind: ${keybind.toUpperCase()} (click to change)` : 'Click to assign keybind'}
+              >
+                {isAssigningKeybind ? '...' : keybind ? keybind.toUpperCase() : '⌨'}
+              </button>
+            )}
+            {move.id === 'struggle' && <GripVertical className="w-3 h-3 text-muted-foreground/50 mt-0.5 flex-shrink-0" />}
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-1 gap-1">
                 <h4 className="font-semibold text-[11px] truncate flex items-center gap-1">

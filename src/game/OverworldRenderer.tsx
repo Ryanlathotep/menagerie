@@ -1,10 +1,14 @@
 // Overworld Renderer - Renders the chunk-based overworld with tile graphics
 
 import { useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { OverworldState, OverworldTile, getOverworldTile, CHUNK_SIZE, BUILDING_UPGRADES } from './overworld';
-import { Position, Monster, UnlockedMonster, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED } from './types';
+import { OverworldState, OverworldTile, getOverworldTile } from './overworld';
+import { Position, Monster, UnlockedMonster } from './types';
 import { MonsterSprite } from './sprites';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  OverworldGrassTile, OverworldHarvestedTile, OverworldTreeTile,
+  OverworldRockTile, OverworldWaterTile, OverworldBuildingTile,
+  OverworldDungeonTile, OverworldFogTile,
+} from './OverworldTileGraphics';
 
 interface OverworldRendererProps {
   overworld: OverworldState;
@@ -32,32 +36,22 @@ const TILE_SIZE = 40;
 const VIEW_RANGE = 8;
 
 // Tile rendering
-function getTileEmoji(tile: OverworldTile): string {
-  switch (tile.type) {
-    case 'grass': return tile.harvested ? '🟫' : '🟩';
-    case 'tree': return '🌲';
-    case 'rock': return '🪨';
-    case 'water': return '🌊';
-    case 'building': return BUILDING_UPGRADES[tile.buildingType || 'campfire']?.emoji || '🔥';
-    case 'dungeon_entrance': return '🗼';
-    case 'enemy': return '';
-    case 'player': return '';
-    default: return '⬛';
+function renderTileGraphic(tile: OverworldTile, tileSize: number, seed: number): React.ReactNode {
+  if (!tile.visible && !tile.explored) {
+    return <OverworldFogTile size={tileSize} />;
   }
-}
-
-function getTileBg(tile: OverworldTile): string {
-  if (!tile.visible && tile.explored) return 'bg-muted/50';
-  if (!tile.visible) return 'bg-background';
   switch (tile.type) {
-    case 'grass': return tile.harvested ? 'bg-amber-900/30' : 'bg-green-900/30';
-    case 'tree': return 'bg-green-800/40';
-    case 'rock': return 'bg-stone-700/40';
-    case 'water': return 'bg-blue-800/40';
-    case 'building': return 'bg-amber-600/30';
-    case 'dungeon_entrance': return 'bg-purple-800/30';
-    case 'enemy': return 'bg-red-900/20';
-    default: return 'bg-green-900/30';
+    case 'grass': return tile.harvested
+      ? <OverworldHarvestedTile size={tileSize} seed={seed} />
+      : <OverworldGrassTile size={tileSize} seed={seed} />;
+    case 'tree': return <OverworldTreeTile size={tileSize} seed={seed} />;
+    case 'rock': return <OverworldRockTile size={tileSize} seed={seed} />;
+    case 'water': return <OverworldWaterTile size={tileSize} seed={seed} />;
+    case 'building': return <OverworldBuildingTile size={tileSize} buildingType={tile.buildingType} seed={seed} />;
+    case 'dungeon_entrance': return <OverworldDungeonTile size={tileSize} seed={seed} />;
+    case 'enemy': return <OverworldGrassTile size={tileSize} seed={seed} />;
+    case 'player': return <OverworldGrassTile size={tileSize} seed={seed} />;
+    default: return <OverworldFogTile size={tileSize} />;
   }
 }
 
@@ -150,20 +144,21 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
           
           const enemy = tile.type === 'enemy' && tile.enemyId ? getEnemy(tile.enemyId) : null;
           
+          const tileSeed = worldX * 1000 + worldY;
+          
           return (
             <div
               key={`${worldX},${worldY}`}
-              className={`absolute flex items-center justify-center cursor-pointer transition-colors border border-border/20 ${getTileBg(tile)} ${
+              className={`absolute cursor-pointer overflow-hidden ${
                 isTargetable ? 'ring-2 ring-red-500/50' : ''
-              } ${isAffected ? 'bg-red-500/30' : ''} ${isHovered ? 'ring-2 ring-yellow-400' : ''} ${
-                !tile.visible ? 'opacity-40' : ''
+              } ${isAffected ? 'ring-2 ring-red-400' : ''} ${isHovered ? 'ring-2 ring-yellow-400' : ''} ${
+                !tile.visible && tile.explored ? 'opacity-40' : ''
               }`}
               style={{
                 left: relX * tileSize,
                 top: relY * tileSize,
                 width: tileSize,
                 height: tileSize,
-                fontSize: tileSize * 0.5,
               }}
               onClick={() => onTileClick?.(worldX, worldY)}
               onContextMenu={(e) => {
@@ -173,23 +168,28 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
               onMouseEnter={() => onTileHover?.(worldX, worldY)}
               onMouseLeave={() => onTileHoverEnd?.()}
             >
+              {/* Background tile graphic */}
+              {renderTileGraphic(tile, tileSize, tileSeed)}
+              {/* Overlay: player or enemy sprite */}
               {isPlayer ? (
-                <MonsterSprite
-                  species={(playerSpecies || 'slime') as any}
-                  element={(playerElement || 'normal') as any}
-                  classType={(playerClass || 'normal') as any}
-                  size={tileSize * 0.8}
-                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <MonsterSprite
+                    species={(playerSpecies || 'slime') as any}
+                    element={(playerElement || 'normal') as any}
+                    classType={(playerClass || 'normal') as any}
+                    size={tileSize * 0.8}
+                  />
+                </div>
               ) : enemy ? (
-                <MonsterSprite
-                  species={enemy.species}
-                  element={enemy.element}
-                  classType={enemy.class}
-                  size={tileSize * 0.7}
-                />
-              ) : (
-                <span className="select-none">{getTileEmoji(tile)}</span>
-              )}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <MonsterSprite
+                    species={enemy.species}
+                    element={enemy.element}
+                    classType={enemy.class}
+                    size={tileSize * 0.7}
+                  />
+                </div>
+              ) : null}
             </div>
           );
         })}

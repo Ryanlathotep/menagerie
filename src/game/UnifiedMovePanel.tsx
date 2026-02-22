@@ -82,7 +82,8 @@ export function UnifiedMovePanel({
   // Keybind state
   const [keybindData, setKeybindData] = useState(() => loadKeybinds());
   const [assigningKeybind, setAssigningKeybind] = useState<string | null>(null); // moveId being assigned
-  const monsterKeybinds = getMonsterKeybinds(keybindData, monster.id);
+  const monsterComboId = `${monster.species}_${monster.element}_${monster.class}`;
+  const monsterKeybinds = getMonsterKeybinds(keybindData, monsterComboId);
   
   // Persist sort/filter changes
   const handleSortChange = (option: MoveSortOption) => {
@@ -102,11 +103,11 @@ export function UnifiedMovePanel({
       const key = e.key.toLowerCase();
       if (key === 'escape') {
         // Remove keybind
-        const updated = removeMoveKeybind(keybindData, monster.id, assigningKeybind);
+        const updated = removeMoveKeybind(keybindData, monsterComboId, assigningKeybind);
         setKeybindData(updated);
         saveKeybinds(updated);
       } else if (VALID_KEYBIND_KEYS.includes(key)) {
-        const updated = setMoveKeybind(keybindData, monster.id, assigningKeybind, key);
+        const updated = setMoveKeybind(keybindData, monsterComboId, assigningKeybind, key);
         setKeybindData(updated);
         saveKeybinds(updated);
       }
@@ -114,7 +115,7 @@ export function UnifiedMovePanel({
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [assigningKeybind, keybindData, monster.id]);
+  }, [assigningKeybind, keybindData, monsterComboId]);
   
   // Apply sorting and filtering
   const processedMoves = useMemo(() => {

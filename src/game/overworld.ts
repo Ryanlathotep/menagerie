@@ -138,6 +138,7 @@ function generateChunk(cx: number, cy: number, difficulty: number): OverworldChu
       
       row.push(tile);
     }
+    tiles.push(row);
   }
   
   return { cx, cy, tiles, enemies };
@@ -159,6 +160,8 @@ export function createOverworldState(): OverworldState {
   
   // Generate starting chunk and surrounding chunks
   ensureChunksLoaded(state, 0, 0);
+  // Make tiles around player visible
+  updateVisibility(state);
   
   return state;
 }

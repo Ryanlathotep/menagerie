@@ -7,12 +7,12 @@ import { Card } from '@/components/ui/card';
 import { 
   createOverworldState, 
   movePlayer, 
-  updateVisibility, 
+  updateVisibility,
+  ensureChunksLoaded,
   OverworldState, 
   BUILDING_UPGRADES,
   canUpgradeBase,
   upgradeBase,
-  MoveResult,
 } from './overworld';
 import { OverworldRenderer, OverworldRendererHandle } from './OverworldRenderer';
 import { toast } from 'sonner';
@@ -27,10 +27,14 @@ export function OverworldView({ addLog }: OverworldViewProps) {
   
   // Initialize or load overworld state
   const [overworld, setOverworld] = useState<OverworldState>(() => {
+    let ow: OverworldState;
     if (state.saveData.overworldState) {
-      return state.saveData.overworldState;
+      ow = JSON.parse(JSON.stringify(state.saveData.overworldState));
+    } else {
+      ow = createOverworldState();
     }
-    const ow = createOverworldState();
+    // Always ensure chunks around player are loaded and visibility is set
+    ensureChunksLoaded(ow, ow.playerPosition.x, ow.playerPosition.y);
     updateVisibility(ow);
     return ow;
   });

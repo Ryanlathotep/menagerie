@@ -3773,7 +3773,7 @@ function Game() {
     case 'run_summary':
       return <RunSummary />;
     case 'overworld':
-      return <OverworldView addLog={addLog} />;
+      return <OverworldView gameLog={gameLog} addLog={addLog} />;
     default:
       return <MainMenu />;
   }

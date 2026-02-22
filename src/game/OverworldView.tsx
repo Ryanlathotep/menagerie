@@ -771,7 +771,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     if (selectedDungeon) {
       localStorage.setItem('menagerie_active_dungeon_id', selectedDungeon.id);
     }
-    dispatch({ type: 'SET_PHASE', phase: 'dungeon' });
+    // Save overworld state before leaving
+    saveOverworld(overworld);
+    // Route through party select + equipment flow, same as main menu
+    localStorage.setItem('menagerie_run_destination', 'dungeon');
+    dispatch({ type: 'SET_PHASE', phase: 'character_select' });
   };
   
   const handleFlee = () => {

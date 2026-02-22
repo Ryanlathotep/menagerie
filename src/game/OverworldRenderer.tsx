@@ -9,6 +9,8 @@ import {
   OverworldRockTile, OverworldWaterTile, OverworldBuildingTile,
   OverworldDungeonTile, OverworldFogTile,
 } from './OverworldTileGraphics';
+import { OverworldBuildingTileGraphic } from './OverworldBuildingTileGraphics';
+import { PlayerBuilding } from './buildings';
 
 interface OverworldRendererProps {
   overworld: OverworldState;
@@ -36,7 +38,7 @@ const TILE_SIZE = 40;
 const VIEW_RANGE = 8;
 
 // Tile rendering
-function renderTileGraphic(tile: OverworldTile, tileSize: number, seed: number, dungeonDepth?: number): React.ReactNode {
+function renderTileGraphic(tile: OverworldTile, tileSize: number, seed: number, dungeonDepth?: number, playerBuilding?: PlayerBuilding): React.ReactNode {
   if (!tile.visible && !tile.explored) {
     return <OverworldFogTile size={tileSize} />;
   }
@@ -49,6 +51,9 @@ function renderTileGraphic(tile: OverworldTile, tileSize: number, seed: number, 
     case 'water': return <OverworldWaterTile size={tileSize} seed={seed} />;
     case 'building': return <OverworldBuildingTile size={tileSize} buildingType={tile.buildingType} seed={seed} />;
     case 'dungeon_entrance': return <OverworldDungeonTile size={tileSize} seed={seed} depth={dungeonDepth} />;
+    case 'player_building': return playerBuilding
+      ? <OverworldBuildingTileGraphic type={playerBuilding.type} size={tileSize} seed={seed} harvestReady={playerBuilding.harvestReady} />
+      : <OverworldGrassTile size={tileSize} seed={seed} />;
     case 'enemy': return <OverworldGrassTile size={tileSize} seed={seed} />;
     case 'player': return <OverworldGrassTile size={tileSize} seed={seed} />;
     default: return <OverworldFogTile size={tileSize} />;
@@ -151,6 +156,11 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
             ? overworld.dungeonEntrances?.[tile.dungeonId]?.deepestFloor
             : undefined;
           
+          // Look up player building data
+          const playerBuilding = tile.type === 'player_building' && tile.playerBuildingId
+            ? overworld.playerBuildings?.find(b => b.id === tile.playerBuildingId)
+            : undefined;
+          
           return (
             <div
               key={`${worldX},${worldY}`}
@@ -174,7 +184,7 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
               onMouseLeave={() => onTileHoverEnd?.()}
             >
               {/* Background tile graphic */}
-              {renderTileGraphic(tile, tileSize, tileSeed, dungeonDepth)}
+              {renderTileGraphic(tile, tileSize, tileSeed, dungeonDepth, playerBuilding)}
               {/* Overlay: player or enemy sprite */}
               {isPlayer ? (
                 <div className="absolute inset-0 flex items-center justify-center">

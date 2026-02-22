@@ -6,7 +6,7 @@ This is a large-scale feature set spanning overworld exploration, dungeon improv
 
 ---
 
-## Phase 1: Multiple Dungeons & Persistent Dungeon Seeds
+## Phase 1: Multiple Dungeons & Persistent Dungeon Seeds ✅ DONE
 
 **Goal:** Spawn multiple dungeon entrances across the overworld, each with a unique seed and persistent state (floors cleared, player modifications).
 
@@ -24,7 +24,7 @@ This is a large-scale feature set spanning overworld exploration, dungeon improv
 
 ---
 
-## Phase 2: Improved Terrain Clustering (Elemental Biomes)
+## Phase 2: Improved Terrain Clustering (Elemental Biomes) ✅ DONE
 
 **Goal:** Similar elemental terrain tiles spawn in clusters rather than randomly scattered, and different element types spawn adjacent to each other less often.
 
@@ -42,7 +42,7 @@ This is a large-scale feature set spanning overworld exploration, dungeon improv
 
 ---
 
-## Phase 3: City Building & Tower Defense Structures
+## Phase 3: City Building & Tower Defense Structures ✅ DONE
 
 **Goal:** Players can place buildings on the overworld map around their base -- walls, traps, elemental terrain, scout towers, and farms.
 

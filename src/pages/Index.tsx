@@ -66,6 +66,7 @@ import {
   canSeePlayer,
 } from '@/game/dungeonCombat';
 import { MoveInfoPanel } from '@/game/AttackTargeting';
+import { loadKeybinds, getMonsterKeybinds as getMonsterKeybindsImport } from '@/game/keybinds';
 import { useAuth } from '@/hooks/useAuth';
 import { useCloudSave } from '@/hooks/useCloudSave';
 
@@ -1686,6 +1687,63 @@ function DungeonView({
     return () => window.removeEventListener('keydown', handleEsc);
   }, [targetingMove, cancelTargeting]);
 
+  // Keybind shortcuts for moves (dungeon exploration)
+  const keybindDataRef = useRef(loadKeybinds());
+  useEffect(() => {
+    keybindDataRef.current = loadKeybinds();
+  });
+  
+  useEffect(() => {
+    const monster = state.run?.currentMonster;
+    if (!monster) return;
+    
+    const handleKeybindPress = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.shiftKey) return;
+      if (targetingMove) return;
+      
+      const key = e.key.toLowerCase();
+      const binds = getMonsterKeybindsImport(keybindDataRef.current, monster.id);
+      
+      for (const [moveId, boundKey] of Object.entries(binds)) {
+        if (boundKey === key) {
+          const moves = getMonsterMoves(monster.species, monster.element, (monster as any).class, monster.level);
+          const move = moves.find(m => m.id === moveId);
+          if (move) {
+            e.preventDefault();
+            handleUseMoveOutOfCombat(move);
+          }
+          return;
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeybindPress);
+    return () => window.removeEventListener('keydown', handleKeybindPress);
+  }, [state.run?.currentMonster, targetingMove, handleUseMoveOutOfCombat]);
+
+  // Shift+1-9 for inventory items (dungeon exploration)
+  useEffect(() => {
+    const handleInventoryShortcut = (e: KeyboardEvent) => {
+      if (!e.shiftKey) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
+      const num = parseInt(e.key);
+      if (isNaN(num) || num < 1 || num > 9) return;
+      
+      const inventory = state.run?.inventory || [];
+      const consumables = inventory.filter(item => item.type === 'potion' || item.effect);
+      const targetItem = consumables[num - 1];
+      if (targetItem) {
+        e.preventDefault();
+        handleUseItemOutOfCombat(targetItem);
+      }
+    };
+    
+    window.addEventListener('keydown', handleInventoryShortcut);
+    return () => window.removeEventListener('keydown', handleInventoryShortcut);
+  }, [state.run?.inventory, handleUseItemOutOfCombat]);
+
   // Early return for loading state - MUST be after all hooks
   if (!dungeon) return <div className="game-container">Loading...</div>;
 
@@ -2073,6 +2131,68 @@ function BattleView({
       });
     }
   }, [playerEffects, state.run?.activePartyIndex, dispatch]);
+
+  // Keybind shortcuts for moves (battle)
+  const battleKeybindDataRef = useRef(loadKeybinds());
+  useEffect(() => {
+    battleKeybindDataRef.current = loadKeybinds();
+  });
+  
+  const executeMoveRef = useRef<((move: Move) => void) | null>(null);
+  
+  useEffect(() => {
+    if (!battle || !state.run) return;
+    const monster = battle.playerMonster;
+    if (battle.turn !== 'player') return;
+    
+    const handleKeybindPress = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.shiftKey) return;
+      
+      const key = e.key.toLowerCase();
+      const binds = getMonsterKeybindsImport(battleKeybindDataRef.current, monster.id);
+      
+      for (const [moveId, boundKey] of Object.entries(binds)) {
+        if (boundKey === key) {
+          const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
+          const move = moves.find(m => m.id === moveId);
+          if (move && executeMoveRef.current) {
+            e.preventDefault();
+            executeMoveRef.current(move);
+          }
+          return;
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeybindPress);
+    return () => window.removeEventListener('keydown', handleKeybindPress);
+  }, [battle, state.run]);
+
+  // Shift+1-9 for inventory items (battle)
+  useEffect(() => {
+    if (!battle || !state.run) return;
+    
+    const handleInventoryShortcut = (e: KeyboardEvent) => {
+      if (!e.shiftKey) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (battle.turn !== 'player') return;
+      
+      const num = parseInt(e.key);
+      if (isNaN(num) || num < 1 || num > 9) return;
+      
+      const inventory = state.run!.inventory || [];
+      const consumables = inventory.filter(item => item.type === 'potion' || item.effect);
+      const targetItem = consumables[num - 1];
+      if (targetItem) {
+        e.preventDefault();
+        // handleUseItem will be defined after guard
+      }
+    };
+    
+    window.addEventListener('keydown', handleInventoryShortcut);
+    return () => window.removeEventListener('keydown', handleInventoryShortcut);
+  }, [battle, state.run]);
   
   if (!battle || !state.run) return null;
   const playerMoves = getMonsterMoves(battle.playerMonster.species, battle.playerMonster.element, battle.playerMonster.class, battle.playerMonster.level);
@@ -2388,6 +2508,7 @@ function BattleView({
   };
   const executeMove = (move: Move) => {
     if (!state.run) return;
+    executeMoveRef.current = executeMove; // Keep ref in sync
 
     // Get base move ID for mastery tracking (evolved moves have baseMoveId)
     const baseMoveId = (move as any).baseMoveId || move.id;

@@ -366,59 +366,72 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 {/* Consumables */}
                 {inventory.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                    {inventory.map(item => {
-                      const itemData = ITEMS[item.id];
-                      const description = itemData?.description || getItemDescription(item);
-                      const icon = itemData?.icon || getItemIcon(item);
-                      
-                      return (
-                        <Tooltip key={item.id}>
-                          <TooltipTrigger asChild>
-                            <Card 
-                              className={`p-2 transition-all ${onUseItem ? 'cursor-pointer hover:bg-primary/10 hover:border-primary' : 'cursor-default hover:bg-muted/50'}`}
-                              onClick={() => onUseItem?.(item)}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="text-lg">{icon}</span>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-1">
-                                    <span className="font-semibold text-xs truncate">{item.name}</span>
-                                    {item.quantity > 1 && (
-                                      <span className="text-[10px] text-muted-foreground">x{item.quantity}</span>
-                                    )}
+                    {(() => {
+                      const consumables = inventory.filter(item => item.type === 'potion' || item.effect);
+                      return inventory.map(item => {
+                        const itemData = ITEMS[item.id];
+                        const description = itemData?.description || getItemDescription(item);
+                        const icon = itemData?.icon || getItemIcon(item);
+                        const hotbarIndex = consumables.indexOf(item);
+                        const hotbarKey = hotbarIndex >= 0 && hotbarIndex < 9 ? hotbarIndex + 1 : null;
+                        
+                        return (
+                          <Tooltip key={item.id}>
+                            <TooltipTrigger asChild>
+                              <Card 
+                                className={`p-2 transition-all ${onUseItem ? 'cursor-pointer hover:bg-primary/10 hover:border-primary' : 'cursor-default hover:bg-muted/50'}`}
+                                onClick={() => onUseItem?.(item)}
+                              >
+                                <div className="flex items-center gap-2">
+                                  {hotbarKey && (
+                                    <span className="w-4 h-4 rounded bg-muted border border-border text-[9px] font-bold flex items-center justify-center text-muted-foreground flex-shrink-0" title={`Shift+${hotbarKey}`}>
+                                      {hotbarKey}
+                                    </span>
+                                  )}
+                                  <span className="text-lg">{icon}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-semibold text-xs truncate">{item.name}</span>
+                                      {item.quantity > 1 && (
+                                        <span className="text-[10px] text-muted-foreground">x{item.quantity}</span>
+                                      )}
+                                    </div>
+                                    {onUseItem && <p className="text-[9px] text-primary">{hotbarKey ? `Shift+${hotbarKey} or click` : 'Click to use'}</p>}
                                   </div>
-                                  {onUseItem && <p className="text-[9px] text-primary">Click to use</p>}
+                                  {onDropItem && !inBattle && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="w-6 h-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onDropItem(item.id);
+                                      }}
+                                      title="Drop item"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  )}
                                 </div>
-                                {onDropItem && !inBattle && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="w-6 h-6 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onDropItem(item.id);
-                                    }}
-                                    title="Drop item"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </Button>
-                                )}
-                              </div>
-                            </Card>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-[200px] z-[100]">
-                            <p className="font-semibold text-sm">{item.name}</p>
-                            <p className="text-xs text-muted-foreground">{description}</p>
-                            {item.effect && (
-                              <p className="text-xs text-accent mt-1">
-                                ✨ {item.effect.replace(/_/g, ' ')}
-                                {item.value > 0 && ` (+${item.value})`}
-                              </p>
-                            )}
-                          </TooltipContent>
-                        </Tooltip>
-                      );
-                    })}
+                              </Card>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[200px] z-[100]">
+                              <p className="font-semibold text-sm">{item.name}</p>
+                              <p className="text-xs text-muted-foreground">{description}</p>
+                              {item.effect && (
+                                <p className="text-xs text-accent mt-1">
+                                  ✨ {item.effect.replace(/_/g, ' ')}
+                                  {item.value > 0 && ` (+${item.value})`}
+                                </p>
+                              )}
+                              {hotbarKey && (
+                                <p className="text-xs text-secondary mt-1">⌨ Shift+{hotbarKey}</p>
+                              )}
+                            </TooltipContent>
+                          </Tooltip>
+                        );
+                      });
+                    })()}
                   </div>
                 ) : (
                   <div className="text-center py-2 text-muted-foreground">

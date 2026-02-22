@@ -21,21 +21,32 @@ import { sortEquipment, autoEquip, SortConfig } from './equipmentUtils';
 import { toast } from '@/hooks/use-toast';
 
 interface PreRunEquipmentProps {
-  monster: Monster;
+  party: Monster[];
+  /** @deprecated use party instead */
+  monster?: Monster;
   storedEquipment: EquipmentItem[];
   storedItems: InventoryItem[];
-  onStart: (equipment: MonsterEquipment, withdrawnIds: string[], selectedItems: InventoryItem[]) => void;
+  onStart: (partyEquipment: MonsterEquipment[], withdrawnIds: string[], selectedItems: InventoryItem[]) => void;
   onBack: () => void;
 }
 
 export function PreRunEquipment({
-  monster,
+  party,
+  monster: legacyMonster,
   storedEquipment,
   storedItems,
   onStart,
   onBack,
 }: PreRunEquipmentProps) {
-  const [equipment, setEquipment] = useState<MonsterEquipment>(createEmptyEquipment());
+  const monsters = party.length > 0 ? party : legacyMonster ? [legacyMonster] : [];
+  const [activeIndex, setActiveIndex] = useState(0);
+  const monster = monsters[activeIndex] || monsters[0];
+  
+  // One equipment set per party member
+  const [partyEquipment, setPartyEquipment] = useState<MonsterEquipment[]>(
+    monsters.map(() => createEmptyEquipment())
+  );
+  const equipment = partyEquipment[activeIndex] || createEmptyEquipment();
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot | null>(null);
   const [draggedItem, setDraggedItem] = useState<DragData | null>(null);
   const [dragOverSlot, setDragOverSlot] = useState<EquipmentSlot | null>(null);
@@ -47,11 +58,12 @@ export function PreRunEquipment({
   // Selected consumables to bring into the run
   const [selectedItems, setSelectedItems] = useState<InventoryItem[]>([]);
   
-  // Track which items have been withdrawn from storage
-  const equippedIds = Object.values(equipment).filter(Boolean).map(item => item!.id);
+  // Track which items have been withdrawn from storage (across ALL party members)
+  const allEquippedIds = partyEquipment.flatMap(eq => Object.values(eq).filter(Boolean).map(item => item!.id));
+  const equippedIds = allEquippedIds;
   
-  // Available items = stored items not yet equipped
-  const availableItems = storedEquipment.filter(item => !equippedIds.includes(item.id));
+  // Available items = stored items not yet equipped by any party member
+  const availableItems = storedEquipment.filter(item => !allEquippedIds.includes(item.id));
   
   // Filter and sort by selected slot
   const filteredItems = selectedSlot 
@@ -105,22 +117,20 @@ export function PreRunEquipment({
   const handleEquip = useCallback((item: EquipmentItem) => {
     if (monster.level < item.level) return;
     
-    setEquipment(prev => ({
-      ...prev,
-      [item.slot]: item,
-    }));
+    setPartyEquipment(prev => prev.map((eq, i) => 
+      i === activeIndex ? { ...eq, [item.slot]: item } : eq
+    ));
     setSelectedSlot(null);
-  }, [monster.level]);
+  }, [monster.level, activeIndex]);
   
   const handleUnequip = useCallback((slot: EquipmentSlot) => {
-    setEquipment(prev => ({
-      ...prev,
-      [slot]: null,
-    }));
-  }, []);
+    setPartyEquipment(prev => prev.map((eq, i) =>
+      i === activeIndex ? { ...eq, [slot]: null } : eq
+    ));
+  }, [activeIndex]);
   
   const handleStart = () => {
-    onStart(equipment, equippedIds, selectedItems);
+    onStart(partyEquipment, equippedIds, selectedItems);
   };
   
   // Drag handlers
@@ -150,7 +160,7 @@ export function PreRunEquipment({
   // Auto-equip handler
   const handleAutoEquip = useCallback(() => {
     const result = autoEquip(availableItems, monster.class, monster.level);
-    setEquipment(result.equipment);
+    setPartyEquipment(prev => prev.map((eq, i) => i === activeIndex ? result.equipment : eq));
     toast({
       title: "Auto-Equipped!",
       description: `Equipped ${result.usedItemIds.length} items optimized for ${monster.class} class.`,
@@ -189,6 +199,32 @@ export function PreRunEquipment({
         <p className="text-center text-muted-foreground text-xs">
           Equip gear and select consumables from your storage before starting the run.
         </p>
+        
+        {/* Party member tabs */}
+        {monsters.length > 1 && (
+          <div className="flex gap-1 justify-center flex-wrap">
+            {monsters.map((m, i) => {
+              const memberEquipCount = Object.values(partyEquipment[i] || {}).filter(Boolean).length;
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => setActiveIndex(i)}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-xs transition-all ${
+                    i === activeIndex 
+                      ? 'border-primary bg-primary/10 font-semibold' 
+                      : 'border-border hover:border-primary/50'
+                  }`}
+                >
+                  <MonsterSprite species={m.species} element={m.element} classType={m.class} size={24} animated={false} />
+                  <span className="capitalize">{m.name}</span>
+                  {memberEquipCount > 0 && (
+                    <span className="text-[10px] text-muted-foreground">({memberEquipCount})</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
         
         <div className="grid md:grid-cols-3 gap-3">
           {/* Left: Paper doll with monster */}

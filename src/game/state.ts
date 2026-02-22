@@ -51,7 +51,7 @@ const INITIAL_STATE: GameState = {
 // Action types
 type GameAction =
   | { type: 'SET_PHASE'; phase: GamePhase }
-  | { type: 'START_RUN'; monster: Monster; preEquipped?: MonsterEquipment; withdrawnIds?: string[]; preSelectedItems?: InventoryItem[] }
+  | { type: 'START_RUN'; monster: Monster; party?: Monster[]; preEquipped?: MonsterEquipment; partyPreEquipped?: MonsterEquipment[]; withdrawnIds?: string[]; preSelectedItems?: InventoryItem[] }
   | { type: 'END_RUN'; victory: boolean }
   | { type: 'FLEE_DUNGEON' }  // Flee safely - keeps materials and equipment
   | { type: 'SET_DUNGEON'; dungeon: DungeonState }
@@ -155,12 +155,33 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         }
       }
       
+      // Build full party
+      const fullParty = action.party && action.party.length > 0
+        ? action.party
+        : [action.monster];
+      
+      // Build equipment sets for each party member
+      const fullPartyEquipment = action.partyPreEquipped && action.partyPreEquipped.length > 0
+        ? action.partyPreEquipped.map(eq => {
+            // Mark all pre-equipped items as bound
+            return Object.fromEntries(
+              Object.entries(eq).map(([slot, item]) => [
+                slot,
+                item ? { ...item, bound: true } : null
+              ])
+            ) as MonsterEquipment;
+          })
+        : [boundPreEquipped];
+      
+      // Ensure partyEffects matches party size
+      const partyEffects = fullParty.map(() => ({ statusEffects: [] as any[], statModifiers: [] as any[] }));
+      
       return {
         ...state,
         phase: 'dungeon',
         run: {
-          currentMonster: action.monster,
-          party: [action.monster],  // Start with single monster in party
+          currentMonster: fullParty[0],
+          party: fullParty,
           activePartyIndex: 0,
           dungeon: null,
           battle: null,
@@ -169,12 +190,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           itemsCollected: [],
           inventory: startingInventory,
           equipmentInventory: [],
-          partyEquipment: [boundPreEquipped],  // One equipment set per party member
+          partyEquipment: fullPartyEquipment,
           runMaterials: {},
           enemiesDefeated: 0,
           moveOrder: [],
           hiddenMoves: [],
-          partyEffects: [{ statusEffects: [], statModifiers: [] }],  // Effects for each party member
+          partyEffects,
           battleStats: undefined,
         },
         saveData: {

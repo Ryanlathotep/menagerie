@@ -102,7 +102,9 @@ type GameAction =
   | { type: 'RESET_BATTLE_STATS' }
   // Party effects (buffs/debuffs for each party member)
   | { type: 'SET_PARTY_EFFECTS'; partyIndex: number; effects: PartyEffects }
-  | { type: 'CLEAR_ALL_PARTY_EFFECTS' };
+  | { type: 'CLEAR_ALL_PARTY_EFFECTS' }
+  // Overworld
+  | { type: 'UPDATE_OVERWORLD'; overworld: import('./overworld').OverworldState };
 
 // Reducer
 function gameReducer(state: GameState, action: GameAction): GameState {
@@ -872,6 +874,15 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...INITIAL_STATE,
         saveData: DEFAULT_SAVE_DATA,
+      };
+    
+    case 'UPDATE_OVERWORLD':
+      return {
+        ...state,
+        saveData: {
+          ...state.saveData,
+          overworldState: action.overworld,
+        },
       };
       
     // Party management

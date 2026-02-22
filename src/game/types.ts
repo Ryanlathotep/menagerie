@@ -301,7 +301,7 @@ export interface Position {
 }
 
 // ============= GAME STATE =============
-export type GamePhase = 'main_menu' | 'character_select' | 'dungeon' | 'battle' | 'victory' | 'defeat' | 'run_summary';
+export type GamePhase = 'main_menu' | 'character_select' | 'dungeon' | 'battle' | 'victory' | 'defeat' | 'run_summary' | 'overworld';
 
 export interface BattleState {
   playerMonster: Monster;
@@ -411,6 +411,7 @@ export interface SaveData {
   storedEquipment: import('./equipment').EquipmentItem[]; // Equipment storage (persisted)
   storedItems: InventoryItem[];   // Town item storage (persisted)
   unlockedRecipes: string[];      // Recipe IDs unlocked by bringing equipment back
+  overworldState?: import('./overworld').OverworldState; // Persisted overworld
 }
 
 export interface GameState {

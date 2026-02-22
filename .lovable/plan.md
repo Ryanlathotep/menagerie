@@ -79,7 +79,7 @@ This is a large-scale feature set spanning overworld exploration, dungeon improv
 
 ---
 
-## Phase 4: Monster Nests (Overworld & Dungeon)
+## Phase 4: Monster Nests (Overworld & Dungeon) ✅ DONE
 
 **Goal:** Special tiles that spawn waves of enemies over time, providing farming spots and optional challenges.
 

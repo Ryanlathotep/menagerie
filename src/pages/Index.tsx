@@ -25,6 +25,7 @@ import { EquipmentItem, MonsterEquipment } from '@/game/equipment';
 import { calculateMonsterDrops, getEnemyEquipmentDrops } from '@/game/monsterDrops';
 import { EquipmentView } from '@/game/EquipmentView';
 import { PreRunEquipment } from '@/game/PreRunEquipment';
+import { OverworldView } from '@/game/OverworldView';
 import { 
   CombatEffects, 
   EMPTY_COMBAT_EFFECTS, 
@@ -164,6 +165,16 @@ function MainMenu() {
           })}>
             ✨ Start Run
           </Button>
+          
+          <div className="flex gap-2 justify-center">
+            <Button 
+              variant="outline" 
+              className="w-32"
+              onClick={() => dispatch({ type: 'SET_PHASE', phase: 'overworld' })}
+            >
+              🗺️ Overworld
+            </Button>
+          </div>
           
           <div className="flex gap-2 justify-center">
             <Button 
@@ -3761,6 +3772,8 @@ function Game() {
     case 'defeat':
     case 'run_summary':
       return <RunSummary />;
+    case 'overworld':
+      return <OverworldView addLog={addLog} />;
     default:
       return <MainMenu />;
   }

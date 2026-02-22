@@ -2,12 +2,13 @@
 
 import { Monster, Position, SpeciesType, ElementType, SPECIES_DATA, DungeonEntrance } from './types';
 import { generateRandomMonster } from './utils';
+import { PlayerBuilding } from './buildings';
 
 const ALL_SPECIES = Object.keys(SPECIES_DATA) as SpeciesType[];
 
 // ============= TYPES =============
 
-export type OverworldTileType = 'grass' | 'tree' | 'rock' | 'water' | 'building' | 'enemy' | 'player' | 'dungeon_entrance';
+export type OverworldTileType = 'grass' | 'tree' | 'rock' | 'water' | 'building' | 'enemy' | 'player' | 'dungeon_entrance' | 'player_building';
 
 export type BuildingType = 'campfire' | 'log_cabin' | 'town_hall';
 
@@ -20,6 +21,7 @@ export interface OverworldTile {
   resourceAmount?: number; // For trees/rocks - how much resource is left
   harvested?: boolean;
   dungeonId?: string; // For dungeon_entrance tiles - links to DungeonEntrance
+  playerBuildingId?: string; // For player_building tiles
 }
 
 export interface OverworldChunk {
@@ -39,6 +41,7 @@ export interface OverworldState {
   woodCollected: number;
   stoneCollected: number;
   dungeonEntrances: Record<string, DungeonEntrance>; // Persistent dungeon data
+  playerBuildings: PlayerBuilding[]; // Phase 3: Player-placed buildings
 }
 
 // ============= CONSTANTS =============
@@ -235,6 +238,7 @@ export function createOverworldState(): OverworldState {
     },
     woodCollected: 0,
     stoneCollected: 0,
+    playerBuildings: [],
     dungeonEntrances: {},
   };
   
@@ -361,7 +365,8 @@ export type MoveResult =
   | { type: 'enemy'; enemy: Monster }
   | { type: 'resource'; resourceType: 'wood' | 'stone'; amount: number }
   | { type: 'building'; buildingType: BuildingType }
-  | { type: 'dungeon_entrance'; dungeonId?: string };
+  | { type: 'dungeon_entrance'; dungeonId?: string }
+  | { type: 'player_building'; building: PlayerBuilding };
 
 export function movePlayer(state: OverworldState, dx: number, dy: number): MoveResult {
   const newX = state.playerPosition.x + dx;
@@ -419,6 +424,18 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
       state.playerPosition = { x: newX, y: newY };
       updateVisibility(state);
       return { type: 'dungeon_entrance', dungeonId: tile.dungeonId };
+    }
+    
+    case 'player_building': {
+      // Walk onto player buildings (farms to harvest, etc.)
+      const building = state.playerBuildings.find(b => b.id === tile.playerBuildingId);
+      if (building && building.type === 'wall') {
+        return { type: 'blocked', reason: 'A wall blocks your path' };
+      }
+      state.playerPosition = { x: newX, y: newY };
+      updateVisibility(state);
+      if (building) return { type: 'player_building', building };
+      return { type: 'moved' };
     }
     
     default: {

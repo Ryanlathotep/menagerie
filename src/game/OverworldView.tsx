@@ -17,7 +17,12 @@ import {
   upgradeBase,
   getOverworldEnemy,
   getOverworldTile,
+  setOverworldTile,
 } from './overworld';
+import { 
+  PlayerBuildingType, BUILDING_DEFINITIONS, canPlaceBuilding, createBuilding, tickFarm,
+  processScoutTowerAttacks, PlayerBuilding,
+} from './buildings';
 import { OverworldRenderer, OverworldRendererHandle } from './OverworldRenderer';
 import { GameSidebar } from './GameSidebar';
 import { getMonsterMoves, Move, getNewMovesAtLevel } from './moves';
@@ -72,6 +77,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       ow.dungeonEntrances = { ...(ow.dungeonEntrances || {}), ...state.saveData.dungeonEntrances };
     }
     if (!ow.dungeonEntrances) ow.dungeonEntrances = {};
+    if (!ow.playerBuildings) ow.playerBuildings = [];
     ensureChunksLoaded(ow, ow.playerPosition.x, ow.playerPosition.y);
     updateVisibility(ow);
     return ow;
@@ -82,6 +88,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [selectedDungeon, setSelectedDungeon] = useState<DungeonEntrance | null>(null);
   const [showEquipment, setShowEquipment] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  
+  // Build mode state
+  const [buildMode, setBuildMode] = useState(false);
+  const [selectedBuildType, setSelectedBuildType] = useState<PlayerBuildingType | null>(null);
+  const [showBuildPanel, setShowBuildPanel] = useState(false);
   
   // Targeting state
   const [targetingMove, setTargetingMove] = useState<Move | null>(null);
@@ -209,9 +220,32 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           }
           setShowDungeonPrompt(true);
           break;
+        case 'player_building':
+          if (result.building.type === 'farm' && result.building.harvestReady) {
+            // Harvest the farm
+            const output = result.building.harvestOutput || [];
+            for (const item of output) {
+              dispatch({ type: 'ADD_MATERIAL', materialId: item.materialId, quantity: item.quantity });
+              addLog(`🌾 Harvested ${item.quantity}x ${item.materialId}!`, 'loot');
+            }
+            result.building.harvestReady = false;
+            result.building.harvestOutput = [];
+            result.building.growthProgress = 30;
+            toast.success('Farm harvested!');
+          }
+          break;
       }
       
-      if (result.type === 'moved' || result.type === 'resource') {
+      if (result.type === 'moved' || result.type === 'resource' || result.type === 'player_building') {
+        // Tick farms on each step
+        for (const building of (newState.playerBuildings || [])) {
+          if (building.type === 'farm' && building.assignedMonsterId) {
+            const harvest = tickFarm(building);
+            if (harvest) {
+              addLog(`🌾 Farm at (${building.worldX},${building.worldY}) is ready to harvest!`, 'loot');
+            }
+          }
+        }
         setTimeout(() => processEnemyTurns(newState), 100);
       }
       
@@ -429,6 +463,46 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   
   // ─── Tile click handler ───
   const handleTileClick = useCallback((worldX: number, worldY: number) => {
+    // Build mode: place building
+    if (buildMode && selectedBuildType) {
+      setOverworld(prev => {
+        const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
+        const tile = getOverworldTile(newOw, worldX, worldY);
+        if (!tile || tile.type !== 'grass') {
+          toast.error('Can only build on grass tiles!');
+          return prev;
+        }
+        const check = canPlaceBuilding(
+          worldX, worldY,
+          newOw.playerBuildings || [],
+          newOw.homeBase.position,
+          newOw.woodCollected, newOw.stoneCollected,
+          selectedBuildType,
+        );
+        if (!check.canPlace) {
+          toast.error(check.reason || 'Cannot build here');
+          return prev;
+        }
+        const def = BUILDING_DEFINITIONS[selectedBuildType];
+        newOw.woodCollected -= def.cost.wood;
+        newOw.stoneCollected -= def.cost.stone;
+        const building = createBuilding(selectedBuildType, worldX, worldY);
+        if (!newOw.playerBuildings) newOw.playerBuildings = [];
+        newOw.playerBuildings.push(building);
+        setOverworldTile(newOw, worldX, worldY, {
+          type: 'player_building',
+          explored: true,
+          visible: true,
+          playerBuildingId: building.id,
+        });
+        addLog(`🏗️ Built ${def.name} at (${worldX},${worldY})!`, 'system');
+        toast.success(`${def.emoji} ${def.name} built!`);
+        saveOverworld(newOw);
+        return newOw;
+      });
+      return;
+    }
+    
     if (targetingMove) {
       handleTargetingClick(worldX, worldY);
       return;
@@ -463,7 +537,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 && (dx !== 0 || dy !== 0)) {
       handleMove(dx, dy);
     }
-  }, [overworld, monster, targetingMove, handleTargetingClick, handleMove, addLog]);
+  }, [overworld, monster, targetingMove, handleTargetingClick, handleMove, addLog, buildMode, selectedBuildType, saveOverworld]);
   
   // Right-click → auto-attack with first melee/ranged
   const handleTileRightClick = useCallback((worldX: number, worldY: number) => {
@@ -490,10 +564,18 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (showBuildingMenu || showDungeonPrompt || showRecruitment || levelUpQueue.length > 0) return;
       
-      if (e.key === 'Escape' && targetingMove) {
-        cancelTargeting();
-        addLog('❌ Attack cancelled.', 'info');
-        return;
+      if (e.key === 'Escape') {
+        if (buildMode) {
+          setBuildMode(false);
+          setSelectedBuildType(null);
+          addLog('❌ Build mode cancelled.', 'info');
+          return;
+        }
+        if (targetingMove) {
+          cancelTargeting();
+          addLog('❌ Attack cancelled.', 'info');
+          return;
+        }
       }
       
       switch (e.key) {
@@ -505,12 +587,18 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           e.preventDefault(); handleMove(-1, 0); break;
         case 'ArrowRight': case 'd': case 'D':
           e.preventDefault(); handleMove(1, 0); break;
+        case 'b': case 'B':
+          if (!targetingMove && !buildMode) {
+            e.preventDefault();
+            setShowBuildPanel(p => !p);
+          }
+          break;
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleMove, showBuildingMenu, showDungeonPrompt, showRecruitment, targetingMove, cancelTargeting, levelUpQueue.length]);
+  }, [handleMove, showBuildingMenu, showDungeonPrompt, showRecruitment, targetingMove, cancelTargeting, levelUpQueue.length, buildMode]);
   
   // Keybind shortcuts for moves
   const keybindDataRef = useRef(loadKeybinds());
@@ -836,6 +924,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
                   <span>🏠 Building</span>
                   <span>🗼 Dungeon</span>
                   <span>Right-click enemy to attack</span>
+                  <button className="text-primary hover:underline" onClick={() => setShowBuildPanel(true)}>[B] Build</button>
                 </div>
               </div>
             </div>
@@ -898,6 +987,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
               <Button variant="outline" size="sm" className="flex-1" onClick={() => { setShowBuildingMenu(false); dispatch({ type: 'SET_PHASE', phase: 'main_menu' }); }}>
                 🏪 Town Hub
               </Button>
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => { setShowBuildingMenu(false); setShowBuildPanel(true); }}>
+                🏗️ Build
+              </Button>
             </div>
           )}
           <Button variant="ghost" className="w-full" onClick={() => setShowBuildingMenu(false)}>
@@ -941,6 +1033,68 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             </Button>
           </div>
         </Card>
+      </div>
+    )}
+    
+    {/* Build Panel */}
+    {showBuildPanel && (
+      <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <Card className="p-6 max-w-lg w-full space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold">🏗️ Build Structures</h2>
+            <div className="text-sm text-muted-foreground">
+              🪵 {overworld.woodCollected} • 🪨 {overworld.stoneCollected}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {buildMode ? `Click a grass tile to place ${BUILDING_DEFINITIONS[selectedBuildType!]?.name}. Press ESC to cancel.` : 'Select a building to place.'}
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {(Object.values(BUILDING_DEFINITIONS) as typeof BUILDING_DEFINITIONS[PlayerBuildingType][]).map(def => {
+              const canAfford = overworld.woodCollected >= def.cost.wood && overworld.stoneCollected >= def.cost.stone;
+              const isSelected = buildMode && selectedBuildType === def.type;
+              return (
+                <button
+                  key={def.type}
+                  className={`p-3 rounded-lg border text-left transition-colors ${
+                    isSelected ? 'border-primary bg-primary/10' : canAfford ? 'border-border hover:border-primary/50' : 'border-border opacity-50'
+                  }`}
+                  onClick={() => {
+                    if (!canAfford) { toast.error('Not enough resources!'); return; }
+                    setSelectedBuildType(def.type);
+                    setBuildMode(true);
+                    setShowBuildPanel(false);
+                    addLog(`🏗️ Build mode: ${def.name}. Click a grass tile to place.`, 'system');
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">{def.emoji}</span>
+                    <span className="text-sm font-medium">{def.name}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-1">{def.description}</p>
+                  <p className="text-xs">
+                    🪵 {def.cost.wood} 🪨 {def.cost.stone}
+                    {def.requiresMonster && ' • 🐾 Assign monster'}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+          <Button variant="ghost" className="w-full" onClick={() => { setShowBuildPanel(false); setBuildMode(false); setSelectedBuildType(null); }}>
+            Close
+          </Button>
+        </Card>
+      </div>
+    )}
+    
+    {/* Build mode indicator */}
+    {buildMode && !showBuildPanel && (
+      <div className="fixed top-2 left-1/2 -translate-x-1/2 bg-card/95 backdrop-blur-sm border border-primary/50 rounded-lg px-4 py-2 flex items-center gap-3 z-20">
+        <span className="text-primary animate-pulse">🏗️</span>
+        <span className="text-sm font-medium">Building: {BUILDING_DEFINITIONS[selectedBuildType!]?.name}</span>
+        <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => { setBuildMode(false); setSelectedBuildType(null); }}>
+          Cancel (ESC)
+        </Button>
       </div>
     )}
   </>;

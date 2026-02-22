@@ -51,7 +51,7 @@ const INITIAL_STATE: GameState = {
 // Action types
 type GameAction =
   | { type: 'SET_PHASE'; phase: GamePhase }
-  | { type: 'START_RUN'; monster: Monster; party?: Monster[]; preEquipped?: MonsterEquipment; partyPreEquipped?: MonsterEquipment[]; withdrawnIds?: string[]; preSelectedItems?: InventoryItem[] }
+  | { type: 'START_RUN'; monster: Monster; party?: Monster[]; preEquipped?: MonsterEquipment; partyPreEquipped?: MonsterEquipment[]; withdrawnIds?: string[]; preSelectedItems?: InventoryItem[]; destination?: 'dungeon' | 'overworld' }
   | { type: 'END_RUN'; victory: boolean }
   | { type: 'FLEE_DUNGEON' }  // Flee safely - keeps materials and equipment
   | { type: 'SET_DUNGEON'; dungeon: DungeonState }
@@ -180,7 +180,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       
       return {
         ...state,
-        phase: 'dungeon',
+        phase: action.destination || 'dungeon',
         run: {
           currentMonster: fullParty[0],
           party: fullParty,

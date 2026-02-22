@@ -656,6 +656,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   
   const handleFlee = () => {
     saveOverworld(overworld);
+    dispatch({ type: 'FLEE_DUNGEON' });
     dispatch({ type: 'SET_PHASE', phase: 'main_menu' });
   };
   

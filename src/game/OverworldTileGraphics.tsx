@@ -223,6 +223,58 @@ export function OverworldDungeonTile({ size, seed = 0, depth }: TileGraphicProps
   );
 }
 
+// ─── Monster Nest ───
+export function OverworldNestTile({ size, seed = 0, element = 'normal', hpPercent = 100 }: TileGraphicProps & { element?: string; hpPercent?: number }) {
+  const r1 = seededRandom(seed);
+  
+  // Element-based colors
+  const elementColors: Record<string, { glow: string; core: string }> = {
+    normal: { glow: 'hsl(0 0% 60%)', core: 'hsl(0 0% 40%)' },
+    fire: { glow: 'hsl(15 90% 55%)', core: 'hsl(0 80% 40%)' },
+    water: { glow: 'hsl(200 85% 55%)', core: 'hsl(210 70% 40%)' },
+    earth: { glow: 'hsl(35 70% 50%)', core: 'hsl(25 60% 35%)' },
+    air: { glow: 'hsl(180 50% 65%)', core: 'hsl(190 40% 50%)' },
+    void: { glow: 'hsl(270 50% 55%)', core: 'hsl(280 40% 35%)' },
+  };
+  
+  const colors = elementColors[element] || elementColors.normal;
+  const damaged = hpPercent < 100;
+  
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className="block">
+      {/* Dark ground */}
+      <rect width="24" height="24" fill="hsl(30 20% 25%)" opacity={0.3}/>
+      {/* Pulsing glow */}
+      <ellipse cx="12" cy="14" rx="8" ry="6" fill={colors.glow} opacity={0.2}>
+        <animate attributeName="opacity" values="0.15;0.3;0.15" dur="2s" repeatCount="indefinite"/>
+      </ellipse>
+      {/* Nest base - organic mound shape */}
+      <ellipse cx="12" cy="16" rx="9" ry="5" fill={colors.core} opacity={0.6}/>
+      <ellipse cx="12" cy="15" rx="7" ry="4" fill={colors.core} opacity={0.5}/>
+      {/* Tendrils / spikes around nest */}
+      <path d={`M${5+r1} 14 Q${4} ${10} ${6+r1} ${7}`} stroke={colors.core} strokeWidth={1} fill="none" opacity={0.7} strokeLinecap="round"/>
+      <path d={`M${18-r1} 13 Q${19} ${9} ${17-r1} ${6}`} stroke={colors.core} strokeWidth={1} fill="none" opacity={0.7} strokeLinecap="round"/>
+      <path d={`M12 12 Q${12+r1} ${7} ${11+r1*2} ${4}`} stroke={colors.core} strokeWidth={0.8} fill="none" opacity={0.6} strokeLinecap="round"/>
+      {/* Glowing core */}
+      <ellipse cx="12" cy="13" rx="3" ry="2.5" fill={colors.glow} opacity={0.5}>
+        <animate attributeName="opacity" values="0.4;0.7;0.4" dur="1.5s" repeatCount="indefinite"/>
+      </ellipse>
+      <ellipse cx="12" cy="13" rx="1.5" ry="1.2" fill="white" opacity={0.3}/>
+      {/* Damage cracks */}
+      {damaged && (
+        <>
+          <path d="M8 11 L10 14 L9 16" stroke={INK.dark} strokeWidth={0.6} fill="none" opacity={0.6}/>
+          <path d="M15 10 L14 13 L16 15" stroke={INK.dark} strokeWidth={0.6} fill="none" opacity={0.6}/>
+        </>
+      )}
+      {/* Ink outline */}
+      <ellipse cx="12" cy="16" rx="9" ry="5" stroke={INK.medium} strokeWidth={0.5} fill="none" opacity={0.4}/>
+      <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
+      <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
+    </svg>
+  );
+}
+
 // ─── Fog of war (unexplored) ───
 export function OverworldFogTile({ size }: { size: number }) {
   return (

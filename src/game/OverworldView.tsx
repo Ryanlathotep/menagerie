@@ -48,6 +48,10 @@ import { EvolvedMove } from './moveMastery';
 import { CombatEffects } from './statusEffects';
 import { BuildingAssignModal } from './BuildingAssignModal';
 import { FARM_OUTPUTS, FARM_GROWTH_STEPS } from './buildings';
+import { 
+  NestState, tickNest, spawnNestMonster, findNestSpawnPosition, 
+  damageNest, getNestDestroyRewards, countNearbyNestEnemies,
+} from './nests';
 
 interface OverworldViewProps {
   gameLog: LogMessage[];
@@ -80,6 +84,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     }
     if (!ow.dungeonEntrances) ow.dungeonEntrances = {};
     if (!ow.playerBuildings) ow.playerBuildings = [];
+    if (!ow.nests) ow.nests = {};
     ensureChunksLoaded(ow, ow.playerPosition.x, ow.playerPosition.y);
     updateVisibility(ow);
     return ow;
@@ -243,6 +248,10 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             setAssignBuilding(result.building);
           }
           break;
+        case 'nest':
+          toast.warning(`A monster nest blocks the way! Attack it to destroy it.`);
+          addLog(`🪺 Monster nest (${result.nest.element}) - HP: ${result.nest.hp}/${result.nest.maxHp}`, 'system');
+          return prev;
       }
       
       if (result.type === 'moved' || result.type === 'resource' || result.type === 'player_building') {
@@ -252,6 +261,32 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             const harvest = tickFarm(building);
             if (harvest) {
               addLog(`🌾 Farm at (${building.worldX},${building.worldY}) is ready to harvest!`, 'loot');
+            }
+          }
+        }
+        // Tick nests - spawn enemies
+        for (const nest of Object.values(newState.nests || {})) {
+          if (nest.destroyed) continue;
+          const nearby = countNearbyNestEnemies(nest.worldX, nest.worldY, nest.id, (x, y) => getOverworldTile(newState, x, y));
+          if (nearby >= 4) continue; // Cap nearby enemies
+          const { shouldSpawn } = tickNest(nest);
+          if (shouldSpawn) {
+            const spawnPos = findNestSpawnPosition(nest.worldX, nest.worldY, (x, y) => getOverworldTile(newState, x, y));
+            if (spawnPos) {
+              const spawned = spawnNestMonster(nest);
+              // Add to chunk
+              const cx = Math.floor(spawnPos.x / 16);
+              const cy = Math.floor(spawnPos.y / 16);
+              const chunkKey = `${cx},${cy}`;
+              if (newState.chunks[chunkKey]) {
+                newState.chunks[chunkKey].enemies.push(spawned);
+              }
+              setOverworldTile(newState, spawnPos.x, spawnPos.y, {
+                type: 'enemy', explored: true, visible: false, enemyId: spawned.id,
+              });
+              if (getOverworldTile(newState, spawnPos.x, spawnPos.y)?.visible) {
+                addLog(`🪺 A ${spawned.name} emerges from a nearby nest!`, 'damage');
+              }
             }
           }
         }
@@ -372,6 +407,39 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       
       for (const tile of affected) {
         const owTile = getOverworldTile(newOw, tile.x, tile.y);
+        
+        // Attack nests
+        if (owTile?.type === 'nest' && owTile.nestId) {
+          const nest = newOw.nests?.[owTile.nestId];
+          if (nest && !nest.destroyed) {
+            const attackStat = targetingMove.type === 'melee' ? monster.stats.attack : monster.stats.special;
+            const baseDamage = targetingMove.power + attackStat;
+            const damage = Math.max(1, Math.floor(baseDamage * 0.8)); // Nests have flat damage reduction
+            
+            const destroyed = damageNest(nest, damage);
+            if (destroyed) {
+              // Remove nest tile, replace with grass
+              setOverworldTile(newOw, tile.x, tile.y, {
+                type: 'grass', explored: true, visible: true, harvested: true,
+              });
+              // Grant rewards
+              const rewards = getNestDestroyRewards(nest);
+              dispatch({ type: 'ADD_XP', amount: rewards.xp });
+              dispatch({ type: 'ADD_GOLD', amount: rewards.gold });
+              for (const mat of rewards.materials) {
+                dispatch({ type: 'ADD_MATERIAL', materialId: mat.id, quantity: 1 });
+              }
+              addLog(`💥 ${targetingMove.name} destroyed the ${nest.element} nest! +${rewards.xp} XP, +${rewards.gold} gold, +${rewards.materials.length} materials!`, 'loot');
+              toast.success(`🪺 Nest destroyed! +${rewards.xp} XP`);
+              enemiesHit.push({ enemy: { id: nest.id, name: `${nest.element} nest` } as any, pos: tile });
+            } else {
+              addLog(`⚔️ ${targetingMove.name} hit the nest for ${damage} damage! (${nest.hp}/${nest.maxHp} HP)`, 'damage');
+              enemiesHit.push({ enemy: { id: nest.id, name: `${nest.element} nest` } as any, pos: tile });
+            }
+          }
+        }
+        
+        // Attack enemies
         if (owTile?.type === 'enemy' && owTile.enemyId) {
           const enemy = getOverworldEnemy(newOw, owTile.enemyId);
           if (enemy) {
@@ -517,9 +585,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       return;
     }
     
-    // Click on enemy → auto-select first attack move
+    // Click on enemy or nest → auto-select first attack move
     const tile = getOverworldTile(overworld, worldX, worldY);
-    if (tile?.type === 'enemy' && tile.enemyId && monster) {
+    if ((tile?.type === 'enemy' && tile.enemyId || tile?.type === 'nest' && tile.nestId) && monster) {
       const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
       const attackMove = moves.find(m => m.type === 'melee' || m.type === 'ranged');
       if (attackMove) {
@@ -534,7 +602,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             return;
           }
         } else {
-          addLog('❌ Enemy out of range! Get closer.', 'info');
+          addLog(`❌ ${tile.type === 'nest' ? 'Nest' : 'Enemy'} out of range! Get closer.`, 'info');
           return;
         }
       }
@@ -560,7 +628,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   // Right-click → auto-attack with first melee/ranged
   const handleTileRightClick = useCallback((worldX: number, worldY: number) => {
     const tile = getOverworldTile(overworld, worldX, worldY);
-    if (tile?.type === 'enemy' && tile.enemyId && monster) {
+    if ((tile?.type === 'enemy' && tile.enemyId || tile?.type === 'nest' && tile.nestId) && monster) {
       const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
       const attackMove = moves.find(m => m.type === 'melee' || m.type === 'ranged');
       if (attackMove) {

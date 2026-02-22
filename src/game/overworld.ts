@@ -3,12 +3,13 @@
 import { Monster, Position, SpeciesType, ElementType, SPECIES_DATA, DungeonEntrance } from './types';
 import { generateRandomMonster } from './utils';
 import { PlayerBuilding } from './buildings';
+import { NestState, isNestAt, createNest } from './nests';
 
 const ALL_SPECIES = Object.keys(SPECIES_DATA) as SpeciesType[];
 
 // ============= TYPES =============
 
-export type OverworldTileType = 'grass' | 'tree' | 'rock' | 'water' | 'building' | 'enemy' | 'player' | 'dungeon_entrance' | 'player_building';
+export type OverworldTileType = 'grass' | 'tree' | 'rock' | 'water' | 'building' | 'enemy' | 'player' | 'dungeon_entrance' | 'player_building' | 'nest';
 
 export type BuildingType = 'campfire' | 'log_cabin' | 'town_hall';
 
@@ -22,6 +23,7 @@ export interface OverworldTile {
   harvested?: boolean;
   dungeonId?: string; // For dungeon_entrance tiles - links to DungeonEntrance
   playerBuildingId?: string; // For player_building tiles
+  nestId?: string; // For nest tiles
 }
 
 export interface OverworldChunk {
@@ -42,6 +44,7 @@ export interface OverworldState {
   stoneCollected: number;
   dungeonEntrances: Record<string, DungeonEntrance>; // Persistent dungeon data
   playerBuildings: PlayerBuilding[]; // Phase 3: Player-placed buildings
+  nests: Record<string, NestState>; // Phase 4: Monster nests
 }
 
 // ============= CONSTANTS =============
@@ -146,7 +149,7 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
-function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntrances: Record<string, DungeonEntrance>): OverworldChunk {
+function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntrances: Record<string, DungeonEntrance>, nests: Record<string, NestState>): OverworldChunk {
   const tiles: OverworldTile[][] = [];
   const enemies: Monster[] = [];
   const seed = cx * 10000 + cy * 100;
@@ -175,6 +178,19 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
         continue;
       }
       
+      // Monster nest (Phase 4)
+      if (isNestAt(worldX, worldY)) {
+        const nestId = `nest_${worldX}_${worldY}`;
+        if (!nests[nestId]) {
+          nests[nestId] = createNest(worldX, worldY);
+        }
+        if (!nests[nestId].destroyed) {
+          row.push({ type: 'nest', explored: false, visible: false, nestId });
+          continue;
+        }
+        // If destroyed, fall through to generate as grass
+      }
+
       // Biome-influenced terrain generation
       const biome = getBiomeElement(worldX, worldY);
       let type: OverworldTileType = 'grass';
@@ -240,6 +256,7 @@ export function createOverworldState(): OverworldState {
     stoneCollected: 0,
     playerBuildings: [],
     dungeonEntrances: {},
+    nests: {},
   };
   
   // Generate starting chunk and surrounding chunks
@@ -264,7 +281,7 @@ export function ensureChunksLoaded(state: OverworldState, worldX: number, worldY
       const key = getChunkKey(cx + dx, cy + dy);
       if (!state.chunks[key]) {
         const difficulty = getDifficulty((cx + dx) * CHUNK_SIZE, (cy + dy) * CHUNK_SIZE);
-        state.chunks[key] = generateChunk(cx + dx, cy + dy, difficulty, state.dungeonEntrances);
+        state.chunks[key] = generateChunk(cx + dx, cy + dy, difficulty, state.dungeonEntrances, state.nests);
       }
     }
   }
@@ -366,7 +383,8 @@ export type MoveResult =
   | { type: 'resource'; resourceType: 'wood' | 'stone'; amount: number }
   | { type: 'building'; buildingType: BuildingType }
   | { type: 'dungeon_entrance'; dungeonId?: string }
-  | { type: 'player_building'; building: PlayerBuilding };
+  | { type: 'player_building'; building: PlayerBuilding }
+  | { type: 'nest'; nest: NestState };
 
 export function movePlayer(state: OverworldState, dx: number, dy: number): MoveResult {
   const newX = state.playerPosition.x + dx;
@@ -435,6 +453,18 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
       state.playerPosition = { x: newX, y: newY };
       updateVisibility(state);
       if (building) return { type: 'player_building', building };
+      return { type: 'moved' };
+    }
+    
+    case 'nest': {
+      // Nests block movement — player must attack them
+      const nest = state.nests[tile.nestId || ''];
+      if (nest && !nest.destroyed) {
+        return { type: 'nest', nest };
+      }
+      // Destroyed nest → walk through
+      state.playerPosition = { x: newX, y: newY };
+      updateVisibility(state);
       return { type: 'moved' };
     }
     

@@ -191,7 +191,7 @@ export function OverworldBuildingTile({ size, buildingType = 'campfire', seed = 
 }
 
 // ─── Dungeon Entrance ───
-export function OverworldDungeonTile({ size, seed = 0 }: TileGraphicProps) {
+export function OverworldDungeonTile({ size, seed = 0, depth }: TileGraphicProps & { depth?: number }) {
   const r1 = seededRandom(seed);
 
   return (
@@ -210,6 +210,13 @@ export function OverworldDungeonTile({ size, seed = 0 }: TileGraphicProps) {
       <rect x="9" y="21.5" width="6" height="1" fill="hsl(220 10% 45%)" opacity={0.4}/>
       {/* Ink outline */}
       <rect x="6" y="6" width="12" height="16" rx={0.5} stroke={INK.medium} strokeWidth={0.5} fill="none" opacity={0.5}/>
+      {/* Depth indicator */}
+      {depth !== undefined && depth > 0 && (
+        <>
+          <rect x="6" y="2" width="12" height="5" rx="1" fill="hsl(260 25% 15%)" opacity={0.85}/>
+          <text x="12" y="6" textAnchor="middle" fontSize="4" fill="hsl(270 60% 75%)" fontWeight="bold">{depth}</text>
+        </>
+      )}
       <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
       <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
     </svg>

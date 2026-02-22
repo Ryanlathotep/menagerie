@@ -39,6 +39,7 @@ const DEFAULT_SAVE_DATA: SaveData = {
   storedEquipment: [],        // Equipment storage
   storedItems: [],            // Town item storage
   unlockedRecipes: [],        // Unlocked crafting recipes
+  dungeonEntrances: {},       // Persistent dungeon data
 };
 
 // Initial game state
@@ -259,6 +260,19 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         }
       }
       
+      // Update dungeon entrance depth tracking
+      const activeDungeonId = typeof window !== 'undefined' ? localStorage.getItem('menagerie_active_dungeon_id') : null;
+      let updatedDungeonEntrances = { ...(state.saveData.dungeonEntrances || {}) };
+      if (activeDungeonId && updatedDungeonEntrances[activeDungeonId] && state.run?.dungeon) {
+        const currentFloor = state.run.dungeon.floor;
+        if (currentFloor > (updatedDungeonEntrances[activeDungeonId].deepestFloor || 0)) {
+          updatedDungeonEntrances[activeDungeonId] = {
+            ...updatedDungeonEntrances[activeDungeonId],
+            deepestFloor: currentFloor,
+          };
+        }
+      }
+      
       return {
         ...state,
         phase: 'run_summary',
@@ -272,6 +286,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           storedEquipment: [...state.saveData.storedEquipment, ...equipmentToStore],
           unlockedMonsters: updatedUnlockedMonsters,
           unlockedRecipes: newUnlockedRecipes,
+          dungeonEntrances: updatedDungeonEntrances,
         },
       };
     }
@@ -342,6 +357,19 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         }
       }
       
+      // Update dungeon entrance depth tracking
+      const fleeDungeonId = typeof window !== 'undefined' ? localStorage.getItem('menagerie_active_dungeon_id') : null;
+      let fleeUpdatedEntrances = { ...(state.saveData.dungeonEntrances || {}) };
+      if (fleeDungeonId && fleeUpdatedEntrances[fleeDungeonId] && state.run.dungeon) {
+        const fleeFloor = state.run.dungeon.floor;
+        if (fleeFloor > (fleeUpdatedEntrances[fleeDungeonId].deepestFloor || 0)) {
+          fleeUpdatedEntrances[fleeDungeonId] = {
+            ...fleeUpdatedEntrances[fleeDungeonId],
+            deepestFloor: fleeFloor,
+          };
+        }
+      }
+      
       return {
         ...state,
         phase: 'run_summary',
@@ -357,6 +385,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           materials: mergedMaterials,
           unlockedMonsters: updatedUnlockedMonsters,
           unlockedRecipes: newUnlockedRecipes,
+          dungeonEntrances: fleeUpdatedEntrances,
         },
       };
     }
@@ -882,6 +911,11 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         saveData: {
           ...state.saveData,
           overworldState: action.overworld,
+          // Sync dungeon entrances from overworld to save data
+          dungeonEntrances: {
+            ...(state.saveData.dungeonEntrances || {}),
+            ...(action.overworld.dungeonEntrances || {}),
+          },
         },
       };
       
@@ -1231,6 +1265,9 @@ export function GameProvider({ children }: GameProviderProps) {
         }
         if (!saveData.storedEquipment) {
           saveData.storedEquipment = [];
+        }
+        if (!saveData.dungeonEntrances) {
+          saveData.dungeonEntrances = {};
         }
         dispatch({ type: 'LOAD_SAVE', saveData });
       } catch (e) {

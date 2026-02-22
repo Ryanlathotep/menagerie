@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useGame } from './state';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Position, Monster, MonsterStats, InventoryItem } from './types';
+import { Position, Monster, MonsterStats, InventoryItem, DungeonEntrance } from './types';
 import { 
   createOverworldState, 
   movePlayer, 
@@ -67,6 +67,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     } else {
       ow = createOverworldState();
     }
+    // Restore saved dungeon entrances
+    if (state.saveData.dungeonEntrances) {
+      ow.dungeonEntrances = { ...(ow.dungeonEntrances || {}), ...state.saveData.dungeonEntrances };
+    }
+    if (!ow.dungeonEntrances) ow.dungeonEntrances = {};
     ensureChunksLoaded(ow, ow.playerPosition.x, ow.playerPosition.y);
     updateVisibility(ow);
     return ow;
@@ -74,6 +79,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   
   const [showBuildingMenu, setShowBuildingMenu] = useState(false);
   const [showDungeonPrompt, setShowDungeonPrompt] = useState(false);
+  const [selectedDungeon, setSelectedDungeon] = useState<DungeonEntrance | null>(null);
   const [showEquipment, setShowEquipment] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   
@@ -197,6 +203,10 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           setShowBuildingMenu(true);
           break;
         case 'dungeon_entrance':
+          if (result.dungeonId) {
+            const entrance = newState.dungeonEntrances[result.dungeonId];
+            setSelectedDungeon(entrance || null);
+          }
           setShowDungeonPrompt(true);
           break;
       }
@@ -651,6 +661,10 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   
   const handleEnterDungeon = () => {
     setShowDungeonPrompt(false);
+    // Store which dungeon we're entering for tracking
+    if (selectedDungeon) {
+      localStorage.setItem('menagerie_active_dungeon_id', selectedDungeon.id);
+    }
     dispatch({ type: 'SET_PHASE', phase: 'dungeon' });
   };
   
@@ -898,6 +912,23 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <Card className="p-6 max-w-sm w-full space-y-4 text-center">
           <h2 className="text-lg font-bold">🗼 Dungeon Entrance</h2>
+          {selectedDungeon && (
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">
+                Difficulty: <span className="font-semibold text-foreground">Lv.{selectedDungeon.difficulty}</span>
+              </p>
+              {selectedDungeon.deepestFloor > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Deepest explored: <span className="font-semibold text-foreground">Floor {selectedDungeon.deepestFloor}</span>
+                </p>
+              )}
+              {selectedDungeon.element && (
+                <p className="text-sm text-muted-foreground">
+                  Attuned: <span className="font-semibold text-foreground capitalize">{selectedDungeon.element}</span>
+                </p>
+              )}
+            </div>
+          )}
           <p className="text-sm text-muted-foreground">
             Enter the dungeon to fight monsters, collect loot, and unlock new creatures!
           </p>

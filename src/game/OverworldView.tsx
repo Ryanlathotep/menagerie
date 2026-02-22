@@ -1012,6 +1012,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             playerClass={monster?.class}
             playerSpecies={monster?.species}
             unlockedMonsters={state.saveData.unlockedMonsters}
+            party={state.run?.party}
             onTileClick={handleTileClick}
             onTileRightClick={handleTileRightClick}
             targetingMode={!!targetingMove}

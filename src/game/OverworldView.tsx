@@ -629,7 +629,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       if (e.shiftKey || targetingMove) return;
       
       const key = e.key.toLowerCase();
-      const binds = getMonsterKeybindsImport(keybindDataRef.current, monster.id);
+      const binds = getMonsterKeybindsImport(keybindDataRef.current, `${monster.species}_${monster.element}_${(monster as any).class}`);
       
       for (const [moveId, boundKey] of Object.entries(binds)) {
         if (boundKey === key) {

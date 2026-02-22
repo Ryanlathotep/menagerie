@@ -1827,7 +1827,7 @@ function DungeonView({
       if (targetingMove) return;
       
       const key = e.key.toLowerCase();
-      const binds = getMonsterKeybindsImport(keybindDataRef.current, monster.id);
+      const binds = getMonsterKeybindsImport(keybindDataRef.current, `${monster.species}_${monster.element}_${(monster as any).class}`);
       
       for (const [moveId, boundKey] of Object.entries(binds)) {
         if (boundKey === key) {
@@ -2274,7 +2274,7 @@ function BattleView({
       if (e.shiftKey) return;
       
       const key = e.key.toLowerCase();
-      const binds = getMonsterKeybindsImport(battleKeybindDataRef.current, monster.id);
+      const binds = getMonsterKeybindsImport(battleKeybindDataRef.current, `${monster.species}_${monster.element}_${monster.class}`);
       
       for (const [moveId, boundKey] of Object.entries(binds)) {
         if (boundKey === key) {

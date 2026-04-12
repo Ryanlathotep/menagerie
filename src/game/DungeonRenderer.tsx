@@ -331,21 +331,38 @@ function Tile({
     const isTriggered = tile.triggered;
     const disarmChance = Math.min(95, Math.max(5, playerDexterity * 3 + 20)); // 20-95% based on dexterity
 
-    const handleRightClick = (e: React.MouseEvent) => {
-      e.preventDefault();
+    const handleDisarm = () => {
       if (isTriggered || !onDisarmTrap) return;
-
-      // Calculate disarm success
       const roll = Math.random() * 100;
       const success = roll < disarmChance;
       onDisarmTrap(x, y, success);
     };
+
+    const handleRightClick = (e: React.MouseEvent) => {
+      e.preventDefault();
+      handleDisarm();
+    };
+
+    // Long-press for mobile
+    let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+    const handleTouchStart = () => {
+      longPressTimer = setTimeout(() => {
+        handleDisarm();
+      }, 500);
+    };
+    const handleTouchEnd = () => {
+      if (longPressTimer) clearTimeout(longPressTimer);
+    };
+
     return <Tooltip>
         <TooltipTrigger asChild>
           <div 
             className={`flex items-center justify-center relative ${isTriggered ? 'opacity-50' : 'cursor-pointer hover:scale-105'} transition-transform`} 
             style={tileStyle} 
             onContextMenu={handleRightClick}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
           >
             <TrapTile size={tileSize} trapType={trapType} triggered={isTriggered} seed={tileSeed} />
           </div>
@@ -355,7 +372,7 @@ function Tile({
             <p className="font-bold text-sm">{trapInfo.icon} {trapInfo.name}</p>
             <p className="text-xs text-muted-foreground">{trapInfo.description}</p>
             {isTriggered ? <p className="text-xs text-green-600 font-medium">Already triggered</p> : <div className="pt-1 border-t border-border mt-1">
-                <p className="text-xs font-medium">Right-click to disarm</p>
+                <p className="text-xs font-medium"><span className="hidden sm:inline">Right-click to disarm</span><span className="sm:hidden">Long-press to disarm</span></p>
                 <p className="text-[10px] text-muted-foreground">
                   Success chance: <span className={disarmChance >= 60 ? 'text-green-600' : disarmChance >= 30 ? 'text-yellow-600' : 'text-red-600'}>{disarmChance}%</span> (based on Dexterity)
                 </p>

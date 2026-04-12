@@ -103,6 +103,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   onPartySwitch,
   partyEffects = [],
 }, ref) => {
+  const isMobileView = typeof window !== 'undefined' && window.innerWidth < 640;
   const [activePanel, setActivePanel] = useState<'character' | 'inventory' | 'moves' | 'party' | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   
@@ -133,46 +134,46 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   const enemyStaminaPercent = enemyCurrentStamina / enemyMaxStamina * 100;
   return <>
       {/* Always visible bottom bar */}
-      <div ref={ref} className="fixed bottom-0 left-0 right-0 h-24 bg-card border-t-2 border-primary/20 flex items-center px-3 gap-4 z-50 shadow-lg">
+      <div ref={ref} className="fixed bottom-0 left-0 right-0 bg-card border-t-2 border-primary/20 flex items-center px-2 sm:px-3 gap-2 sm:gap-4 z-50 shadow-lg h-16 sm:h-24">
         {/* Player section */}
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           {/* Monster portrait */}
           <div className="relative flex-shrink-0">
-            <MonsterSprite species={monster.species} element={monster.element} classType={monster.class} size={64} animated={false} equipment={equipment} />
-            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
+            <MonsterSprite species={monster.species} element={monster.element} classType={monster.class} size={isMobileView ? 40 : 64} animated={false} equipment={equipment} />
+            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 rounded-full">
               {monster.level}
             </div>
           </div>
           
           {/* Player bars - always visible */}
-          <div className="flex flex-col gap-1 w-[180px]">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-stat-hp w-6 font-medium">HP</span>
-              <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden min-w-[100px]" title={`HP: ${currentHp}/${maxHp}`}>
+          <div className="flex flex-col gap-0.5 sm:gap-1 w-[80px] sm:w-[180px]">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <span className="text-[10px] sm:text-xs text-stat-hp w-5 sm:w-6 font-medium">HP</span>
+              <div className="flex-1 h-3 sm:h-4 bg-muted rounded-full overflow-hidden" title={`HP: ${currentHp}/${maxHp}`}>
                 <div className="h-full bg-stat-hp transition-all" style={{ width: `${hpPercent}%` }} />
               </div>
-              <span className="text-xs font-mono w-16 text-right">{currentHp}/{maxHp}</span>
+              <span className="hidden sm:inline text-xs font-mono w-16 text-right">{currentHp}/{maxHp}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-stat-special w-6 font-medium">ST</span>
-              <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden min-w-[100px]" title={`Stamina: ${currentStamina}/${maxStamina}`}>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <span className="text-[10px] sm:text-xs text-stat-special w-5 sm:w-6 font-medium">ST</span>
+              <div className="flex-1 h-3 sm:h-4 bg-muted rounded-full overflow-hidden" title={`Stamina: ${currentStamina}/${maxStamina}`}>
                 <div className="h-full bg-stat-special transition-all" style={{ width: `${staminaPercent}%` }} />
               </div>
-              <span className="text-xs font-mono w-16 text-right">{currentStamina}/{maxStamina}</span>
+              <span className="hidden sm:inline text-xs font-mono w-16 text-right">{currentStamina}/{maxStamina}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-secondary w-6 font-medium">XP</span>
-              <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden min-w-[100px]" title={`XP: ${experience}/${experienceToNext}`}>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <span className="text-[10px] sm:text-xs text-secondary w-5 sm:w-6 font-medium">XP</span>
+              <div className="flex-1 h-2.5 sm:h-3 bg-muted rounded-full overflow-hidden" title={`XP: ${experience}/${experienceToNext}`}>
                 <div className="h-full bg-secondary transition-all" style={{ width: `${xpPercent}%` }} />
               </div>
-              <span className="text-xs font-mono w-16 text-right">{experience}/{experienceToNext}</span>
+              <span className="hidden sm:inline text-xs font-mono w-16 text-right">{experience}/{experienceToNext}</span>
             </div>
           </div>
         </div>
 
         {/* Enemy section - only in battle */}
         {inBattle && enemyMonster && (
-          <div className="flex items-center gap-2 flex-shrink-0 border-l border-border/50 pl-3">
+          <div className="hidden sm:flex items-center gap-2 flex-shrink-0 border-l border-border/50 pl-3">
             <div className="relative flex-shrink-0">
               <MonsterSprite species={enemyMonster.species} element={enemyMonster.element} classType={enemyMonster.class} size={36} animated={false} />
               <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 rounded-full">
@@ -198,18 +199,18 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
           </div>
         )}
         
-        {/* Menu buttons */}
-        <div className="flex gap-1 ml-auto">
-          <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="w-8 h-8" onClick={() => handlePanelChange('character')} title="Character Sheet">
-            <User className="w-4 h-4" />
+        {/* Menu buttons - larger touch targets on mobile */}
+        <div className="flex gap-0.5 sm:gap-1 ml-auto">
+          <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8" onClick={() => handlePanelChange('character')} title="Character Sheet">
+            <User className="w-5 h-5 sm:w-4 sm:h-4" />
           </Button>
           
-          <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-8 h-8" onClick={() => handlePanelChange('moves')} title="Moves">
-            <Swords className="w-4 h-4" />
+          <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8" onClick={() => handlePanelChange('moves')} title="Moves">
+            <Swords className="w-5 h-5 sm:w-4 sm:h-4" />
           </Button>
           
-          <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className="w-8 h-8" onClick={() => handlePanelChange('inventory')} title="Inventory">
-            <Backpack className="w-4 h-4" />
+          <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8" onClick={() => handlePanelChange('inventory')} title="Inventory">
+            <Backpack className="w-5 h-5 sm:w-4 sm:h-4" />
           </Button>
           
           {/* Equipment button - shows equipped item count */}
@@ -217,11 +218,11 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             <Button 
               variant="ghost" 
               size="icon" 
-              className="w-8 h-8 relative" 
+              className="w-9 h-9 sm:w-8 sm:h-8 relative" 
               onClick={onOpenEquipment}
               title="Equipment"
             >
-              <Shirt className="w-4 h-4" />
+              <Shirt className="w-5 h-5 sm:w-4 sm:h-4" />
               {equipmentInventory.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                   {equipmentInventory.length}
@@ -230,18 +231,16 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             </Button>
           )}
           
-          {/* Log is now always visible in the main view - no menu button needed */}
-          
           {/* Party button - only show if party has more than 1 member */}
           {party.length > 1 && onPartySwitch && (
             <Button 
               variant={activePanel === 'party' ? 'default' : 'ghost'} 
               size="icon" 
-              className="w-8 h-8 relative" 
+              className="w-9 h-9 sm:w-8 sm:h-8 relative" 
               onClick={() => handlePanelChange('party')} 
               title="Party"
             >
-              <Users className="w-4 h-4" />
+              <Users className="w-5 h-5 sm:w-4 sm:h-4" />
               <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                 {party.length}
               </span>
@@ -249,14 +248,14 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
           )}
           
           {/* Settings button */}
-          <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => setShowSettings(true)} title="Settings">
-            <Settings className="w-4 h-4" />
+          <Button variant="ghost" size="icon" className="w-9 h-9 sm:w-8 sm:h-8" onClick={() => setShowSettings(true)} title="Settings">
+            <Settings className="w-5 h-5 sm:w-4 sm:h-4" />
           </Button>
         </div>
         
         {/* Floor and gold */}
-        <div className="flex items-center gap-2 text-xs flex-shrink-0">
-          <div className="flex items-center gap-1 text-muted-foreground">
+        <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs flex-shrink-0">
+          <div className="flex items-center gap-0.5 sm:gap-1 text-muted-foreground">
             <Map className="w-3 h-3" />
             <span>F{floor}</span>
           </div>
@@ -265,14 +264,14 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
         
         {/* Flee button */}
         {onFlee && (
-          <Button variant="destructive" size="icon" className="w-8 h-8 flex-shrink-0" onClick={onFlee} title={inBattle ? "Flee from battle" : "Flee from dungeon"}>
-            <DoorOpen className="w-4 h-4" />
+          <Button variant="destructive" size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={onFlee} title={inBattle ? "Flee from battle" : "Flee from dungeon"}>
+            <DoorOpen className="w-5 h-5 sm:w-4 sm:h-4" />
           </Button>
         )}
       </div>
       
       {/* Compact slide-up panels */}
-      {activePanel && <div className="fixed bottom-24 left-0 right-0 bg-card border-t-2 border-primary/20 shadow-xl z-40 animate-fade-in">
+      {activePanel && <div className="fixed bottom-16 sm:bottom-24 left-0 right-0 bg-card border-t-2 border-primary/20 shadow-xl z-40 animate-fade-in">
           <div className="p-3">
             {/* Panel header */}
             <div className="flex items-center justify-between mb-2">

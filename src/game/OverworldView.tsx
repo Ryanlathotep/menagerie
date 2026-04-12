@@ -909,10 +909,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   }, [assignBuilding, addLog, saveOverworld]);
   
   // Dynamic bottom positioning matching DungeonView
+  const isMobileLayout = typeof window !== 'undefined' && window.innerWidth < 640;
+  const sidebarHeight = isMobileLayout ? 64 : 96;
   const dungeonBottomStyle = menuOpen 
-    ? { bottom: '520px' }
-    : { bottom: '280px' };
-  const controlsOffset = menuOpen ? 'bottom-16' : 'bottom-0';
+    ? { bottom: `${sidebarHeight + 260 + (isMobileLayout ? 0 : 180)}px` }
+    : { bottom: `${sidebarHeight + 260}px` };
+  const controlsOffset = menuOpen ? (isMobileLayout ? 'bottom-16' : 'bottom-24') : 'bottom-0';
   
   return <>
     <GameSidebar 
@@ -1041,16 +1043,24 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             {/* Top row: Controls and info */}
             <div className="flex justify-center items-center flex-shrink-0">
               {/* Mobile controls */}
-              <div className="grid grid-cols-3 gap-2 w-32 sm:hidden">
-                <div />
-                <Button size="sm" onClick={() => handleDirectionMove('up')}>↑</Button>
-                <div />
-                <Button size="sm" onClick={() => handleDirectionMove('left')}>←</Button>
-                <div />
-                <Button size="sm" onClick={() => handleDirectionMove('right')}>→</Button>
-                <div />
-                <Button size="sm" onClick={() => handleDirectionMove('down')}>↓</Button>
-                <div />
+              <div className="flex sm:hidden items-center gap-3 w-full">
+                <div className="grid grid-cols-3 gap-1 w-36 flex-shrink-0">
+                  <div />
+                  <Button size="sm" className="h-11 text-lg font-bold active:scale-95" onClick={() => handleDirectionMove('up')}>↑</Button>
+                  <div />
+                  <Button size="sm" className="h-11 text-lg font-bold active:scale-95" onClick={() => handleDirectionMove('left')}>←</Button>
+                  <div />
+                  <Button size="sm" className="h-11 text-lg font-bold active:scale-95" onClick={() => handleDirectionMove('right')}>→</Button>
+                  <div />
+                  <Button size="sm" className="h-11 text-lg font-bold active:scale-95" onClick={() => handleDirectionMove('down')}>↓</Button>
+                  <div />
+                </div>
+                <div className="flex flex-col gap-1 text-[10px] text-muted-foreground">
+                  <span>🗺️ ({overworld.playerPosition.x}, {overworld.playerPosition.y})</span>
+                  <span>🪵 {overworld.woodCollected} • 🪨 {overworld.stoneCollected}</span>
+                  <span>Tap enemy to attack</span>
+                  <button className="text-primary hover:underline text-left" onClick={() => setShowBuildPanel(true)}>🏗️ Build</button>
+                </div>
               </div>
               <div className="hidden sm:flex flex-col items-center">
                 <p className="text-muted-foreground text-sm text-center mb-1">

@@ -3623,8 +3623,8 @@ function BattleView({
             <span className="text-xs font-semibold text-muted-foreground">Log</span>
           </div>
           <div className="space-y-0.5">
-            {gameLog.slice(-5).map((msg, i) => (
-              <p key={msg.id} className={`text-xs ${i === gameLog.slice(-5).length - 1 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+            {[...gameLog].reverse().slice(0, 5).map((msg, i) => (
+              <p key={msg.id} className={`text-xs ${i === 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
                 {msg.text}
               </p>
             ))}

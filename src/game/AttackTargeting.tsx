@@ -165,7 +165,8 @@ export function MoveInfoPanel({ move, onCancel }: MoveInfoPanelProps) {
         </div>
       
       <p className="text-xs mt-2 text-primary">
-        Click a tile to attack • Right-click to cancel
+        <span className="hidden sm:inline">Click a tile to attack • Right-click to cancel</span>
+        <span className="sm:hidden">Tap a tile to attack • Tap Cancel above</span>
       </p>
     </div>
   );

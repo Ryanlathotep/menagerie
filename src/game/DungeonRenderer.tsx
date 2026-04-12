@@ -355,7 +355,7 @@ function Tile({
             <p className="font-bold text-sm">{trapInfo.icon} {trapInfo.name}</p>
             <p className="text-xs text-muted-foreground">{trapInfo.description}</p>
             {isTriggered ? <p className="text-xs text-green-600 font-medium">Already triggered</p> : <div className="pt-1 border-t border-border mt-1">
-                <p className="text-xs font-medium">Right-click to disarm</p>
+                <p className="text-xs font-medium"><span className="hidden sm:inline">Right-click to disarm</span><span className="sm:hidden">Long-press to disarm</span></p>
                 <p className="text-[10px] text-muted-foreground">
                   Success chance: <span className={disarmChance >= 60 ? 'text-green-600' : disarmChance >= 30 ? 'text-yellow-600' : 'text-red-600'}>{disarmChance}%</span> (based on Dexterity)
                 </p>

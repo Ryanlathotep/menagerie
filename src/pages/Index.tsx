@@ -1246,12 +1246,13 @@ function DungeonView({
     }
   };
   // Use flexible bottom positioning that fills available space
-  // When menu is open: need more space for expanded sidebar panel
-  // When menu is closed: just need space for the compact controls bar
+  // Mobile: sidebar is h-16, Desktop: sidebar is h-24
+  const isMobileLayout = typeof window !== 'undefined' && window.innerWidth < 640;
+  const sidebarHeight = isMobileLayout ? 64 : 96; // h-16 vs h-24
   const dungeonBottomStyle = menuOpen 
-    ? { bottom: '520px' } // Expanded: sidebar panel + controls
-    : { bottom: '280px' }; // Collapsed: just controls + move panel
-  const controlsOffset = menuOpen ? 'bottom-16' : 'bottom-0';
+    ? { bottom: `${sidebarHeight + 260 + (isMobileLayout ? 0 : 180)}px` }
+    : { bottom: `${sidebarHeight + 260}px` };
+  const controlsOffset = menuOpen ? (isMobileLayout ? 'bottom-16' : 'bottom-24') : 'bottom-0';
   const handleDropItem = (itemId: string) => {
     dispatch({
       type: 'DROP_ITEM',

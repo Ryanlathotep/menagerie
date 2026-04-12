@@ -909,10 +909,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   }, [assignBuilding, addLog, saveOverworld]);
   
   // Dynamic bottom positioning matching DungeonView
+  const isMobileLayout = typeof window !== 'undefined' && window.innerWidth < 640;
+  const sidebarHeight = isMobileLayout ? 64 : 96;
   const dungeonBottomStyle = menuOpen 
-    ? { bottom: '520px' }
-    : { bottom: '280px' };
-  const controlsOffset = menuOpen ? 'bottom-16' : 'bottom-0';
+    ? { bottom: `${sidebarHeight + 260 + (isMobileLayout ? 0 : 180)}px` }
+    : { bottom: `${sidebarHeight + 260}px` };
+  const controlsOffset = menuOpen ? (isMobileLayout ? 'bottom-16' : 'bottom-24') : 'bottom-0';
   
   return <>
     <GameSidebar 

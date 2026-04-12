@@ -331,21 +331,38 @@ function Tile({
     const isTriggered = tile.triggered;
     const disarmChance = Math.min(95, Math.max(5, playerDexterity * 3 + 20)); // 20-95% based on dexterity
 
-    const handleRightClick = (e: React.MouseEvent) => {
-      e.preventDefault();
+    const handleDisarm = () => {
       if (isTriggered || !onDisarmTrap) return;
-
-      // Calculate disarm success
       const roll = Math.random() * 100;
       const success = roll < disarmChance;
       onDisarmTrap(x, y, success);
     };
+
+    const handleRightClick = (e: React.MouseEvent) => {
+      e.preventDefault();
+      handleDisarm();
+    };
+
+    // Long-press for mobile
+    let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+    const handleTouchStart = () => {
+      longPressTimer = setTimeout(() => {
+        handleDisarm();
+      }, 500);
+    };
+    const handleTouchEnd = () => {
+      if (longPressTimer) clearTimeout(longPressTimer);
+    };
+
     return <Tooltip>
         <TooltipTrigger asChild>
           <div 
             className={`flex items-center justify-center relative ${isTriggered ? 'opacity-50' : 'cursor-pointer hover:scale-105'} transition-transform`} 
             style={tileStyle} 
             onContextMenu={handleRightClick}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
           >
             <TrapTile size={tileSize} trapType={trapType} triggered={isTriggered} seed={tileSeed} />
           </div>

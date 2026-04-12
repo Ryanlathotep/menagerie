@@ -271,7 +271,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
       </div>
       
       {/* Compact slide-up panels */}
-      {activePanel && <div className="fixed bottom-24 left-0 right-0 bg-card border-t-2 border-primary/20 shadow-xl z-40 animate-fade-in">
+      {activePanel && <div className="fixed bottom-16 sm:bottom-24 left-0 right-0 bg-card border-t-2 border-primary/20 shadow-xl z-40 animate-fade-in">
           <div className="p-3">
             {/* Panel header */}
             <div className="flex items-center justify-between mb-2">

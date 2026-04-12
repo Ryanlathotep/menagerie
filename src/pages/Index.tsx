@@ -1247,12 +1247,12 @@ function DungeonView({
   };
   // Use flexible bottom positioning that fills available space
   // Mobile: sidebar is h-16, Desktop: sidebar is h-24
+  // Controls bar is now compact - 160px on mobile, 180px on desktop
   const isMobileLayout = typeof window !== 'undefined' && window.innerWidth < 640;
   const sidebarHeight = isMobileLayout ? 64 : 96; // h-16 vs h-24
-  const dungeonBottomStyle = menuOpen 
-    ? { bottom: `${sidebarHeight + 260 + (isMobileLayout ? 0 : 180)}px` }
-    : { bottom: `${sidebarHeight + 260}px` };
-  const controlsOffset = menuOpen ? (isMobileLayout ? 'bottom-16' : 'bottom-24') : 'bottom-0';
+  const controlsBarHeight = isMobileLayout ? 160 : 180;
+  const dungeonBottomStyle = { bottom: `${sidebarHeight + controlsBarHeight}px` };
+  const controlsOffset = isMobileLayout ? 'bottom-16' : 'bottom-24';
   const handleDropItem = (itemId: string) => {
     dispatch({
       type: 'DROP_ITEM',
@@ -2105,35 +2105,28 @@ function DungeonView({
             )}
           </div>
 
-          {/* Bottom bar with controls, legend, and game log */}
-          <div className={`fixed ${controlsOffset} left-0 right-0 h-[260px] bg-card border-t-2 border-primary/20 p-3 z-40 transition-all duration-300`}>
-            <div className="flex flex-col h-full gap-2">
-              {/* Top row: Controls and legend */}
-              <div className="flex justify-center items-center flex-shrink-0">
+          {/* Bottom bar with controls and game log - compact side-by-side layout */}
+          <div className={`fixed ${controlsOffset} left-0 right-0 bg-card border-t-2 border-primary/20 p-2 z-40 transition-all duration-300`} style={{ height: isMobileLayout ? '160px' : '180px' }}>
+            <div className="flex h-full gap-2">
+              {/* Left: Controls */}
+              <div className="flex-shrink-0 flex items-center">
                 {/* Mobile controls */}
-                <div className="flex sm:hidden items-center gap-3 w-full">
-                  <div className="grid grid-cols-3 gap-1 w-36 flex-shrink-0">
+                <div className="flex sm:hidden">
+                  <div className="grid grid-cols-3 gap-0.5 w-28">
                     <div />
-                    <Button size="sm" className="h-11 text-lg font-bold active:scale-95" onClick={() => handleMove('up')}>↑</Button>
+                    <Button size="sm" className="h-9 text-base font-bold active:scale-95 p-0" onClick={() => handleMove('up')}>↑</Button>
                     <div />
-                    <Button size="sm" className="h-11 text-lg font-bold active:scale-95" onClick={() => handleMove('left')}>←</Button>
+                    <Button size="sm" className="h-9 text-base font-bold active:scale-95 p-0" onClick={() => handleMove('left')}>←</Button>
                     <div />
-                    <Button size="sm" className="h-11 text-lg font-bold active:scale-95" onClick={() => handleMove('right')}>→</Button>
+                    <Button size="sm" className="h-9 text-base font-bold active:scale-95 p-0" onClick={() => handleMove('right')}>→</Button>
                     <div />
-                    <Button size="sm" className="h-11 text-lg font-bold active:scale-95" onClick={() => handleMove('down')}>↓</Button>
+                    <Button size="sm" className="h-9 text-base font-bold active:scale-95 p-0" onClick={() => handleMove('down')}>↓</Button>
                     <div />
-                  </div>
-                  <div className="flex flex-col gap-1 text-[10px] text-muted-foreground">
-                    <span>💎 Treasure</span>
-                    <span>⬇️ Stairs</span>
-                    <span>⚠️ Trap (long-press to disarm)</span>
-                    <span>🏪 Shop</span>
                   </div>
                 </div>
-                <div className="hidden sm:flex flex-col items-center">
-                  <p className="text-muted-foreground text-sm text-center mb-1">Use WASD or Arrow keys to move</p>
-                  {/* Legend */}
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground justify-center">
+                <div className="hidden sm:flex flex-col items-center justify-center px-2">
+                  <p className="text-muted-foreground text-xs text-center mb-1">WASD / Arrows to move</p>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground justify-center">
                     <span>💎 Treasure</span>
                     <span>⬇️ Stairs</span>
                     <span>⚠️ Trap</span>
@@ -2142,20 +2135,20 @@ function DungeonView({
                 </div>
               </div>
 
-              {/* Full-width game log */}
-              <div className="flex-1 w-full p-3 bg-muted/30 rounded-lg border border-border/50 overflow-hidden">
-                <div className="flex items-center gap-1 mb-2">
-                  <ScrollText className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-semibold text-muted-foreground">Game Log</span>
+              {/* Right: Game log - fills remaining space */}
+              <div className="flex-1 min-w-0 p-2 bg-muted/30 rounded-lg border border-border/50 overflow-hidden flex flex-col">
+                <div className="flex items-center gap-1 mb-1 flex-shrink-0">
+                  <ScrollText className="w-3 h-3 text-muted-foreground" />
+                  <span className="text-xs font-semibold text-muted-foreground">Log</span>
                 </div>
-                <div className="h-[calc(100%-28px)] overflow-y-auto scrollbar-none space-y-0.5">
-                  {[...gameLog].reverse().slice(0, 12).map((msg, i) => (
-                    <p key={msg.id} className={`text-sm ${i === 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                <div className="flex-1 overflow-y-auto scrollbar-none space-y-0.5">
+                  {[...gameLog].reverse().slice(0, 20).map((msg, i) => (
+                    <p key={msg.id} className={`text-xs ${i === 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
                       {msg.text}
                     </p>
                   ))}
                   {gameLog.length === 0 && (
-                    <p className="text-sm text-muted-foreground italic">No events yet...</p>
+                    <p className="text-xs text-muted-foreground italic">No events yet...</p>
                   )}
                 </div>
               </div>

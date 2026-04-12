@@ -1252,7 +1252,7 @@ function DungeonView({
   const sidebarHeight = isMobileLayout ? 64 : 96; // h-16 vs h-24
   const controlsBarHeight = isMobileLayout ? 160 : 180;
   const dungeonBottomStyle = { bottom: `${sidebarHeight + controlsBarHeight}px` };
-  const controlsOffset = menuOpen ? (isMobileLayout ? 'bottom-16' : 'bottom-24') : 'bottom-0';
+  const controlsOffset = isMobileLayout ? 'bottom-16' : 'bottom-24';
   const handleDropItem = (itemId: string) => {
     dispatch({
       type: 'DROP_ITEM',

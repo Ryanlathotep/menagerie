@@ -1247,11 +1247,11 @@ function DungeonView({
   };
   // Use flexible bottom positioning that fills available space
   // Mobile: sidebar is h-16, Desktop: sidebar is h-24
+  // Controls bar is now compact - 160px on mobile, 180px on desktop
   const isMobileLayout = typeof window !== 'undefined' && window.innerWidth < 640;
   const sidebarHeight = isMobileLayout ? 64 : 96; // h-16 vs h-24
-  const dungeonBottomStyle = menuOpen 
-    ? { bottom: `${sidebarHeight + 260 + (isMobileLayout ? 0 : 180)}px` }
-    : { bottom: `${sidebarHeight + 260}px` };
+  const controlsBarHeight = isMobileLayout ? 160 : 180;
+  const dungeonBottomStyle = { bottom: `${sidebarHeight + controlsBarHeight}px` };
   const controlsOffset = menuOpen ? (isMobileLayout ? 'bottom-16' : 'bottom-24') : 'bottom-0';
   const handleDropItem = (itemId: string) => {
     dispatch({

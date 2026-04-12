@@ -2149,8 +2149,8 @@ function DungeonView({
                   <span className="text-sm font-semibold text-muted-foreground">Game Log</span>
                 </div>
                 <div className="h-[calc(100%-28px)] overflow-y-auto scrollbar-none space-y-0.5">
-                  {gameLog.slice(-12).map((msg, i) => (
-                    <p key={msg.id} className={`text-sm ${i === gameLog.slice(-12).length - 1 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                  {[...gameLog].reverse().slice(0, 12).map((msg, i) => (
+                    <p key={msg.id} className={`text-sm ${i === 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
                       {msg.text}
                     </p>
                   ))}

@@ -326,8 +326,19 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
         )}
       </div>
       
-      {/* Compact slide-up panels - constrained height so map + log stay visible */}
-      {activePanel && <div className="fixed bottom-16 sm:bottom-24 left-0 right-0 bg-card border-t-2 border-primary/20 shadow-xl z-40 animate-fade-in max-h-[45vh] overflow-y-auto">
+      {/* Compact slide-up panels - resizable height */}
+      {activePanel && <div 
+        className="fixed bottom-16 sm:bottom-24 left-0 right-0 bg-card border-t-2 border-primary/20 shadow-xl z-40 animate-fade-in overflow-y-auto"
+        style={{ maxHeight: `${panelHeights[activePanel]}vh` }}
+      >
+          {/* Resize drag handle */}
+          <div 
+            className="sticky top-0 z-10 flex justify-center py-1 cursor-row-resize bg-card/90 backdrop-blur-sm border-b border-border/30 touch-none select-none"
+            onMouseDown={handleResizeStart}
+            onTouchStart={handleResizeStart}
+          >
+            <div className="w-10 h-1 rounded-full bg-muted-foreground/40" />
+          </div>
           <div className="p-3">
             {/* Panel header */}
             <div className="flex items-center justify-between mb-2">

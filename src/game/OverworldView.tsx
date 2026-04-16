@@ -661,7 +661,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 && (dx !== 0 || dy !== 0)) {
       handleMove(dx, dy);
     }
-  }, [overworld, monster, targetingMove, handleTargetingClick, handleMove, addLog, buildMode, selectedBuildType, saveOverworld]);
+  }, [overworld, monster, targetingMove, handleTargetingClick, handleMove, addLog, buildMode, selectedBuildType, roadBuildMode, selectedRoadType, saveOverworld]);
   
   // Right-click → auto-attack with first melee/ranged
   const handleTileRightClick = useCallback((worldX: number, worldY: number) => {

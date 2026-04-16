@@ -548,7 +548,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           // Material drop chance per hit
           if (tierData.materialId && tierData.materialChance) {
             for (let h = 0; h < actualHits; h++) {
-              const dropRoll = seededRandomLocal(newOw.totalSteps * (isTree ? 13 : 17) + tile.x * 7 + tile.y + h);
+              const dropRoll = Math.random();
               if (dropRoll < tierData.materialChance) {
                 dispatch({ type: 'ADD_MATERIAL', materialId: tierData.materialId, quantity: 1 });
                 addLog(`✨ Found ${tierData.materialId.replace(/_/g, ' ')}!`, 'loot');

@@ -24,6 +24,7 @@ import {
   placeRoad,
   applyRoadsToChunks,
 } from './overworld';
+import { TREE_TIER_DATA, STONE_TIER_DATA, TreeTier, StoneTier } from './resourceHierarchy';
 import { 
   PlayerBuildingType, BUILDING_DEFINITIONS, canPlaceBuilding, createBuilding, tickFarm,
   processScoutTowerAttacks, PlayerBuilding,
@@ -527,10 +528,51 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             }
           }
         }
+        
+        // Harvest trees and rocks via attack
+        if (owTile?.type === 'tree' || owTile?.type === 'rock') {
+          const isTree = owTile.type === 'tree';
+          const tierData = isTree
+            ? TREE_TIER_DATA[(owTile.treeTier || 'oak') as TreeTier]
+            : STONE_TIER_DATA[(owTile.stoneTier || 'stone') as StoneTier];
+          // Attack power determines hits dealt (min 1)
+          const attackStat = targetingMove.type === 'melee' ? monster.stats.attack : monster.stats.special;
+          const hitsDealt = Math.max(1, Math.floor((targetingMove.power + attackStat) / 15));
+          const actualHits = Math.min(hitsDealt, owTile.resourceAmount || 1);
+          const amount = tierData.harvestYield * actualHits;
+          
+          owTile.resourceAmount = (owTile.resourceAmount || 1) - actualHits;
+          if (isTree) newOw.woodCollected += amount;
+          else newOw.stoneCollected += amount;
+          
+          // Material drop chance per hit
+          if (tierData.materialId && tierData.materialChance) {
+            for (let h = 0; h < actualHits; h++) {
+              const dropRoll = seededRandomLocal(newOw.totalSteps * (isTree ? 13 : 17) + tile.x * 7 + tile.y + h);
+              if (dropRoll < tierData.materialChance) {
+                dispatch({ type: 'ADD_MATERIAL', materialId: tierData.materialId, quantity: 1 });
+                addLog(`✨ Found ${tierData.materialId.replace(/_/g, ' ')}!`, 'loot');
+              }
+            }
+          }
+          
+          if (owTile.resourceAmount <= 0) {
+            const resKey = `${tile.x},${tile.y}`;
+            delete newOw.resourceUpgrades[resKey];
+            setOverworldTile(newOw, tile.x, tile.y, {
+              ...owTile, type: 'grass', harvested: true,
+              treeTier: undefined, stoneTier: undefined, resourceAmount: undefined,
+            });
+            addLog(`🪓 ${targetingMove.name} felled the ${tierData.name}! +${amount} ${isTree ? 'wood' : 'stone'}`, 'loot');
+          } else {
+            addLog(`🪓 ${targetingMove.name} chipped the ${tierData.name}! +${amount} ${isTree ? 'wood' : 'stone'} (${owTile.resourceAmount} left)`, 'loot');
+          }
+          enemiesHit.push({ enemy: { id: `res-${tile.x},${tile.y}`, name: tierData.name } as any, pos: tile });
+        }
       }
       
       if (enemiesHit.length === 0) {
-        addLog(`⚔️ ${targetingMove.name} missed! No enemies in range.`, 'info');
+        addLog(`⚔️ ${targetingMove.name} hit nothing of value.`, 'info');
       }
       
       setTimeout(() => processEnemyTurns(newOw), 100);

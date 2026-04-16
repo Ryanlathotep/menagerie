@@ -23,6 +23,7 @@ import {
   canPlaceRoad,
   placeRoad,
   applyRoadsToChunks,
+  findNearestEmptyOverworldTile,
 } from './overworld';
 import { TREE_TIER_DATA, STONE_TIER_DATA, TreeTier, StoneTier } from './resourceHierarchy';
 import { 
@@ -1133,7 +1134,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       hiddenMoves={state.run?.hiddenMoves || []} 
       experience={state.run?.experience || 0} 
       experienceToNext={xpToNextLevel(state.run?.currentMonster?.level || 1)} 
-      onFlee={handleFlee} 
+      onFlee={handleReturnToTown}
+      fleeTitle="Return to town"
+      fleeVariant="home"
       onDropItem={handleDropItem} 
       onUseItem={handleUseItemOutOfCombat}
       onUseMove={handleUseMoveOnMap}

@@ -2084,7 +2084,7 @@ function DungeonView({
       <div className="fixed inset-0 overflow-hidden transition-all duration-300" style={dungeonBottomStyle}>
         <div className="h-full flex flex-col">
           {/* Scrollable dungeon viewport - fills available space */}
-          <div className="flex-1 overflow-hidden bg-card border-b-2 border-primary/20">
+          <div className="flex-1 overflow-hidden bg-card">
             <DungeonRenderer 
               dungeon={dungeon} 
               playerElement={state.run?.currentMonster.element || 'fire'} 

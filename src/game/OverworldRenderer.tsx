@@ -168,7 +168,7 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
             ? overworld.nests?.[tile.nestId]
             : undefined;
           
-          return (
+          const tileContent = (
             <div
               key={`${worldX},${worldY}`}
               className={`absolute cursor-pointer overflow-hidden ${
@@ -235,8 +235,26 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
                   </div>
                 ) : null;
               })()}
+              {/* Harvest-ready glow on farms */}
+              {tile.type === 'player_building' && playerBuilding?.type === 'farm' && playerBuilding.harvestReady && (
+                <div className="absolute inset-0 ring-2 ring-yellow-400 animate-pulse pointer-events-none" />
+              )}
             </div>
           );
+
+          // Wrap player buildings in a HoverCard tooltip
+          if (tile.type === 'player_building' && playerBuilding && tile.visible) {
+            return (
+              <HoverCard key={`${worldX},${worldY}`} openDelay={250} closeDelay={100}>
+                <HoverCardTrigger asChild>{tileContent}</HoverCardTrigger>
+                <HoverCardContent side="top" className="w-72 p-3">
+                  <BuildingTooltipContent building={playerBuilding} party={party} />
+                </HoverCardContent>
+              </HoverCard>
+            );
+          }
+
+          return tileContent;
         })}
       </div>
     </div>

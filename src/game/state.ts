@@ -390,6 +390,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       
       // Update dungeon entrance depth tracking
       const fleeDungeonId = typeof window !== 'undefined' ? localStorage.getItem('menagerie_active_dungeon_id') : null;
+      const fleeRunOrigin = typeof window !== 'undefined' ? localStorage.getItem('menagerie_run_origin') : null;
       let fleeUpdatedEntrances = { ...(state.saveData.dungeonEntrances || {}) };
       if (fleeDungeonId && fleeUpdatedEntrances[fleeDungeonId] && state.run.dungeon) {
         const fleeFloor = state.run.dungeon.floor;
@@ -401,9 +402,26 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         }
       }
       
+      // If the run was launched from the overworld, respawn the player at the
+      // nearest empty tile adjacent to the dungeon entrance they came out of.
+      let fleeUpdatedOverworld = state.saveData.overworldState;
+      if (fleeRunOrigin === 'overworld' && fleeUpdatedOverworld && fleeDungeonId) {
+        const entrance = fleeUpdatedEntrances[fleeDungeonId];
+        if (entrance && typeof entrance.worldX === 'number' && typeof entrance.worldY === 'number') {
+          // Try tiles around the entrance (entrance tile itself isn't standable).
+          let respawn = findNearestEmptyOverworldTile(fleeUpdatedOverworld, entrance.worldX + 1, entrance.worldY);
+          fleeUpdatedOverworld = {
+            ...fleeUpdatedOverworld,
+            playerPosition: respawn,
+          };
+        }
+      }
+      
+      const fleeNextPhase: GamePhase = fleeRunOrigin === 'overworld' ? 'overworld' : 'run_summary';
+      
       return {
         ...state,
-        phase: 'run_summary',
+        phase: fleeNextPhase,
         saveData: {
           ...state.saveData,
           highestFloor: state.run.dungeon 
@@ -417,6 +435,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           unlockedMonsters: updatedUnlockedMonsters,
           unlockedRecipes: newUnlockedRecipes,
           dungeonEntrances: fleeUpdatedEntrances,
+          overworldState: fleeUpdatedOverworld,
         },
       };
     }

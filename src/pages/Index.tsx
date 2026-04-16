@@ -1118,14 +1118,18 @@ function DungeonView({
     };
   }, [handleMove, showShop, isAutoRunning, isPathWalking, settings.autoRunDelay]);
   const handleFlee = () => {
-    dispatch({
-      type: 'FLEE_DUNGEON'
-    });
-    dispatch({
-      type: 'SET_PHASE',
-      phase: 'run_summary'
-    });
-    addLog('🚪 Escaped safely! Materials and equipment kept.', 'system');
+    const origin = typeof window !== 'undefined'
+      ? localStorage.getItem('menagerie_run_origin')
+      : null;
+    dispatch({ type: 'FLEE_DUNGEON' });
+    if (origin === 'overworld') {
+      // Return to the overworld next to the dungeon entrance we came from.
+      dispatch({ type: 'SET_PHASE', phase: 'overworld' });
+      addLog('🚪 Exited the dungeon — back to the overworld.', 'system');
+    } else {
+      dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
+      addLog('🚪 Escaped safely! Materials and equipment kept.', 'system');
+    }
   };
   
   // Click-to-move handler

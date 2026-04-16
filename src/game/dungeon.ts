@@ -1,6 +1,6 @@
 // Dungeon generation and management
 
-import { DungeonState, DungeonTile, Position, Monster, SpeciesType, TrapType, PlantType } from './types';
+import { DungeonState, DungeonTile, Position, Monster, SpeciesType, TrapType, PlantType, DungeonTheme } from './types';
 import { generateRandomMonster } from './utils';
 import { generateEquipment, generateMaterialDrop, CraftingMaterial, EquipmentItem } from './equipment';
 import { getRandomTerrainType, TerrainType } from './terrain';
@@ -64,7 +64,7 @@ export function generateLoot(floor: number): LootItem {
 }
 
 // Simple room-based dungeon generation
-export function generateDungeon(floor: number): DungeonState {
+export function generateDungeon(floor: number, theme?: DungeonTheme, startingFloor?: number): DungeonState {
   // Initialize with walls
   const tiles: DungeonTile[][] = Array(DUNGEON_HEIGHT).fill(null).map(() =>
     Array(DUNGEON_WIDTH).fill(null).map(() => ({
@@ -151,8 +151,10 @@ export function generateDungeon(floor: number): DungeonState {
   const numEnemies = 2 + Math.floor(floor / 2);
   const enemies: Monster[] = [];
   
-  // Determine which species can appear based on floor
-  const availableSpecies: SpeciesType[] = getAvailableSpeciesForFloor(floor);
+  // Determine which species can appear based on floor (species towers ignore this)
+  const availableSpecies: SpeciesType[] = theme?.kind === 'species' && theme.value
+    ? [theme.value as SpeciesType]
+    : getAvailableSpeciesForFloor(floor);
 
   for (let i = 0; i < numEnemies; i++) {
     // Find a valid floor tile for enemy
@@ -171,7 +173,7 @@ export function generateDungeon(floor: number): DungeonState {
       const ey = room.y + Math.floor(Math.random() * room.height);
 
       if (tiles[ey][ex].type === 'floor') {
-        const enemy = generateRandomMonster(availableSpecies, floor);
+        const enemy = generateRandomMonster(availableSpecies, floor, theme);
         tiles[ey][ex].type = 'enemy';
         tiles[ey][ex].enemyId = enemy.id;
         enemies.push(enemy);
@@ -312,6 +314,8 @@ export function generateDungeon(floor: number): DungeonState {
     enemies,
     width: DUNGEON_WIDTH,
     height: DUNGEON_HEIGHT,
+    theme,
+    startingFloor,
   };
 }
 

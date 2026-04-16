@@ -559,13 +559,32 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   
   // ─── Tile click handler ───
   const handleTileClick = useCallback((worldX: number, worldY: number) => {
+    // Road build mode: place road
+    if (roadBuildMode && selectedRoadType) {
+      setOverworld(prev => {
+        const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
+        if (!newOw.roads) newOw.roads = {};
+        const check = canPlaceRoad(newOw, worldX, worldY, selectedRoadType);
+        if (!check.canPlace) {
+          toast.error(check.reason || 'Cannot place road here');
+          return prev;
+        }
+        placeRoad(newOw, worldX, worldY, selectedRoadType);
+        const def = ROAD_DEFINITIONS[selectedRoadType];
+        addLog(`🛤️ Placed ${def.name} at (${worldX},${worldY})`, 'system');
+        saveOverworld(newOw);
+        return newOw;
+      });
+      return;
+    }
+
     // Build mode: place building
     if (buildMode && selectedBuildType) {
       setOverworld(prev => {
         const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
         const tile = getOverworldTile(newOw, worldX, worldY);
-        if (!tile || tile.type !== 'grass') {
-          toast.error('Can only build on grass tiles!');
+        if (!tile || (tile.type !== 'grass' && tile.type !== 'dirt_road' && tile.type !== 'stone_road')) {
+          toast.error('Can only build on open ground!');
           return prev;
         }
         const check = canPlaceBuilding(

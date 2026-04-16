@@ -1189,38 +1189,43 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const monsterToSend = state.run.party[partyIndex];
       const equipmentToSend = state.run.partyEquipment[partyIndex];
       
-      // Unlock/update the monster in save data
+      // Build the cleaned equipment payload (strip bound flags) and persist it
+      // onto the UnlockedMonster so this creature stays geared for next run.
+      const slots: import('./equipment').EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory', 'back'];
+      const cleanedSentEquipment: MonsterEquipment = Object.fromEntries(
+        Object.entries(equipmentToSend || {}).map(([slot, item]) => [
+          slot,
+          item ? { ...item, bound: undefined } : null,
+        ])
+      ) as MonsterEquipment;
+      
+      // Unlock/update the monster in save data and remember its current equipment
       let updatedUnlockedMonsters = [...state.saveData.unlockedMonsters];
       const comboId = `${monsterToSend.species}_${monsterToSend.element}_${monsterToSend.class}`;
       const existingIdx = updatedUnlockedMonsters.findIndex(m => m.comboId === comboId);
       
       if (existingIdx === -1) {
-        // New unlock
         updatedUnlockedMonsters.push({
           comboId,
           species: monsterToSend.species,
           element: monsterToSend.element,
           classType: monsterToSend.class,
           level: monsterToSend.level,
+          equipment: cleanedSentEquipment,
         });
-      } else if (monsterToSend.level > updatedUnlockedMonsters[existingIdx].level) {
-        // Update level if higher
+      } else {
         updatedUnlockedMonsters[existingIdx] = {
           ...updatedUnlockedMonsters[existingIdx],
-          level: monsterToSend.level,
+          level: Math.max(updatedUnlockedMonsters[existingIdx].level, monsterToSend.level),
+          equipment: cleanedSentEquipment,
         };
       }
       
-      // Unlock recipes from equipped items
-      const slots: import('./equipment').EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory', 'back'];
-      const equipmentToStore: import('./equipment').EquipmentItem[] = [];
+      // Recipes still unlock for any equipped items the player has handled.
       const newUnlockedRecipes = [...(state.saveData.unlockedRecipes || [])];
-      
       for (const slot of slots) {
-        const item = equipmentToSend[slot];
+        const item = equipmentToSend?.[slot];
         if (item) {
-          // Remove 'bound' flag when storing back to town
-          equipmentToStore.push({ ...item, bound: undefined });
           const matchingRecipe = getRecipeFromEquipment(item);
           if (matchingRecipe && !newUnlockedRecipes.includes(matchingRecipe.id)) {
             newUnlockedRecipes.push(matchingRecipe.id);

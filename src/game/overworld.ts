@@ -4,6 +4,12 @@ import { Monster, Position, SpeciesType, ElementType, SPECIES_DATA, DungeonEntra
 import { generateRandomMonster } from './utils';
 import { PlayerBuilding } from './buildings';
 import { NestState, isNestAt, createNest } from './nests';
+import {
+  TreeTier, StoneTier, ResourceUpgradeState,
+  TREE_TIER_DATA, STONE_TIER_DATA,
+  getInitialTreeTier, getInitialStoneTier,
+  tickResourceUpgrades,
+} from './resourceHierarchy';
 
 const ALL_SPECIES = Object.keys(SPECIES_DATA) as SpeciesType[];
 
@@ -24,6 +30,8 @@ export interface OverworldTile {
   dungeonId?: string; // For dungeon_entrance tiles - links to DungeonEntrance
   playerBuildingId?: string; // For player_building tiles
   nestId?: string; // For nest tiles
+  treeTier?: TreeTier;   // Resource hierarchy tier for trees
+  stoneTier?: StoneTier; // Resource hierarchy tier for rocks
 }
 
 export interface OverworldChunk {
@@ -46,6 +54,8 @@ export interface OverworldState {
   playerBuildings: PlayerBuilding[]; // Phase 3: Player-placed buildings
   nests: Record<string, NestState>; // Phase 4: Monster nests
   roads: Record<string, 'dirt_road' | 'stone_road'>; // Road tiles keyed by "x,y"
+  resourceUpgrades: Record<string, ResourceUpgradeState>; // Resource tier tracking keyed by "x,y"
+  totalSteps: number; // Total steps taken (for resource upgrade ticking)
 }
 
 // ============= CONSTANTS =============
@@ -150,7 +160,7 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
-function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntrances: Record<string, DungeonEntrance>, nests: Record<string, NestState>): OverworldChunk {
+function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntrances: Record<string, DungeonEntrance>, nests: Record<string, NestState>, resourceUpgrades?: Record<string, ResourceUpgradeState>): OverworldChunk {
   const tiles: OverworldTile[][] = [];
   const enemies: Monster[] = [];
   const seed = cx * 10000 + cy * 100;
@@ -230,8 +240,29 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
       
       const tile: OverworldTile = { type, explored: false, visible: false };
       
-      if (type === 'tree') tile.resourceAmount = 3;
-      if (type === 'rock') tile.resourceAmount = 3;
+      if (type === 'tree') {
+        const treeTier = getInitialTreeTier(worldX, worldY, tileSeed);
+        tile.treeTier = treeTier;
+        tile.resourceAmount = TREE_TIER_DATA[treeTier].totalHits;
+        // Register for upgrade tracking
+        if (resourceUpgrades && TREE_TIER_DATA[treeTier].upgradeSteps) {
+          const resKey = `${worldX},${worldY}`;
+          if (!resourceUpgrades[resKey]) {
+            resourceUpgrades[resKey] = { treeTier, stepsUntilUpgrade: TREE_TIER_DATA[treeTier].upgradeSteps! };
+          }
+        }
+      }
+      if (type === 'rock') {
+        const stoneTier = getInitialStoneTier(worldX, worldY, tileSeed);
+        tile.stoneTier = stoneTier;
+        tile.resourceAmount = STONE_TIER_DATA[stoneTier].totalHits;
+        if (resourceUpgrades && STONE_TIER_DATA[stoneTier].upgradeSteps) {
+          const resKey = `${worldX},${worldY}`;
+          if (!resourceUpgrades[resKey]) {
+            resourceUpgrades[resKey] = { stoneTier, stepsUntilUpgrade: STONE_TIER_DATA[stoneTier].upgradeSteps! };
+          }
+        }
+      }
       
       if (type === 'enemy') {
         const level = Math.max(1, Math.floor(difficulty));
@@ -270,6 +301,8 @@ export function createOverworldState(): OverworldState {
     dungeonEntrances: {},
     nests: {},
     roads: {},
+    resourceUpgrades: {},
+    totalSteps: 0,
   };
   
   // Generate starting chunk and surrounding chunks
@@ -294,7 +327,7 @@ export function ensureChunksLoaded(state: OverworldState, worldX: number, worldY
       const key = getChunkKey(cx + dx, cy + dy);
       if (!state.chunks[key]) {
         const difficulty = getDifficulty((cx + dx) * CHUNK_SIZE, (cy + dy) * CHUNK_SIZE);
-        state.chunks[key] = generateChunk(cx + dx, cy + dy, difficulty, state.dungeonEntrances, state.nests);
+        state.chunks[key] = generateChunk(cx + dx, cy + dy, difficulty, state.dungeonEntrances, state.nests, state.resourceUpgrades);
       }
     }
   }
@@ -393,7 +426,7 @@ export type MoveResult =
   | { type: 'moved'; bonusMove?: boolean }
   | { type: 'blocked'; reason: string }
   | { type: 'enemy'; enemy: Monster }
-  | { type: 'resource'; resourceType: 'wood' | 'stone'; amount: number }
+  | { type: 'resource'; resourceType: 'wood' | 'stone'; amount: number; tierName?: string; materialDrop?: { materialId: string; name: string } }
   | { type: 'building'; buildingType: BuildingType }
   | { type: 'dungeon_entrance'; dungeonId?: string }
   | { type: 'player_building'; building: PlayerBuilding }
@@ -408,7 +441,26 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
   const tile = getOverworldTile(state, newX, newY);
   if (!tile) return { type: 'blocked', reason: 'Edge of the world' };
   
-  // Check if destination is a road (roads override grass tiles visually but tile.type stays as placed)
+  // Increment total steps and tick resource upgrades
+  state.totalSteps = (state.totalSteps || 0) + 1;
+  if (!state.resourceUpgrades) state.resourceUpgrades = {};
+  const upgrades = tickResourceUpgrades(state.resourceUpgrades);
+  // Apply upgrades to tile data
+  for (const upg of upgrades) {
+    const [ux, uy] = upg.key.split(',').map(Number);
+    const upgTile = getOverworldTile(state, ux, uy);
+    if (upgTile) {
+      if (upg.type === 'tree' && upgTile.type === 'tree') {
+        upgTile.treeTier = upg.newTier as TreeTier;
+        upgTile.resourceAmount = TREE_TIER_DATA[upg.newTier as TreeTier].totalHits;
+      } else if (upg.type === 'stone' && upgTile.type === 'rock') {
+        upgTile.stoneTier = upg.newTier as StoneTier;
+        upgTile.resourceAmount = STONE_TIER_DATA[upg.newTier as StoneTier].totalHits;
+      }
+    }
+  }
+  
+  // Check if destination is a road
   const roadKey = `${newX},${newY}`;
   const isRoad = state.roads && state.roads[roadKey];
   
@@ -417,25 +469,51 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
       return { type: 'blocked', reason: 'Water blocks your path' };
       
     case 'tree': {
-      const amount = Math.min(tile.resourceAmount || 1, 1);
-      tile.resourceAmount = (tile.resourceAmount || 1) - amount;
+      const treeTier = tile.treeTier || 'oak';
+      const tierData = TREE_TIER_DATA[treeTier];
+      const amount = tierData.harvestYield;
+      tile.resourceAmount = (tile.resourceAmount || 1) - 1;
       if (tile.resourceAmount <= 0) {
+        // Remove resource tracking when depleted
+        const resKey = `${newX},${newY}`;
+        delete state.resourceUpgrades[resKey];
         tile.type = 'grass';
         tile.harvested = true;
+        tile.treeTier = undefined;
       }
       state.woodCollected += amount;
-      return { type: 'resource', resourceType: 'wood', amount };
+      // Check for special material drop
+      let materialDrop: { materialId: string; name: string } | undefined;
+      if (tierData.materialId && tierData.materialChance) {
+        const dropRoll = seededRandom(state.totalSteps * 13 + newX * 7 + newY);
+        if (dropRoll < tierData.materialChance) {
+          materialDrop = { materialId: tierData.materialId, name: tierData.name + ' material' };
+        }
+      }
+      return { type: 'resource', resourceType: 'wood', amount, tierName: tierData.name, materialDrop };
     }
     
     case 'rock': {
-      const amount = Math.min(tile.resourceAmount || 1, 1);
-      tile.resourceAmount = (tile.resourceAmount || 1) - amount;
+      const stoneTier = tile.stoneTier || 'stone';
+      const tierData = STONE_TIER_DATA[stoneTier];
+      const amount = tierData.harvestYield;
+      tile.resourceAmount = (tile.resourceAmount || 1) - 1;
       if (tile.resourceAmount <= 0) {
+        const resKey = `${newX},${newY}`;
+        delete state.resourceUpgrades[resKey];
         tile.type = 'grass';
         tile.harvested = true;
+        tile.stoneTier = undefined;
       }
       state.stoneCollected += amount;
-      return { type: 'resource', resourceType: 'stone', amount };
+      let materialDrop: { materialId: string; name: string } | undefined;
+      if (tierData.materialId && tierData.materialChance) {
+        const dropRoll = seededRandom(state.totalSteps * 17 + newX * 11 + newY);
+        if (dropRoll < tierData.materialChance) {
+          materialDrop = { materialId: tierData.materialId, name: tierData.name + ' material' };
+        }
+      }
+      return { type: 'resource', resourceType: 'stone', amount, tierName: tierData.name, materialDrop };
     }
     
     case 'enemy': {

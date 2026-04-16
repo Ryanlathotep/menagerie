@@ -49,8 +49,8 @@ function renderTileGraphic(tile: OverworldTile, tileSize: number, seed: number, 
     case 'grass': return tile.harvested
       ? <OverworldHarvestedTile size={tileSize} seed={seed} />
       : <OverworldGrassTile size={tileSize} seed={seed} />;
-    case 'tree': return <OverworldTreeTile size={tileSize} seed={seed} />;
-    case 'rock': return <OverworldRockTile size={tileSize} seed={seed} />;
+    case 'tree': return <OverworldTreeTile size={tileSize} seed={seed} tier={tile.treeTier} />;
+    case 'rock': return <OverworldRockTile size={tileSize} seed={seed} tier={tile.stoneTier} />;
     case 'water': return <OverworldWaterTile size={tileSize} seed={seed} />;
     case 'building': return <OverworldBuildingTile size={tileSize} buildingType={tile.buildingType} seed={seed} />;
     case 'dungeon_entrance': return <OverworldDungeonTile size={tileSize} seed={seed} depth={dungeonDepth} />;

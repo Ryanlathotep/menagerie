@@ -26,6 +26,7 @@ import { calculateMonsterDrops, getEnemyEquipmentDrops } from '@/game/monsterDro
 import { EquipmentView } from '@/game/EquipmentView';
 import { PreRunEquipment } from '@/game/PreRunEquipment';
 import { OverworldView } from '@/game/OverworldView';
+import { DungeonListPanel } from '@/game/DungeonListPanel';
 import { 
   CombatEffects, 
   EMPTY_COMBAT_EFFECTS, 

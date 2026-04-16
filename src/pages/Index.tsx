@@ -1285,8 +1285,7 @@ function DungeonView({
     window.addEventListener('touchend', onEnd);
   }, [controlsBarHeight]);
   
-  const dungeonBottomStyle = { bottom: `${sidebarHeight + controlsBarHeight}px` };
-  const controlsOffset = isMobileLayout ? 'bottom-16' : 'bottom-24';
+  const dungeonBottomStyle = { bottom: `${sidebarHeight}px` };
   const handleDropItem = (itemId: string) => {
     dispatch({
       type: 'DROP_ITEM',
@@ -2085,7 +2084,7 @@ function DungeonView({
       <div className="fixed inset-0 overflow-hidden transition-all duration-300" style={dungeonBottomStyle}>
         <div className="h-full flex flex-col">
           {/* Scrollable dungeon viewport - fills available space */}
-          <div className="flex-1 overflow-hidden bg-card border-b-2 border-primary/20">
+          <div className="flex-1 overflow-hidden bg-card">
             <DungeonRenderer 
               dungeon={dungeon} 
               playerElement={state.run?.currentMonster.element || 'fire'} 
@@ -2140,7 +2139,7 @@ function DungeonView({
           </div>
 
           {/* Bottom bar with controls and game log - resizable */}
-          <div className={`fixed ${controlsOffset} left-0 right-0 bg-card border-t-2 border-primary/20 z-40 transition-all duration-300 flex flex-col`} style={{ height: `${controlsBarHeight}px` }}>
+          <div className="bg-card border-t-2 border-primary/20 z-40 flex flex-col flex-shrink-0" style={{ height: `${controlsBarHeight}px` }}>
             {/* Resize handle */}
             <div 
               className="w-full h-3 flex items-center justify-center cursor-row-resize hover:bg-primary/10 active:bg-primary/20 flex-shrink-0 touch-none"

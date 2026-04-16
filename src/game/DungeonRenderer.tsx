@@ -1,6 +1,6 @@
 // Enhanced Dungeon Renderer with hand-drawn ink/watercolor tile graphics
 
-import { forwardRef, useEffect, useRef, useImperativeHandle } from 'react';
+import { forwardRef, useImperativeHandle } from 'react';
 import { DungeonState, DungeonTile, TileType, ElementType, ClassType, Monster, SpeciesType, SPECIES_DATA, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED, TrapType, PlantType, UnlockedMonster } from './types';
 import { CRAFTING_MATERIALS } from './equipment';
 import { MonsterSprite } from './sprites';
@@ -568,52 +568,20 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   onTileHover,
   onTileHoverEnd,
 }, ref) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
   // Calculate tile size based on zoom (base size is 28px at 100%)
   const baseTileSize = 28;
   const tileSize = Math.round(baseTileSize * (zoom / 100));
   const spriteSize = Math.round(22 * (zoom / 100));
 
-  // Expose scroll method to parent
+  const { x: px, y: py } = dungeon.playerPosition;
+  const gridWidth = dungeon.width;
+  const gridHeight = dungeon.height;
+
+  // No-op: player is always centered via CSS transform (matches OverworldRenderer behavior)
   useImperativeHandle(ref, () => ({
-    scrollToPlayer: () => {
-      if (scrollRef.current) {
-        const scrollContainer = scrollRef.current;
-        const playerPixelX = dungeon.playerPosition.x * tileSize + tileSize / 2;
-        const playerPixelY = dungeon.playerPosition.y * tileSize + tileSize / 2;
-        const scrollX = playerPixelX - scrollContainer.clientWidth / 2;
-        const scrollY = playerPixelY - scrollContainer.clientHeight / 2;
-        scrollContainer.scrollTo({
-          left: Math.max(0, scrollX),
-          top: Math.max(0, scrollY),
-          behavior: 'smooth'
-        });
-      }
-    }
-  }), [dungeon.playerPosition.x, dungeon.playerPosition.y, tileSize]);
+    scrollToPlayer: () => {},
+  }), []);
 
-  // Auto-scroll when player moves or zoom changes
-  useEffect(() => {
-    if (scrollRef.current) {
-      const scrollContainer = scrollRef.current;
-      const scrollContent = scrollContainer.firstElementChild as HTMLElement;
-      if (!scrollContent) return;
-
-      // Calculate player position in pixels
-      const playerPixelX = dungeon.playerPosition.x * tileSize + tileSize / 2;
-      const playerPixelY = dungeon.playerPosition.y * tileSize + tileSize / 2;
-
-      // Calculate scroll position to center player
-      const scrollX = playerPixelX - scrollContainer.clientWidth / 2;
-      const scrollY = playerPixelY - scrollContainer.clientHeight / 2;
-      scrollContainer.scrollTo({
-        left: Math.max(0, scrollX),
-        top: Math.max(0, scrollY),
-        behavior: 'smooth'
-      });
-    }
-  }, [dungeon.playerPosition.x, dungeon.playerPosition.y, tileSize]);
   return <TooltipProvider delayDuration={200}>
     <div className="w-full h-full flex flex-col">
       {/* Floor header - anime style */}
@@ -635,47 +603,59 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
           </span>
         </div>
       </div>
-      
-      {/* Dungeon grid - fills available space */}
-      <div ref={scrollRef} className="flex-1 w-full overflow-auto">
-        <div className="inline-block min-w-full min-h-full relative">
-          {dungeon.tiles.map((row, y) => <div key={y} className="flex">
+
+      {/* Dungeon grid - player always centered via CSS transform (same as OverworldRenderer) */}
+      <div className="flex-1 w-full overflow-hidden border border-border rounded-lg bg-background relative">
+        <div
+          className="absolute"
+          style={{
+            width: gridWidth * tileSize,
+            height: gridHeight * tileSize,
+            left: '50%',
+            top: '50%',
+            transform: `translate(${-(px * tileSize + tileSize / 2)}px, ${-(py * tileSize + tileSize / 2)}px)`,
+            transition: 'transform 120ms ease-out',
+          }}
+        >
+          {dungeon.tiles.map((row, y) => (
+            <div key={y} className="flex" style={{ height: tileSize }}>
               {row.map((tile, x) => {
                 const isTargetable = targetingTiles.some(t => t.x === x && t.y === y);
                 const isAffected = affectedTiles.some(t => t.x === x && t.y === y);
                 const isHovered = hoveredTile?.x === x && hoveredTile?.y === y;
-                
+
                 return (
-                  <div 
-                    key={`${x}-${y}`} 
+                  <div
+                    key={`${x}-${y}`}
                     className="relative"
+                    style={{ width: tileSize, height: tileSize }}
                     onMouseEnter={() => targetingMode && onTileHover?.(x, y)}
                     onMouseLeave={() => targetingMode && onTileHoverEnd?.()}
                   >
-                    <Tile 
-                      tile={tile} 
-                      x={x} 
-                      y={y} 
-                      tiles={dungeon.tiles} 
-                      enemies={dungeon.enemies} 
-                      isPlayer={dungeon.playerPosition.x === x && dungeon.playerPosition.y === y} 
-                      playerElement={playerElement} 
-                      playerClass={playerClass} 
-                      playerSpecies={playerSpecies} 
-                      playerDexterity={playerDexterity} 
-                      tileSize={tileSize} 
-                      spriteSize={spriteSize} 
-                      unlockedMonsters={unlockedMonsters} 
-                      isOnPath={targetPath.some(p => p.x === x && p.y === y)} 
-                      onDisarmTrap={onDisarmTrap} 
-                      onClick={tile.explored && tile.type !== 'wall' ? () => onTileClick?.(x, y) : undefined} 
+                    <Tile
+                      tile={tile}
+                      x={x}
+                      y={y}
+                      tiles={dungeon.tiles}
+                      enemies={dungeon.enemies}
+                      isPlayer={px === x && py === y}
+                      playerElement={playerElement}
+                      playerClass={playerClass}
+                      playerSpecies={playerSpecies}
+                      playerDexterity={playerDexterity}
+                      tileSize={tileSize}
+                      spriteSize={spriteSize}
+                      unlockedMonsters={unlockedMonsters}
+                      isOnPath={targetPath.some(p => p.x === x && p.y === y)}
+                      onDisarmTrap={onDisarmTrap}
+                      onClick={tile.explored && tile.type !== 'wall' ? () => onTileClick?.(x, y) : undefined}
                     />
                     {/* Targeting overlay */}
                     {targetingMode && isTargetable && (
-                      <div 
+                      <div
                         className={`absolute inset-0 pointer-events-none z-10 border-2 ${
-                          isAffected 
-                            ? 'bg-destructive/40 border-destructive animate-pulse' 
+                          isAffected
+                            ? 'bg-destructive/40 border-destructive animate-pulse'
                             : 'bg-primary/20 border-primary/40'
                         } ${isHovered ? 'ring-2 ring-offset-1 ring-destructive' : ''}`}
                       />
@@ -687,7 +667,8 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                   </div>
                 );
               })}
-            </div>)}
+            </div>
+          ))}
         </div>
       </div>
     </div>

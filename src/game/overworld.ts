@@ -146,7 +146,7 @@ function createDungeonEntrance(worldX: number, worldY: number): DungeonEntrance 
   const difficulty = Math.max(1, Math.floor(dist / 5));
   const element = getBiomeElement(worldX, worldY) || undefined;
 
-  return { id, worldX, worldY, seed, deepestFloor: 0, difficulty, element };
+  return { id, worldX, worldY, seed, deepestFloor: 0, difficulty, element, category: 'procedural' };
 }
 
 // ============= CHUNK GENERATION =============

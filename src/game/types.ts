@@ -330,6 +330,8 @@ export interface DungeonState {
   enemies: Monster[];
   width: number;
   height: number;
+  theme?: DungeonTheme;       // Inherited from the DungeonEntrance that started this run
+  startingFloor?: number;     // The floor the run started on (difficulty offset)
 }
 
 export interface InventoryItem {
@@ -400,22 +402,36 @@ export interface UnlockedMonster {
 }
 
 // ============= DUNGEON ENTRANCE (Persistent Dungeons) =============
+
+// Themed tower content filtering. All towers have infinite floors.
+export type DungeonThemeKind = 'all' | 'element' | 'class' | 'species';
+
+export interface DungeonTheme {
+  kind: DungeonThemeKind;
+  // For 'element' -> ElementType, 'class' -> ClassType, 'species' -> SpeciesType
+  value?: ElementType | ClassType | SpeciesType;
+}
+
 export interface DungeonEntrance {
-  id: string;                     // e.g. "dungeon_5_-3" or "home_tower"
+  id: string;                     // e.g. "dungeon_5_-3", "home_tower", "tower_element_fire"
   worldX: number;
   worldY: number;
   seed: number;                   // Deterministic generation seed
   deepestFloor: number;           // Deepest floor reached
-  difficulty: number;             // Base difficulty (scales with distance)
-  element?: ElementType;          // Biome-themed element (Phase 2)
-  name?: string;                  // Optional display name (e.g. "Tower of the Infinite")
-  discovered?: boolean;           // True once the player has seen this entrance on the overworld
+  difficulty: number;             // Starting floor level (also content scaling)
+  element?: ElementType;          // Biome element (used by procedural overworld dungeons)
+  name?: string;                  // Display name (e.g. "Tower of the Infinite")
+  discovered?: boolean;           // True once the player has seen this entrance
   isHome?: boolean;               // True for the starter Tower of the Infinite
-  // Future: savedFloors for persistence
+  theme?: DungeonTheme;           // Content theme (filters what monsters spawn)
+  category?: 'home' | 'element' | 'class' | 'species' | 'procedural'; // For grouping in UI
 }
 
 export const HOME_TOWER_ID = 'home_tower';
 export const HOME_TOWER_NAME = 'Tower of the Infinite';
+
+// All themed towers have infinite floors. We expose a sentinel for UI.
+export const INFINITE_FLOORS = Infinity;
 
 export function createHomeTowerEntrance(): DungeonEntrance {
   return {
@@ -428,7 +444,150 @@ export function createHomeTowerEntrance(): DungeonEntrance {
     name: HOME_TOWER_NAME,
     discovered: true,
     isHome: true,
+    theme: { kind: 'all' },
+    category: 'home',
   };
+}
+
+// ---- Themed tower naming ----
+const ELEMENT_TOWER_NAMES: Record<ElementType, string> = {
+  normal: 'Spire of the Mundane',
+  fire: 'Pyre of Eternal Embers',
+  water: 'Tide-Drowned Keep',
+  earth: 'Stoneheart Bastion',
+  air: 'Cyclone Minaret',
+  void: 'Nullspire Abyss',
+};
+
+const CLASS_TOWER_NAMES: Record<ClassType, string> = {
+  normal: 'Archive of the Unaligned',
+  kinetic: 'Hammerfall Coliseum',
+  energy: 'Arcanum of the Burning Mind',
+  biological: 'Verdant Hive',
+  chemical: 'Apothecary of Ruin',
+  political: 'Court of Whispered Crowns',
+};
+
+// Per-species tower names. Themed to species flavor.
+const SPECIES_TOWER_NAMES: Record<SpeciesType, string> = {
+  // Fantasy
+  slime: 'Gelatin Vault',
+  skeleton: 'Ossuary of the Risen',
+  goblin: 'Greenskin Warrens',
+  mushroom: 'Sporecap Catacombs',
+  ghost: 'Hollow Wail Manor',
+  imp: 'Cinder Imp Cloister',
+  golem: 'Forgewalker Citadel',
+  wisp: 'Lantern of Faint Souls',
+  chimera: 'Menagerie of Stitched Beasts',
+  dragon: 'Wyrmthrone Keep',
+  // Real-ish
+  rat: 'Plaguewarren',
+  spider: 'Silken Crypt',
+  bat: 'Belfry of Endless Wings',
+  snake: 'Coilstone Sanctum',
+  wolf: 'Howlmoor Reach',
+  beetle: 'Carapace Hollow',
+  crow: 'Murder-Tower',
+  shark: 'Sunken Tooth Reef',
+  frog: 'Bog of Croaking Princes',
+  jellyfish: 'Drifting Bell Spire',
+};
+
+// All themed towers live at synthetic coordinates so they don't collide with the overworld grid.
+// They are not placed on the overworld map; they are accessible from the main menu list.
+function syntheticCoord(seed: number): { x: number; y: number } {
+  // Far-out negative coordinates that no normal play would reach.
+  return { x: -100000 - seed, y: -100000 - seed };
+}
+
+export function createElementTowerEntrance(element: ElementType, index: number): DungeonEntrance {
+  const id = `tower_element_${element}`;
+  const seed = 200000 + index * 7919;
+  const { x, y } = syntheticCoord(seed);
+  return {
+    id,
+    worldX: x,
+    worldY: y,
+    seed,
+    deepestFloor: 0,
+    // Starting difficulty rises with the index so each successive element tower is harder.
+    difficulty: 5 + index * 5, // 5, 10, 15, 20, 25, 30
+    element,
+    name: ELEMENT_TOWER_NAMES[element],
+    discovered: true,
+    theme: { kind: 'element', value: element },
+    category: 'element',
+  };
+}
+
+export function createClassTowerEntrance(classType: ClassType, index: number): DungeonEntrance {
+  const id = `tower_class_${classType}`;
+  const seed = 300000 + index * 7919;
+  const { x, y } = syntheticCoord(seed);
+  return {
+    id,
+    worldX: x,
+    worldY: y,
+    seed,
+    deepestFloor: 0,
+    // Class towers start higher than element towers
+    difficulty: 40 + index * 5, // 40, 45, 50, 55, 60, 65
+    name: CLASS_TOWER_NAMES[classType],
+    discovered: true,
+    theme: { kind: 'class', value: classType },
+    category: 'class',
+  };
+}
+
+export function createSpeciesTowerEntrance(species: SpeciesType, index: number): DungeonEntrance {
+  const id = `tower_species_${species}`;
+  const seed = 400000 + index * 7919;
+  const { x, y } = syntheticCoord(seed);
+  return {
+    id,
+    worldX: x,
+    worldY: y,
+    seed,
+    deepestFloor: 0,
+    // Species towers are the highest tier
+    difficulty: 75 + index * 3, // 75 .. 132
+    name: SPECIES_TOWER_NAMES[species],
+    discovered: true,
+    theme: { kind: 'species', value: species },
+    category: 'species',
+  };
+}
+
+// Build the canonical ordered list of element/class/species towers.
+// Order matters: first 6 elements (closest to the center), then classes, then species.
+export const ELEMENT_TOWER_ORDER: ElementType[] = ['normal', 'fire', 'water', 'earth', 'air', 'void'];
+export const CLASS_TOWER_ORDER: ClassType[] = ['normal', 'kinetic', 'energy', 'biological', 'chemical', 'political'];
+export const SPECIES_TOWER_ORDER: SpeciesType[] = [
+  // Fantasy
+  'slime', 'skeleton', 'goblin', 'mushroom', 'ghost',
+  'imp', 'golem', 'wisp', 'chimera', 'dragon',
+  // Real-ish
+  'rat', 'spider', 'bat', 'snake', 'wolf',
+  'beetle', 'crow', 'shark', 'frog', 'jellyfish',
+];
+
+export function createAllThemedTowers(): Record<string, DungeonEntrance> {
+  const out: Record<string, DungeonEntrance> = {};
+  out[HOME_TOWER_ID] = createHomeTowerEntrance();
+  ELEMENT_TOWER_ORDER.forEach((el, i) => {
+    const t = createElementTowerEntrance(el, i);
+    out[t.id] = t;
+  });
+  CLASS_TOWER_ORDER.forEach((cl, i) => {
+    const t = createClassTowerEntrance(cl, i);
+    out[t.id] = t;
+  });
+  SPECIES_TOWER_ORDER.forEach((sp, i) => {
+    const t = createSpeciesTowerEntrance(sp, i);
+    out[t.id] = t;
+  });
+  return out;
 }
 
 export interface SaveData {

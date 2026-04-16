@@ -61,9 +61,13 @@ export function spawnMonsterInHiddenRoom(dungeon: DungeonState): {
   // Pick a random hidden tile
   const spawnPos = hiddenTiles[Math.floor(Math.random() * hiddenTiles.length)];
   
-  // Generate a monster appropriate for this floor
-  const availableSpecies = getAvailableSpeciesForFloor(dungeon.floor);
-  const monster = generateRandomMonster(availableSpecies, dungeon.floor);
+  // Generate a monster appropriate for this floor.
+  // Themed dungeons (element/class/species towers) restrict spawns via theme.
+  const theme = dungeon.theme;
+  const availableSpecies = theme?.kind === 'species' && theme.value
+    ? [theme.value as SpeciesType]
+    : getAvailableSpeciesForFloor(dungeon.floor);
+  const monster = generateRandomMonster(availableSpecies, dungeon.floor, theme);
   
   // Create new tiles array with the spawned monster
   const newTiles = dungeon.tiles.map((row, y) =>

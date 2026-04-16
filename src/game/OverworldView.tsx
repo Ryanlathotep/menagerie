@@ -232,10 +232,16 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         case 'blocked':
           toast.info(result.reason);
           return prev;
-        case 'resource':
-          addLog(`🪓 Gathered ${result.amount} ${result.resourceType}!`, 'loot');
-          toast.success(`+${result.amount} ${result.resourceType === 'wood' ? '🪵' : '🪨'} ${result.resourceType}`);
+        case 'resource': {
+          const tierLabel = result.tierName ? ` (${result.tierName})` : '';
+          addLog(`🪓 Gathered ${result.amount} ${result.resourceType}${tierLabel}!`, 'loot');
+          toast.success(`+${result.amount} ${result.resourceType === 'wood' ? '🪵' : '🪨'} ${result.resourceType}${tierLabel}`);
+          if (result.materialDrop) {
+            addLog(`💎 Found ${result.materialDrop.name}!`, 'loot');
+            toast.success(`💎 Found ${result.materialDrop.name}!`);
+          }
           break;
+        }
         case 'enemy':
           toast.warning(`An enemy ${result.enemy.name} blocks the way! Select a move to attack.`);
           return prev;

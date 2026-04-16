@@ -19,6 +19,7 @@ import {
 import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot, dismantleEquipment, getRecipeFromEquipment, getConsumableRecipeFromItem } from './equipment';
 import { xpToNextLevel } from './combat';
 import { calculateStats } from './utils';
+import { findNearestEmptyOverworldTile } from './overworld';
 
 // Starting monster - Normal Normal Slime
 const STARTER_MONSTER = {

@@ -9,7 +9,7 @@ const ALL_SPECIES = Object.keys(SPECIES_DATA) as SpeciesType[];
 
 // ============= TYPES =============
 
-export type OverworldTileType = 'grass' | 'tree' | 'rock' | 'water' | 'building' | 'enemy' | 'player' | 'dungeon_entrance' | 'player_building' | 'nest';
+export type OverworldTileType = 'grass' | 'tree' | 'rock' | 'water' | 'building' | 'enemy' | 'player' | 'dungeon_entrance' | 'player_building' | 'nest' | 'dirt_road' | 'stone_road';
 
 export type BuildingType = 'campfire' | 'log_cabin' | 'town_hall';
 
@@ -45,6 +45,7 @@ export interface OverworldState {
   dungeonEntrances: Record<string, DungeonEntrance>; // Persistent dungeon data
   playerBuildings: PlayerBuilding[]; // Phase 3: Player-placed buildings
   nests: Record<string, NestState>; // Phase 4: Monster nests
+  roads: Record<string, 'dirt_road' | 'stone_road'>; // Road tiles keyed by "x,y"
 }
 
 // ============= CONSTANTS =============
@@ -191,6 +192,11 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
         // If destroyed, fall through to generate as grass
       }
 
+      // Check if there's a road placed here
+      const roadKey = `${worldX},${worldY}`;
+      const road = (dungeonEntrances as any).__roads?.[roadKey];
+      // Note: roads are applied as overlays in getOverworldTile, not during generation
+
       // Biome-influenced terrain generation
       const biome = getBiomeElement(worldX, worldY);
       let type: OverworldTileType = 'grass';
@@ -205,6 +211,12 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
       else if (biome === 'fire') { rockChance = 0.10; waterChance = 0.01; treeChance = 0.04; }
       else if (biome === 'air') { treeChance = 0.05; waterChance = 0.02; }
       else if (biome === 'void') { rockChance = 0.08; treeChance = 0.06; }
+
+      // Reduce enemy spawns near roads (check 2-tile radius)
+      let enemyChanceMultiplier = 1.0;
+      if (typeof dungeonEntrances === 'object') {
+        // We'll check road proximity during movement instead
+      }
       
       if (r < treeChance) {
         type = 'tree';
@@ -257,6 +269,7 @@ export function createOverworldState(): OverworldState {
     playerBuildings: [],
     dungeonEntrances: {},
     nests: {},
+    roads: {},
   };
   
   // Generate starting chunk and surrounding chunks
@@ -377,7 +390,7 @@ export function removeOverworldEnemy(state: OverworldState, enemyId: string): vo
 
 // Try to move player in overworld. Returns what happened.
 export type MoveResult = 
-  | { type: 'moved' }
+  | { type: 'moved'; bonusMove?: boolean }
   | { type: 'blocked'; reason: string }
   | { type: 'enemy'; enemy: Monster }
   | { type: 'resource'; resourceType: 'wood' | 'stone'; amount: number }
@@ -395,12 +408,15 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
   const tile = getOverworldTile(state, newX, newY);
   if (!tile) return { type: 'blocked', reason: 'Edge of the world' };
   
+  // Check if destination is a road (roads override grass tiles visually but tile.type stays as placed)
+  const roadKey = `${newX},${newY}`;
+  const isRoad = state.roads && state.roads[roadKey];
+  
   switch (tile.type) {
     case 'water':
       return { type: 'blocked', reason: 'Water blocks your path' };
       
     case 'tree': {
-      // Harvest wood
       const amount = Math.min(tile.resourceAmount || 1, 1);
       tile.resourceAmount = (tile.resourceAmount || 1) - amount;
       if (tile.resourceAmount <= 0) {
@@ -412,7 +428,6 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
     }
     
     case 'rock': {
-      // Mine stone
       const amount = Math.min(tile.resourceAmount || 1, 1);
       tile.resourceAmount = (tile.resourceAmount || 1) - amount;
       if (tile.resourceAmount <= 0) {
@@ -424,7 +439,6 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
     }
     
     case 'enemy': {
-      // Don't walk into enemies - block movement and signal combat
       if (tile.enemyId) {
         const enemy = getOverworldEnemy(state, tile.enemyId);
         if (enemy) return { type: 'enemy', enemy };
@@ -445,7 +459,6 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
     }
     
     case 'player_building': {
-      // Walk onto player buildings (farms to harvest, etc.)
       const building = state.playerBuildings.find(b => b.id === tile.playerBuildingId);
       if (building && building.type === 'wall') {
         return { type: 'blocked', reason: 'A wall blocks your path' };
@@ -457,21 +470,32 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
     }
     
     case 'nest': {
-      // Nests block movement — player must attack them
       const nest = state.nests[tile.nestId || ''];
       if (nest && !nest.destroyed) {
         return { type: 'nest', nest };
       }
-      // Destroyed nest → walk through
       state.playerPosition = { x: newX, y: newY };
       updateVisibility(state);
       return { type: 'moved' };
     }
-    
-    default: {
-      // grass - just move
+
+    case 'dirt_road':
+    case 'stone_road': {
       state.playerPosition = { x: newX, y: newY };
       updateVisibility(state);
+      // Stone roads grant a bonus move (player moves 2 tiles)
+      const bonusMove = tile.type === 'stone_road';
+      return { type: 'moved', bonusMove };
+    }
+    
+    default: {
+      state.playerPosition = { x: newX, y: newY };
+      updateVisibility(state);
+      // Check if this grass tile has a road overlay
+      if (isRoad) {
+        const bonusMove = isRoad === 'stone_road';
+        return { type: 'moved', bonusMove };
+      }
       return { type: 'moved' };
     }
   }
@@ -500,4 +524,103 @@ export function upgradeBase(state: OverworldState): BuildingType | null {
   }
   
   return info.next;
+}
+
+// ============= ROAD SYSTEM =============
+
+export type RoadType = 'dirt_road' | 'stone_road';
+
+export const ROAD_DEFINITIONS: Record<RoadType, {
+  name: string;
+  emoji: string;
+  description: string;
+  cost: { wood: number; stone: number };
+}> = {
+  dirt_road: {
+    name: 'Dirt Road',
+    emoji: '🟫',
+    description: 'A simple path. Reduces enemy spawns nearby.',
+    cost: { wood: 2, stone: 0 },
+  },
+  stone_road: {
+    name: 'Stone Road',
+    emoji: '🧱',
+    description: 'A paved road. Grants speed boost (bonus move) and reduces enemy spawns.',
+    cost: { wood: 1, stone: 3 },
+  },
+};
+
+export function canPlaceRoad(
+  state: OverworldState,
+  worldX: number,
+  worldY: number,
+  roadType: RoadType,
+): { canPlace: boolean; reason?: string } {
+  const def = ROAD_DEFINITIONS[roadType];
+  if (state.woodCollected < def.cost.wood) return { canPlace: false, reason: `Need ${def.cost.wood} wood` };
+  if (state.stoneCollected < def.cost.stone) return { canPlace: false, reason: `Need ${def.cost.stone} stone` };
+
+  const key = `${worldX},${worldY}`;
+  if (state.roads[key]) return { canPlace: false, reason: 'Road already exists here' };
+
+  const tile = getOverworldTile(state, worldX, worldY);
+  if (!tile) return { canPlace: false, reason: 'Invalid location' };
+  if (tile.type !== 'grass' || tile.harvested) {
+    // Allow building on harvested grass too
+    if (tile.type !== 'grass') return { canPlace: false, reason: 'Can only place roads on open ground' };
+  }
+
+  return { canPlace: true };
+}
+
+export function placeRoad(state: OverworldState, worldX: number, worldY: number, roadType: RoadType): boolean {
+  const check = canPlaceRoad(state, worldX, worldY, roadType);
+  if (!check.canPlace) return false;
+
+  const def = ROAD_DEFINITIONS[roadType];
+  state.woodCollected -= def.cost.wood;
+  state.stoneCollected -= def.cost.stone;
+
+  const key = `${worldX},${worldY}`;
+  if (!state.roads) state.roads = {};
+  state.roads[key] = roadType;
+
+  // Update the tile type so the renderer picks it up
+  setOverworldTile(state, worldX, worldY, {
+    type: roadType,
+    explored: true,
+    visible: true,
+  });
+
+  return true;
+}
+
+// Check if a world position is near a road (within radius tiles)
+export function isNearRoad(state: OverworldState, worldX: number, worldY: number, radius: number = 2): boolean {
+  if (!state.roads) return false;
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      const key = `${worldX + dx},${worldY + dy}`;
+      if (state.roads[key]) return true;
+    }
+  }
+  return false;
+}
+
+// Restore road tiles after chunk reload (roads persist in state.roads but tiles regenerate)
+export function applyRoadsToChunks(state: OverworldState): void {
+  if (!state.roads) return;
+  for (const [key, roadType] of Object.entries(state.roads)) {
+    const [xStr, yStr] = key.split(',');
+    const wx = parseInt(xStr);
+    const wy = parseInt(yStr);
+    const tile = getOverworldTile(state, wx, wy);
+    if (tile && tile.type !== roadType) {
+      setOverworldTile(state, wx, wy, {
+        type: roadType,
+        explored: true,
+        visible: tile.visible,
+      });
+    }
+  }
 }

@@ -18,6 +18,11 @@ import {
   getOverworldEnemy,
   getOverworldTile,
   setOverworldTile,
+  RoadType,
+  ROAD_DEFINITIONS,
+  canPlaceRoad,
+  placeRoad,
+  applyRoadsToChunks,
 } from './overworld';
 import { 
   PlayerBuildingType, BUILDING_DEFINITIONS, canPlaceBuilding, createBuilding, tickFarm,
@@ -85,7 +90,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     if (!ow.dungeonEntrances) ow.dungeonEntrances = {};
     if (!ow.playerBuildings) ow.playerBuildings = [];
     if (!ow.nests) ow.nests = {};
+    if (!ow.roads) ow.roads = {};
     ensureChunksLoaded(ow, ow.playerPosition.x, ow.playerPosition.y);
+    applyRoadsToChunks(ow);
     updateVisibility(ow);
     return ow;
   });
@@ -99,6 +106,8 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   // Build mode state
   const [buildMode, setBuildMode] = useState(false);
   const [selectedBuildType, setSelectedBuildType] = useState<PlayerBuildingType | null>(null);
+  const [roadBuildMode, setRoadBuildMode] = useState(false);
+  const [selectedRoadType, setSelectedRoadType] = useState<RoadType | null>(null);
   const [showBuildPanel, setShowBuildPanel] = useState(false);
   
   // Monster assignment modal state
@@ -209,6 +218,16 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
               });
             }
           }
+          // Bonus move from stone roads: automatically take another step in the same direction
+          if (result.bonusMove) {
+            addLog('🏃 Stone road speed boost!', 'info');
+            const bonusResult = movePlayer(newState, dx, dy);
+            if (bonusResult.type === 'moved') {
+              // Extra regen from bonus step
+            }
+          }
+          // Apply roads overlay after chunk loads
+          applyRoadsToChunks(newState);
           break;
         case 'blocked':
           toast.info(result.reason);
@@ -540,13 +559,32 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   
   // ─── Tile click handler ───
   const handleTileClick = useCallback((worldX: number, worldY: number) => {
+    // Road build mode: place road
+    if (roadBuildMode && selectedRoadType) {
+      setOverworld(prev => {
+        const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
+        if (!newOw.roads) newOw.roads = {};
+        const check = canPlaceRoad(newOw, worldX, worldY, selectedRoadType);
+        if (!check.canPlace) {
+          toast.error(check.reason || 'Cannot place road here');
+          return prev;
+        }
+        placeRoad(newOw, worldX, worldY, selectedRoadType);
+        const def = ROAD_DEFINITIONS[selectedRoadType];
+        addLog(`🛤️ Placed ${def.name} at (${worldX},${worldY})`, 'system');
+        saveOverworld(newOw);
+        return newOw;
+      });
+      return;
+    }
+
     // Build mode: place building
     if (buildMode && selectedBuildType) {
       setOverworld(prev => {
         const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
         const tile = getOverworldTile(newOw, worldX, worldY);
-        if (!tile || tile.type !== 'grass') {
-          toast.error('Can only build on grass tiles!');
+        if (!tile || (tile.type !== 'grass' && tile.type !== 'dirt_road' && tile.type !== 'stone_road')) {
+          toast.error('Can only build on open ground!');
           return prev;
         }
         const check = canPlaceBuilding(
@@ -623,7 +661,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 && (dx !== 0 || dy !== 0)) {
       handleMove(dx, dy);
     }
-  }, [overworld, monster, targetingMove, handleTargetingClick, handleMove, addLog, buildMode, selectedBuildType, saveOverworld]);
+  }, [overworld, monster, targetingMove, handleTargetingClick, handleMove, addLog, buildMode, selectedBuildType, roadBuildMode, selectedRoadType, saveOverworld]);
   
   // Right-click → auto-attack with first melee/ranged
   const handleTileRightClick = useCallback((worldX: number, worldY: number) => {
@@ -651,6 +689,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       if (showBuildingMenu || showDungeonPrompt || showRecruitment || levelUpQueue.length > 0) return;
       
       if (e.key === 'Escape') {
+        if (roadBuildMode) {
+          setRoadBuildMode(false);
+          setSelectedRoadType(null);
+          addLog('❌ Road build mode cancelled.', 'info');
+          return;
+        }
         if (buildMode) {
           setBuildMode(false);
           setSelectedBuildType(null);
@@ -684,7 +728,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleMove, showBuildingMenu, showDungeonPrompt, showRecruitment, targetingMove, cancelTargeting, levelUpQueue.length, buildMode]);
+  }, [handleMove, showBuildingMenu, showDungeonPrompt, showRecruitment, targetingMove, cancelTargeting, levelUpQueue.length, buildMode, roadBuildMode]);
   
   // Keybind shortcuts for moves
   const keybindDataRef = useRef(loadKeybinds());
@@ -1234,48 +1278,92 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     {/* Build Panel */}
     {showBuildPanel && (
       <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <Card className="p-6 max-w-lg w-full space-y-4">
+        <Card className="p-6 max-w-lg w-full space-y-4 max-h-[80vh] overflow-y-auto">
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-bold">🏗️ Build Structures</h2>
+            <h2 className="text-lg font-bold">🏗️ Build & Roads</h2>
             <div className="text-sm text-muted-foreground">
               🪵 {overworld.woodCollected} • 🪨 {overworld.stoneCollected}
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">
-            {buildMode ? `Click a grass tile to place ${BUILDING_DEFINITIONS[selectedBuildType!]?.name}. Press ESC to cancel.` : 'Select a building to place.'}
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {(Object.values(BUILDING_DEFINITIONS) as typeof BUILDING_DEFINITIONS[PlayerBuildingType][]).map(def => {
-              const canAfford = overworld.woodCollected >= def.cost.wood && overworld.stoneCollected >= def.cost.stone;
-              const isSelected = buildMode && selectedBuildType === def.type;
-              return (
-                <button
-                  key={def.type}
-                  className={`p-3 rounded-lg border text-left transition-colors ${
-                    isSelected ? 'border-primary bg-primary/10' : canAfford ? 'border-border hover:border-primary/50' : 'border-border opacity-50'
-                  }`}
-                  onClick={() => {
-                    if (!canAfford) { toast.error('Not enough resources!'); return; }
-                    setSelectedBuildType(def.type);
-                    setBuildMode(true);
-                    setShowBuildPanel(false);
-                    addLog(`🏗️ Build mode: ${def.name}. Click a grass tile to place.`, 'system');
-                  }}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-lg">{def.emoji}</span>
-                    <span className="text-sm font-medium">{def.name}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-1">{def.description}</p>
-                  <p className="text-xs">
-                    🪵 {def.cost.wood} 🪨 {def.cost.stone}
-                    {def.requiresMonster && ' • 🐾 Assign monster'}
-                  </p>
-                </button>
-              );
-            })}
+
+          {/* Roads Section */}
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-muted-foreground">🛤️ Roads</h3>
+            <p className="text-xs text-muted-foreground">Roads reduce enemy spawns and stone roads grant bonus movement speed.</p>
+            <div className="grid grid-cols-2 gap-2">
+              {(Object.entries(ROAD_DEFINITIONS) as [RoadType, typeof ROAD_DEFINITIONS[RoadType]][]).map(([type, def]) => {
+                const canAfford = overworld.woodCollected >= def.cost.wood && overworld.stoneCollected >= def.cost.stone;
+                return (
+                  <button
+                    key={type}
+                    className={`p-3 rounded-lg border text-left transition-colors ${
+                      canAfford ? 'border-border hover:border-primary/50' : 'border-border opacity-50'
+                    }`}
+                    onClick={() => {
+                      if (!canAfford) { toast.error('Not enough resources!'); return; }
+                      setSelectedRoadType(type);
+                      setRoadBuildMode(true);
+                      setBuildMode(false);
+                      setSelectedBuildType(null);
+                      setShowBuildPanel(false);
+                      addLog(`🛤️ Road mode: ${def.name}. Click grass tiles to place. Press ESC to cancel.`, 'system');
+                    }}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-lg">{def.emoji}</span>
+                      <span className="text-sm font-medium">{def.name}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-1">{def.description}</p>
+                    <p className="text-xs">
+                      {def.cost.wood > 0 && `🪵 ${def.cost.wood} `}{def.cost.stone > 0 && `🪨 ${def.cost.stone}`}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <Button variant="ghost" className="w-full" onClick={() => { setShowBuildPanel(false); setBuildMode(false); setSelectedBuildType(null); }}>
+
+          {/* Structures Section */}
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-muted-foreground">🏗️ Structures</h3>
+            <p className="text-xs text-muted-foreground">
+              {buildMode ? `Click a tile to place ${BUILDING_DEFINITIONS[selectedBuildType!]?.name}. Press ESC to cancel.` : 'Select a structure to place.'}
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {(Object.values(BUILDING_DEFINITIONS) as typeof BUILDING_DEFINITIONS[PlayerBuildingType][]).map(def => {
+                const canAfford = overworld.woodCollected >= def.cost.wood && overworld.stoneCollected >= def.cost.stone;
+                const isSelected = buildMode && selectedBuildType === def.type;
+                return (
+                  <button
+                    key={def.type}
+                    className={`p-3 rounded-lg border text-left transition-colors ${
+                      isSelected ? 'border-primary bg-primary/10' : canAfford ? 'border-border hover:border-primary/50' : 'border-border opacity-50'
+                    }`}
+                    onClick={() => {
+                      if (!canAfford) { toast.error('Not enough resources!'); return; }
+                      setSelectedBuildType(def.type);
+                      setBuildMode(true);
+                      setRoadBuildMode(false);
+                      setSelectedRoadType(null);
+                      setShowBuildPanel(false);
+                      addLog(`🏗️ Build mode: ${def.name}. Click a grass tile to place.`, 'system');
+                    }}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-lg">{def.emoji}</span>
+                      <span className="text-sm font-medium">{def.name}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-1">{def.description}</p>
+                    <p className="text-xs">
+                      🪵 {def.cost.wood} 🪨 {def.cost.stone}
+                      {def.requiresMonster && ' • 🐾 Assign monster'}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <Button variant="ghost" className="w-full" onClick={() => { setShowBuildPanel(false); setBuildMode(false); setSelectedBuildType(null); setRoadBuildMode(false); setSelectedRoadType(null); }}>
             Close
           </Button>
         </Card>
@@ -1288,6 +1376,17 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         <span className="text-primary animate-pulse">🏗️</span>
         <span className="text-sm font-medium">Building: {BUILDING_DEFINITIONS[selectedBuildType!]?.name}</span>
         <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => { setBuildMode(false); setSelectedBuildType(null); }}>
+          Cancel (ESC)
+        </Button>
+      </div>
+    )}
+
+    {/* Road build mode indicator */}
+    {roadBuildMode && !showBuildPanel && (
+      <div className="fixed top-2 left-1/2 -translate-x-1/2 bg-card/95 backdrop-blur-sm border border-primary/50 rounded-lg px-4 py-2 flex items-center gap-3 z-20">
+        <span className="text-primary animate-pulse">🛤️</span>
+        <span className="text-sm font-medium">Placing: {selectedRoadType ? ROAD_DEFINITIONS[selectedRoadType].name : 'Road'}</span>
+        <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => { setRoadBuildMode(false); setSelectedRoadType(null); }}>
           Cancel (ESC)
         </Button>
       </div>

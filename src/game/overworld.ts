@@ -240,8 +240,16 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
       
       const tile: OverworldTile = { type, explored: false, visible: false };
       
-      if (type === 'tree') tile.resourceAmount = 3;
-      if (type === 'rock') tile.resourceAmount = 3;
+      if (type === 'tree') {
+        const treeTier = getInitialTreeTier(worldX, worldY, tileSeed);
+        tile.treeTier = treeTier;
+        tile.resourceAmount = TREE_TIER_DATA[treeTier].totalHits;
+      }
+      if (type === 'rock') {
+        const stoneTier = getInitialStoneTier(worldX, worldY, tileSeed);
+        tile.stoneTier = stoneTier;
+        tile.resourceAmount = STONE_TIER_DATA[stoneTier].totalHits;
+      }
       
       if (type === 'enemy') {
         const level = Math.max(1, Math.floor(difficulty));
@@ -280,6 +288,8 @@ export function createOverworldState(): OverworldState {
     dungeonEntrances: {},
     nests: {},
     roads: {},
+    resourceUpgrades: {},
+    totalSteps: 0,
   };
   
   // Generate starting chunk and surrounding chunks

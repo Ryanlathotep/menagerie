@@ -1285,8 +1285,7 @@ function DungeonView({
     window.addEventListener('touchend', onEnd);
   }, [controlsBarHeight]);
   
-  const dungeonBottomStyle = { bottom: `${sidebarHeight + controlsBarHeight}px` };
-  const controlsOffset = isMobileLayout ? 'bottom-16' : 'bottom-24';
+  const dungeonBottomStyle = { bottom: `${sidebarHeight}px` };
   const handleDropItem = (itemId: string) => {
     dispatch({
       type: 'DROP_ITEM',

@@ -363,8 +363,8 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
               const baseSpd = monster.stats.speed;
               const baseDodge = monster.stats.dodge ?? Math.floor(monster.stats.speed * 0.5);
               const baseSpecial = monster.stats.special;
-              const baseMaxHp = monster.stats.maxHp;
-              const baseStamina = monster.stats.stamina ?? 50;
+              const _baseMaxHp = monster.stats.maxHp;
+              const _baseStamina = monster.stats.stamina ?? 50;
               
               // Equipment contributions
               const eqAtk = (equipBonuses?.attack ?? 0) + (setBonuses?.attack ?? 0);

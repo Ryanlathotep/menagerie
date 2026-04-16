@@ -6,6 +6,7 @@ import { CRAFTING_MATERIALS } from './equipment';
 import { MonsterSprite } from './sprites';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TERRAIN_CONFIG } from './terrain';
+import { MatchupIndicator } from './MatchupIndicator';
 import { 
   FloorTile, 
   WallTile, 
@@ -228,6 +229,13 @@ function Tile({
               <div className="relative z-10">
                 <MonsterSprite species={enemy.species} element={enemy.element} classType={enemy.class} size={spriteSize} />
               </div>
+              <MatchupIndicator
+                playerElement={playerElement}
+                playerClass={playerClass}
+                enemyElement={enemy.element}
+                enemyClass={enemy.class}
+                size={tileSize}
+              />
             </div>
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-[260px] p-3">

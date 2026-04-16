@@ -1,7 +1,7 @@
 // Hover tooltip content for player buildings on the overworld
 
 import { PlayerBuilding, BUILDING_DEFINITIONS, FARM_GROWTH_STEPS, getDisassembleRefund, getRepairCost } from './buildings';
-import { Monster, SPECIES_DATA } from './types';
+import { Monster } from './types';
 
 interface BuildingTooltipProps {
   building: PlayerBuilding;

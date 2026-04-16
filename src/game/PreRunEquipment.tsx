@@ -42,9 +42,15 @@ export function PreRunEquipment({
   const [activeIndex, setActiveIndex] = useState(0);
   const monster = monsters[activeIndex] || monsters[0];
   
-  // One equipment set per party member
+  // One equipment set per party member. Hydrate from each monster's persisted
+  // `equipment` so previously equipped gear stays equipped between runs — players
+  // can edit it here, but they don't have to re-equip from scratch every run.
   const [partyEquipment, setPartyEquipment] = useState<MonsterEquipment[]>(
-    monsters.map(() => createEmptyEquipment())
+    monsters.map(m => {
+      if (!m.equipment) return createEmptyEquipment();
+      // Merge with empty template so all slot keys exist
+      return { ...createEmptyEquipment(), ...m.equipment };
+    })
   );
   const equipment = partyEquipment[activeIndex] || createEmptyEquipment();
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot | null>(null);

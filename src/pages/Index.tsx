@@ -1245,12 +1245,46 @@ function DungeonView({
       addLog(`🛒 Bought ${item.name}!`, 'loot');
     }
   };
-  // Use flexible bottom positioning that fills available space
-  // Mobile: sidebar is h-16, Desktop: sidebar is h-24
-  // Controls bar is now compact - 160px on mobile, 180px on desktop
+  // Resizable bottom bar
   const isMobileLayout = typeof window !== 'undefined' && window.innerWidth < 640;
-  const sidebarHeight = isMobileLayout ? 64 : 96; // h-16 vs h-24
-  const controlsBarHeight = isMobileLayout ? 160 : 180;
+  const sidebarHeight = isMobileLayout ? 64 : 96;
+  const defaultBarHeight = isMobileLayout ? 160 : 180;
+  const [controlsBarHeight, setControlsBarHeight] = useState(() => {
+    const saved = localStorage.getItem('menagerie-dungeon-bar-height');
+    return saved ? parseInt(saved) : defaultBarHeight;
+  });
+  const barResizing = useRef(false);
+  const barStartY = useRef(0);
+  const barStartH = useRef(0);
+  
+  const handleBarResizeStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    barResizing.current = true;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    barStartY.current = clientY;
+    barStartH.current = controlsBarHeight;
+    
+    const onMove = (ev: MouseEvent | TouchEvent) => {
+      if (!barResizing.current) return;
+      const y = 'touches' in ev ? ev.touches[0].clientY : ev.clientY;
+      const delta = barStartY.current - y;
+      const newH = Math.max(100, Math.min(500, barStartH.current + delta));
+      setControlsBarHeight(newH);
+    };
+    const onEnd = () => {
+      barResizing.current = false;
+      setControlsBarHeight(h => { localStorage.setItem('menagerie-dungeon-bar-height', String(h)); return h; });
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onEnd);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onEnd);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchmove', onMove);
+    window.addEventListener('touchend', onEnd);
+  }, [controlsBarHeight]);
+  
   const dungeonBottomStyle = { bottom: `${sidebarHeight + controlsBarHeight}px` };
   const controlsOffset = isMobileLayout ? 'bottom-16' : 'bottom-24';
   const handleDropItem = (itemId: string) => {

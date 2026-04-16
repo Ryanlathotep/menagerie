@@ -1074,8 +1074,17 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           )}
         </div>
 
-        {/* Bottom bar with controls, legend, and game log - matches DungeonView */}
-        <div className={`fixed ${controlsOffset} left-0 right-0 h-[260px] bg-card border-t-2 border-primary/20 p-3 z-40 transition-all duration-300`}>
+        {/* Bottom bar with controls, legend, and game log - resizable */}
+        <div className={`fixed ${controlsOffset} left-0 right-0 bg-card border-t-2 border-primary/20 z-40 transition-all duration-300 flex flex-col`} style={{ height: `${controlsBarHeight}px` }}>
+          {/* Resize handle */}
+          <div 
+            className="w-full h-3 flex items-center justify-center cursor-row-resize hover:bg-primary/10 active:bg-primary/20 flex-shrink-0 touch-none"
+            onMouseDown={handleBarResizeStart}
+            onTouchStart={handleBarResizeStart}
+          >
+            <div className="w-12 h-1 rounded-full bg-border" />
+          </div>
+          <div className="flex-1 min-h-0 px-3 pb-3">
           <div className="flex flex-col h-full gap-2">
             {/* Top row: Controls and info */}
             <div className="flex justify-center items-center flex-shrink-0">
@@ -1115,13 +1124,13 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             </div>
 
             {/* Full-width game log */}
-            <div className="flex-1 w-full p-3 bg-muted/30 rounded-lg border border-border/50 overflow-hidden">
+            <div className="flex-1 min-h-0 w-full p-3 bg-muted/30 rounded-lg border border-border/50 overflow-hidden">
               <div className="flex items-center gap-1 mb-2">
                 <ScrollText className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm font-semibold text-muted-foreground">Game Log</span>
               </div>
               <div className="h-[calc(100%-28px)] overflow-y-auto scrollbar-none space-y-0.5">
-                {[...gameLog].reverse().slice(0, 12).map((msg, i) => (
+                {[...gameLog].reverse().slice(0, 20).map((msg, i) => (
                   <p key={msg.id} className={`text-sm ${i === 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
                     {msg.text}
                   </p>
@@ -1131,6 +1140,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
                 )}
               </div>
             </div>
+          </div>
           </div>
         </div>
       </div>

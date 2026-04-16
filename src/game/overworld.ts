@@ -118,10 +118,10 @@ export function getBiomeElement(worldX: number, worldY: number): ElementType | n
 // Uses deterministic hashing so entrances are stable across chunk loads
 function isDungeonEntranceAt(worldX: number, worldY: number): boolean {
   if (worldX === 0 && worldY === 0) return false; // Home base
-  if (worldX === 2 && worldY === 0) return true; // Legacy entrance
 
   const dist = Math.sqrt(worldX * worldX + worldY * worldY);
-  if (dist < 10) return false; // No dungeons too close to spawn (except legacy)
+  // Keep dungeons a healthy distance from town so players have room to level up first.
+  if (dist < 18) return false;
 
   // Deterministic grid-based placement: one dungeon per ~12x12 region
   const regionSize = 12;
@@ -143,10 +143,14 @@ function createDungeonEntrance(worldX: number, worldY: number): DungeonEntrance 
   const id = `dungeon_${worldX}_${worldY}`;
   const seed = Math.abs(worldX * 73856093 + worldY * 19349663) % 2147483647;
   const dist = Math.sqrt(worldX * worldX + worldY * worldY);
-  const difficulty = Math.max(1, Math.floor(dist / 5));
+  // Procedural dungeons scale gently with distance from town.
+  const difficulty = Math.max(2, Math.floor(dist / 6));
   const element = getBiomeElement(worldX, worldY) || undefined;
+  // Friendly auto-generated name so it matches the list panel.
+  const elementLabel = element ? `${element.charAt(0).toUpperCase()}${element.slice(1)} ` : '';
+  const name = `${elementLabel}Wilderness Dungeon`;
 
-  return { id, worldX, worldY, seed, deepestFloor: 0, difficulty, element, category: 'procedural' };
+  return { id, worldX, worldY, seed, deepestFloor: 0, difficulty, element, category: 'procedural', name };
 }
 
 // ============= CHUNK GENERATION =============
@@ -234,7 +238,7 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
         type = 'rock';
       } else if (r < treeChance + rockChance + waterChance) {
         type = 'water';
-      } else if (r < treeChance + rockChance + waterChance + Math.min(0.08, difficulty * 0.01)) {
+      } else if (r < treeChance + rockChance + waterChance + Math.min(0.06, Math.max(0, (difficulty - 1) * 0.012))) {
         type = 'enemy';
       }
       
@@ -313,8 +317,14 @@ export function createOverworldState(): OverworldState {
   return state;
 }
 
-function getDifficulty(worldX: number, worldY: number): number {
-  return Math.max(1, Math.floor(Math.sqrt(worldX * worldX + worldY * worldY) / 3));
+// Overworld difficulty must stay <= the nearest dungeon's starting level so the
+// open world is always a safer place to level up than the dungeons themselves.
+// Procedural dungeons start at floor(dist/6); we keep wild enemies a bit gentler.
+export function getDifficulty(worldX: number, worldY: number): number {
+  const dist = Math.sqrt(worldX * worldX + worldY * worldY);
+  // Floor 1 within ~8 tiles of town, then scales slowly with distance.
+  if (dist < 8) return 1;
+  return Math.max(1, Math.floor((dist - 8) / 7) + 1);
 }
 
 export function ensureChunksLoaded(state: OverworldState, worldX: number, worldY: number): void {

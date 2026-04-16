@@ -160,7 +160,7 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
-function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntrances: Record<string, DungeonEntrance>, nests: Record<string, NestState>): OverworldChunk {
+function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntrances: Record<string, DungeonEntrance>, nests: Record<string, NestState>, resourceUpgrades?: Record<string, ResourceUpgradeState>): OverworldChunk {
   const tiles: OverworldTile[][] = [];
   const enemies: Monster[] = [];
   const seed = cx * 10000 + cy * 100;

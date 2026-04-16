@@ -316,21 +316,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
     
     case 'FLEE_DUNGEON': {
-      // Flee safely - keep materials, equipment, gold, and items by storing them
+      // Flee safely - keep materials, gold, and items by storing them.
+      // Equipment stays equipped to each party member (persisted onto UnlockedMonster).
       if (!state.run) return state;
       
-      // Collect all equipment to store (equipped from all party members + inventory)
-      // Remove 'bound' flag since items are returning to storage
-      const equipmentToStore: EquipmentItem[] = state.run.equipmentInventory.map(item => ({ ...item, bound: undefined }));
+      // Only loose loot equipment goes to town storage; equipped gear stays on monsters.
       const slots: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory', 'back'];
-      for (const memberEquipment of state.run.partyEquipment) {
-        for (const slot of slots) {
-          const item = memberEquipment[slot];
-          if (item) {
-            equipmentToStore.push({ ...item, bound: undefined });
-          }
-        }
-      }
+      const equipmentToStore: EquipmentItem[] = state.run.equipmentInventory.map(item => ({ ...item, bound: undefined }));
       
       // Merge run materials with saved materials
       const mergedMaterials = { ...state.saveData.materials };
@@ -344,21 +336,29 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       // Store run items in town
       const storedItems = [...(state.saveData.storedItems || []), ...state.run.inventory];
       
-      // Update unlocked monsters if party members are at higher levels
+      // Update unlocked monsters: persist level AND equipment for each party member.
       let updatedUnlockedMonsters = [...state.saveData.unlockedMonsters];
-      for (const partyMember of state.run.party) {
+      state.run.party.forEach((partyMember, idx) => {
         const comboId = `${partyMember.species}_${partyMember.element}_${partyMember.class}`;
+        const memberEquipment = state.run!.partyEquipment[idx];
+        const cleanedEquipment: MonsterEquipment | undefined = memberEquipment
+          ? Object.fromEntries(
+              Object.entries(memberEquipment).map(([slot, item]) => [
+                slot,
+                item ? { ...item, bound: undefined } : null,
+              ])
+            ) as MonsterEquipment
+          : undefined;
+        
         const existingIdx = updatedUnlockedMonsters.findIndex(m => m.comboId === comboId);
         if (existingIdx !== -1) {
-          // Update level if party member is higher level
-          if (partyMember.level > updatedUnlockedMonsters[existingIdx].level) {
-            updatedUnlockedMonsters[existingIdx] = {
-              ...updatedUnlockedMonsters[existingIdx],
-              level: partyMember.level,
-            };
-          }
+          updatedUnlockedMonsters[existingIdx] = {
+            ...updatedUnlockedMonsters[existingIdx],
+            level: Math.max(updatedUnlockedMonsters[existingIdx].level, partyMember.level),
+            equipment: cleanedEquipment,
+          };
         }
-      }
+      });
       
       // Unlock recipes for equipment brought back
       const newUnlockedRecipes = [...(state.saveData.unlockedRecipes || [])];

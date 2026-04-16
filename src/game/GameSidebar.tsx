@@ -1,6 +1,6 @@
 // Game Sidebar - Always visible menu with panels (works in both dungeon and battle)
 
-import { useState, forwardRef } from 'react';
+import { useState, forwardRef, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';

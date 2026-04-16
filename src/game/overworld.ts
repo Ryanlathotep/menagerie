@@ -238,7 +238,7 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
         type = 'rock';
       } else if (r < treeChance + rockChance + waterChance) {
         type = 'water';
-      } else if (r < treeChance + rockChance + waterChance + Math.min(0.08, difficulty * 0.01)) {
+      } else if (r < treeChance + rockChance + waterChance + Math.min(0.06, Math.max(0, (difficulty - 1) * 0.012))) {
         type = 'enemy';
       }
       

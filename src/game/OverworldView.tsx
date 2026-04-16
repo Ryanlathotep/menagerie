@@ -1355,17 +1355,21 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     {showDungeonPrompt && (
       <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <Card className="p-6 max-w-sm w-full space-y-4 text-center">
-          <h2 className="text-lg font-bold">🗼 Dungeon Entrance</h2>
+          <h2 className="text-lg font-bold">
+            🗼 {selectedDungeon?.name || 'Dungeon Entrance'}
+          </h2>
           {selectedDungeon && (
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">
-                Difficulty: <span className="font-semibold text-foreground">Lv.{selectedDungeon.difficulty}</span>
+                Starting Lv. <span className="font-semibold text-foreground">{selectedDungeon.difficulty}</span>
+                {' · '}Floors <span className="font-semibold text-foreground">∞</span>
               </p>
-              {selectedDungeon.deepestFloor > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Deepest explored: <span className="font-semibold text-foreground">Floor {selectedDungeon.deepestFloor}</span>
-                </p>
-              )}
+              <p className="text-sm text-muted-foreground">
+                Best floor:{' '}
+                <span className="font-semibold text-foreground">
+                  {selectedDungeon.deepestFloor > 0 ? selectedDungeon.deepestFloor : '—'}
+                </span>
+              </p>
               {selectedDungeon.element && (
                 <p className="text-sm text-muted-foreground">
                   Attuned: <span className="font-semibold text-foreground capitalize">{selectedDungeon.element}</span>

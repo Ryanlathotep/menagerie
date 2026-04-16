@@ -90,7 +90,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     if (!ow.dungeonEntrances) ow.dungeonEntrances = {};
     if (!ow.playerBuildings) ow.playerBuildings = [];
     if (!ow.nests) ow.nests = {};
+    if (!ow.roads) ow.roads = {};
     ensureChunksLoaded(ow, ow.playerPosition.x, ow.playerPosition.y);
+    applyRoadsToChunks(ow);
     updateVisibility(ow);
     return ow;
   });

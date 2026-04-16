@@ -908,14 +908,7 @@ function DungeonView({
         });
         addLog(`⚠️ Spike trap! Took ${result.trap.damage} damage!`, 'damage');
         if (newHp <= 0) {
-          dispatch({
-            type: 'END_RUN',
-            victory: false
-          });
-          dispatch({
-            type: 'SET_PHASE',
-            phase: 'run_summary'
-          });
+          handleActiveMonsterDownOnMap('a spike trap');
         }
       } else if (result.trap.type === 'poison') {
         addLog('☠️ Poisoned by a trap!', 'status');
@@ -945,14 +938,7 @@ function DungeonView({
           });
           addLog(`${terrainConfig.icon} ${terrainConfig.name} hazard! Took ${damage} damage!`, 'damage');
           if (newHp <= 0) {
-            dispatch({
-              type: 'END_RUN',
-              victory: false
-            });
-            dispatch({
-              type: 'SET_PHASE',
-              phase: 'run_summary'
-            });
+            handleActiveMonsterDownOnMap(`${terrainConfig.name} hazard`);
           }
         }
       }
@@ -1808,8 +1794,7 @@ function DungeonView({
       });
       
       if (newHp <= 0) {
-        dispatch({ type: 'END_RUN', victory: false });
-        dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
+        handleActiveMonsterDownOnMap('an enemy attack');
         return;
       }
     }
@@ -2156,8 +2141,7 @@ function DungeonView({
                     });
                     addLog(`⚠️ Disarm failed! Spike trap dealt ${damage} damage!`, 'damage');
                     if (newHp <= 0) {
-                      dispatch({ type: 'END_RUN', victory: false });
-                      dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
+                      handleActiveMonsterDownOnMap('a triggered spike trap');
                     }
                   } else if (tile?.trapType === 'poison') {
                     addLog('☠️ Disarm failed! You got poisoned!', 'status');

@@ -54,6 +54,8 @@ export interface OverworldState {
   playerBuildings: PlayerBuilding[]; // Phase 3: Player-placed buildings
   nests: Record<string, NestState>; // Phase 4: Monster nests
   roads: Record<string, 'dirt_road' | 'stone_road'>; // Road tiles keyed by "x,y"
+  resourceUpgrades: Record<string, ResourceUpgradeState>; // Resource tier tracking keyed by "x,y"
+  totalSteps: number; // Total steps taken (for resource upgrade ticking)
 }
 
 // ============= CONSTANTS =============

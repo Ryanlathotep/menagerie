@@ -1258,7 +1258,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         saveData: {
           ...state.saveData,
           unlockedMonsters: updatedUnlockedMonsters,
-          storedEquipment: [...state.saveData.storedEquipment, ...equipmentToStore],
+          // Equipment stays on the sent monster (persisted on UnlockedMonster) — don't dump to storage.
           unlockedRecipes: newUnlockedRecipes,
         },
       };

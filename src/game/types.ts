@@ -330,6 +330,8 @@ export interface DungeonState {
   enemies: Monster[];
   width: number;
   height: number;
+  theme?: DungeonTheme;       // Inherited from the DungeonEntrance that started this run
+  startingFloor?: number;     // The floor the run started on (difficulty offset)
 }
 
 export interface InventoryItem {

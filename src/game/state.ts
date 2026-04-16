@@ -215,49 +215,61 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
       
     case 'END_RUN': {
-      // On defeat OR victory, return ALL party equipment + inventory equipment back to
-      // town storage so gear is never lost. Players will re-equip at the next pre-run.
+      // Equipment stays equipped to each party member across runs. Only loose
+      // loot picked up during the run (equipmentInventory) is sent to town
+      // storage — equipped gear is persisted onto each monster's UnlockedMonster
+      // record so it's still equipped at the next pre-run screen.
+      const slots: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory', 'back'];
       const equipmentToStore: EquipmentItem[] = [];
-      if (state.run?.partyEquipment) {
-        const slots: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory', 'back'];
-        for (const memberEquipment of state.run.partyEquipment) {
-          for (const slot of slots) {
-            const item = memberEquipment[slot];
-            if (item) {
-              equipmentToStore.push({ ...item, bound: undefined });
-            }
-          }
-        }
+      if (state.run?.equipmentInventory) {
         for (const item of state.run.equipmentInventory) {
           equipmentToStore.push({ ...item, bound: undefined });
         }
       }
       
-      // Unlock recipes for bound items being returned
+      // Recipes unlock from any equipment seen this run (equipped + loose loot).
       const newUnlockedRecipes = [...(state.saveData.unlockedRecipes || [])];
-      for (const item of equipmentToStore) {
+      const allSeenEquipment: EquipmentItem[] = [...equipmentToStore];
+      if (state.run?.partyEquipment) {
+        for (const memberEquipment of state.run.partyEquipment) {
+          for (const slot of slots) {
+            const item = memberEquipment[slot];
+            if (item) allSeenEquipment.push(item);
+          }
+        }
+      }
+      for (const item of allSeenEquipment) {
         const matchingRecipe = getRecipeFromEquipment(item);
         if (matchingRecipe && !newUnlockedRecipes.includes(matchingRecipe.id)) {
           newUnlockedRecipes.push(matchingRecipe.id);
         }
       }
       
-      // Update unlocked monsters if party members are at higher levels
+      // Update unlocked monsters: persist level AND equipment for each party member.
       let updatedUnlockedMonsters = [...state.saveData.unlockedMonsters];
       if (state.run) {
-        for (const partyMember of state.run.party) {
+        state.run.party.forEach((partyMember, idx) => {
           const comboId = `${partyMember.species}_${partyMember.element}_${partyMember.class}`;
+          const memberEquipment = state.run!.partyEquipment[idx];
+          // Strip bound flag from persisted equipment (no longer needed once tied to monster)
+          const cleanedEquipment: MonsterEquipment | undefined = memberEquipment
+            ? Object.fromEntries(
+                Object.entries(memberEquipment).map(([slot, item]) => [
+                  slot,
+                  item ? { ...item, bound: undefined } : null,
+                ])
+              ) as MonsterEquipment
+            : undefined;
+          
           const existingIdx = updatedUnlockedMonsters.findIndex(m => m.comboId === comboId);
           if (existingIdx !== -1) {
-            // Update level if party member is higher level
-            if (partyMember.level > updatedUnlockedMonsters[existingIdx].level) {
-              updatedUnlockedMonsters[existingIdx] = {
-                ...updatedUnlockedMonsters[existingIdx],
-                level: partyMember.level,
-              };
-            }
+            updatedUnlockedMonsters[existingIdx] = {
+              ...updatedUnlockedMonsters[existingIdx],
+              level: Math.max(updatedUnlockedMonsters[existingIdx].level, partyMember.level),
+              equipment: cleanedEquipment,
+            };
           }
-        }
+        });
       }
       
       // Update dungeon entrance depth tracking
@@ -293,7 +305,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             ? Math.max(state.saveData.highestFloor, state.run.dungeon.floor)
             : state.saveData.highestFloor,
           totalEnemiesDefeated: state.saveData.totalEnemiesDefeated + (state.run?.enemiesDefeated || 0),
-          // Return ALL equipped items to storage so gear is never lost on defeat
+          // Only loose run loot goes to storage; equipped gear stays on monsters.
           storedEquipment: [...state.saveData.storedEquipment, ...equipmentToStore],
           unlockedMonsters: updatedUnlockedMonsters,
           unlockedRecipes: newUnlockedRecipes,

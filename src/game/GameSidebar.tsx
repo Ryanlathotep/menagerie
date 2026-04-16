@@ -1,6 +1,29 @@
 // Game Sidebar - Always visible menu with panels (works in both dungeon and battle)
 
-import { useState, forwardRef } from 'react';
+import { useState, forwardRef, useRef, useCallback, useEffect } from 'react';
+
+// Panel height persistence
+const PANEL_HEIGHTS_KEY = 'monster-roguelike-panel-heights';
+type PanelName = 'character' | 'inventory' | 'moves' | 'party';
+
+function loadPanelHeights(): Record<PanelName, number> {
+  try {
+    const saved = localStorage.getItem(PANEL_HEIGHTS_KEY);
+    if (saved) return { ...DEFAULT_PANEL_HEIGHTS, ...JSON.parse(saved) };
+  } catch {}
+  return { ...DEFAULT_PANEL_HEIGHTS };
+}
+
+function savePanelHeights(heights: Record<PanelName, number>) {
+  try { localStorage.setItem(PANEL_HEIGHTS_KEY, JSON.stringify(heights)); } catch {}
+}
+
+const DEFAULT_PANEL_HEIGHTS: Record<PanelName, number> = {
+  character: 45,
+  inventory: 45,
+  moves: 45,
+  party: 45,
+};
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -104,8 +127,41 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   partyEffects = [],
 }, ref) => {
   const isMobileView = typeof window !== 'undefined' && window.innerWidth < 640;
-  const [activePanel, setActivePanel] = useState<'character' | 'inventory' | 'moves' | 'party' | null>(null);
+  const [activePanel, setActivePanel] = useState<PanelName | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [panelHeights, setPanelHeights] = useState<Record<PanelName, number>>(loadPanelHeights);
+  const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
+  
+  // Save panel heights when they change
+  useEffect(() => {
+    savePanelHeights(panelHeights);
+  }, [panelHeights]);
+
+  const handleResizeStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    if (!activePanel) return;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    dragRef.current = { startY: clientY, startHeight: panelHeights[activePanel] };
+
+    const onMove = (ev: MouseEvent | TouchEvent) => {
+      if (!dragRef.current || !activePanel) return;
+      const currentY = 'touches' in ev ? ev.touches[0].clientY : ev.clientY;
+      const deltaVh = ((dragRef.current.startY - currentY) / window.innerHeight) * 100;
+      const newHeight = Math.min(80, Math.max(15, dragRef.current.startHeight + deltaVh));
+      setPanelHeights(prev => ({ ...prev, [activePanel]: Math.round(newHeight) }));
+    };
+    const onEnd = () => {
+      dragRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onEnd);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onEnd);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchmove', onMove);
+    window.addEventListener('touchend', onEnd);
+  }, [activePanel, panelHeights]);
   
   const handlePanelChange = (panel: typeof activePanel) => {
     const newPanel = activePanel === panel ? null : panel;
@@ -270,8 +326,19 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
         )}
       </div>
       
-      {/* Compact slide-up panels - constrained height so map + log stay visible */}
-      {activePanel && <div className="fixed bottom-16 sm:bottom-24 left-0 right-0 bg-card border-t-2 border-primary/20 shadow-xl z-40 animate-fade-in max-h-[45vh] overflow-y-auto">
+      {/* Compact slide-up panels - resizable height */}
+      {activePanel && <div 
+        className="fixed bottom-16 sm:bottom-24 left-0 right-0 bg-card border-t-2 border-primary/20 shadow-xl z-40 animate-fade-in overflow-y-auto"
+        style={{ maxHeight: `${panelHeights[activePanel]}vh` }}
+      >
+          {/* Resize drag handle */}
+          <div 
+            className="sticky top-0 z-10 flex justify-center py-1 cursor-row-resize bg-card/90 backdrop-blur-sm border-b border-border/30 touch-none select-none"
+            onMouseDown={handleResizeStart}
+            onTouchStart={handleResizeStart}
+          >
+            <div className="w-10 h-1 rounded-full bg-muted-foreground/40" />
+          </div>
           <div className="p-3">
             {/* Panel header */}
             <div className="flex items-center justify-between mb-2">

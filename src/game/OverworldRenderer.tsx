@@ -8,6 +8,7 @@ import {
   OverworldGrassTile, OverworldHarvestedTile, OverworldTreeTile,
   OverworldRockTile, OverworldWaterTile, OverworldBuildingTile,
   OverworldDungeonTile, OverworldFogTile, OverworldNestTile,
+  OverworldDirtRoadTile, OverworldStoneRoadTile,
 } from './OverworldTileGraphics';
 import { OverworldBuildingTileGraphic } from './OverworldBuildingTileGraphics';
 import { PlayerBuilding } from './buildings';
@@ -61,6 +62,8 @@ function renderTileGraphic(tile: OverworldTile, tileSize: number, seed: number, 
       : <OverworldGrassTile size={tileSize} seed={seed} />;
     case 'enemy': return <OverworldGrassTile size={tileSize} seed={seed} />;
     case 'player': return <OverworldGrassTile size={tileSize} seed={seed} />;
+    case 'dirt_road': return <OverworldDirtRoadTile size={tileSize} seed={seed} />;
+    case 'stone_road': return <OverworldStoneRoadTile size={tileSize} seed={seed} />;
     default: return <OverworldFogTile size={tileSize} />;
   }
 }

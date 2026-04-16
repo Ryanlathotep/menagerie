@@ -19,6 +19,7 @@ import {
 import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot, dismantleEquipment, getRecipeFromEquipment, getConsumableRecipeFromItem } from './equipment';
 import { xpToNextLevel } from './combat';
 import { calculateStats } from './utils';
+import { findNearestEmptyOverworldTile } from './overworld';
 
 // Starting monster - Normal Normal Slime
 const STARTER_MONSTER = {
@@ -214,25 +215,21 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
       
     case 'END_RUN': {
-      // On death (victory=false), return BOUND equipment to town storage (non-bound is lost)
+      // On defeat OR victory, return ALL party equipment + inventory equipment back to
+      // town storage so gear is never lost. Players will re-equip at the next pre-run.
       const equipmentToStore: EquipmentItem[] = [];
-      if (!action.victory && state.run?.partyEquipment) {
+      if (state.run?.partyEquipment) {
         const slots: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory', 'back'];
-        // Collect only BOUND equipment from all party members
         for (const memberEquipment of state.run.partyEquipment) {
           for (const slot of slots) {
             const item = memberEquipment[slot];
-            if (item && item.bound) {
-              // Remove the bound flag when returning to storage
+            if (item) {
               equipmentToStore.push({ ...item, bound: undefined });
             }
           }
         }
-        // Also save bound items from equipment inventory
         for (const item of state.run.equipmentInventory) {
-          if (item.bound) {
-            equipmentToStore.push({ ...item, bound: undefined });
-          }
+          equipmentToStore.push({ ...item, bound: undefined });
         }
       }
       
@@ -276,6 +273,17 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         }
       }
       
+      // Respawn the overworld player at the nearest empty tile to the town (0,0)
+      // so a wiped party reappears at home rather than where they fell.
+      let updatedOverworld = state.saveData.overworldState;
+      if (updatedOverworld) {
+        const respawn = findNearestEmptyOverworldTile(updatedOverworld, 0, 0);
+        updatedOverworld = {
+          ...updatedOverworld,
+          playerPosition: respawn,
+        };
+      }
+      
       return {
         ...state,
         phase: 'run_summary',
@@ -285,11 +293,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             ? Math.max(state.saveData.highestFloor, state.run.dungeon.floor)
             : state.saveData.highestFloor,
           totalEnemiesDefeated: state.saveData.totalEnemiesDefeated + (state.run?.enemiesDefeated || 0),
-          // Return BOUND equipped items to storage on death
+          // Return ALL equipped items to storage so gear is never lost on defeat
           storedEquipment: [...state.saveData.storedEquipment, ...equipmentToStore],
           unlockedMonsters: updatedUnlockedMonsters,
           unlockedRecipes: newUnlockedRecipes,
           dungeonEntrances: updatedDungeonEntrances,
+          overworldState: updatedOverworld,
         },
       };
     }

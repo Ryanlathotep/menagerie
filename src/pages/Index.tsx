@@ -754,6 +754,28 @@ function DungeonView({
       setStepsSinceLastSpawn(newStepCount);
     }
   }, [dungeon, stepsSinceLastSpawn, respawnStepThreshold, dispatch, addLog]);
+  
+  // When the active monster falls outside of turn-based battle (trap, terrain hazard,
+  // ranged enemy attack, etc.), try to switch to the next conscious party member
+  // instead of immediately ending the run. The run only truly ends when the entire
+  // party is wiped out.
+  const handleActiveMonsterDownOnMap = useCallback((cause: string) => {
+    if (!state.run) return;
+    const party = state.run.party;
+    const activeIndex = state.run.activePartyIndex;
+    const nextAliveIndex = party.findIndex((m, i) => i !== activeIndex && m.stats.currentHp > 0);
+    
+    if (nextAliveIndex >= 0) {
+      const next = party[nextAliveIndex];
+      addLog(`💀 ${state.run.currentMonster.name} fell to ${cause}! ${next.name} steps up!`, 'damage');
+      dispatch({ type: 'SWITCH_ACTIVE_MONSTER', index: nextAliveIndex });
+      toast.success(`Go, ${next.species}!`);
+    } else {
+      addLog(`☠️ Your entire party has fallen! Returning to town...`, 'damage');
+      dispatch({ type: 'END_RUN', victory: false });
+      dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
+    }
+  }, [state.run, dispatch, addLog]);
   const handleMove = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
     if (!dungeon || !state.run) return;
     const result = movePlayer(dungeon, direction);
@@ -886,14 +908,7 @@ function DungeonView({
         });
         addLog(`⚠️ Spike trap! Took ${result.trap.damage} damage!`, 'damage');
         if (newHp <= 0) {
-          dispatch({
-            type: 'END_RUN',
-            victory: false
-          });
-          dispatch({
-            type: 'SET_PHASE',
-            phase: 'run_summary'
-          });
+          handleActiveMonsterDownOnMap('a spike trap');
         }
       } else if (result.trap.type === 'poison') {
         addLog('☠️ Poisoned by a trap!', 'status');
@@ -923,14 +938,7 @@ function DungeonView({
           });
           addLog(`${terrainConfig.icon} ${terrainConfig.name} hazard! Took ${damage} damage!`, 'damage');
           if (newHp <= 0) {
-            dispatch({
-              type: 'END_RUN',
-              victory: false
-            });
-            dispatch({
-              type: 'SET_PHASE',
-              phase: 'run_summary'
-            });
+            handleActiveMonsterDownOnMap(`${terrainConfig.name} hazard`);
           }
         }
       }
@@ -1786,8 +1794,7 @@ function DungeonView({
       });
       
       if (newHp <= 0) {
-        dispatch({ type: 'END_RUN', victory: false });
-        dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
+        handleActiveMonsterDownOnMap('an enemy attack');
         return;
       }
     }
@@ -2134,8 +2141,7 @@ function DungeonView({
                     });
                     addLog(`⚠️ Disarm failed! Spike trap dealt ${damage} damage!`, 'damage');
                     if (newHp <= 0) {
-                      dispatch({ type: 'END_RUN', victory: false });
-                      dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
+                      handleActiveMonsterDownOnMap('a triggered spike trap');
                     }
                   } else if (tile?.trapType === 'poison') {
                     addLog('☠️ Disarm failed! You got poisoned!', 'status');

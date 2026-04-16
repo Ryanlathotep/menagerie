@@ -143,31 +143,50 @@ const ENEMY_ITEM_TABLE = [
   { id: 'gold_pile', name: 'Gold Pile', type: 'gold' as const, value: 30 },
 ];
 
-// Generate a random monster for dungeon (with equipment based on floor)
+// Generate a random monster for dungeon (with equipment based on floor).
+// Optional `theme` constrains element/class/species so themed towers feel themed.
 export function generateRandomMonster(
   allowedSpecies: SpeciesType[],
-  level: number
+  level: number,
+  theme?: { kind: 'all' | 'element' | 'class' | 'species'; value?: ElementType | ClassType | SpeciesType }
 ): Monster {
-  const species = allowedSpecies[Math.floor(Math.random() * allowedSpecies.length)];
-  // Include normal type with low probability
+  // Apply species theme override
+  let speciesPool = allowedSpecies;
+  if (theme?.kind === 'species' && theme.value) {
+    speciesPool = [theme.value as SpeciesType];
+  }
+  if (speciesPool.length === 0) speciesPool = allowedSpecies;
+  const species = speciesPool[Math.floor(Math.random() * speciesPool.length)];
+
+  // Class selection: themed towers force the class; otherwise weighted random with rare normal.
   const classes: ClassType[] = ['normal', 'kinetic', 'energy', 'biological', 'chemical', 'political'];
   const elements: ElementType[] = ['normal', 'fire', 'water', 'earth', 'air', 'void'];
-  
-  // Weighted random - normal is less common (10% chance)
-  const classType = Math.random() < 0.1 ? 'normal' : classes[1 + Math.floor(Math.random() * 5)] as ClassType;
-  const element = Math.random() < 0.1 ? 'normal' : elements[1 + Math.floor(Math.random() * 5)] as ElementType;
-  
+
+  let classType: ClassType;
+  if (theme?.kind === 'class' && theme.value) {
+    classType = theme.value as ClassType;
+  } else {
+    classType = (Math.random() < 0.1 ? 'normal' : classes[1 + Math.floor(Math.random() * 5)]) as ClassType;
+  }
+
+  let element: ElementType;
+  if (theme?.kind === 'element' && theme.value) {
+    element = theme.value as ElementType;
+  } else {
+    element = (Math.random() < 0.1 ? 'normal' : elements[1 + Math.floor(Math.random() * 5)]) as ElementType;
+  }
+
   // Generate equipment for enemy (based on level/floor)
   const equipment = generateEnemyEquipment(level);
-  
+
   const monster = createMonster(species, classType, element, level, equipment);
-  
+
   // 30% chance enemy carries an item (can be stolen by Crow)
   if (Math.random() < 0.3) {
     const item = ENEMY_ITEM_TABLE[Math.floor(Math.random() * ENEMY_ITEM_TABLE.length)];
     monster.carriedItem = { ...item };
   }
-  
+
   return monster;
 }
 

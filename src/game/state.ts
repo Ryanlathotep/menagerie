@@ -41,7 +41,7 @@ const DEFAULT_SAVE_DATA: SaveData = {
   storedEquipment: [],        // Equipment storage
   storedItems: [],            // Town item storage
   unlockedRecipes: [],        // Unlocked crafting recipes
-  dungeonEntrances: {},       // Persistent dungeon data
+  dungeonEntrances: { [HOME_TOWER_ID]: createHomeTowerEntrance() }, // Includes Tower of the Infinite
 };
 
 // Initial game state
@@ -1270,6 +1270,10 @@ export function GameProvider({ children }: GameProviderProps) {
         }
         if (!saveData.dungeonEntrances) {
           saveData.dungeonEntrances = {};
+        }
+        // Ensure the Tower of the Infinite always exists
+        if (!saveData.dungeonEntrances[HOME_TOWER_ID]) {
+          saveData.dungeonEntrances[HOME_TOWER_ID] = createHomeTowerEntrance();
         }
         dispatch({ type: 'LOAD_SAVE', saveData });
       } catch (e) {

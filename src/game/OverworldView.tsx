@@ -27,7 +27,7 @@ import {
 import { TREE_TIER_DATA, STONE_TIER_DATA, TreeTier, StoneTier } from './resourceHierarchy';
 import { 
   PlayerBuildingType, BUILDING_DEFINITIONS, canPlaceBuilding, createBuilding, tickFarm,
-  processScoutTowerAttacks, PlayerBuilding,
+  processScoutTowerAttacks, PlayerBuilding, getDisassembleRefund, getRepairCost,
 } from './buildings';
 import { OverworldRenderer, OverworldRendererHandle } from './OverworldRenderer';
 import { GameSidebar } from './GameSidebar';
@@ -53,6 +53,7 @@ import { toast } from 'sonner';
 import { EvolvedMove } from './moveMastery';
 import { CombatEffects } from './statusEffects';
 import { BuildingAssignModal } from './BuildingAssignModal';
+import { BuildingContextMenu } from './BuildingContextMenu';
 import { FARM_OUTPUTS, FARM_GROWTH_STEPS } from './buildings';
 import { 
   NestState, tickNest, spawnNestMonster, findNestSpawnPosition, 
@@ -113,6 +114,8 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   
   // Monster assignment modal state
   const [assignBuilding, setAssignBuilding] = useState<PlayerBuilding | null>(null);
+  // Right-click context menu state for player buildings
+  const [contextMenuBuilding, setContextMenuBuilding] = useState<PlayerBuilding | null>(null);
   
   // Targeting state
   const [targetingMove, setTargetingMove] = useState<Move | null>(null);

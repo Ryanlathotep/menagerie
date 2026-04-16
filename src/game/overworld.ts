@@ -413,7 +413,7 @@ export type MoveResult =
   | { type: 'moved'; bonusMove?: boolean }
   | { type: 'blocked'; reason: string }
   | { type: 'enemy'; enemy: Monster }
-  | { type: 'resource'; resourceType: 'wood' | 'stone'; amount: number }
+  | { type: 'resource'; resourceType: 'wood' | 'stone'; amount: number; tierName?: string; materialDrop?: { materialId: string; name: string } }
   | { type: 'building'; buildingType: BuildingType }
   | { type: 'dungeon_entrance'; dungeonId?: string }
   | { type: 'player_building'; building: PlayerBuilding }
@@ -437,25 +437,51 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
       return { type: 'blocked', reason: 'Water blocks your path' };
       
     case 'tree': {
-      const amount = Math.min(tile.resourceAmount || 1, 1);
-      tile.resourceAmount = (tile.resourceAmount || 1) - amount;
+      const treeTier = tile.treeTier || 'oak';
+      const tierData = TREE_TIER_DATA[treeTier];
+      const amount = tierData.harvestYield;
+      tile.resourceAmount = (tile.resourceAmount || 1) - 1;
       if (tile.resourceAmount <= 0) {
+        // Remove resource tracking when depleted
+        const resKey = `${newX},${newY}`;
+        delete state.resourceUpgrades[resKey];
         tile.type = 'grass';
         tile.harvested = true;
+        tile.treeTier = undefined;
       }
       state.woodCollected += amount;
-      return { type: 'resource', resourceType: 'wood', amount };
+      // Check for special material drop
+      let materialDrop: { materialId: string; name: string } | undefined;
+      if (tierData.materialId && tierData.materialChance) {
+        const dropRoll = seededRandom(state.totalSteps * 13 + newX * 7 + newY);
+        if (dropRoll < tierData.materialChance) {
+          materialDrop = { materialId: tierData.materialId, name: tierData.name + ' material' };
+        }
+      }
+      return { type: 'resource', resourceType: 'wood', amount, tierName: tierData.name, materialDrop };
     }
     
     case 'rock': {
-      const amount = Math.min(tile.resourceAmount || 1, 1);
-      tile.resourceAmount = (tile.resourceAmount || 1) - amount;
+      const stoneTier = tile.stoneTier || 'stone';
+      const tierData = STONE_TIER_DATA[stoneTier];
+      const amount = tierData.harvestYield;
+      tile.resourceAmount = (tile.resourceAmount || 1) - 1;
       if (tile.resourceAmount <= 0) {
+        const resKey = `${newX},${newY}`;
+        delete state.resourceUpgrades[resKey];
         tile.type = 'grass';
         tile.harvested = true;
+        tile.stoneTier = undefined;
       }
       state.stoneCollected += amount;
-      return { type: 'resource', resourceType: 'stone', amount };
+      let materialDrop: { materialId: string; name: string } | undefined;
+      if (tierData.materialId && tierData.materialChance) {
+        const dropRoll = seededRandom(state.totalSteps * 17 + newX * 11 + newY);
+        if (dropRoll < tierData.materialChance) {
+          materialDrop = { materialId: tierData.materialId, name: tierData.name + ' material' };
+        }
+      }
+      return { type: 'resource', resourceType: 'stone', amount, tierName: tierData.name, materialDrop };
     }
     
     case 'enemy': {

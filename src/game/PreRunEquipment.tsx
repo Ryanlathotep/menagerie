@@ -42,9 +42,15 @@ export function PreRunEquipment({
   const [activeIndex, setActiveIndex] = useState(0);
   const monster = monsters[activeIndex] || monsters[0];
   
-  // One equipment set per party member
+  // One equipment set per party member. Hydrate from each monster's persisted
+  // `equipment` so previously equipped gear stays equipped between runs — players
+  // can edit it here, but they don't have to re-equip from scratch every run.
   const [partyEquipment, setPartyEquipment] = useState<MonsterEquipment[]>(
-    monsters.map(() => createEmptyEquipment())
+    monsters.map(m => {
+      if (!m.equipment) return createEmptyEquipment();
+      // Merge with empty template so all slot keys exist
+      return { ...createEmptyEquipment(), ...m.equipment };
+    })
   );
   const equipment = partyEquipment[activeIndex] || createEmptyEquipment();
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot | null>(null);
@@ -62,8 +68,26 @@ export function PreRunEquipment({
   const allEquippedIds = partyEquipment.flatMap(eq => Object.values(eq).filter(Boolean).map(item => item!.id));
   const equippedIds = allEquippedIds;
   
-  // Available items = stored items not yet equipped by any party member
-  const availableItems = storedEquipment.filter(item => !allEquippedIds.includes(item.id));
+  // Items that started already equipped on incoming monsters (persisted across runs).
+  // We expose them as available so unequipping returns them to the pool, even though
+  // they aren't physically in town storage.
+  const initiallyEquippedItems = useState<EquipmentItem[]>(() => {
+    const items: EquipmentItem[] = [];
+    for (const m of monsters) {
+      if (!m.equipment) continue;
+      for (const item of Object.values(m.equipment)) {
+        if (item) items.push(item);
+      }
+    }
+    return items;
+  })[0];
+  
+  // Available items = stored loose loot + previously-equipped items, minus
+  // anything currently equipped this session.
+  const availableItems = [
+    ...storedEquipment,
+    ...initiallyEquippedItems.filter(it => !storedEquipment.some(s => s.id === it.id)),
+  ].filter(item => !allEquippedIds.includes(item.id));
   
   // Filter and sort by selected slot
   const filteredItems = selectedSlot 

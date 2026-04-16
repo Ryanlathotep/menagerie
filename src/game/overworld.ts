@@ -428,7 +428,26 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
   const tile = getOverworldTile(state, newX, newY);
   if (!tile) return { type: 'blocked', reason: 'Edge of the world' };
   
-  // Check if destination is a road (roads override grass tiles visually but tile.type stays as placed)
+  // Increment total steps and tick resource upgrades
+  state.totalSteps = (state.totalSteps || 0) + 1;
+  if (!state.resourceUpgrades) state.resourceUpgrades = {};
+  const upgrades = tickResourceUpgrades(state.resourceUpgrades);
+  // Apply upgrades to tile data
+  for (const upg of upgrades) {
+    const [ux, uy] = upg.key.split(',').map(Number);
+    const upgTile = getOverworldTile(state, ux, uy);
+    if (upgTile) {
+      if (upg.type === 'tree' && upgTile.type === 'tree') {
+        upgTile.treeTier = upg.newTier as TreeTier;
+        upgTile.resourceAmount = TREE_TIER_DATA[upg.newTier as TreeTier].totalHits;
+      } else if (upg.type === 'stone' && upgTile.type === 'rock') {
+        upgTile.stoneTier = upg.newTier as StoneTier;
+        upgTile.resourceAmount = STONE_TIER_DATA[upg.newTier as StoneTier].totalHits;
+      }
+    }
+  }
+  
+  // Check if destination is a road
   const roadKey = `${newX},${newY}`;
   const isRoad = state.roads && state.roads[roadKey];
   

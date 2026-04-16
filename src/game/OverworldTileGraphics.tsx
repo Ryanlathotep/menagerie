@@ -275,6 +275,64 @@ export function OverworldNestTile({ size, seed = 0, element = 'normal', hpPercen
   );
 }
 
+// ─── Dirt Road ───
+export function OverworldDirtRoadTile({ size, seed = 0 }: TileGraphicProps) {
+  const r1 = seededRandom(seed);
+  const r2 = seededRandom(seed + 1);
+
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className="block">
+      {/* Dirt base */}
+      <rect width="24" height="24" fill="hsl(30 40% 42%)" opacity={0.4}/>
+      {/* Path surface */}
+      <rect x="2" y="0" width="20" height="24" rx={1} fill="hsl(28 35% 48%)" opacity={0.5}/>
+      {/* Ruts / tracks */}
+      <line x1={7+r1} y1="0" x2={7+r1} y2="24" stroke="hsl(25 30% 38%)" strokeWidth={1.2} opacity={0.4} strokeDasharray="3 2"/>
+      <line x1={17-r2} y1="0" x2={17-r2} y2="24" stroke="hsl(25 30% 38%)" strokeWidth={1.2} opacity={0.4} strokeDasharray="3 2"/>
+      {/* Pebbles */}
+      <circle cx={5+r1*3} cy={8+r2*4} r={0.6} fill="hsl(30 15% 55%)" opacity={0.5}/>
+      <circle cx={18-r2*2} cy={16+r1*3} r={0.5} fill="hsl(30 15% 55%)" opacity={0.4}/>
+      {/* Grid line */}
+      <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
+      <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
+    </svg>
+  );
+}
+
+// ─── Stone Road ───
+export function OverworldStoneRoadTile({ size, seed = 0 }: TileGraphicProps) {
+  const r1 = seededRandom(seed);
+  const r2 = seededRandom(seed + 1);
+  const r3 = seededRandom(seed + 2);
+
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className="block">
+      {/* Stone base */}
+      <rect width="24" height="24" fill="hsl(220 8% 55%)" opacity={0.35}/>
+      {/* Cobblestone pattern - irregular rectangles */}
+      <rect x="1" y="1" width="5" height="4" rx={0.3} fill="hsl(215 10% 62%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
+      <rect x="7" y="1" width="4" height="4" rx={0.3} fill="hsl(220 8% 58%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
+      <rect x="12" y="1" width="5" height="4" rx={0.3} fill="hsl(210 12% 60%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
+      <rect x="18" y="1" width="5" height="4" rx={0.3} fill="hsl(215 9% 57%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
+      <rect x="0" y="6" width="4" height="5" rx={0.3} fill="hsl(218 10% 60%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
+      <rect x="5" y="6" width="6" height="5" rx={0.3} fill="hsl(212 11% 56%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
+      <rect x="12" y="6" width="5" height="5" rx={0.3} fill="hsl(220 9% 61%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
+      <rect x="18" y="6" width="6" height="5" rx={0.3} fill="hsl(216 10% 58%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
+      <rect x="1" y="12" width="5" height="5" rx={0.3} fill="hsl(214 8% 59%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
+      <rect x="7" y="12" width="5" height="5" rx={0.3} fill="hsl(218 11% 55%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
+      <rect x="13" y="12" width="4" height="5" rx={0.3} fill="hsl(210 10% 62%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
+      <rect x="18" y="12" width="5" height="5" rx={0.3} fill="hsl(215 9% 57%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
+      <rect x="0" y="18" width="6" height="5" rx={0.3} fill="hsl(216 10% 60%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
+      <rect x="7" y="18" width="4" height="5" rx={0.3} fill="hsl(220 8% 58%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
+      <rect x="12" y="18" width="6" height="5" rx={0.3} fill="hsl(212 12% 56%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
+      <rect x="19" y="18" width="4" height="5" rx={0.3} fill="hsl(218 9% 61%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
+      {/* Grid line */}
+      <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
+      <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
+    </svg>
+  );
+}
+
 // ─── Fog of war (unexplored) ───
 export function OverworldFogTile({ size }: { size: number }) {
   return (

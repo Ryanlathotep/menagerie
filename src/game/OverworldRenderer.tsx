@@ -15,6 +15,8 @@ import { PlayerBuilding } from './buildings';
 import { NestState } from './nests';
 import { MatchupIndicator } from './MatchupIndicator';
 import { ElementType, ClassType } from './types';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { BuildingTooltipContent } from './BuildingTooltip';
 
 interface OverworldRendererProps {
   overworld: OverworldState;

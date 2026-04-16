@@ -218,6 +218,16 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
               });
             }
           }
+          // Bonus move from stone roads: automatically take another step in the same direction
+          if (result.bonusMove) {
+            addLog('🏃 Stone road speed boost!', 'info');
+            const bonusResult = movePlayer(newState, dx, dy);
+            if (bonusResult.type === 'moved') {
+              // Extra regen from bonus step
+            }
+          }
+          // Apply roads overlay after chunk loads
+          applyRoadsToChunks(newState);
           break;
         case 'blocked':
           toast.info(result.reason);

@@ -948,13 +948,23 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     saveOverworld(overworld);
     // Route through party select + equipment flow, same as main menu
     localStorage.setItem('menagerie_run_destination', 'dungeon');
+    localStorage.setItem('menagerie_run_origin', 'overworld');
     dispatch({ type: 'SET_PHASE', phase: 'character_select' });
   };
   
-  const handleFlee = () => {
-    saveOverworld(overworld);
-    dispatch({ type: 'FLEE_DUNGEON' });
-    dispatch({ type: 'SET_PHASE', phase: 'main_menu' });
+  // Return to Town: snap the overworld player to the nearest empty tile around (0,0)
+  // and persist it. Stays in the overworld phase — does NOT end the run.
+  const handleReturnToTown = () => {
+    setOverworld(prev => {
+      const next = JSON.parse(JSON.stringify(prev)) as OverworldState;
+      const home = findNearestEmptyOverworldTile(next, 0, 0);
+      next.playerPosition = home;
+      updateVisibility(next);
+      saveOverworld(next);
+      return next;
+    });
+    addLog('🏠 Returned to town.', 'system');
+    toast.success('Returned to town');
   };
   
   const handleDropItem = (itemId: string) => {

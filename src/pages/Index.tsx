@@ -167,6 +167,7 @@ function MainMenu() {
               className="w-64 bg-gradient-to-r from-secondary to-primary hover:opacity-90"
               onClick={() => {
                 localStorage.setItem('menagerie_run_destination', 'overworld');
+                localStorage.setItem('menagerie_run_origin', 'main_menu');
                 localStorage.removeItem('menagerie_active_dungeon_id');
                 dispatch({ type: 'SET_PHASE', phase: 'character_select' });
               }}
@@ -180,6 +181,7 @@ function MainMenu() {
             dungeonEntrances={state.saveData.dungeonEntrances || {}}
             onLaunch={(entrance) => {
               localStorage.setItem('menagerie_run_destination', 'dungeon');
+              localStorage.setItem('menagerie_run_origin', 'main_menu');
               localStorage.setItem('menagerie_active_dungeon_id', entrance.id);
               localStorage.setItem('menagerie_active_dungeon_difficulty', String(entrance.difficulty || 1));
               dispatch({ type: 'SET_PHASE', phase: 'character_select' });

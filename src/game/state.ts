@@ -360,9 +360,16 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         }
       });
       
-      // Unlock recipes for equipment brought back
+      // Unlock recipes for any equipment seen this run (loose loot + currently equipped).
       const newUnlockedRecipes = [...(state.saveData.unlockedRecipes || [])];
-      for (const item of equipmentToStore) {
+      const allFleeEquipment: EquipmentItem[] = [...equipmentToStore];
+      for (const memberEquipment of state.run.partyEquipment) {
+        for (const slot of slots) {
+          const item = memberEquipment[slot];
+          if (item) allFleeEquipment.push(item);
+        }
+      }
+      for (const item of allFleeEquipment) {
         const matchingRecipe = getRecipeFromEquipment(item);
         if (matchingRecipe && !newUnlockedRecipes.includes(matchingRecipe.id)) {
           newUnlockedRecipes.push(matchingRecipe.id);

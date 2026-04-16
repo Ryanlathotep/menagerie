@@ -408,12 +408,15 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
   const tile = getOverworldTile(state, newX, newY);
   if (!tile) return { type: 'blocked', reason: 'Edge of the world' };
   
+  // Check if destination is a road (roads override grass tiles visually but tile.type stays as placed)
+  const roadKey = `${newX},${newY}`;
+  const isRoad = state.roads && state.roads[roadKey];
+  
   switch (tile.type) {
     case 'water':
       return { type: 'blocked', reason: 'Water blocks your path' };
       
     case 'tree': {
-      // Harvest wood
       const amount = Math.min(tile.resourceAmount || 1, 1);
       tile.resourceAmount = (tile.resourceAmount || 1) - amount;
       if (tile.resourceAmount <= 0) {
@@ -425,7 +428,6 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
     }
     
     case 'rock': {
-      // Mine stone
       const amount = Math.min(tile.resourceAmount || 1, 1);
       tile.resourceAmount = (tile.resourceAmount || 1) - amount;
       if (tile.resourceAmount <= 0) {
@@ -437,7 +439,6 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
     }
     
     case 'enemy': {
-      // Don't walk into enemies - block movement and signal combat
       if (tile.enemyId) {
         const enemy = getOverworldEnemy(state, tile.enemyId);
         if (enemy) return { type: 'enemy', enemy };
@@ -458,7 +459,6 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
     }
     
     case 'player_building': {
-      // Walk onto player buildings (farms to harvest, etc.)
       const building = state.playerBuildings.find(b => b.id === tile.playerBuildingId);
       if (building && building.type === 'wall') {
         return { type: 'blocked', reason: 'A wall blocks your path' };
@@ -470,21 +470,32 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
     }
     
     case 'nest': {
-      // Nests block movement — player must attack them
       const nest = state.nests[tile.nestId || ''];
       if (nest && !nest.destroyed) {
         return { type: 'nest', nest };
       }
-      // Destroyed nest → walk through
       state.playerPosition = { x: newX, y: newY };
       updateVisibility(state);
       return { type: 'moved' };
     }
-    
-    default: {
-      // grass - just move
+
+    case 'dirt_road':
+    case 'stone_road': {
       state.playerPosition = { x: newX, y: newY };
       updateVisibility(state);
+      // Stone roads grant a bonus move (player moves 2 tiles)
+      const bonusMove = tile.type === 'stone_road';
+      return { type: 'moved', bonusMove };
+    }
+    
+    default: {
+      state.playerPosition = { x: newX, y: newY };
+      updateVisibility(state);
+      // Check if this grass tile has a road overlay
+      if (isRoad) {
+        const bonusMove = isRoad === 'stone_road';
+        return { type: 'moved', bonusMove };
+      }
       return { type: 'moved' };
     }
   }

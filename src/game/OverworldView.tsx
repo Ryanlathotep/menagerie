@@ -1517,5 +1517,19 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         onClose={() => setAssignBuilding(null)}
       />
     )}
+    
+    {/* Building Right-Click Context Menu */}
+    {contextMenuBuilding && state.run && (
+      <BuildingContextMenu
+        building={contextMenuBuilding}
+        party={state.run.party}
+        woodAvailable={overworld.woodCollected}
+        stoneAvailable={overworld.stoneCollected}
+        onAssign={handleContextMenuAssign}
+        onRepair={handleRepairBuilding}
+        onDisassemble={handleDisassembleBuilding}
+        onClose={() => setContextMenuBuilding(null)}
+      />
+    )}
   </>;
 }

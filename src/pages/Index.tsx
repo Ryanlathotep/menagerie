@@ -377,7 +377,12 @@ function CharacterSelect() {
   
   const proceedToEquipment = () => {
     if (selectedParty.length === 0) return;
-    const monsters = selectedParty.map(m => createMonster(m.species, m.classType, m.element, m.level));
+    // Hydrate each picked monster with its persisted equipment from save data
+    // so previously equipped gear is still equipped at the pre-run screen.
+    const monsters = selectedParty.map(m => {
+      const saved = state.saveData.unlockedMonsters.find(u => u.comboId === m.comboId);
+      return createMonster(m.species, m.classType, m.element, m.level, saved?.equipment);
+    });
     setPartyForRun(monsters);
     setShowEquipmentSelect(true);
   };

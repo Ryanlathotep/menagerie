@@ -728,7 +728,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleMove, showBuildingMenu, showDungeonPrompt, showRecruitment, targetingMove, cancelTargeting, levelUpQueue.length, buildMode]);
+  }, [handleMove, showBuildingMenu, showDungeonPrompt, showRecruitment, targetingMove, cancelTargeting, levelUpQueue.length, buildMode, roadBuildMode]);
   
   // Keybind shortcuts for moves
   const keybindDataRef = useRef(loadKeybinds());

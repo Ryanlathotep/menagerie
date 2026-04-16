@@ -689,6 +689,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       if (showBuildingMenu || showDungeonPrompt || showRecruitment || levelUpQueue.length > 0) return;
       
       if (e.key === 'Escape') {
+        if (roadBuildMode) {
+          setRoadBuildMode(false);
+          setSelectedRoadType(null);
+          addLog('❌ Road build mode cancelled.', 'info');
+          return;
+        }
         if (buildMode) {
           setBuildMode(false);
           setSelectedBuildType(null);

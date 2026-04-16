@@ -716,3 +716,38 @@ export function applyRoadsToChunks(state: OverworldState): void {
     }
   }
 }
+
+// Find the nearest tile to (originX, originY) that the player can stand on.
+// Used to respawn the overworld player at home after a full party defeat.
+// Walkable = grass / road / harvested ground / building (the home base tile).
+export function findNearestEmptyOverworldTile(
+  state: OverworldState,
+  originX: number,
+  originY: number,
+): Position {
+  const isStandable = (wx: number, wy: number): boolean => {
+    ensureChunksLoaded(state, wx, wy);
+    const tile = getOverworldTile(state, wx, wy);
+    if (!tile) return false;
+    // Building (home base) is always a valid respawn — player can stand on the campfire/town tile.
+    if (tile.type === 'building') return true;
+    if (tile.type === 'grass' || tile.type === 'dirt_road' || tile.type === 'stone_road') return true;
+    return false;
+  };
+
+  // Spiral outward from origin up to a generous radius.
+  if (isStandable(originX, originY)) return { x: originX, y: originY };
+  for (let r = 1; r <= 30; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        // Only check the ring at distance r (Chebyshev) so we expand outward evenly
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const wx = originX + dx;
+        const wy = originY + dy;
+        if (isStandable(wx, wy)) return { x: wx, y: wy };
+      }
+    }
+  }
+  // Fallback: origin even if not strictly standable
+  return { x: originX, y: originY };
+}

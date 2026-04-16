@@ -214,25 +214,21 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
       
     case 'END_RUN': {
-      // On death (victory=false), return BOUND equipment to town storage (non-bound is lost)
+      // On defeat OR victory, return ALL party equipment + inventory equipment back to
+      // town storage so gear is never lost. Players will re-equip at the next pre-run.
       const equipmentToStore: EquipmentItem[] = [];
-      if (!action.victory && state.run?.partyEquipment) {
+      if (state.run?.partyEquipment) {
         const slots: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory', 'back'];
-        // Collect only BOUND equipment from all party members
         for (const memberEquipment of state.run.partyEquipment) {
           for (const slot of slots) {
             const item = memberEquipment[slot];
-            if (item && item.bound) {
-              // Remove the bound flag when returning to storage
+            if (item) {
               equipmentToStore.push({ ...item, bound: undefined });
             }
           }
         }
-        // Also save bound items from equipment inventory
         for (const item of state.run.equipmentInventory) {
-          if (item.bound) {
-            equipmentToStore.push({ ...item, bound: undefined });
-          }
+          equipmentToStore.push({ ...item, bound: undefined });
         }
       }
       

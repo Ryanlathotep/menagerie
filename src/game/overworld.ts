@@ -4,6 +4,12 @@ import { Monster, Position, SpeciesType, ElementType, SPECIES_DATA, DungeonEntra
 import { generateRandomMonster } from './utils';
 import { PlayerBuilding } from './buildings';
 import { NestState, isNestAt, createNest } from './nests';
+import {
+  TreeTier, StoneTier, ResourceUpgradeState,
+  TREE_TIER_DATA, STONE_TIER_DATA,
+  getInitialTreeTier, getInitialStoneTier,
+  tickResourceUpgrades,
+} from './resourceHierarchy';
 
 const ALL_SPECIES = Object.keys(SPECIES_DATA) as SpeciesType[];
 
@@ -24,6 +30,8 @@ export interface OverworldTile {
   dungeonId?: string; // For dungeon_entrance tiles - links to DungeonEntrance
   playerBuildingId?: string; // For player_building tiles
   nestId?: string; // For nest tiles
+  treeTier?: TreeTier;   // Resource hierarchy tier for trees
+  stoneTier?: StoneTier; // Resource hierarchy tier for rocks
 }
 
 export interface OverworldChunk {

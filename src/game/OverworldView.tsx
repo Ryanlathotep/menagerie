@@ -27,7 +27,7 @@ import {
 import { TREE_TIER_DATA, STONE_TIER_DATA, TreeTier, StoneTier } from './resourceHierarchy';
 import { 
   PlayerBuildingType, BUILDING_DEFINITIONS, canPlaceBuilding, createBuilding, tickFarm,
-  processScoutTowerAttacks, PlayerBuilding,
+  processScoutTowerAttacks, PlayerBuilding, getDisassembleRefund, getRepairCost,
 } from './buildings';
 import { OverworldRenderer, OverworldRendererHandle } from './OverworldRenderer';
 import { GameSidebar } from './GameSidebar';
@@ -53,6 +53,7 @@ import { toast } from 'sonner';
 import { EvolvedMove } from './moveMastery';
 import { CombatEffects } from './statusEffects';
 import { BuildingAssignModal } from './BuildingAssignModal';
+import { BuildingContextMenu } from './BuildingContextMenu';
 import { FARM_OUTPUTS, FARM_GROWTH_STEPS } from './buildings';
 import { 
   NestState, tickNest, spawnNestMonster, findNestSpawnPosition, 
@@ -113,6 +114,8 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   
   // Monster assignment modal state
   const [assignBuilding, setAssignBuilding] = useState<PlayerBuilding | null>(null);
+  // Right-click context menu state for player buildings
+  const [contextMenuBuilding, setContextMenuBuilding] = useState<PlayerBuilding | null>(null);
   
   // Targeting state
   const [targetingMove, setTargetingMove] = useState<Move | null>(null);
@@ -711,9 +714,19 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     }
   }, [overworld, monster, targetingMove, handleTargetingClick, handleMove, addLog, buildMode, selectedBuildType, roadBuildMode, selectedRoadType, saveOverworld]);
   
-  // Right-click → auto-attack with first melee/ranged
+  // Right-click → context menu for player buildings, or auto-attack for enemies/nests
   const handleTileRightClick = useCallback((worldX: number, worldY: number) => {
     const tile = getOverworldTile(overworld, worldX, worldY);
+    
+    // Player building → open context menu (assign / repair / disassemble)
+    if (tile?.type === 'player_building' && tile.playerBuildingId) {
+      const building = overworld.playerBuildings?.find(b => b.id === tile.playerBuildingId);
+      if (building) {
+        setContextMenuBuilding(building);
+        return;
+      }
+    }
+    
     if ((tile?.type === 'enemy' && tile.enemyId || tile?.type === 'nest' && tile.nestId) && monster) {
       const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
       const attackMove = moves.find(m => m.type === 'melee' || m.type === 'ranged');
@@ -999,6 +1012,61 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     });
     setAssignBuilding(null);
   }, [assignBuilding, addLog, saveOverworld]);
+  
+  // ─── Building context menu actions: repair & disassemble ───
+  const handleRepairBuilding = useCallback(() => {
+    if (!contextMenuBuilding) return;
+    const cost = getRepairCost(contextMenuBuilding);
+    setOverworld(prev => {
+      const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
+      const b = newOw.playerBuildings?.find(pb => pb.id === contextMenuBuilding.id);
+      if (!b) return prev;
+      if (newOw.woodCollected < cost.wood || newOw.stoneCollected < cost.stone) {
+        toast.error('Not enough resources!');
+        return prev;
+      }
+      newOw.woodCollected -= cost.wood;
+      newOw.stoneCollected -= cost.stone;
+      b.hp = b.maxHp;
+      addLog(`🔧 Repaired ${BUILDING_DEFINITIONS[b.type].name} to full HP.`, 'system');
+      toast.success(`Repaired! (-🪵${cost.wood} -🪨${cost.stone})`);
+      saveOverworld(newOw);
+      return newOw;
+    });
+    setContextMenuBuilding(null);
+  }, [contextMenuBuilding, addLog, saveOverworld]);
+  
+  const handleDisassembleBuilding = useCallback(() => {
+    if (!contextMenuBuilding) return;
+    const refund = getDisassembleRefund(contextMenuBuilding);
+    setOverworld(prev => {
+      const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
+      const b = newOw.playerBuildings?.find(pb => pb.id === contextMenuBuilding.id);
+      if (!b) return prev;
+      newOw.woodCollected += refund.wood;
+      newOw.stoneCollected += refund.stone;
+      // Remove from list
+      newOw.playerBuildings = (newOw.playerBuildings || []).filter(pb => pb.id !== b.id);
+      // Reset tile to grass
+      setOverworldTile(newOw, b.worldX, b.worldY, {
+        type: 'grass',
+        explored: true,
+        visible: true,
+        harvested: false,
+      });
+      addLog(`♻️ Disassembled ${BUILDING_DEFINITIONS[b.type].name}. Recovered 🪵${refund.wood} 🪨${refund.stone}.`, 'loot');
+      toast.success(`Disassembled! +🪵${refund.wood} +🪨${refund.stone}`);
+      saveOverworld(newOw);
+      return newOw;
+    });
+    setContextMenuBuilding(null);
+  }, [contextMenuBuilding, addLog, saveOverworld]);
+  
+  const handleContextMenuAssign = useCallback(() => {
+    if (!contextMenuBuilding) return;
+    setAssignBuilding(contextMenuBuilding);
+    setContextMenuBuilding(null);
+  }, [contextMenuBuilding]);
   
   // Resizable bottom bar
   const isMobileLayout = typeof window !== 'undefined' && window.innerWidth < 640;
@@ -1447,6 +1515,20 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         onAssign={handleAssignMonster}
         onUnassign={handleUnassignMonster}
         onClose={() => setAssignBuilding(null)}
+      />
+    )}
+    
+    {/* Building Right-Click Context Menu */}
+    {contextMenuBuilding && state.run && (
+      <BuildingContextMenu
+        building={contextMenuBuilding}
+        party={state.run.party}
+        woodAvailable={overworld.woodCollected}
+        stoneAvailable={overworld.stoneCollected}
+        onAssign={handleContextMenuAssign}
+        onRepair={handleRepairBuilding}
+        onDisassemble={handleDisassembleBuilding}
+        onClose={() => setContextMenuBuilding(null)}
       />
     )}
   </>;

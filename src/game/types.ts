@@ -399,6 +399,9 @@ export interface UnlockedMonster {
   element: ElementType;
   classType: ClassType;
   level: number; // Level when defeated
+  // Persistent equipment that stays equipped across runs. Players can edit it
+  // in the pre-run equipment screen but it won't reset between runs.
+  equipment?: import('./equipment').MonsterEquipment;
 }
 
 // ============= DUNGEON ENTRANCE (Persistent Dungeons) =============

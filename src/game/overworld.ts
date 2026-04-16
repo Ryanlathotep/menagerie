@@ -9,7 +9,7 @@ const ALL_SPECIES = Object.keys(SPECIES_DATA) as SpeciesType[];
 
 // ============= TYPES =============
 
-export type OverworldTileType = 'grass' | 'tree' | 'rock' | 'water' | 'building' | 'enemy' | 'player' | 'dungeon_entrance' | 'player_building' | 'nest';
+export type OverworldTileType = 'grass' | 'tree' | 'rock' | 'water' | 'building' | 'enemy' | 'player' | 'dungeon_entrance' | 'player_building' | 'nest' | 'dirt_road' | 'stone_road';
 
 export type BuildingType = 'campfire' | 'log_cabin' | 'town_hall';
 
@@ -45,6 +45,7 @@ export interface OverworldState {
   dungeonEntrances: Record<string, DungeonEntrance>; // Persistent dungeon data
   playerBuildings: PlayerBuilding[]; // Phase 3: Player-placed buildings
   nests: Record<string, NestState>; // Phase 4: Monster nests
+  roads: Record<string, 'dirt_road' | 'stone_road'>; // Road tiles keyed by "x,y"
 }
 
 // ============= CONSTANTS =============

@@ -2,6 +2,7 @@
 // Matches the dungeon TileGraphics aesthetic
 
 import { OverworldTileType, BuildingType, BUILDING_UPGRADES } from './overworld';
+import { TreeTier, StoneTier, TREE_TIER_COLORS, STONE_TIER_COLORS } from './resourceHierarchy';
 
 interface TileGraphicProps {
   size: number;

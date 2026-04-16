@@ -258,6 +258,7 @@ export function createOverworldState(): OverworldState {
     playerBuildings: [],
     dungeonEntrances: {},
     nests: {},
+    roads: {},
   };
   
   // Generate starting chunk and surrounding chunks

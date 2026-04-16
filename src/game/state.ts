@@ -272,6 +272,17 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         }
       }
       
+      // Respawn the overworld player at the nearest empty tile to the town (0,0)
+      // so a wiped party reappears at home rather than where they fell.
+      let updatedOverworld = state.saveData.overworldState;
+      if (updatedOverworld) {
+        const respawn = findNearestEmptyOverworldTile(updatedOverworld, 0, 0);
+        updatedOverworld = {
+          ...updatedOverworld,
+          playerPosition: respawn,
+        };
+      }
+      
       return {
         ...state,
         phase: 'run_summary',
@@ -281,11 +292,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             ? Math.max(state.saveData.highestFloor, state.run.dungeon.floor)
             : state.saveData.highestFloor,
           totalEnemiesDefeated: state.saveData.totalEnemiesDefeated + (state.run?.enemiesDefeated || 0),
-          // Return BOUND equipped items to storage on death
+          // Return ALL equipped items to storage so gear is never lost on defeat
           storedEquipment: [...state.saveData.storedEquipment, ...equipmentToStore],
           unlockedMonsters: updatedUnlockedMonsters,
           unlockedRecipes: newUnlockedRecipes,
           dungeonEntrances: updatedDungeonEntrances,
+          overworldState: updatedOverworld,
         },
       };
     }

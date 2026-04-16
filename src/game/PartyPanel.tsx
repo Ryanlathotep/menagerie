@@ -1,6 +1,6 @@
 // Party management panel - shows party members and allows switching
 
-import { Monster } from './types';
+import { Monster, SPECIES_DATA } from './types';
 import { MonsterSprite } from './sprites';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { xpToNextLevel } from './combat';
@@ -129,7 +129,7 @@ export function PartyPanel({
                       </div>
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="left" className="p-2">
+                  <TooltipContent side="left" className="p-2 max-w-[220px]">
                     <div className="space-y-1">
                       <p className="font-bold text-sm">{monster.name}</p>
                       <div className="flex gap-1">
@@ -139,6 +139,11 @@ export function PartyPanel({
                         <span className="text-[10px] px-1 py-0.5 rounded bg-secondary capitalize">
                           {monster.class}
                         </span>
+                      </div>
+                      {/* Passive */}
+                      <div className="bg-primary/10 rounded px-1.5 py-1 border border-primary/20">
+                        <p className="text-[10px] font-bold text-primary">✨ {SPECIES_DATA[monster.species].passiveAbility}</p>
+                        <p className="text-[9px] text-muted-foreground">{SPECIES_DATA[monster.species].passiveDescription}</p>
                       </div>
                       <div className="text-[10px] text-muted-foreground space-y-0.5">
                         <p>HP: {monster.stats.currentHp}/{monster.stats.maxHp}</p>

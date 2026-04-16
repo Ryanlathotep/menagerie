@@ -159,26 +159,32 @@ function MainMenu() {
         <p className="text-muted-foreground text-lg">Play as the monsters. Unlock them all.</p>
         
         <div className="space-y-4">
-          <Button size="lg" className="w-64 bg-gradient-to-r from-primary to-secondary hover:opacity-90" onClick={() => {
-            localStorage.setItem('menagerie_run_destination', 'dungeon');
-            dispatch({ type: 'SET_PHASE', phase: 'character_select' });
-          }}>
-            ✨ Start Run
-          </Button>
-          
+          {/* Overworld button moved to top */}
           <div className="flex gap-2 justify-center">
-            <Button 
-              variant="outline" 
-              className="w-32"
+            <Button
+              size="lg"
+              className="w-64 bg-gradient-to-r from-secondary to-primary hover:opacity-90"
               onClick={() => {
                 localStorage.setItem('menagerie_run_destination', 'overworld');
+                localStorage.removeItem('menagerie_active_dungeon_id');
                 dispatch({ type: 'SET_PHASE', phase: 'character_select' });
               }}
             >
-              🗺️ Overworld
+              🗺️ Enter Overworld
             </Button>
           </div>
-          
+
+          {/* Dungeon list replaces the single Start Run button */}
+          <DungeonListPanel
+            dungeonEntrances={state.saveData.dungeonEntrances || {}}
+            onLaunch={(entrance) => {
+              localStorage.setItem('menagerie_run_destination', 'dungeon');
+              localStorage.setItem('menagerie_active_dungeon_id', entrance.id);
+              localStorage.setItem('menagerie_active_dungeon_difficulty', String(entrance.difficulty || 1));
+              dispatch({ type: 'SET_PHASE', phase: 'character_select' });
+            }}
+          />
+
           <div className="flex gap-2 justify-center">
             <Button 
               variant="outline" 

@@ -29,7 +29,7 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-import { User, Backpack, Map, DoorOpen, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, Shirt, Gem, Users } from 'lucide-react';
+import { User, Backpack, Map, DoorOpen, Home, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, Shirt, Gem, Users } from 'lucide-react';
 import { Monster, InventoryItem, MaterialInventory, SPECIES_DATA, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED } from './types';
 import { CombatEffects } from './statusEffects';
 import { MonsterSprite } from './sprites';
@@ -78,6 +78,8 @@ interface GameSidebarProps {
   moveOrder?: string[];
   hiddenMoves?: string[];
   onFlee?: () => void;
+  fleeTitle?: string;
+  fleeVariant?: 'door' | 'home';
   onDropItem?: (itemId: string) => void;
   onReorderMoves?: (newOrder: string[]) => void;
   onToggleHideMove?: (moveId: string) => void;
@@ -108,6 +110,8 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   moveOrder = [],
   hiddenMoves = [],
   onFlee,
+  fleeTitle,
+  fleeVariant = 'door',
   onDropItem,
   onReorderMoves,
   onToggleHideMove,
@@ -320,8 +324,16 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
         
         {/* Flee button */}
         {onFlee && (
-          <Button variant="destructive" size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={onFlee} title={inBattle ? "Flee from battle" : "Flee from dungeon"}>
-            <DoorOpen className="w-5 h-5 sm:w-4 sm:h-4" />
+          <Button
+            variant={fleeVariant === 'home' ? 'secondary' : 'destructive'}
+            size="icon"
+            className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
+            onClick={onFlee}
+            title={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
+          >
+            {fleeVariant === 'home'
+              ? <Home className="w-5 h-5 sm:w-4 sm:h-4" />
+              : <DoorOpen className="w-5 h-5 sm:w-4 sm:h-4" />}
           </Button>
         )}
       </div>

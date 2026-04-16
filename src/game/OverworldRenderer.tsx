@@ -13,6 +13,8 @@ import {
 import { OverworldBuildingTileGraphic } from './OverworldBuildingTileGraphics';
 import { PlayerBuilding } from './buildings';
 import { NestState } from './nests';
+import { MatchupIndicator } from './MatchupIndicator';
+import { ElementType, ClassType } from './types';
 
 interface OverworldRendererProps {
   overworld: OverworldState;
@@ -199,14 +201,23 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
                   />
                 </div>
               ) : enemy ? (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <MonsterSprite
-                    species={enemy.species}
-                    element={enemy.element}
-                    classType={enemy.class}
-                    size={tileSize * 0.7}
+                <>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <MonsterSprite
+                      species={enemy.species}
+                      element={enemy.element}
+                      classType={enemy.class}
+                      size={tileSize * 0.7}
+                    />
+                  </div>
+                  <MatchupIndicator
+                    playerElement={playerElement as ElementType}
+                    playerClass={playerClass as ClassType | undefined}
+                    enemyElement={enemy.element}
+                    enemyClass={enemy.class}
+                    size={tileSize}
                   />
-                </div>
+                </>
               ) : null}
               {/* Assigned monster on scout towers */}
               {tile.type === 'player_building' && playerBuilding?.type === 'scout_tower' && playerBuilding.assignedMonsterId && (() => {

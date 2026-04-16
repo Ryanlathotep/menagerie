@@ -30,7 +30,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 import { User, Backpack, Map, DoorOpen, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, Shirt, Gem, Users } from 'lucide-react';
-import { Monster, InventoryItem, MaterialInventory, SPECIES_DATA, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED, ElementType, ClassType } from './types';
+import { Monster, InventoryItem, MaterialInventory, SPECIES_DATA, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED } from './types';
 import { CombatEffects } from './statusEffects';
 import { MonsterSprite } from './sprites';
 import { getMonsterMoves, Move } from './moves';
@@ -38,7 +38,7 @@ import { ExpandedStats } from './CharacterSheet';
 import { ITEMS } from './Inventory';
 import { UnifiedMovePanel } from './UnifiedMovePanel';
 import { SettingsPanel } from './Settings';
-import { MonsterEquipment, EquipmentItem, EquipmentStats, RARITY_COLORS, CRAFTING_MATERIALS, calculateEquipmentBonuses, calculateSetBonusStats } from './equipment';
+import { MonsterEquipment, EquipmentItem, RARITY_COLORS, CRAFTING_MATERIALS, calculateEquipmentBonuses, calculateSetBonusStats } from './equipment';
 import { PartyPanel } from './PartyPanel';
 import { EvolvedMove } from './moveMastery';
 

@@ -201,6 +201,31 @@ export function tickFarm(building: PlayerBuilding): { materialId: string; quanti
   return null;
 }
 
+// Refund ratio when disassembling a building (50% of original cost)
+export const DISASSEMBLE_REFUND_RATIO = 0.5;
+
+// Repair cost ratio: spend 30% of build cost to fully restore HP
+export const REPAIR_COST_RATIO = 0.3;
+
+export function getDisassembleRefund(building: PlayerBuilding): { wood: number; stone: number } {
+  const def = BUILDING_DEFINITIONS[building.type];
+  // Scale refund by current HP fraction so destroyed/damaged buildings refund less
+  const hpFrac = Math.max(0.25, building.hp / building.maxHp); // floor 25% so partially damaged still gives something
+  return {
+    wood: Math.max(0, Math.floor(def.cost.wood * DISASSEMBLE_REFUND_RATIO * hpFrac)),
+    stone: Math.max(0, Math.floor(def.cost.stone * DISASSEMBLE_REFUND_RATIO * hpFrac)),
+  };
+}
+
+export function getRepairCost(building: PlayerBuilding): { wood: number; stone: number } {
+  const def = BUILDING_DEFINITIONS[building.type];
+  const missingFrac = 1 - building.hp / building.maxHp;
+  return {
+    wood: Math.max(0, Math.ceil(def.cost.wood * REPAIR_COST_RATIO * missingFrac)),
+    stone: Math.max(0, Math.ceil(def.cost.stone * REPAIR_COST_RATIO * missingFrac)),
+  };
+}
+
 // Process all scout tower attacks. Returns damage events.
 export function processScoutTowerAttacks(
   buildings: PlayerBuilding[],

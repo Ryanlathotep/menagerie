@@ -192,6 +192,11 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
         // If destroyed, fall through to generate as grass
       }
 
+      // Check if there's a road placed here
+      const roadKey = `${worldX},${worldY}`;
+      const road = (dungeonEntrances as any).__roads?.[roadKey];
+      // Note: roads are applied as overlays in getOverworldTile, not during generation
+
       // Biome-influenced terrain generation
       const biome = getBiomeElement(worldX, worldY);
       let type: OverworldTileType = 'grass';
@@ -206,6 +211,12 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
       else if (biome === 'fire') { rockChance = 0.10; waterChance = 0.01; treeChance = 0.04; }
       else if (biome === 'air') { treeChance = 0.05; waterChance = 0.02; }
       else if (biome === 'void') { rockChance = 0.08; treeChance = 0.06; }
+
+      // Reduce enemy spawns near roads (check 2-tile radius)
+      let enemyChanceMultiplier = 1.0;
+      if (typeof dungeonEntrances === 'object') {
+        // We'll check road proximity during movement instead
+      }
       
       if (r < treeChance) {
         type = 'tree';
@@ -379,7 +390,7 @@ export function removeOverworldEnemy(state: OverworldState, enemyId: string): vo
 
 // Try to move player in overworld. Returns what happened.
 export type MoveResult = 
-  | { type: 'moved' }
+  | { type: 'moved'; bonusMove?: boolean }
   | { type: 'blocked'; reason: string }
   | { type: 'enemy'; enemy: Monster }
   | { type: 'resource'; resourceType: 'wood' | 'stone'; amount: number }

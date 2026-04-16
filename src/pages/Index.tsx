@@ -2139,7 +2139,7 @@ function DungeonView({
           </div>
 
           {/* Bottom bar with controls and game log - resizable */}
-          <div className={`fixed ${controlsOffset} left-0 right-0 bg-card border-t-2 border-primary/20 z-40 transition-all duration-300 flex flex-col`} style={{ height: `${controlsBarHeight}px` }}>
+          <div className="bg-card border-t-2 border-primary/20 z-40 flex flex-col flex-shrink-0" style={{ height: `${controlsBarHeight}px` }}>
             {/* Resize handle */}
             <div 
               className="w-full h-3 flex items-center justify-center cursor-row-resize hover:bg-primary/10 active:bg-primary/20 flex-shrink-0 touch-none"

@@ -401,14 +401,34 @@ export interface UnlockedMonster {
 
 // ============= DUNGEON ENTRANCE (Persistent Dungeons) =============
 export interface DungeonEntrance {
-  id: string;                     // e.g. "dungeon_5_-3"
+  id: string;                     // e.g. "dungeon_5_-3" or "home_tower"
   worldX: number;
   worldY: number;
   seed: number;                   // Deterministic generation seed
   deepestFloor: number;           // Deepest floor reached
   difficulty: number;             // Base difficulty (scales with distance)
   element?: ElementType;          // Biome-themed element (Phase 2)
+  name?: string;                  // Optional display name (e.g. "Tower of the Infinite")
+  discovered?: boolean;           // True once the player has seen this entrance on the overworld
+  isHome?: boolean;               // True for the starter Tower of the Infinite
   // Future: savedFloors for persistence
+}
+
+export const HOME_TOWER_ID = 'home_tower';
+export const HOME_TOWER_NAME = 'Tower of the Infinite';
+
+export function createHomeTowerEntrance(): DungeonEntrance {
+  return {
+    id: HOME_TOWER_ID,
+    worldX: 0,
+    worldY: 0,
+    seed: 1337,
+    deepestFloor: 0,
+    difficulty: 1,
+    name: HOME_TOWER_NAME,
+    discovered: true,
+    isHome: true,
+  };
 }
 
 export interface SaveData {

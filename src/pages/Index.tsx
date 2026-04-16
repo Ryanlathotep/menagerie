@@ -71,6 +71,7 @@ import { MoveInfoPanel } from '@/game/AttackTargeting';
 import { loadKeybinds, getMonsterKeybinds as getMonsterKeybindsImport } from '@/game/keybinds';
 import { useAuth } from '@/hooks/useAuth';
 import { useCloudSave } from '@/hooks/useCloudSave';
+import { useCloudAutosave } from '@/hooks/useCloudAutosave';
 
 // Main Menu Component
 function MainMenu() {
@@ -81,7 +82,7 @@ function MainMenu() {
   const [showCrafting, setShowCrafting] = useState(false);
   const [showShop, setShowShop] = useState(false);
   const { user, signOut, isAuthenticated } = useAuth();
-  const { syncSave, syncing, lastSyncTime } = useCloudSave();
+  const { syncSave, saveToCloud, syncing, lastSyncTime } = useCloudSave();
   const navigate = useNavigate();
   
   const handleResetSave = () => {
@@ -228,9 +229,24 @@ function MainMenu() {
                   </span>
                 )}
               </p>
-              <div className="flex gap-2 justify-center">
-                <Button 
-                  variant="outline" 
+              <div className="flex gap-2 justify-center flex-wrap">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={async () => {
+                    const result = await saveToCloud(state.saveData);
+                    if (result.success) {
+                      toast.success('Quick saved to cloud!');
+                    } else {
+                      toast.error(`Save failed: ${result.error || 'unknown error'}`);
+                    }
+                  }}
+                  disabled={syncing}
+                >
+                  💾 Quick Save
+                </Button>
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={async () => {
                     const result = await syncSave(state.saveData);
@@ -242,8 +258,8 @@ function MainMenu() {
                 >
                   🔄 Sync Now
                 </Button>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="sm"
                   onClick={signOut}
                 >
@@ -3834,6 +3850,9 @@ function RunSummary() {
 // Game Component
 function Game() {
   const { state } = useGame();
+
+  // Periodic + debounced cloud autosave (silent, only when signed in).
+  useCloudAutosave(state.saveData);
 
   // Unified run log (dungeon + battle + notable UI events)
   const [gameLog, setGameLog] = useState<LogMessage[]>([]);

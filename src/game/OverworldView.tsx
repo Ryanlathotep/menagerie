@@ -998,9 +998,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     window.addEventListener('touchend', onEnd);
   }, [controlsBarHeight]);
   
-  const dungeonBottomStyle = menuOpen 
-    ? { bottom: `${sidebarHeight + controlsBarHeight + (isMobileLayout ? 0 : 180)}px` }
-    : { bottom: `${sidebarHeight + controlsBarHeight}px` };
+  const dungeonBottomStyle = { bottom: `${sidebarHeight + controlsBarHeight}px` };
   const controlsOffset = isMobileLayout ? 'bottom-16' : 'bottom-24';
   
   return <>

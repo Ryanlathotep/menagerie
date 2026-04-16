@@ -951,7 +951,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const dungeonBottomStyle = menuOpen 
     ? { bottom: `${sidebarHeight + controlsBarHeight + (isMobileLayout ? 0 : 180)}px` }
     : { bottom: `${sidebarHeight + controlsBarHeight}px` };
-  const controlsOffset = menuOpen ? (isMobileLayout ? 'bottom-16' : 'bottom-24') : 'bottom-0';
+  const controlsOffset = isMobileLayout ? 'bottom-16' : 'bottom-24';
   
   return <>
     <GameSidebar 
@@ -1043,7 +1043,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     {/* Main map viewport - matches DungeonView layout */}
     <div className="fixed inset-0 overflow-hidden transition-all duration-300" style={dungeonBottomStyle}>
       <div className="h-full flex flex-col">
-        <div className="flex-1 overflow-hidden bg-card border-b-2 border-primary/20">
+        <div className="flex-1 overflow-hidden bg-[hsl(40,20%,40%)] border-b-2 border-primary/20 relative">
           <OverworldRenderer
             ref={rendererRef}
             overworld={overworld}

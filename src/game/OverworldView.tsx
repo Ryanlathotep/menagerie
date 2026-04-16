@@ -18,6 +18,11 @@ import {
   getOverworldEnemy,
   getOverworldTile,
   setOverworldTile,
+  RoadType,
+  ROAD_DEFINITIONS,
+  canPlaceRoad,
+  placeRoad,
+  applyRoadsToChunks,
 } from './overworld';
 import { 
   PlayerBuildingType, BUILDING_DEFINITIONS, canPlaceBuilding, createBuilding, tickFarm,

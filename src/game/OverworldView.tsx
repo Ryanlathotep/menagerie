@@ -104,6 +104,8 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   // Build mode state
   const [buildMode, setBuildMode] = useState(false);
   const [selectedBuildType, setSelectedBuildType] = useState<PlayerBuildingType | null>(null);
+  const [roadBuildMode, setRoadBuildMode] = useState(false);
+  const [selectedRoadType, setSelectedRoadType] = useState<RoadType | null>(null);
   const [showBuildPanel, setShowBuildPanel] = useState(false);
   
   // Monster assignment modal state

@@ -381,6 +381,10 @@ export function updateVisibility(state: OverworldState): void {
       if (tile) {
         tile.visible = true;
         tile.explored = true;
+        // Mark dungeon entrances as discovered when first seen
+        if (tile.type === 'dungeon_entrance' && tile.dungeonId && state.dungeonEntrances?.[tile.dungeonId]) {
+          state.dungeonEntrances[tile.dungeonId].discovered = true;
+        }
       }
     }
   }

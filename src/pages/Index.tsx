@@ -694,13 +694,19 @@ function DungeonView({
   
   useEffect(() => {
     if (!dungeon) {
-      const newDungeon = generateDungeon(1);
+      // Look up the active dungeon entrance to apply theme + starting floor.
+      const activeId = typeof window !== 'undefined'
+        ? localStorage.getItem('menagerie_active_dungeon_id')
+        : null;
+      const entrance = activeId ? state.saveData.dungeonEntrances?.[activeId] : undefined;
+      const startingFloor = Math.max(1, entrance?.difficulty ?? 1);
+      const newDungeon = generateDungeon(startingFloor, entrance?.theme, startingFloor);
       dispatch({
         type: 'SET_DUNGEON',
         dungeon: newDungeon
       });
     }
-  }, [dungeon, dispatch]);
+  }, [dungeon, dispatch, state.saveData.dungeonEntrances]);
   
   // Reset respawn counter when floor changes
   useEffect(() => {
@@ -857,7 +863,8 @@ function DungeonView({
         addLog(`📦 Found ${result.loot.name}!`, 'loot');
       }
     } else if (result.stairs) {
-      const newDungeon = generateDungeon(dungeon.floor + 1);
+      // Preserve the run's theme + starting floor when descending (infinite floors).
+      const newDungeon = generateDungeon(dungeon.floor + 1, dungeon.theme, dungeon.startingFloor);
       dispatch({
         type: 'SET_DUNGEON',
         dungeon: newDungeon

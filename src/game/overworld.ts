@@ -244,11 +244,24 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
         const treeTier = getInitialTreeTier(worldX, worldY, tileSeed);
         tile.treeTier = treeTier;
         tile.resourceAmount = TREE_TIER_DATA[treeTier].totalHits;
+        // Register for upgrade tracking
+        if (resourceUpgrades && TREE_TIER_DATA[treeTier].upgradeSteps) {
+          const resKey = `${worldX},${worldY}`;
+          if (!resourceUpgrades[resKey]) {
+            resourceUpgrades[resKey] = { treeTier, stepsUntilUpgrade: TREE_TIER_DATA[treeTier].upgradeSteps! };
+          }
+        }
       }
       if (type === 'rock') {
         const stoneTier = getInitialStoneTier(worldX, worldY, tileSeed);
         tile.stoneTier = stoneTier;
         tile.resourceAmount = STONE_TIER_DATA[stoneTier].totalHits;
+        if (resourceUpgrades && STONE_TIER_DATA[stoneTier].upgradeSteps) {
+          const resKey = `${worldX},${worldY}`;
+          if (!resourceUpgrades[resKey]) {
+            resourceUpgrades[resKey] = { stoneTier, stepsUntilUpgrade: STONE_TIER_DATA[stoneTier].upgradeSteps! };
+          }
+        }
       }
       
       if (type === 'enemy') {

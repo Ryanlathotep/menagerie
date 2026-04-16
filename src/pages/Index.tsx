@@ -2139,8 +2139,17 @@ function DungeonView({
             )}
           </div>
 
-          {/* Bottom bar with controls and game log - compact side-by-side layout */}
-          <div className={`fixed ${controlsOffset} left-0 right-0 bg-card border-t-2 border-primary/20 p-2 z-40 transition-all duration-300`} style={{ height: isMobileLayout ? '160px' : '180px' }}>
+          {/* Bottom bar with controls and game log - resizable */}
+          <div className={`fixed ${controlsOffset} left-0 right-0 bg-card border-t-2 border-primary/20 z-40 transition-all duration-300 flex flex-col`} style={{ height: `${controlsBarHeight}px` }}>
+            {/* Resize handle */}
+            <div 
+              className="w-full h-3 flex items-center justify-center cursor-row-resize hover:bg-primary/10 active:bg-primary/20 flex-shrink-0 touch-none"
+              onMouseDown={handleBarResizeStart}
+              onTouchStart={handleBarResizeStart}
+            >
+              <div className="w-12 h-1 rounded-full bg-border" />
+            </div>
+            <div className="flex-1 min-h-0 px-2 pb-2">
             <div className="flex h-full gap-2">
               {/* Left: Controls */}
               <div className="flex-shrink-0 flex items-center">
@@ -2156,8 +2165,9 @@ function DungeonView({
                     <div />
                     <Button size="sm" className="h-9 text-base font-bold active:scale-95 p-0" onClick={() => handleMove('down')}>↓</Button>
                     <div />
-                  </div>
-                </div>
+            </div>
+            </div>
+          </div>
                 <div className="hidden sm:flex flex-col items-center justify-center px-2">
                   <p className="text-muted-foreground text-xs text-center mb-1">WASD / Arrows to move</p>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground justify-center">

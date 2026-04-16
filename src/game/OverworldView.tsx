@@ -1090,7 +1090,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     {/* Main map viewport - matches DungeonView layout */}
     <div className="fixed inset-0 overflow-hidden transition-all duration-300" style={dungeonBottomStyle}>
       <div className="h-full flex flex-col">
-        <div className="flex-1 overflow-hidden bg-[hsl(40,20%,40%)] border-b-2 border-primary/20 relative">
+        <div className="flex-1 overflow-hidden bg-[hsl(40,20%,40%)] relative">
           <OverworldRenderer
             ref={rendererRef}
             overworld={overworld}
@@ -1122,7 +1122,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         </div>
 
         {/* Bottom bar with controls, legend, and game log - resizable */}
-        <div className={`fixed ${controlsOffset} left-0 right-0 bg-card border-t-2 border-primary/20 z-40 transition-all duration-300 flex flex-col`} style={{ height: `${controlsBarHeight}px` }}>
+        <div className="bg-card border-t-2 border-primary/20 z-40 flex flex-col flex-shrink-0" style={{ height: `${controlsBarHeight}px` }}>
           {/* Resize handle */}
           <div 
             className="w-full h-3 flex items-center justify-center cursor-row-resize hover:bg-primary/10 active:bg-primary/20 flex-shrink-0 touch-none"

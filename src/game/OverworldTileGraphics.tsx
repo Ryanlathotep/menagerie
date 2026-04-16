@@ -62,47 +62,67 @@ export function OverworldHarvestedTile({ size, seed = 0 }: TileGraphicProps) {
   );
 }
 
-// ─── Tree ───
-export function OverworldTreeTile({ size, seed = 0 }: TileGraphicProps) {
+// ─── Tree (with tier support) ───
+export function OverworldTreeTile({ size, seed = 0, tier = 'oak' }: TileGraphicProps & { tier?: TreeTier }) {
   const r1 = seededRandom(seed);
   const r2 = seededRandom(seed + 1);
+  const colors = TREE_TIER_COLORS[tier];
+  const isElder = tier === 'elder_oak';
+  const isMaple = tier === 'maple';
 
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className="block">
-      {/* Ground */}
       <rect width="24" height="24" fill="hsl(90 30% 50%)" opacity={0.15}/>
-      {/* Trunk */}
-      <rect x="10.5" y="14" width="3" height="7" rx={0.5} fill="hsl(25 45% 35%)" opacity={0.8}/>
-      <line x1="12" y1="14" x2="12" y2="21" stroke={INK.medium} strokeWidth={0.4} opacity={0.5}/>
-      {/* Canopy – layered watercolor blobs */}
-      <ellipse cx={12} cy={10} rx={7+r1} ry={6+r2*0.5} fill="hsl(130 45% 35%)" opacity={0.55}/>
-      <ellipse cx={10+r1*2} cy={8+r2} rx={5} ry={4} fill="hsl(120 50% 40%)" opacity={0.45}/>
-      <ellipse cx={14+r2} cy={9+r1} rx={4.5} ry={3.5} fill="hsl(110 40% 45%)" opacity={0.4}/>
-      {/* Ink outline */}
-      <ellipse cx={12} cy={10} rx={7+r1} ry={6+r2*0.5} stroke={INK.medium} strokeWidth={0.5} fill="none" opacity={0.5}/>
+      <rect x={isElder ? "9.5" : "10.5"} y={isElder ? "12" : "14"} width={isElder ? 5 : 3} height={isElder ? 9 : 7} rx={0.5} fill={colors.trunk} opacity={0.8}/>
+      <line x1="12" y1={isElder ? 12 : 14} x2="12" y2="21" stroke={INK.medium} strokeWidth={isElder ? 0.6 : 0.4} opacity={0.5}/>
+      <ellipse cx={12} cy={isElder ? 8 : 10} rx={isElder ? 9+r1 : 7+r1} ry={isElder ? 7+r2*0.5 : 6+r2*0.5} fill={colors.canopy} opacity={0.55}/>
+      <ellipse cx={10+r1*2} cy={(isElder ? 6 : 8)+r2} rx={isElder ? 6 : 5} ry={isElder ? 5 : 4} fill={colors.canopy2} opacity={0.45}/>
+      <ellipse cx={14+r2} cy={(isElder ? 7 : 9)+r1} rx={4.5} ry={3.5} fill={colors.canopy} opacity={0.4}/>
+      {isMaple && <>
+        <circle cx={8+r1*3} cy={7+r2*2} r={1.2} fill="hsl(25 80% 55%)" opacity={0.6}/>
+        <circle cx={15+r2*2} cy={9+r1} r={1} fill="hsl(10 75% 50%)" opacity={0.5}/>
+      </>}
+      {isElder && <ellipse cx={12} cy={8} rx={10} ry={8} fill="hsl(160 40% 50%)" opacity={0.08}/>}
+      <ellipse cx={12} cy={isElder ? 8 : 10} rx={isElder ? 9+r1 : 7+r1} ry={isElder ? 7+r2*0.5 : 6+r2*0.5} stroke={INK.medium} strokeWidth={isElder ? 0.7 : 0.5} fill="none" opacity={0.5}/>
+      {tier !== 'oak' && (
+        <text x="22" y="5" fontSize="4" fill={INK.dark} opacity={0.6} textAnchor="end" fontWeight="bold">
+          {isMaple ? '★' : '★★'}
+        </text>
+      )}
       <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
       <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
     </svg>
   );
 }
 
-// ─── Rock ───
-export function OverworldRockTile({ size, seed = 0 }: TileGraphicProps) {
+// ─── Rock (with tier support) ───
+export function OverworldRockTile({ size, seed = 0, tier = 'stone' }: TileGraphicProps & { tier?: StoneTier }) {
   const r1 = seededRandom(seed);
   const r2 = seededRandom(seed + 1);
+  const colors = STONE_TIER_COLORS[tier];
+  const tierIdx = ['stone', 'copper', 'iron', 'gold', 'mithril'].indexOf(tier);
 
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className="block">
       <rect width="24" height="24" fill="hsl(30 10% 60%)" opacity={0.15}/>
-      {/* Main boulder */}
-      <ellipse cx={12} cy={13} rx={8+r1} ry={6+r2} fill="hsl(220 10% 50%)" opacity={0.5}/>
-      <ellipse cx={11+r1} cy={12+r2} rx={6} ry={4.5} fill="hsl(215 12% 58%)" opacity={0.4}/>
-      {/* Cracks */}
+      <ellipse cx={12} cy={13} rx={8+r1} ry={6+r2} fill={colors.main} opacity={0.5}/>
+      <ellipse cx={11+r1} cy={12+r2} rx={6} ry={4.5} fill={colors.highlight} opacity={0.35}/>
+      {tierIdx >= 1 && <>
+        <path d={`M${7+r1*2} ${11+r2} L${12} ${14} L${16+r1} ${11+r2*2}`} stroke={colors.vein} strokeWidth={0.8} fill="none" opacity={0.6}/>
+        <path d={`M${9+r2} ${15} L${14+r1} ${12}`} stroke={colors.vein} strokeWidth={0.6} fill="none" opacity={0.5}/>
+      </>}
+      {tierIdx >= 3 && <>
+        <circle cx={9+r1*3} cy={10+r2*2} r={0.8} fill="white" opacity={0.6}/>
+        <circle cx={14+r2*2} cy={12+r1} r={0.6} fill="white" opacity={0.5}/>
+      </>}
+      {tier === 'mithril' && <ellipse cx={12} cy={13} rx={9} ry={7} fill="hsl(200 60% 70%)" opacity={0.1}/>}
       <path d={`M${8+r1*2} ${11+r2} L${12} ${13} L${15+r1} ${10+r2*2}`} stroke={INK.medium} strokeWidth={0.5} fill="none" opacity={0.5}/>
-      {/* Highlight */}
-      <ellipse cx={10} cy={10} rx={3} ry={2} fill="hsl(210 8% 70%)" opacity={0.3}/>
-      {/* Outline */}
       <ellipse cx={12} cy={13} rx={8+r1} ry={6+r2} stroke={INK.medium} strokeWidth={0.5} fill="none" opacity={0.45}/>
+      {tierIdx >= 1 && (
+        <text x="22" y="5" fontSize="4" fill={INK.dark} opacity={0.6} textAnchor="end" fontWeight="bold">
+          {'★'.repeat(Math.min(tierIdx, 4))}
+        </text>
+      )}
       <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
       <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
     </svg>

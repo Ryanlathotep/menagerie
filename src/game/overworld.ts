@@ -327,7 +327,7 @@ export function ensureChunksLoaded(state: OverworldState, worldX: number, worldY
       const key = getChunkKey(cx + dx, cy + dy);
       if (!state.chunks[key]) {
         const difficulty = getDifficulty((cx + dx) * CHUNK_SIZE, (cy + dy) * CHUNK_SIZE);
-        state.chunks[key] = generateChunk(cx + dx, cy + dy, difficulty, state.dungeonEntrances, state.nests);
+        state.chunks[key] = generateChunk(cx + dx, cy + dy, difficulty, state.dungeonEntrances, state.nests, state.resourceUpgrades);
       }
     }
   }

@@ -90,25 +90,9 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
   
   useImperativeHandle(ref, () => ({
     scrollToPlayer: () => {
-      if (containerRef.current) {
-        const container = containerRef.current;
-        const centerX = VIEW_RANGE * tileSize;
-        const centerY = VIEW_RANGE * tileSize;
-        container.scrollLeft = centerX - container.clientWidth / 2 + tileSize / 2;
-        container.scrollTop = centerY - container.clientHeight / 2 + tileSize / 2;
-      }
+      // No-op: player is always centered via CSS transform
     },
   }));
-  
-  useEffect(() => {
-    if (containerRef.current) {
-      const container = containerRef.current;
-      const centerX = VIEW_RANGE * tileSize;
-      const centerY = VIEW_RANGE * tileSize;
-      container.scrollLeft = centerX - container.clientWidth / 2 + tileSize / 2;
-      container.scrollTop = centerY - container.clientHeight / 2 + tileSize / 2;
-    }
-  }, [px, py, tileSize]);
   
   // Build visible tile array
   const tiles: { worldX: number; worldY: number; tile: OverworldTile; relX: number; relY: number }[] = [];
@@ -134,17 +118,22 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
     return null;
   };
   
+  // Player is always at (VIEW_RANGE, VIEW_RANGE) in the grid.
+  // We translate the grid so the player tile is centered in the container.
+  
   return (
     <div 
       ref={containerRef}
-      className="overflow-auto border border-border rounded-lg bg-background"
-      style={{ maxHeight: '70vh' }}
+      className="overflow-hidden border border-border rounded-lg bg-background w-full h-full relative"
     >
       <div
-        className="relative"
+        className="absolute"
         style={{
           width: gridSize * tileSize,
           height: gridSize * tileSize,
+          left: '50%',
+          top: '50%',
+          transform: `translate(-${VIEW_RANGE * tileSize + tileSize / 2}px, -${VIEW_RANGE * tileSize + tileSize / 2}px)`,
         }}
       >
         {tiles.map(({ worldX, worldY, tile, relX, relY }) => {

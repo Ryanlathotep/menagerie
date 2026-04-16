@@ -1,6 +1,29 @@
 // Game Sidebar - Always visible menu with panels (works in both dungeon and battle)
 
 import { useState, forwardRef, useRef, useCallback, useEffect } from 'react';
+
+// Panel height persistence
+const PANEL_HEIGHTS_KEY = 'monster-roguelike-panel-heights';
+type PanelName = 'character' | 'inventory' | 'moves' | 'party';
+
+function loadPanelHeights(): Record<PanelName, number> {
+  try {
+    const saved = localStorage.getItem(PANEL_HEIGHTS_KEY);
+    if (saved) return { ...DEFAULT_PANEL_HEIGHTS, ...JSON.parse(saved) };
+  } catch {}
+  return { ...DEFAULT_PANEL_HEIGHTS };
+}
+
+function savePanelHeights(heights: Record<PanelName, number>) {
+  try { localStorage.setItem(PANEL_HEIGHTS_KEY, JSON.stringify(heights)); } catch {}
+}
+
+const DEFAULT_PANEL_HEIGHTS: Record<PanelName, number> = {
+  character: 45,
+  inventory: 45,
+  moves: 45,
+  party: 45,
+};
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';

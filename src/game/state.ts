@@ -14,6 +14,7 @@ import {
   PartyEffects,
   HOME_TOWER_ID,
   createHomeTowerEntrance,
+  createAllThemedTowers,
 } from './types';
 import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot, dismantleEquipment, getRecipeFromEquipment, getConsumableRecipeFromItem } from './equipment';
 import { xpToNextLevel } from './combat';
@@ -41,7 +42,7 @@ const DEFAULT_SAVE_DATA: SaveData = {
   storedEquipment: [],        // Equipment storage
   storedItems: [],            // Town item storage
   unlockedRecipes: [],        // Unlocked crafting recipes
-  dungeonEntrances: { [HOME_TOWER_ID]: createHomeTowerEntrance() }, // Includes Tower of the Infinite
+  dungeonEntrances: createAllThemedTowers(), // Tower of the Infinite + element/class/species towers
 };
 
 // Initial game state
@@ -1274,6 +1275,24 @@ export function GameProvider({ children }: GameProviderProps) {
         // Ensure the Tower of the Infinite always exists
         if (!saveData.dungeonEntrances[HOME_TOWER_ID]) {
           saveData.dungeonEntrances[HOME_TOWER_ID] = createHomeTowerEntrance();
+        }
+        // Migration: ensure all themed towers (element/class/species) exist for legacy saves.
+        // Preserves any deepestFloor progress already recorded under the same id.
+        const themedDefaults = createAllThemedTowers();
+        for (const [id, def] of Object.entries(themedDefaults)) {
+          if (!saveData.dungeonEntrances[id]) {
+            saveData.dungeonEntrances[id] = def;
+          } else {
+            const existing = saveData.dungeonEntrances[id];
+            saveData.dungeonEntrances[id] = {
+              ...def,
+              ...existing,
+              theme: existing.theme || def.theme,
+              category: existing.category || def.category,
+              name: existing.name || def.name,
+              discovered: existing.discovered ?? def.discovered,
+            };
+          }
         }
         dispatch({ type: 'LOAD_SAVE', saveData });
       } catch (e) {

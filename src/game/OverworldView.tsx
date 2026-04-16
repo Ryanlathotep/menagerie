@@ -1013,6 +1013,61 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     setAssignBuilding(null);
   }, [assignBuilding, addLog, saveOverworld]);
   
+  // ─── Building context menu actions: repair & disassemble ───
+  const handleRepairBuilding = useCallback(() => {
+    if (!contextMenuBuilding) return;
+    const cost = getRepairCost(contextMenuBuilding);
+    setOverworld(prev => {
+      const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
+      const b = newOw.playerBuildings?.find(pb => pb.id === contextMenuBuilding.id);
+      if (!b) return prev;
+      if (newOw.woodCollected < cost.wood || newOw.stoneCollected < cost.stone) {
+        toast.error('Not enough resources!');
+        return prev;
+      }
+      newOw.woodCollected -= cost.wood;
+      newOw.stoneCollected -= cost.stone;
+      b.hp = b.maxHp;
+      addLog(`🔧 Repaired ${BUILDING_DEFINITIONS[b.type].name} to full HP.`, 'system');
+      toast.success(`Repaired! (-🪵${cost.wood} -🪨${cost.stone})`);
+      saveOverworld(newOw);
+      return newOw;
+    });
+    setContextMenuBuilding(null);
+  }, [contextMenuBuilding, addLog, saveOverworld]);
+  
+  const handleDisassembleBuilding = useCallback(() => {
+    if (!contextMenuBuilding) return;
+    const refund = getDisassembleRefund(contextMenuBuilding);
+    setOverworld(prev => {
+      const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
+      const b = newOw.playerBuildings?.find(pb => pb.id === contextMenuBuilding.id);
+      if (!b) return prev;
+      newOw.woodCollected += refund.wood;
+      newOw.stoneCollected += refund.stone;
+      // Remove from list
+      newOw.playerBuildings = (newOw.playerBuildings || []).filter(pb => pb.id !== b.id);
+      // Reset tile to grass
+      setOverworldTile(newOw, b.worldX, b.worldY, {
+        type: 'grass',
+        explored: true,
+        visible: true,
+        harvested: false,
+      });
+      addLog(`♻️ Disassembled ${BUILDING_DEFINITIONS[b.type].name}. Recovered 🪵${refund.wood} 🪨${refund.stone}.`, 'loot');
+      toast.success(`Disassembled! +🪵${refund.wood} +🪨${refund.stone}`);
+      saveOverworld(newOw);
+      return newOw;
+    });
+    setContextMenuBuilding(null);
+  }, [contextMenuBuilding, addLog, saveOverworld]);
+  
+  const handleContextMenuAssign = useCallback(() => {
+    if (!contextMenuBuilding) return;
+    setAssignBuilding(contextMenuBuilding);
+    setContextMenuBuilding(null);
+  }, [contextMenuBuilding]);
+  
   // Resizable bottom bar
   const isMobileLayout = typeof window !== 'undefined' && window.innerWidth < 640;
   const sidebarHeight = isMobileLayout ? 64 : 96;

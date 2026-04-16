@@ -714,9 +714,19 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     }
   }, [overworld, monster, targetingMove, handleTargetingClick, handleMove, addLog, buildMode, selectedBuildType, roadBuildMode, selectedRoadType, saveOverworld]);
   
-  // Right-click → auto-attack with first melee/ranged
+  // Right-click → context menu for player buildings, or auto-attack for enemies/nests
   const handleTileRightClick = useCallback((worldX: number, worldY: number) => {
     const tile = getOverworldTile(overworld, worldX, worldY);
+    
+    // Player building → open context menu (assign / repair / disassemble)
+    if (tile?.type === 'player_building' && tile.playerBuildingId) {
+      const building = overworld.playerBuildings?.find(b => b.id === tile.playerBuildingId);
+      if (building) {
+        setContextMenuBuilding(building);
+        return;
+      }
+    }
+    
     if ((tile?.type === 'enemy' && tile.enemyId || tile?.type === 'nest' && tile.nestId) && monster) {
       const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
       const attackMove = moves.find(m => m.type === 'melee' || m.type === 'ranged');

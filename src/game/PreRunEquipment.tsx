@@ -68,8 +68,26 @@ export function PreRunEquipment({
   const allEquippedIds = partyEquipment.flatMap(eq => Object.values(eq).filter(Boolean).map(item => item!.id));
   const equippedIds = allEquippedIds;
   
-  // Available items = stored items not yet equipped by any party member
-  const availableItems = storedEquipment.filter(item => !allEquippedIds.includes(item.id));
+  // Items that started already equipped on incoming monsters (persisted across runs).
+  // We expose them as available so unequipping returns them to the pool, even though
+  // they aren't physically in town storage.
+  const initiallyEquippedItems = useState<EquipmentItem[]>(() => {
+    const items: EquipmentItem[] = [];
+    for (const m of monsters) {
+      if (!m.equipment) continue;
+      for (const item of Object.values(m.equipment)) {
+        if (item) items.push(item);
+      }
+    }
+    return items;
+  })[0];
+  
+  // Available items = stored loose loot + previously-equipped items, minus
+  // anything currently equipped this session.
+  const availableItems = [
+    ...storedEquipment,
+    ...initiallyEquippedItems.filter(it => !storedEquipment.some(s => s.id === it.id)),
+  ].filter(item => !allEquippedIds.includes(item.id));
   
   // Filter and sort by selected slot
   const filteredItems = selectedSlot 

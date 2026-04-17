@@ -340,6 +340,19 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
               : <DoorOpen className="w-5 h-5 sm:w-4 sm:h-4" />}
           </Button>
         )}
+
+        {/* Return to Main Menu button */}
+        {onMainMenu && (
+          <Button
+            variant="destructive"
+            size="icon"
+            className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
+            onClick={onMainMenu}
+            title={mainMenuTitle ?? 'Return to main menu (ends run)'}
+          >
+            <LogOut className="w-5 h-5 sm:w-4 sm:h-4" />
+          </Button>
+        )}
       </div>
       
       {/* Compact slide-up panels - resizable height */}

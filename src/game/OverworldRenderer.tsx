@@ -17,6 +17,7 @@ import { MatchupIndicator } from './MatchupIndicator';
 import { ElementType, ClassType } from './types';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { BuildingTooltipContent } from './BuildingTooltip';
+import { OverworldTooltipContent } from './OverworldTooltip';
 
 interface OverworldRendererProps {
   overworld: OverworldState;
@@ -242,19 +243,34 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
             </div>
           );
 
-          // Wrap player buildings in a HoverCard tooltip
-          if (tile.type === 'player_building' && playerBuilding && tile.visible) {
-            return (
-              <HoverCard key={`${worldX},${worldY}`} openDelay={250} closeDelay={100}>
-                <HoverCardTrigger asChild>{tileContent}</HoverCardTrigger>
-                <HoverCardContent side="top" className="w-72 p-3">
-                  <BuildingTooltipContent building={playerBuilding} party={party} />
-                </HoverCardContent>
-              </HoverCard>
-            );
-          }
+          // Pick the right tooltip body for this tile
+          const dungeonEntrance = tile.type === 'dungeon_entrance' && tile.dungeonId
+            ? overworld.dungeonEntrances?.[tile.dungeonId]
+            : undefined;
 
-          return tileContent;
+          const tooltipBody = tile.type === 'player_building' && playerBuilding
+            ? <BuildingTooltipContent building={playerBuilding} party={party} />
+            : <OverworldTooltipContent
+                tile={tile}
+                worldX={worldX}
+                worldY={worldY}
+                dungeonEntrance={dungeonEntrance}
+                enemy={enemy}
+                nest={nestData}
+                playerBuilding={playerBuilding}
+              />;
+
+          return (
+            <HoverCard key={`${worldX},${worldY}`} openDelay={250} closeDelay={80}>
+              <HoverCardTrigger asChild>{tileContent}</HoverCardTrigger>
+              <HoverCardContent
+                side="top"
+                className={tile.type === 'player_building' ? 'w-72 p-3' : 'w-64 p-3'}
+              >
+                {tooltipBody}
+              </HoverCardContent>
+            </HoverCard>
+          );
         })}
       </div>
     </div>

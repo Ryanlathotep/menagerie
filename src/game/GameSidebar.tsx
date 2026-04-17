@@ -80,6 +80,8 @@ interface GameSidebarProps {
   onFlee?: () => void;
   fleeTitle?: string;
   fleeVariant?: 'door' | 'home';
+  onMainMenu?: () => void;
+  mainMenuTitle?: string;
   onDropItem?: (itemId: string) => void;
   onReorderMoves?: (newOrder: string[]) => void;
   onToggleHideMove?: (moveId: string) => void;

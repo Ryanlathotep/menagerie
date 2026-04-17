@@ -17,6 +17,7 @@ import { MatchupIndicator } from './MatchupIndicator';
 import { ElementType, ClassType } from './types';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { BuildingTooltipContent } from './BuildingTooltip';
+import { OverworldTooltipContent } from './OverworldTooltip';
 
 interface OverworldRendererProps {
   overworld: OverworldState;

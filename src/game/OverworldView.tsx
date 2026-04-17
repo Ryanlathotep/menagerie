@@ -967,6 +967,19 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     addLog('🏠 Returned to town.', 'system');
     toast.success('Returned to town');
   };
+
+  // Return to Main Menu: ends the current overworld run cleanly. Equipment stays
+  // bound to each party member (handled in END_RUN reducer), gold/materials are
+  // banked, and the player returns to the main menu screen.
+  const handleReturnToMainMenu = () => {
+    const ok = typeof window === 'undefined' ? true : window.confirm(
+      'Return to main menu? Your run will end. Equipment stays equipped to your party and gold/materials are banked.'
+    );
+    if (!ok) return;
+    addLog('🚪 Returning to main menu...', 'system');
+    dispatch({ type: 'END_RUN', victory: true });
+    dispatch({ type: 'SET_PHASE', phase: 'main_menu' });
+  };
   
   const handleDropItem = (itemId: string) => {
     dispatch({ type: 'DROP_ITEM', itemId });
@@ -1137,6 +1150,8 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       onFlee={handleReturnToTown}
       fleeTitle="Return to town"
       fleeVariant="home"
+      onMainMenu={handleReturnToMainMenu}
+      mainMenuTitle="Return to main menu (ends run)"
       onDropItem={handleDropItem} 
       onUseItem={handleUseItemOutOfCombat}
       onUseMove={handleUseMoveOnMap}

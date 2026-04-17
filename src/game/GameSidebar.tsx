@@ -29,7 +29,7 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-import { User, Backpack, Map, DoorOpen, Home, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, Shirt, Gem, Users } from 'lucide-react';
+import { User, Backpack, Map, DoorOpen, Home, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, Shirt, Gem, Users, LogOut } from 'lucide-react';
 import { Monster, InventoryItem, MaterialInventory, SPECIES_DATA, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED } from './types';
 import { CombatEffects } from './statusEffects';
 import { MonsterSprite } from './sprites';
@@ -80,6 +80,8 @@ interface GameSidebarProps {
   onFlee?: () => void;
   fleeTitle?: string;
   fleeVariant?: 'door' | 'home';
+  onMainMenu?: () => void;
+  mainMenuTitle?: string;
   onDropItem?: (itemId: string) => void;
   onReorderMoves?: (newOrder: string[]) => void;
   onToggleHideMove?: (moveId: string) => void;
@@ -112,6 +114,8 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   onFlee,
   fleeTitle,
   fleeVariant = 'door',
+  onMainMenu,
+  mainMenuTitle,
   onDropItem,
   onReorderMoves,
   onToggleHideMove,
@@ -334,6 +338,19 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             {fleeVariant === 'home'
               ? <Home className="w-5 h-5 sm:w-4 sm:h-4" />
               : <DoorOpen className="w-5 h-5 sm:w-4 sm:h-4" />}
+          </Button>
+        )}
+
+        {/* Return to Main Menu button */}
+        {onMainMenu && (
+          <Button
+            variant="destructive"
+            size="icon"
+            className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
+            onClick={onMainMenu}
+            title={mainMenuTitle ?? 'Return to main menu (ends run)'}
+          >
+            <LogOut className="w-5 h-5 sm:w-4 sm:h-4" />
           </Button>
         )}
       </div>

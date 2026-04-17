@@ -114,6 +114,8 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   onFlee,
   fleeTitle,
   fleeVariant = 'door',
+  onMainMenu,
+  mainMenuTitle,
   onDropItem,
   onReorderMoves,
   onToggleHideMove,

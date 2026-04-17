@@ -29,7 +29,7 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-import { User, Backpack, Map, DoorOpen, Home, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, Shirt, Gem, Users } from 'lucide-react';
+import { User, Backpack, Map, DoorOpen, Home, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, Shirt, Gem, Users, LogOut } from 'lucide-react';
 import { Monster, InventoryItem, MaterialInventory, SPECIES_DATA, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED } from './types';
 import { CombatEffects } from './statusEffects';
 import { MonsterSprite } from './sprites';

@@ -90,6 +90,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     let ow: OverworldState;
     if (state.saveData.overworldState) {
       ow = JSON.parse(JSON.stringify(state.saveData.overworldState));
+      // Slimmed saves come back without chunks. Re-hydrate them now so the
+      // rest of the file (which always assumes a populated `chunks` map) works.
+      ow = expandOverworldFromSave(ow);
     } else {
       ow = createOverworldState();
     }
@@ -114,6 +117,18 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           explored: existing.explored,
           visible: existing.visible,
           dungeonId: id,
+        });
+      }
+    }
+    // Re-stamp player buildings onto chunks (in case overrides missed them).
+    for (const b of ow.playerBuildings || []) {
+      const existing = getOverworldTile(ow, b.worldX, b.worldY);
+      if (existing && (existing.type !== 'player_building' || existing.playerBuildingId !== b.id)) {
+        setOverworldTile(ow, b.worldX, b.worldY, {
+          type: 'player_building',
+          explored: true,
+          visible: existing.visible,
+          playerBuildingId: b.id,
         });
       }
     }

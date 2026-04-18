@@ -112,6 +112,10 @@ export function OverworldDirectionArrows({ overworld, toggles }: Props) {
     }
   }
 
+  // Track which dungeons we've already added so per-dungeon pins don't
+  // duplicate a major tower's arrow.
+  const addedDungeonIds = new Set<string>();
+
   if (toggles.majorDungeons) {
     for (const d of dungeons) {
       if (d.isHome) continue;
@@ -125,7 +129,26 @@ export function OverworldDirectionArrows({ overworld, toggles }: Props) {
         icon: dungeonIcon(d),
         colorClass: 'text-sky-300 bg-sky-500/15 border-sky-400/60',
       });
+      addedDungeonIds.add(d.id);
     }
+  }
+
+  // Per-dungeon pinned waypoints (covers minor / procedural dungeons, and any
+  // major tower the player has explicitly pinned even with the global toggle off).
+  const pins = toggles.dungeonWaypoints || {};
+  for (const d of dungeons) {
+    if (d.isHome) continue;
+    if (!pins[d.id]) continue;
+    if (addedDungeonIds.has(d.id)) continue;
+    targets.push({
+      key: `pin-${d.id}`,
+      x: d.worldX,
+      y: d.worldY,
+      label: d.name || 'Dungeon',
+      icon: dungeonIcon(d),
+      colorClass: 'text-emerald-300 bg-emerald-500/15 border-emerald-400/60',
+    });
+    addedDungeonIds.add(d.id);
   }
 
   // No work to do

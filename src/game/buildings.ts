@@ -3,6 +3,7 @@
 
 import { ElementType } from './types';
 import type { OverworldState } from './overworld';
+import { isCreativeMode } from './creativeMode';
 
 // ============= BUILDING TYPES =============
 

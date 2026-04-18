@@ -865,6 +865,14 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       if (showBuildingMenu || showDungeonPrompt || showRecruitment || levelUpQueue.length > 0) return;
       
       if (e.key === 'Escape') {
+        if (showBuildPanel) {
+          setShowBuildPanel(false);
+          setBuildMode(false);
+          setSelectedBuildType(null);
+          setRoadBuildMode(false);
+          setSelectedRoadType(null);
+          return;
+        }
         if (roadBuildMode) {
           setRoadBuildMode(false);
           setSelectedRoadType(null);
@@ -904,7 +912,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleMove, showBuildingMenu, showDungeonPrompt, showRecruitment, targetingMove, cancelTargeting, levelUpQueue.length, buildMode, roadBuildMode]);
+  }, [handleMove, showBuildingMenu, showDungeonPrompt, showRecruitment, targetingMove, cancelTargeting, levelUpQueue.length, buildMode, roadBuildMode, showBuildPanel]);
   
   // Keybind shortcuts for moves
   const keybindDataRef = useRef(loadKeybinds());
@@ -1560,12 +1568,29 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     
     {/* Build Panel */}
     {showBuildPanel && (
-      <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <Card className="p-6 max-w-lg w-full space-y-4 max-h-[80vh] overflow-y-auto">
-          <div className="flex justify-between items-center">
+      <div
+        className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        onClick={() => { setShowBuildPanel(false); setBuildMode(false); setSelectedBuildType(null); setRoadBuildMode(false); setSelectedRoadType(null); }}
+      >
+        <Card
+          className="p-6 max-w-lg w-full space-y-4 max-h-[80vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex justify-between items-center gap-2">
             <h2 className="text-lg font-bold">🏗️ Build & Roads</h2>
-            <div className="text-sm text-muted-foreground">
-              🪵 {overworld.woodCollected} • 🪨 {overworld.stoneCollected}
+            <div className="flex items-center gap-2">
+              <div className="text-sm text-muted-foreground">
+                🪵 {overworld.woodCollected} • 🪨 {overworld.stoneCollected}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => { setShowBuildPanel(false); setBuildMode(false); setSelectedBuildType(null); setRoadBuildMode(false); setSelectedRoadType(null); }}
+                aria-label="Close build menu"
+              >
+                ✕
+              </Button>
             </div>
           </div>
 

@@ -676,8 +676,65 @@ function UnifiedMoveCard({
                 <span className={!canAfford ? 'text-destructive' : ''}>⚡{displayMove.staminaCost}</span>
               </div>
               
-              {/* Mastery indicator */}
-              {mastery && mastery.uses > 0 && (
+              {/* Inline tier pills - click to use that specific tier/variant directly */}
+              {hasTierOptions && onUseTier && (
+                <div className="mt-1 flex flex-wrap items-center gap-0.5">
+                  {availableTiers.map(tier => {
+                    const evolvedSingle = createEvolvedMove(move, tier, 'single', monster.level);
+                    const tierAfford = evolvedSingle.staminaCost <= currentStamina;
+                    const isCurrentBest = tier === getHighestTier(mastery, monster.level);
+                    return (
+                      <button
+                        key={tier}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (tierAfford && (inBattle || canUseOutsideCombat)) {
+                            onUseTier(tier, 'single');
+                          }
+                        }}
+                        disabled={!tierAfford || !(inBattle || canUseOutsideCombat)}
+                        title={`${getTierDisplayName(tier)} • ⚔️${evolvedSingle.power} ⚡${evolvedSingle.staminaCost}`}
+                        className={`text-[8px] px-1 py-0 rounded border-0 transition-all ${TIER_COLORS[tier]} ${TIER_BG_COLORS[tier]} ${
+                          isCurrentBest ? 'ring-1 ring-primary/40' : ''
+                        } ${!tierAfford ? 'opacity-40' : 'hover:scale-110 hover:brightness-125'}`}
+                      >
+                        {getTierDisplayName(tier).slice(0, 3)}
+                      </button>
+                    );
+                  })}
+                  {hasAoEUnlocked(mastery) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const bestTier = getHighestTier(mastery, monster.level);
+                        const evolved = createEvolvedMove(move, bestTier, 'mass', monster.level);
+                        if (evolved.staminaCost <= currentStamina && (inBattle || canUseOutsideCombat)) {
+                          onUseTier(bestTier, 'mass');
+                        }
+                      }}
+                      title="Mass (AoE) - hits all enemies"
+                      className="text-[8px] px-1 py-0 rounded border-0 bg-amber-500/20 text-amber-600 hover:scale-110 hover:brightness-125 transition-all"
+                    >
+                      AoE
+                    </button>
+                  )}
+                  {onOpenTierSelector && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenTierSelector();
+                      }}
+                      title="More options"
+                      className="text-[8px] px-1 py-0 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+                    >
+                      ⋯
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Mastery indicator (shown when no tier pills, e.g. status moves) */}
+              {!hasTierOptions && mastery && mastery.uses > 0 && (
                 <div className="mt-1 flex items-center gap-1">
                   <Badge 
                     variant="outline" 
@@ -685,9 +742,6 @@ function UnifiedMoveCard({
                   >
                     {getTierDisplayName(masteryProgress.tier)}
                   </Badge>
-                  {masteryProgress.hasAoE && (
-                    <span className="text-[8px] text-amber-500" title="Mass variant unlocked">⚔️</span>
-                  )}
                 </div>
               )}
               

@@ -1280,11 +1280,14 @@ function DungeonView({
   }, [dispatch, state.run?.party]);
   const handleBuyItem = (item: LootItem) => {
     const price = item.value * 1.5; // Shop markup
-    if (state.run && state.run.gold >= price) {
-      dispatch({
-        type: 'ADD_GOLD',
-        amount: -Math.floor(price)
-      });
+    const creative = isCreativeMode();
+    if (state.run && (creative || state.run.gold >= price)) {
+      if (!creative) {
+        dispatch({
+          type: 'ADD_GOLD',
+          amount: -Math.floor(price)
+        });
+      }
       const lootItem: InventoryItem = {
         id: item.id,
         name: item.name,
@@ -1302,11 +1305,14 @@ function DungeonView({
   };
   
   const handleBuyEquipment = (item: EquipmentItem, price: number) => {
-    if (state.run && state.run.gold >= price) {
-      dispatch({
-        type: 'ADD_GOLD',
-        amount: -price
-      });
+    const creative = isCreativeMode();
+    if (state.run && (creative || state.run.gold >= price)) {
+      if (!creative) {
+        dispatch({
+          type: 'ADD_GOLD',
+          amount: -price
+        });
+      }
       dispatch({
         type: 'ADD_EQUIPMENT',
         item

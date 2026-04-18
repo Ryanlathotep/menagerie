@@ -90,6 +90,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const { state, dispatch } = useGame();
   const { settings, updateSetting } = useSettings();
   const rendererRef = useRef<OverworldRendererHandle>(null);
+  const { saveToCloud, syncing, isAuthenticated } = useCloudSave();
   
   // Initialize or load overworld state
   const [overworld, setOverworld] = useState<OverworldState>(() => {
@@ -196,6 +197,34 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const saveOverworld = useCallback((ow: OverworldState) => {
     dispatch({ type: 'UPDATE_OVERWORLD', overworld: { ...ow } });
   }, [dispatch]);
+
+  // ─── Manual save: flush in-memory overworld into saveData, then push to cloud
+  // (or just confirm the local snapshot if not signed in). Useful for the player
+  // to lock in built structures, harvested tiles, monster assignments, etc. on
+  // demand instead of waiting for the 5s/30s autosave.
+  const handleManualSave = useCallback(async () => {
+    // Always flush overworld → saveData first; the reducer also slims it for storage.
+    dispatch({ type: 'UPDATE_OVERWORLD', overworld });
+    // Wait one tick so the reducer can run before we read state.saveData.
+    await new Promise(r => setTimeout(r, 0));
+
+    if (!isAuthenticated) {
+      // Local-only save still happens via the saveData→localStorage effect.
+      toast.success('💾 Saved locally (sign in to back up to the cloud)');
+      addLog('💾 Game saved locally', 'system');
+      return;
+    }
+
+    // Build a fresh snapshot that includes the just-flushed overworld.
+    const snapshot = { ...state.saveData, overworldState: overworld };
+    const result = await saveToCloud(snapshot);
+    if (result.success) {
+      toast.success('☁️ Saved to cloud');
+      addLog('☁️ Game saved to cloud', 'system');
+    } else {
+      toast.error(`Save failed: ${result.error || 'unknown error'}`);
+    }
+  }, [dispatch, overworld, state.saveData, isAuthenticated, saveToCloud, addLog]);
 
   // ─── Enemy AI processing ───
   const processEnemyTurns = useCallback((ow: OverworldState) => {

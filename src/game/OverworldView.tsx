@@ -55,6 +55,7 @@ import { EvolvedMove } from './moveMastery';
 import { CombatEffects } from './statusEffects';
 import { BuildingAssignModal } from './BuildingAssignModal';
 import { BuildingContextMenu } from './BuildingContextMenu';
+import { TileContextMenu } from './TileContextMenu';
 import { FARM_OUTPUTS, FARM_GROWTH_STEPS } from './buildings';
 import { 
   NestState, tickNest, spawnNestMonster, findNestSpawnPosition, 
@@ -117,6 +118,8 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [assignBuilding, setAssignBuilding] = useState<PlayerBuilding | null>(null);
   // Right-click context menu state for player buildings
   const [contextMenuBuilding, setContextMenuBuilding] = useState<PlayerBuilding | null>(null);
+  // Right-click context menu state for plain tiles (grass / harvested grass)
+  const [tileContextMenu, setTileContextMenu] = useState<{ x: number; y: number } | null>(null);
   
   // Targeting state
   const [targetingMove, setTargetingMove] = useState<Move | null>(null);
@@ -742,6 +745,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           toast.info('Enemy out of range!');
         }
       }
+      return;
+    }
+
+    // Plain grass / harvested grass → open tile context menu (Build, etc.)
+    if (tile?.type === 'grass') {
+      setTileContextMenu({ x: worldX, y: worldY });
     }
   }, [overworld, monster, handleTargetingClick]);
   

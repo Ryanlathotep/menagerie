@@ -165,7 +165,7 @@ export function FarmTile({ size, seed = 0, harvestReady = false }: BuildingTileP
 
 // Dispatcher component
 export function OverworldBuildingTileGraphic({
-  type, size, seed = 0, harvestReady, wallFit, isGate, gateAxis, damaged, wallAttachments,
+  type, size, seed = 0, harvestReady, wallFit, isGate, gateAxis, gateInsideDir, damaged, wallAttachments,
 }: {
   type: PlayerBuildingType;
   size: number;
@@ -175,17 +175,16 @@ export function OverworldBuildingTileGraphic({
   wallFit?: AutoTileFit;
   isGate?: boolean;
   gateAxis?: 'horizontal' | 'vertical';
+  gateInsideDir?: 'n' | 's' | 'e' | 'w';
   damaged?: boolean;
   // Wall-merge props (only scout towers use this)
   wallAttachments?: { n: boolean; e: boolean; s: boolean; w: boolean };
 }) {
   switch (type) {
     case 'wall':
-      // GateTile's default art (no rotation) has pillars on the LEFT/RIGHT edges,
-      // which is correct when the road runs N-S (vertical). For an E-W road we
-      // must rotate 90° so the pillars sit on TOP/BOTTOM and the opening lines
-      // up with the road. Hence axisHorizontal=true means "road is vertical".
-      if (isGate) return <GateTile size={size} axisHorizontal={gateAxis === 'vertical'} />;
+      // axisHorizontal=true means the road runs E-W. GateTile rotates its base
+      // art 90° in that case so the opening lines up with the road.
+      if (isGate) return <GateTile size={size} axisHorizontal={gateAxis === 'horizontal'} insideDir={gateInsideDir} />;
       return <PlayerWallTile size={size} fit={wallFit} damaged={damaged} />;
     case 'spike_trap': return <TrapTile size={size} seed={seed} trapVariant="spike" />;
     case 'poison_trap': return <TrapTile size={size} seed={seed} trapVariant="poison" />;

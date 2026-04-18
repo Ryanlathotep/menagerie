@@ -4,6 +4,7 @@ import { DungeonState, DungeonTile, Position, Monster, SpeciesType, TrapType, Pl
 import { generateRandomMonster } from './utils';
 import { generateEquipment, generateMaterialDrop, CraftingMaterial, EquipmentItem } from './equipment';
 import { getRandomTerrainType, TerrainType } from './terrain';
+import { getWallTierForFloor, MineableWallTier, hitsToBreak, rollWallDrop, PickaxeTier } from './tools';
 
 // Larger dungeons with scrolling viewport
 const DUNGEON_WIDTH = 30;

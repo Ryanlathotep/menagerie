@@ -359,6 +359,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           updatedUnlockedMonsters[existingIdx] = {
             ...updatedUnlockedMonsters[existingIdx],
             level: Math.max(updatedUnlockedMonsters[existingIdx].level, partyMember.level),
+            // Persist banked XP and move-mastery progress so fleeing a
+            // dungeon doesn't reset partial progression.
+            experience: partyMember.experience ?? 0,
+            moveMastery: partyMember.moveMastery,
             equipment: cleanedEquipment,
           };
         }

@@ -118,73 +118,107 @@ export function WallTile({ size, seed = 0 }: TileGraphicProps) {
   );
 }
 
-// Terrain tile with watercolor wash effect
-export function TerrainTile({ size, terrainType, seed = 0 }: TileGraphicProps & { terrainType: TerrainType }) {
+// Terrain tile with watercolor wash effect.
+//
+// Auto-tiling: when `fit` is supplied, the watercolor "pool" extends to the
+// edge of the tile on sides where the same terrain type is present in a
+// neighboring tile, and stays inset on closed sides. This makes connected
+// terrain (lava lakes, water rivers, shadow voids, etc.) read as a single
+// continuous body instead of a grid of disconnected circles.
+import type { AutoTileFit } from './autoTiling';
+
+export function TerrainTile({
+  size,
+  terrainType,
+  seed = 0,
+  fit,
+}: TileGraphicProps & { terrainType: TerrainType; fit?: AutoTileFit }) {
   const colors = WATERCOLOR[terrainType];
   const config = TERRAIN_CONFIG[terrainType];
   const r1 = seededRandom(seed);
   const r2 = seededRandom(seed + 1);
   const r3 = seededRandom(seed + 2);
-  
-  // Different patterns based on terrain type
+
+  // Determine open sides (default = all open ⇒ tile bleeds in every direction,
+  // matching the legacy uniform look for unconnected terrain).
+  let n = true, e = true, s = true, w = true;
+  if (fit) {
+    const opens = openSidesFromTerrainFit(fit);
+    n = opens.n; e = opens.e; s = opens.s; w = opens.w;
+  }
+  const isolated = !n && !e && !s && !w;
+  const inset = 1.5;
+  const left   = w ? 0 : inset;
+  const right  = e ? 24 : 24 - inset;
+  const top    = n ? 0 : inset;
+  const bottom = s ? 24 : 24 - inset;
+  const wWidth  = right - left;
+  const wHeight = bottom - top;
+  const cx = (left + right) / 2;
+  const cy = (top + bottom) / 2;
+  // For isolated tiles we keep the soft round-ish shape; for connected ones we use
+  // a full rect so adjoining edges meet seamlessly.
+  const baseShape = isolated
+    ? <ellipse cx="12" cy="12" rx="10" ry="10" fill={colors.main} opacity={0.55} />
+    : <rect x={left} y={top} width={wWidth} height={wHeight} fill={colors.main} opacity={0.5} />;
+
+  // Different patterns based on terrain type — decorations only; the watercolor
+  // wash above handles the connected silhouette.
   const getTerrainPattern = () => {
     switch (terrainType) {
       case 'water':
-        // Flowing water waves
         return (
           <>
-            <ellipse cx="12" cy="12" rx="11" ry="10" fill={colors.main} opacity={0.5} />
-            <path d={`M3 ${10 + r1 * 4} Q8 ${8 + r2 * 3} 12 ${11 + r1 * 2} T21 ${10 + r2 * 3}`} 
+            {baseShape}
+            <path d={`M${w ? -1 : 3} ${cy - 2 + r1 * 3} Q${cx - 4} ${cy - 4 + r2 * 3} ${cx} ${cy - 1 + r1 * 2} T${e ? 25 : 21} ${cy - 2 + r2 * 3}`}
                   stroke={colors.light} strokeWidth={1.5} fill="none" opacity={0.7} />
-            <path d={`M2 ${14 + r2 * 2} Q7 ${12 + r1 * 2} 12 ${14 + r2} T22 ${13 + r1 * 2}`} 
+            <path d={`M${w ? -1 : 2} ${cy + 2 + r2 * 2} Q${cx - 4} ${cy + r1 * 2} ${cx} ${cy + 2 + r2} T${e ? 25 : 22} ${cy + 1 + r1 * 2}`}
                   stroke="white" strokeWidth={0.8} fill="none" opacity={0.5} />
           </>
         );
       case 'lava':
-        // Bubbling lava pools
         return (
           <>
-            <ellipse cx="12" cy="12" rx="10" ry="10" fill={colors.main} opacity={0.6} />
-            <circle cx={6 + r1 * 4} cy={8 + r2 * 4} r={2 + r3} fill={colors.light} opacity={0.7} />
-            <circle cx={14 + r2 * 4} cy={14 + r1 * 3} r={1.5 + r1} fill="hsl(45 95% 60%)" opacity={0.6} />
-            <circle cx={10 + r3 * 2} cy={16 + r1 * 2} r={1 + r2 * 0.5} fill={colors.light} opacity={0.5} />
+            {baseShape}
+            <circle cx={cx - 4 + r1 * 4} cy={cy - 3 + r2 * 4} r={2 + r3} fill={colors.light} opacity={0.7} />
+            <circle cx={cx + 2 + r2 * 4} cy={cy + 2 + r1 * 3} r={1.5 + r1} fill="hsl(45 95% 60%)" opacity={0.6} />
+            <circle cx={cx - 1 + r3 * 2} cy={cy + 4 + r1 * 2} r={1 + r2 * 0.5} fill={colors.light} opacity={0.5} />
           </>
         );
       case 'rubble':
-        // Scattered rocks
+        // Rubble = scattered debris; never want it to "merge" visually, so always isolated-look.
         return (
           <>
             <ellipse cx={8 + r1 * 3} cy={10 + r2 * 2} rx={4 + r3} ry={3 + r1} fill={colors.main} opacity={0.7} />
             <ellipse cx={15 + r2} cy={8 + r1 * 2} rx={3 + r1} ry={2.5 + r2} fill={colors.light} opacity={0.6} />
             <ellipse cx={12 + r3 * 2} cy={16 + r1} rx={3.5 + r2} ry={2 + r3 * 0.5} fill={colors.main} opacity={0.5} />
-            <path d={`M${6 + r1 * 2} ${9 + r2} L${10 + r1} ${7 + r2 * 2} L${9 + r2 * 2} ${12 + r1}`} 
+            <path d={`M${6 + r1 * 2} ${9 + r2} L${10 + r1} ${7 + r2 * 2} L${9 + r2 * 2} ${12 + r1}`}
                   stroke={INK_COLORS.medium} strokeWidth={0.5} fill="none" />
           </>
         );
       case 'vents':
-        // Steam wisps
         return (
           <>
-            <ellipse cx="12" cy="16" rx="8" ry="5" fill={colors.main} opacity={0.3} />
-            <path d={`M8 16 Q${7 + r1 * 2} 10 ${9 + r2} 4`} 
+            {baseShape}
+            <path d={`M${cx - 4} ${cy + 4} Q${cx - 5 + r1 * 2} ${cy - 2} ${cx - 3 + r2} ${cy - 8}`}
                   stroke={colors.light} strokeWidth={2} fill="none" opacity={0.5} strokeLinecap="round" />
-            <path d={`M12 16 Q${11 + r2} 8 ${13 + r1} 2`} 
+            <path d={`M${cx} ${cy + 4} Q${cx - 1 + r2} ${cy - 4} ${cx + 1 + r1} ${cy - 10}`}
                   stroke="white" strokeWidth={1.5} fill="none" opacity={0.4} strokeLinecap="round" />
-            <path d={`M16 16 Q${15 + r3} 11 ${14 + r1 * 2} 5`} 
+            <path d={`M${cx + 4} ${cy + 4} Q${cx + 3 + r3} ${cy - 1} ${cx + 2 + r1 * 2} ${cy - 7}`}
                   stroke={colors.light} strokeWidth={1.5} fill="none" opacity={0.45} strokeLinecap="round" />
           </>
         );
       case 'shadows':
-        // Dark void patches
         return (
           <>
-            <ellipse cx="12" cy="12" rx="10" ry="10" fill={colors.main} opacity={0.7} />
-            <ellipse cx="12" cy="12" rx="7" ry="7" fill="hsl(270 50% 15%)" opacity={0.5} />
-            <circle cx={10 + r1 * 4} cy={10 + r2 * 4} r={2} fill={colors.light} opacity={0.3} />
+            {baseShape}
+            {isolated && <ellipse cx="12" cy="12" rx="7" ry="7" fill="hsl(270 50% 15%)" opacity={0.5} />}
+            {!isolated && <rect x={left} y={top} width={wWidth} height={wHeight} fill="hsl(270 50% 15%)" opacity={0.35} />}
+            <circle cx={cx - 2 + r1 * 4} cy={cy - 2 + r2 * 4} r={2} fill={colors.light} opacity={0.3} />
           </>
         );
       case 'spikes':
-        // Sharp protrusions
+        // Spikes are physical protrusions, not a fluid — keep per-tile.
         return (
           <>
             <polygon points={`6,20 8,${6 + r1 * 3} 10,20`} fill={colors.main} opacity={0.8} />
@@ -195,66 +229,68 @@ export function TerrainTile({ size, terrainType, seed = 0 }: TileGraphicProps & 
           </>
         );
       case 'lasers':
-        // Energy beams
+        // Lasers are beams — bleed across edges on open sides for continuous beams.
         return (
           <>
-            <line x1={4 + r1 * 2} y1={4 + r2 * 2} x2={20 - r1 * 2} y2={20 - r2 * 2} 
+            <line x1={w ? -1 : 4} y1={n ? -1 : 4} x2={e ? 25 : 20} y2={s ? 25 : 20}
                   stroke={colors.main} strokeWidth={3} opacity={0.6} />
-            <line x1={4 + r1 * 2} y1={4 + r2 * 2} x2={20 - r1 * 2} y2={20 - r2 * 2} 
+            <line x1={w ? -1 : 4} y1={n ? -1 : 4} x2={e ? 25 : 20} y2={s ? 25 : 20}
                   stroke={colors.light} strokeWidth={1.5} opacity={0.8} />
-            <line x1={20 - r2 * 2} y1={4 + r1 * 2} x2={4 + r2 * 2} y2={20 - r1 * 2} 
+            <line x1={e ? 25 : 20} y1={n ? -1 : 4} x2={w ? -1 : 4} y2={s ? 25 : 20}
                   stroke={colors.main} strokeWidth={2.5} opacity={0.5} />
             <circle cx="12" cy="12" r="3" fill={colors.light} opacity={0.5} />
           </>
         );
       case 'acid':
-        // Bubbling acid pools
         return (
           <>
-            <ellipse cx="12" cy="13" rx="10" ry="9" fill={colors.main} opacity={0.5} />
-            <circle cx={7 + r1 * 2} cy={10 + r2 * 3} r={1.5 + r3 * 0.5} fill={colors.light} opacity={0.7} />
-            <circle cx={15 + r2} cy={12 + r1 * 2} r={1 + r1 * 0.5} fill="white" opacity={0.4} />
-            <circle cx={11 + r3} cy={16 + r2} r={0.8 + r2 * 0.3} fill={colors.light} opacity={0.6} />
-            <circle cx={9 + r1 * 3} cy={8 + r3 * 2} r={0.6} fill="white" opacity={0.5} />
+            {baseShape}
+            <circle cx={cx - 4 + r1 * 2} cy={cy - 2 + r2 * 3} r={1.5 + r3 * 0.5} fill={colors.light} opacity={0.7} />
+            <circle cx={cx + 3 + r2} cy={cy - 1 + r1 * 2} r={1 + r1 * 0.5} fill="white" opacity={0.4} />
+            <circle cx={cx - 1 + r3} cy={cy + 3 + r2} r={0.8 + r2 * 0.3} fill={colors.light} opacity={0.6} />
+            <circle cx={cx - 3 + r1 * 3} cy={cy - 4 + r3 * 2} r={0.6} fill="white" opacity={0.5} />
           </>
         );
       case 'tendrils':
-        // Living vines
+        // Tendrils = vines; keep per-tile but lengthen to edges on open sides.
         return (
           <>
-            <path d={`M4 20 Q${8 + r1 * 4} ${12 - r2 * 4} ${6 + r3 * 2} 4`} 
+            {!isolated && <rect x={left} y={top} width={wWidth} height={wHeight} fill={colors.main} opacity={0.18} />}
+            <path d={`M${w ? -1 : 4} 20 Q${8 + r1 * 4} ${12 - r2 * 4} ${6 + r3 * 2} ${n ? -1 : 4}`}
                   stroke={colors.main} strokeWidth={2.5} fill="none" strokeLinecap="round" opacity={0.7} />
-            <path d={`M10 22 Q${12 + r2 * 2} ${10 - r1 * 3} ${14 + r3} 2`} 
+            <path d={`M10 ${s ? 25 : 22} Q${12 + r2 * 2} ${10 - r1 * 3} ${14 + r3} ${n ? -1 : 2}`}
                   stroke={colors.light} strokeWidth={2} fill="none" strokeLinecap="round" opacity={0.6} />
-            <path d={`M18 20 Q${16 - r3 * 2} ${14 - r2 * 3} ${20 - r1 * 2} 6`} 
+            <path d={`M${e ? 25 : 18} 20 Q${16 - r3 * 2} ${14 - r2 * 3} ${20 - r1 * 2} ${n ? -1 : 6}`}
                   stroke={colors.main} strokeWidth={1.8} fill="none" strokeLinecap="round" opacity={0.65} />
             <circle cx={6 + r3 * 2} cy={5} r={1.5} fill={colors.light} opacity={0.5} />
           </>
         );
       case 'psychic':
-        // Mental resonance field
         return (
           <>
-            <circle cx="12" cy="12" r="10" fill={colors.main} opacity={0.3} />
-            <circle cx="12" cy="12" r="7" fill={colors.light} opacity={0.25} />
-            <circle cx="12" cy="12" r="4" fill={colors.main} opacity={0.4} />
+            {baseShape}
+            {isolated && (
+              <>
+                <circle cx="12" cy="12" r="7" fill={colors.light} opacity={0.25} />
+                <circle cx="12" cy="12" r="4" fill={colors.main} opacity={0.4} />
+                <circle cx="12" cy="12" r="9" stroke={colors.light} strokeWidth={0.5} fill="none" opacity={0.4} />
+                <circle cx="12" cy="12" r="6" stroke={colors.light} strokeWidth={0.4} fill="none" opacity={0.5} />
+              </>
+            )}
             <circle cx="12" cy="12" r="2" fill="white" opacity={0.5} />
-            {/* Radiating waves */}
-            <circle cx="12" cy="12" r="9" stroke={colors.light} strokeWidth={0.5} fill="none" opacity={0.4} />
-            <circle cx="12" cy="12" r="6" stroke={colors.light} strokeWidth={0.4} fill="none" opacity={0.5} />
           </>
         );
       default:
-        return <circle cx="12" cy="12" r="8" fill={colors.main} opacity={0.5} />;
+        return baseShape;
     }
   };
-  
+
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className="block">
       {/* Base floor grid */}
       <line x1="0" y1="0" x2="24" y2="0" stroke={INK_COLORS.faint} strokeWidth={0.3} opacity={0.3} />
       <line x1="0" y1="0" x2="0" y2="24" stroke={INK_COLORS.faint} strokeWidth={0.3} opacity={0.3} />
-      
+
       {/* Terrain pattern */}
       {getTerrainPattern()}
     </svg>

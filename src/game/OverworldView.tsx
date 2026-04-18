@@ -1520,6 +1520,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
               <div className="hidden sm:flex flex-col items-center">
                 <p className="text-muted-foreground text-sm text-center mb-1">
                   🗺️ Overworld ({overworld.playerPosition.x}, {overworld.playerPosition.y}) • {baseInfo.emoji} {baseInfo.label} • 🪵 {overworld.woodCollected} • 🪨 {overworld.stoneCollected}
+                  {isCreativeMode() && <span className="ml-2 px-1.5 py-0.5 rounded bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-wider">🛠️ Creative</span>}
                 </p>
                 <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground justify-center">
                   <span>🌲 Wood</span>

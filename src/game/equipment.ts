@@ -630,7 +630,8 @@ export function calculateEquipmentBonuses(equipment: MonsterEquipment): Equipmen
 // ============= CRAFTING MATERIALS =============
 export type MaterialType = 
   | 'ore' | 'hide' | 'essence' | 'gem' | 'bone' | 'fabric' | 'herb'
-  | 'wood' | 'metal' | 'mote' | 'monster' | 'species' | 'class' | 'element';
+  | 'wood' | 'metal' | 'mote' | 'monster' | 'species' | 'class' | 'element'
+  | 'rune' | 'soil';
 
 export interface CraftingMaterial {
   id: string;
@@ -652,6 +653,24 @@ export const CRAFTING_MATERIALS: CraftingMaterial[] = [
   { id: 'cavestone', name: 'Cavestone', type: 'ore', rarity: 'common', icon: '🪨', value: 4, description: 'Soft stone chipped from shallow dungeon walls.' },
   { id: 'deepstone', name: 'Deepstone', type: 'ore', rarity: 'uncommon', icon: '🗿', value: 14, description: 'Dense stone found in the deeper layers of dungeons.' },
   { id: 'coreshard', name: 'Coreshard', type: 'ore', rarity: 'rare', icon: '💎', value: 38, description: 'A glittering shard from the dungeon\'s core. Used for legendary tools.' },
+
+  // ============= RUNE STONES (shoveled from rune tiles — placeable) =============
+  // Each Rune Stone can be re-inscribed elsewhere as a matching rune tile.
+  { id: 'rune_earth',      name: 'Earthen Rune Stone',  type: 'rune', rarity: 'common',    icon: '🪨', value: 8,  description: 'A sigil of grit. Place to inscribe an Earthen Rune.', elementAffinity: 'earth' },
+  { id: 'rune_water',      name: 'Tidal Rune Stone',    type: 'rune', rarity: 'uncommon',  icon: '🌊', value: 18, description: 'A sigil of currents. Place to inscribe a Tidal Rune.',  elementAffinity: 'water' },
+  { id: 'rune_fire',       name: 'Pyric Rune Stone',    type: 'rune', rarity: 'uncommon',  icon: '🔥', value: 18, description: 'A sigil of flame. Place to inscribe a Pyric Rune.',   elementAffinity: 'fire' },
+  { id: 'rune_air',        name: 'Zephyr Rune Stone',   type: 'rune', rarity: 'uncommon',  icon: '💨', value: 18, description: 'A sigil of breath. Place to inscribe a Zephyr Rune.', elementAffinity: 'air' },
+  { id: 'rune_kinetic',    name: 'Kinetic Rune Stone',  type: 'rune', rarity: 'rare',      icon: '⚔️', value: 32, description: 'A sigil of force. Place to inscribe a Kinetic Rune.', classAffinity: 'kinetic' },
+  { id: 'rune_energy',     name: 'Energy Rune Stone',   type: 'rune', rarity: 'rare',      icon: '⚡', value: 32, description: 'A sigil of charge. Place to inscribe an Energy Rune.', classAffinity: 'energy' },
+  { id: 'rune_chemical',   name: 'Chemical Rune Stone', type: 'rune', rarity: 'rare',      icon: '🧪', value: 32, description: 'A sigil of reagent. Place to inscribe a Chemical Rune.', classAffinity: 'chemical' },
+  { id: 'rune_biological', name: 'Bio Rune Stone',      type: 'rune', rarity: 'epic',      icon: '🦑', value: 60, description: 'A sigil of life. Place to inscribe a Bio Rune.',     classAffinity: 'biological' },
+  { id: 'rune_political',  name: 'Psychic Rune Stone',  type: 'rune', rarity: 'epic',      icon: '🔮', value: 60, description: 'A sigil of mind. Place to inscribe a Psychic Rune.',  classAffinity: 'political' },
+  { id: 'rune_void',       name: 'Void Rune Stone',     type: 'rune', rarity: 'epic',      icon: '👁️', value: 60, description: 'A sigil of shadow. Place to inscribe a Void Rune.',  elementAffinity: 'void' },
+
+  // ============= SOIL (shoveled from grass — feeds future farming) =============
+  { id: 'soil', name: 'Soil', type: 'soil', rarity: 'common', icon: '🟫', value: 2, description: 'Loose earth from a grass tile. A reagent for future farming.' },
+
+
 
   // ============= BASIC ORES =============
   { id: 'iron_ore', name: 'Iron Ore', type: 'ore', rarity: 'common', icon: '🪨', value: 5 },

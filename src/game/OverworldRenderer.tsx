@@ -65,8 +65,26 @@ function renderTileGraphic(
     case 'grass': return tile.harvested
       ? <OverworldHarvestedTile size={tileSize} seed={seed} />
       : <OverworldGrassTile size={tileSize} seed={seed} />;
-    case 'tree': return <OverworldTreeTile size={tileSize} seed={seed} tier={tile.treeTier} />;
-    case 'rock': return <OverworldRockTile size={tileSize} seed={seed} tier={tile.stoneTier} />;
+    case 'tree': {
+      const isTree = (x: number, y: number) => getOverworldTile(state, x, y)?.type === 'tree';
+      const fit = fitFromNeighbors(
+        isTree(worldX, worldY - 1),
+        isTree(worldX + 1, worldY),
+        isTree(worldX, worldY + 1),
+        isTree(worldX - 1, worldY),
+      );
+      return <OverworldTreeTile size={tileSize} seed={seed} tier={tile.treeTier} fit={fit} />;
+    }
+    case 'rock': {
+      const isRock = (x: number, y: number) => getOverworldTile(state, x, y)?.type === 'rock';
+      const fit = fitFromNeighbors(
+        isRock(worldX, worldY - 1),
+        isRock(worldX + 1, worldY),
+        isRock(worldX, worldY + 1),
+        isRock(worldX - 1, worldY),
+      );
+      return <OverworldRockTile size={tileSize} seed={seed} tier={tile.stoneTier} fit={fit} />;
+    }
     case 'water': {
       const isWater = (x: number, y: number) => getOverworldTile(state, x, y)?.type === 'water';
       const fit = fitFromNeighbors(

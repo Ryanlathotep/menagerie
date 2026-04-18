@@ -62,29 +62,83 @@ export function OverworldHarvestedTile({ size, seed = 0 }: TileGraphicProps) {
   );
 }
 
-// ─── Tree (with tier support) ───
-export function OverworldTreeTile({ size, seed = 0, tier = 'oak' }: TileGraphicProps & { tier?: TreeTier }) {
+// ─── Tree (with tier support + auto-merging into a forest canopy) ───
+// When `fit` is supplied, the tile blends with same-type neighbors: trunks
+// shrink to make room for connecting canopy, and a "forest floor" patch
+// bleeds into open sides so groves of trees read as one continuous mass.
+export function OverworldTreeTile({ size, seed = 0, tier = 'oak', fit }: TileGraphicProps & { tier?: TreeTier; fit?: AutoTileFit }) {
   const r1 = seededRandom(seed);
   const r2 = seededRandom(seed + 1);
+  const r3 = seededRandom(seed + 2);
   const colors = TREE_TIER_COLORS[tier];
   const isElder = tier === 'elder_oak';
   const isMaple = tier === 'maple';
 
+  // Determine which sides have a same-type neighbor (canopy bleeds across).
+  let n = false, e = false, s = false, w = false;
+  if (fit) {
+    const opens = openSidesFromFit(fit);
+    n = opens.n; e = opens.e; s = opens.s; w = opens.w;
+  }
+  const anyNeighbor = n || e || s || w;
+  const neighborCount = (n ? 1 : 0) + (e ? 1 : 0) + (s ? 1 : 0) + (w ? 1 : 0);
+  // Heavily-surrounded tiles drop the trunk entirely and become "deep canopy"
+  // so the forest interior reads as a continuous green mass instead of a grid
+  // of repeated trees.
+  const isInterior = neighborCount >= 3;
+
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className="block">
       <rect width="24" height="24" fill="hsl(90 30% 50%)" opacity={0.15}/>
-      <rect x={isElder ? "9.5" : "10.5"} y={isElder ? "12" : "14"} width={isElder ? 5 : 3} height={isElder ? 9 : 7} rx={0.5} fill={colors.trunk} opacity={0.8}/>
-      <line x1="12" y1={isElder ? 12 : 14} x2="12" y2="21" stroke={INK.medium} strokeWidth={isElder ? 0.6 : 0.4} opacity={0.5}/>
-      <ellipse cx={12} cy={isElder ? 8 : 10} rx={isElder ? 9+r1 : 7+r1} ry={isElder ? 7+r2*0.5 : 6+r2*0.5} fill={colors.canopy} opacity={0.55}/>
-      <ellipse cx={10+r1*2} cy={(isElder ? 6 : 8)+r2} rx={isElder ? 6 : 5} ry={isElder ? 5 : 4} fill={colors.canopy2} opacity={0.45}/>
-      <ellipse cx={14+r2} cy={(isElder ? 7 : 9)+r1} rx={4.5} ry={3.5} fill={colors.canopy} opacity={0.4}/>
+      {/* Forest-floor wash that bleeds into adjacent forest tiles */}
+      {anyNeighbor && (
+        <rect
+          x={w ? -1 : 2} y={n ? -1 : 2}
+          width={(e ? 25 : 22) - (w ? -1 : 2)}
+          height={(s ? 25 : 22) - (n ? -1 : 2)}
+          fill={colors.canopy2} opacity={0.18} rx={1}
+        />
+      )}
+      {/* Trunk — hidden in deep interior so we don't get repeating sticks */}
+      {!isInterior && <>
+        <rect x={isElder ? "9.5" : "10.5"} y={isElder ? "12" : "14"} width={isElder ? 5 : 3} height={isElder ? 9 : 7} rx={0.5} fill={colors.trunk} opacity={0.8}/>
+        <line x1="12" y1={isElder ? 12 : 14} x2="12" y2="21" stroke={INK.medium} strokeWidth={isElder ? 0.6 : 0.4} opacity={0.5}/>
+      </>}
+      {/* Canopy lobes — extend toward each connected neighbor so adjacent
+          trees visually fuse. Lobe centers are pushed toward the tile edge
+          on the connecting side. */}
+      <ellipse
+        cx={12 + (e ? 2 : 0) - (w ? 2 : 0)}
+        cy={(isElder ? 8 : 10) + (s ? 2 : 0) - (n ? 2 : 0)}
+        rx={isElder ? 9+r1 : 7+r1}
+        ry={isElder ? 7+r2*0.5 : 6+r2*0.5}
+        fill={colors.canopy} opacity={0.6}
+      />
+      <ellipse cx={10+r1*2} cy={(isElder ? 6 : 8)+r2} rx={isElder ? 6 : 5} ry={isElder ? 5 : 4} fill={colors.canopy2} opacity={0.5}/>
+      <ellipse cx={14+r2} cy={(isElder ? 7 : 9)+r1} rx={4.5} ry={3.5} fill={colors.canopy} opacity={0.45}/>
+      {/* Side-bleed lobes: thick canopy patches that extend past the tile
+          edge on connected sides so seams disappear. */}
+      {n && <ellipse cx={11+r1*2} cy={-1} rx={6} ry={5} fill={colors.canopy} opacity={0.55}/>}
+      {s && <ellipse cx={12+r2*2} cy={25} rx={6} ry={5} fill={colors.canopy} opacity={0.55}/>}
+      {e && <ellipse cx={25} cy={10+r1*2} rx={5} ry={6} fill={colors.canopy} opacity={0.55}/>}
+      {w && <ellipse cx={-1} cy={11+r2*2} rx={5} ry={6} fill={colors.canopy} opacity={0.55}/>}
+      {/* Diagonal blob fillers for nicer corner blending when both axes connect */}
+      {n && e && <ellipse cx={22} cy={2} rx={5} ry={4} fill={colors.canopy2} opacity={0.5}/>}
+      {n && w && <ellipse cx={2} cy={2} rx={5} ry={4} fill={colors.canopy2} opacity={0.5}/>}
+      {s && e && <ellipse cx={22} cy={22} rx={5} ry={4} fill={colors.canopy2} opacity={0.5}/>}
+      {s && w && <ellipse cx={2} cy={22} rx={5} ry={4} fill={colors.canopy2} opacity={0.5}/>}
       {isMaple && <>
         <circle cx={8+r1*3} cy={7+r2*2} r={1.2} fill="hsl(25 80% 55%)" opacity={0.6}/>
         <circle cx={15+r2*2} cy={9+r1} r={1} fill="hsl(10 75% 50%)" opacity={0.5}/>
       </>}
       {isElder && <ellipse cx={12} cy={8} rx={10} ry={8} fill="hsl(160 40% 50%)" opacity={0.08}/>}
-      <ellipse cx={12} cy={isElder ? 8 : 10} rx={isElder ? 9+r1 : 7+r1} ry={isElder ? 7+r2*0.5 : 6+r2*0.5} stroke={INK.medium} strokeWidth={isElder ? 0.7 : 0.5} fill="none" opacity={0.5}/>
-      {tier !== 'oak' && (
+      {/* Outline only on isolated trees so forests feel like a soft mass */}
+      {!anyNeighbor && (
+        <ellipse cx={12} cy={isElder ? 8 : 10} rx={isElder ? 9+r1 : 7+r1} ry={isElder ? 7+r2*0.5 : 6+r2*0.5} stroke={INK.medium} strokeWidth={isElder ? 0.7 : 0.5} fill="none" opacity={0.5}/>
+      )}
+      {/* Tier badge stays only on edge tiles so the badge isn't repeated all
+          over a forest — interior tiles drop it. */}
+      {tier !== 'oak' && !isInterior && (
         <text x="22" y="5" fontSize="4" fill={INK.dark} opacity={0.6} textAnchor="end" fontWeight="bold">
           {isMaple ? '★' : '★★'}
         </text>
@@ -95,30 +149,52 @@ export function OverworldTreeTile({ size, seed = 0, tier = 'oak' }: TileGraphicP
   );
 }
 
-// ─── Rock (with tier support) ───
-export function OverworldRockTile({ size, seed = 0, tier = 'stone' }: TileGraphicProps & { tier?: StoneTier }) {
+// ─── Rock (with tier support + auto-merging into a mountain mass) ───
+export function OverworldRockTile({ size, seed = 0, tier = 'stone', fit }: TileGraphicProps & { tier?: StoneTier; fit?: AutoTileFit }) {
   const r1 = seededRandom(seed);
   const r2 = seededRandom(seed + 1);
   const colors = STONE_TIER_COLORS[tier];
   const tierIdx = ['stone', 'copper', 'iron', 'gold', 'mithril'].indexOf(tier);
 
+  let n = false, e = false, s = false, w = false;
+  if (fit) {
+    const opens = openSidesFromFit(fit);
+    n = opens.n; e = opens.e; s = opens.s; w = opens.w;
+  }
+  const anyNeighbor = n || e || s || w;
+  const neighborCount = (n ? 1 : 0) + (e ? 1 : 0) + (s ? 1 : 0) + (w ? 1 : 0);
+
+  // Inset the main rock body on closed sides; full-bleed on open sides so
+  // adjacent rocks fuse into a continuous ridge.
+  const left   = w ? -1 : 3;
+  const right  = e ? 25 : 21;
+  const top    = n ? -1 : 4;
+  const bottom = s ? 25 : 20;
+
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className="block">
       <rect width="24" height="24" fill="hsl(30 10% 60%)" opacity={0.15}/>
-      <ellipse cx={12} cy={13} rx={8+r1} ry={6+r2} fill={colors.main} opacity={0.5}/>
-      <ellipse cx={11+r1} cy={12+r2} rx={6} ry={4.5} fill={colors.highlight} opacity={0.35}/>
-      {tierIdx >= 1 && <>
+      {/* Solid rock mass — full-bleed on connected sides */}
+      <rect x={left} y={top} width={right - left} height={bottom - top} rx={3} fill={colors.main} opacity={0.55}/>
+      {/* Lighter highlight cap (offset inward) */}
+      <rect x={left + 1.5} y={top + 1.5} width={Math.max(0, right - left - 3)} height={Math.max(0, (bottom - top) * 0.55)} rx={2} fill={colors.highlight} opacity={0.35}/>
+      {/* Cracks and veins (interior only — busy rocks don't tile cleanly) */}
+      {neighborCount < 3 && tierIdx >= 1 && <>
         <path d={`M${7+r1*2} ${11+r2} L${12} ${14} L${16+r1} ${11+r2*2}`} stroke={colors.vein} strokeWidth={0.8} fill="none" opacity={0.6}/>
         <path d={`M${9+r2} ${15} L${14+r1} ${12}`} stroke={colors.vein} strokeWidth={0.6} fill="none" opacity={0.5}/>
       </>}
-      {tierIdx >= 3 && <>
+      {neighborCount < 3 && tierIdx >= 3 && <>
         <circle cx={9+r1*3} cy={10+r2*2} r={0.8} fill="white" opacity={0.6}/>
         <circle cx={14+r2*2} cy={12+r1} r={0.6} fill="white" opacity={0.5}/>
       </>}
       {tier === 'mithril' && <ellipse cx={12} cy={13} rx={9} ry={7} fill="hsl(200 60% 70%)" opacity={0.1}/>}
-      <path d={`M${8+r1*2} ${11+r2} L${12} ${13} L${15+r1} ${10+r2*2}`} stroke={INK.medium} strokeWidth={0.5} fill="none" opacity={0.5}/>
-      <ellipse cx={12} cy={13} rx={8+r1} ry={6+r2} stroke={INK.medium} strokeWidth={0.5} fill="none" opacity={0.45}/>
-      {tierIdx >= 1 && (
+      {/* Outline only on closed (cliff) edges so interiors merge seamlessly */}
+      {!n && <line x1={left} y1={top} x2={right} y2={top} stroke={INK.medium} strokeWidth={0.5} opacity={0.55}/>}
+      {!s && <line x1={left} y1={bottom} x2={right} y2={bottom} stroke={INK.medium} strokeWidth={0.5} opacity={0.55}/>}
+      {!w && <line x1={left} y1={top} x2={left} y2={bottom} stroke={INK.medium} strokeWidth={0.5} opacity={0.55}/>}
+      {!e && <line x1={right} y1={top} x2={right} y2={bottom} stroke={INK.medium} strokeWidth={0.5} opacity={0.55}/>}
+      {/* Tier badge only on edge tiles */}
+      {tierIdx >= 1 && neighborCount < 3 && (
         <text x="22" y="5" fontSize="4" fill={INK.dark} opacity={0.6} textAnchor="end" fontWeight="bold">
           {'★'.repeat(Math.min(tierIdx, 4))}
         </text>

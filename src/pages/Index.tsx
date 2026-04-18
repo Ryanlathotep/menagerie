@@ -2211,9 +2211,8 @@ function DungeonView({
                     <div />
                     <Button size="sm" className="h-9 text-base font-bold active:scale-95 p-0" onClick={() => handleMove('down')}>↓</Button>
                     <div />
-            </div>
-            </div>
-          </div>
+                  </div>
+                </div>
                 <div className="hidden sm:flex flex-col items-center justify-center px-2">
                   <p className="text-muted-foreground text-xs text-center mb-1">WASD / Arrows to move</p>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground justify-center">

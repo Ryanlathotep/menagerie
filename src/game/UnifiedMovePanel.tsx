@@ -450,6 +450,8 @@ export function UnifiedMovePanel({
                 inBattle={inBattle}
                 canUseOutsideCombat={canUseOutsideCombat(move)}
                 onUseMove={onUseMove ? () => handleMoveClick(move) : undefined}
+                onUseTier={onUseMove ? (tier, variant) => handleTierPillClick(move, tier, variant) : undefined}
+                onOpenTierSelector={onUseMove ? () => handleOpenTierSelector(move) : undefined}
                 keybind={monsterKeybinds[move.id]}
                 isAssigningKeybind={assigningKeybind === move.id}
                 onAssignKeybind={() => setAssigningKeybind(assigningKeybind === move.id ? null : move.id)}
@@ -485,6 +487,8 @@ interface UnifiedMoveCardProps {
   onDragEnd: () => void;
   onToggleHide: () => void;
   onUseMove?: () => void;
+  onUseTier?: (tier: import('./moveMastery').MoveTier, variant: import('./moveMastery').MoveVariant) => void;
+  onOpenTierSelector?: () => void;
   keybind?: string;
   isAssigningKeybind?: boolean;
   onAssignKeybind?: () => void;
@@ -508,6 +512,8 @@ function UnifiedMoveCard({
   onDragEnd,
   onToggleHide,
   onUseMove,
+  onUseTier,
+  onOpenTierSelector,
   keybind,
   isAssigningKeybind,
   onAssignKeybind,

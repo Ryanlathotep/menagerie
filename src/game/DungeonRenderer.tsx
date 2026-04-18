@@ -88,6 +88,7 @@ interface DungeonRendererProps {
   onTileHover?: (x: number, y: number) => void;
   onTileHoverEnd?: () => void;
   dungeonEntrance?: DungeonEntrance | null; // For rich header info (name/theme/best floor)
+  playerPickaxeTier?: PickaxeTier; // For mineable wall tooltips
 }
 export interface DungeonRendererHandle {
   scrollToPlayer: () => void;

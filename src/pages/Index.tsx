@@ -1992,6 +1992,7 @@ function DungeonView({
         onToggleHideMove={moveId => dispatch({ type: 'TOGGLE_HIDE_MOVE', moveId })}
         onOpenEquipment={() => setShowEquipment(true)}
         onPanelChange={setMenuOpen}
+        panelHostId="dungeon-bottom-panel-host"
         party={state.run?.party || []}
         activePartyIndex={state.run?.activePartyIndex || 0}
         onPartySwitch={handlePartySwitch}
@@ -2234,7 +2235,7 @@ function DungeonView({
                 </div>
               </div>
 
-              {/* Game log - shrinks to half-width when a menu panel is open so they sit side-by-side */}
+              {/* Game log - shares this bottom box with the open menu panel */}
               <div className={`${menuOpen ? 'sm:w-1/2' : 'flex-1'} min-w-0 p-2 bg-muted/30 rounded-lg border border-border/50 overflow-hidden flex flex-col transition-[width] duration-200`}>
                 <div className="flex items-center gap-1 mb-1 flex-shrink-0">
                   <ScrollText className="w-3 h-3 text-muted-foreground" />
@@ -2252,8 +2253,12 @@ function DungeonView({
                 </div>
               </div>
 
-              {/* Reserved space for the GameSidebar slide-in menu panel (rendered as fixed overlay aligned to the right half) */}
-              {menuOpen && <div className="hidden sm:block sm:w-1/2 flex-shrink-0" aria-hidden />}
+              {menuOpen && (
+                <div
+                  id="dungeon-bottom-panel-host"
+                  className="min-h-0 flex-1 sm:w-1/2 rounded-lg border border-border/50 bg-muted/30 overflow-hidden"
+                />
+              )}
             </div>
             </div>
           </div>

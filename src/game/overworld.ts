@@ -567,7 +567,11 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
         const enemy = getOverworldEnemy(state, tile.enemyId);
         if (enemy) return { type: 'enemy', enemy };
       }
-      return { type: 'blocked', reason: 'An enemy blocks your path' };
+      // Stale enemy tile (enemy was removed but tile not cleared) — self-heal and walk through.
+      setOverworldTile(state, newX, newY, { ...tile, type: 'grass', enemyId: undefined });
+      state.playerPosition = { x: newX, y: newY };
+      updateVisibility(state);
+      return { type: 'moved' };
     }
     
     case 'building': {

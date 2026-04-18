@@ -783,3 +783,136 @@ export function findNearestEmptyOverworldTile(
   // Fallback: origin even if not strictly standable
   return { x: originX, y: originY };
 }
+
+// ============= SAVE / LOAD SLIMMING =============
+// Chunks contain mostly regenerable data (terrain types, enemies). Storing
+// every explored chunk in localStorage blows past the ~5MB quota and silently
+// drops the entire save — including player buildings. We strip chunks before
+// save and regenerate them on load. Anything the player can modify
+// (water-fills, harvested grass, depleted resources, fog of war) is captured
+// in `tileOverrides` so it survives the round-trip.
+
+const CHUNK_SIZE_LOCAL = CHUNK_SIZE;
+
+// Compute the "default" tile a generator would have produced at (worldX, worldY).
+// We then compare against the live chunk tile and persist a delta if they differ.
+// To keep the helper simple and side-effect free, we re-run the same chunk
+// generator in a throwaway state for that single chunk.
+function generateChunkTilesForCompare(
+  cx: number, cy: number,
+  dungeonEntrances: Record<string, DungeonEntrance>,
+  nests: Record<string, NestState>,
+  resourceUpgrades: Record<string, ResourceUpgradeState>,
+): OverworldTile[][] {
+  const difficulty = getDifficulty(cx * CHUNK_SIZE_LOCAL, cy * CHUNK_SIZE_LOCAL);
+  // Pass *copies* of the records so the comparison run doesn't mutate live state.
+  const fakeEntrances = { ...dungeonEntrances };
+  const fakeNests = { ...nests };
+  const fakeUpgrades = { ...resourceUpgrades };
+  const chunk = generateChunk(cx, cy, difficulty, fakeEntrances, fakeNests, fakeUpgrades);
+  return chunk.tiles;
+}
+
+function tilesDiffer(a: OverworldTile, b: OverworldTile): boolean {
+  if (a.type !== b.type) return true;
+  if ((a.harvested ?? false) !== (b.harvested ?? false)) return true;
+  if ((a.resourceAmount ?? -1) !== (b.resourceAmount ?? -1)) return true;
+  if ((a.treeTier ?? '') !== (b.treeTier ?? '')) return true;
+  if ((a.stoneTier ?? '') !== (b.stoneTier ?? '')) return true;
+  if ((a.playerBuildingId ?? '') !== (b.playerBuildingId ?? '')) return true;
+  if ((a.dungeonId ?? '') !== (b.dungeonId ?? '')) return true;
+  if ((a.nestId ?? '') !== (b.nestId ?? '')) return true;
+  if ((a.buildingType ?? '') !== (b.buildingType ?? '')) return true;
+  // We track explored separately so we don't blow up override count on every step.
+  return false;
+}
+
+// Strip chunks from the overworld state for compact serialization.
+// Returns a NEW object — does not mutate input. Captures the bare minimum
+// (tileOverrides + explored set) needed to faithfully restore on load.
+export function slimOverworldForSave(state: OverworldState): OverworldState {
+  const overrides: Record<string, OverworldTile> = {};
+  const explored: string[] = [];
+
+  for (const [chunkKey, chunk] of Object.entries(state.chunks)) {
+    const [cxStr, cyStr] = chunkKey.split(',');
+    const cx = parseInt(cxStr);
+    const cy = parseInt(cyStr);
+    const defaults = generateChunkTilesForCompare(cx, cy, state.dungeonEntrances || {}, state.nests || {}, state.resourceUpgrades || {});
+
+    for (let y = 0; y < CHUNK_SIZE_LOCAL; y++) {
+      for (let x = 0; x < CHUNK_SIZE_LOCAL; x++) {
+        const tile = chunk.tiles[y]?.[x];
+        if (!tile) continue;
+        const worldX = cx * CHUNK_SIZE_LOCAL + x;
+        const worldY = cy * CHUNK_SIZE_LOCAL + y;
+        const key = `${worldX},${worldY}`;
+        if (tile.explored) explored.push(key);
+        const def = defaults[y]?.[x];
+        if (!def || tilesDiffer(tile, def)) {
+          // Strip transient `visible` flag (recomputed on load via updateVisibility).
+          const { visible, ...rest } = tile;
+          overrides[key] = { ...rest, visible: false };
+        }
+      }
+    }
+  }
+
+  return {
+    ...state,
+    chunks: {}, // Stripped — regenerated on load
+    tileOverrides: { ...(state.tileOverrides || {}), ...overrides },
+    // Stash the explored set inside tileOverrides via a sentinel key so we
+    // don't need to widen the SaveData type. We use an unlikely coord string.
+    // Stored separately as __explored to keep restore logic clean.
+    ...(explored.length > 0 ? { __exploredTiles: explored } as any : {}),
+  } as OverworldState;
+}
+
+// Re-hydrate an overworld state coming out of slimOverworldForSave.
+// Generates chunks around the player, applies tile overrides, and re-marks
+// explored tiles. Safe to call on any state (no-op if chunks already exist).
+export function expandOverworldFromSave(state: OverworldState): OverworldState {
+  // Make sure base maps exist.
+  if (!state.chunks) state.chunks = {};
+  if (!state.dungeonEntrances) state.dungeonEntrances = {};
+  if (!state.playerBuildings) state.playerBuildings = [];
+  if (!state.nests) state.nests = {};
+  if (!state.roads) state.roads = {};
+  if (!state.resourceUpgrades) state.resourceUpgrades = {};
+
+  // Generate the chunk around the player so getOverworldTile/setOverworldTile work.
+  ensureChunksLoaded(state, state.playerPosition.x, state.playerPosition.y);
+
+  // Apply per-tile overrides — but only for chunks that are loaded. Overrides
+  // for unloaded chunks stay in the map and will apply when those chunks load.
+  const overrides = state.tileOverrides || {};
+  for (const [coord, tile] of Object.entries(overrides)) {
+    const [xStr, yStr] = coord.split(',');
+    const wx = parseInt(xStr);
+    const wy = parseInt(yStr);
+    const cx = Math.floor(wx / CHUNK_SIZE_LOCAL);
+    const cy = Math.floor(wy / CHUNK_SIZE_LOCAL);
+    if (state.chunks[`${cx},${cy}`]) {
+      setOverworldTile(state, wx, wy, { ...tile });
+    }
+  }
+
+  // Restore explored flags
+  const explored = (state as any).__exploredTiles as string[] | undefined;
+  if (Array.isArray(explored)) {
+    for (const key of explored) {
+      const [xStr, yStr] = key.split(',');
+      const wx = parseInt(xStr);
+      const wy = parseInt(yStr);
+      const cx = Math.floor(wx / CHUNK_SIZE_LOCAL);
+      const cy = Math.floor(wy / CHUNK_SIZE_LOCAL);
+      if (state.chunks[`${cx},${cy}`]) {
+        const tile = getOverworldTile(state, wx, wy);
+        if (tile) tile.explored = true;
+      }
+    }
+  }
+
+  return state;
+}

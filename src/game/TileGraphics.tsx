@@ -297,6 +297,26 @@ export function TerrainTile({
   );
 }
 
+// Convert an AutoTileFit (shape + rotation) back into NESW open-flags.
+// Kept local to avoid coupling to the overworld file. Mirrors the logic
+// in OverworldTileGraphics.tsx#openSidesFromFit.
+function openSidesFromTerrainFit(fit: AutoTileFit): { n: boolean; e: boolean; s: boolean; w: boolean } {
+  const rotateNESW = (n: boolean, e: boolean, s: boolean, w: boolean, deg: number) => {
+    const steps = ((deg / 90) % 4 + 4) % 4;
+    let arr = [n, e, s, w];
+    for (let i = 0; i < steps; i++) arr = [arr[3], arr[0], arr[1], arr[2]]; // CW
+    return { n: arr[0], e: arr[1], s: arr[2], w: arr[3] };
+  };
+  switch (fit.shape) {
+    case 'cross':    return { n: true, e: true, s: true, w: true };
+    case 'single':   return { n: false, e: false, s: false, w: false };
+    case 'straight': return rotateNESW(false, true, false, true, fit.rotation);
+    case 'corner':   return rotateNESW(true, true, false, false, fit.rotation);
+    case 't':        return rotateNESW(false, true, true, true, fit.rotation);
+    case 'end':      return rotateNESW(false, true, false, false, fit.rotation);
+  }
+}
+
 // Stairs tile
 export function StairsTile({ size, seed = 0 }: TileGraphicProps) {
   return (

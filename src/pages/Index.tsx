@@ -141,13 +141,18 @@ function MainMenu() {
   };
   
   const handleBuyItem = (item: InventoryItem, price: number) => {
-    dispatch({ type: 'SPEND_TOWN_GOLD', amount: price });
+    // Creative mode: admins skip the gold cost entirely.
+    if (!isCreativeMode()) {
+      dispatch({ type: 'SPEND_TOWN_GOLD', amount: price });
+    }
     dispatch({ type: 'STORE_ITEM', item });
     toast.success(`Bought ${item.name}!`);
   };
   
   const handleBuyEquipment = (item: import('@/game/equipment').EquipmentItem, price: number) => {
-    dispatch({ type: 'SPEND_TOWN_GOLD', amount: price });
+    if (!isCreativeMode()) {
+      dispatch({ type: 'SPEND_TOWN_GOLD', amount: price });
+    }
     dispatch({ type: 'STORE_EQUIPMENT', item });
     toast.success(`Bought ${item.name}!`);
   };
@@ -293,7 +298,7 @@ function MainMenu() {
       
       {showShop && (
         <TownShop
-          gold={state.saveData.gold || 0}
+          gold={isCreativeMode() ? Number.MAX_SAFE_INTEGER : (state.saveData.gold || 0)}
           storedEquipment={state.saveData.storedEquipment || []}
           onBuyItem={handleBuyItem}
           onBuyEquipment={handleBuyEquipment}
@@ -1275,11 +1280,14 @@ function DungeonView({
   }, [dispatch, state.run?.party]);
   const handleBuyItem = (item: LootItem) => {
     const price = item.value * 1.5; // Shop markup
-    if (state.run && state.run.gold >= price) {
-      dispatch({
-        type: 'ADD_GOLD',
-        amount: -Math.floor(price)
-      });
+    const creative = isCreativeMode();
+    if (state.run && (creative || state.run.gold >= price)) {
+      if (!creative) {
+        dispatch({
+          type: 'ADD_GOLD',
+          amount: -Math.floor(price)
+        });
+      }
       const lootItem: InventoryItem = {
         id: item.id,
         name: item.name,
@@ -1297,11 +1305,14 @@ function DungeonView({
   };
   
   const handleBuyEquipment = (item: EquipmentItem, price: number) => {
-    if (state.run && state.run.gold >= price) {
-      dispatch({
-        type: 'ADD_GOLD',
-        amount: -price
-      });
+    const creative = isCreativeMode();
+    if (state.run && (creative || state.run.gold >= price)) {
+      if (!creative) {
+        dispatch({
+          type: 'ADD_GOLD',
+          amount: -price
+        });
+      }
       dispatch({
         type: 'ADD_EQUIPMENT',
         item
@@ -2065,7 +2076,7 @@ function DungeonView({
       />
       
       {showShop && <ShopView 
-        gold={state.run?.gold || 0} 
+        gold={isCreativeMode() ? Number.MAX_SAFE_INTEGER : (state.run?.gold || 0)} 
         floor={dungeon.floor}
         onBuy={handleBuyItem} 
         onBuyEquipment={handleBuyEquipment}

@@ -27,6 +27,10 @@ export interface PlayerBuilding {
   growthProgress?: number;       // Steps until harvest (0 = ready)
   harvestReady?: boolean;
   harvestOutput?: { materialId: string; quantity: number }[];
+  // Gate-specific (only meaningful when wall is acting as a gate):
+  // true → "inside" face is flipped to the opposite side of the road axis.
+  // Defaults to auto-orientation toward the home base when undefined.
+  gateFlipped?: boolean;
 }
 
 // ============= BUILDING DEFINITIONS =============

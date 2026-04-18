@@ -245,7 +245,7 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
               onMouseLeave={() => onTileHoverEnd?.()}
             >
               {/* Background tile graphic */}
-              {renderTileGraphic(tile, tileSize, tileSeed, dungeonDepth, playerBuilding, nestData)}
+              {renderTileGraphic(tile, tileSize, tileSeed, worldX, worldY, overworld, dungeonDepth, playerBuilding, nestData)}
               {/* Overlay: player or enemy sprite */}
               {isPlayer ? (
                 <div className="absolute inset-0 flex items-center justify-center">

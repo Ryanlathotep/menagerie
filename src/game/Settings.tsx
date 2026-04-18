@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 import { Settings as SettingsIcon, X, Download, Upload, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminRole } from '@/hooks/useAdminRole';
@@ -227,6 +228,47 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             <p className="text-xs text-muted-foreground">
               Time between steps when auto-running (lower = faster)
             </p>
+          </div>
+
+          {/* Overworld Direction Arrows */}
+          <div className="space-y-3 pt-4 border-t">
+            <Label className="text-base">Overworld Arrows</Label>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Edge-of-screen arrows pointing toward off-screen landmarks.
+            </p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🏠</span>
+                <Label htmlFor="arrow-home" className="cursor-pointer">Starting Town / Home</Label>
+              </div>
+              <Switch
+                id="arrow-home"
+                checked={settings.showHomeArrow}
+                onCheckedChange={(v) => updateSetting('showHomeArrow', v)}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🗼</span>
+                <Label htmlFor="arrow-home-tower" className="cursor-pointer">Tower of the Infinite</Label>
+              </div>
+              <Switch
+                id="arrow-home-tower"
+                checked={settings.showHomeTowerArrow}
+                onCheckedChange={(v) => updateSetting('showHomeTowerArrow', v)}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🏰</span>
+                <Label htmlFor="arrow-majors" className="cursor-pointer">Major Dungeon Towers</Label>
+              </div>
+              <Switch
+                id="arrow-majors"
+                checked={settings.showMajorDungeonArrows}
+                onCheckedChange={(v) => updateSetting('showMajorDungeonArrows', v)}
+              />
+            </div>
           </div>
 
           {/* Backup/Restore Section */}

@@ -132,7 +132,28 @@ export function generateDungeon(floor: number, theme?: DungeonTheme, startingFlo
     }
   }
 
-  // Place stairs in last room
+  // Convert ~35% of internal walls that border a floor into mineable walls.
+  // Skip the outer border (always bedrock) so dungeons can't be holed open
+  // to nothing. Mineable walls cluster naturally on room edges because
+  // those are the only walls touching open floors.
+  for (let y = 1; y < DUNGEON_HEIGHT - 1; y++) {
+    for (let x = 1; x < DUNGEON_WIDTH - 1; x++) {
+      if (tiles[y][x].type !== 'wall') continue;
+      // Only convert walls that touch at least one floor tile.
+      const neighbors = [
+        tiles[y - 1]?.[x], tiles[y + 1]?.[x],
+        tiles[y]?.[x - 1], tiles[y]?.[x + 1],
+      ];
+      const touchesFloor = neighbors.some(n => n && n.type === 'floor');
+      if (!touchesFloor) continue;
+      if (Math.random() < 0.35) {
+        const wallTier = getWallTierForFloor(floor);
+        tiles[y][x].type = 'mineable_wall';
+        tiles[y][x].wallTier = wallTier;
+        tiles[y][x].wallHits = 0;
+      }
+    }
+  }
   if (rooms.length > 0) {
     const lastRoom = rooms[rooms.length - 1];
     const stairsX = lastRoom.x + Math.floor(lastRoom.width / 2);

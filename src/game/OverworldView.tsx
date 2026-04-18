@@ -1132,7 +1132,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     window.addEventListener('touchend', onEnd);
   }, [controlsBarHeight]);
   
-  const dungeonBottomStyle = { bottom: `${sidebarHeight}px` };
+  const dungeonBottomStyle = {
+    bottom: `${sidebarHeight}px`,
+    ['--menagerie-bar-h' as string]: `${controlsBarHeight}px`,
+    ['--menagerie-sidebar-h' as string]: `${sidebarHeight}px`,
+  } as React.CSSProperties;
   
   return <>
     <GameSidebar 

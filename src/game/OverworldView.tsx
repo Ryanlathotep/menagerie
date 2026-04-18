@@ -102,6 +102,21 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     if (!ow.nests) ow.nests = {};
     if (!ow.roads) ow.roads = {};
     ensureChunksLoaded(ow, ow.playerPosition.x, ow.playerPosition.y);
+    // Stamp themed tower tiles onto any already-loaded chunks. Needed for
+    // legacy saves whose chunks were generated before towers were placed.
+    for (const id in ow.dungeonEntrances) {
+      const d = ow.dungeonEntrances[id];
+      if (!d || !d.category || d.category === 'procedural') continue;
+      const existing = getOverworldTile(ow, d.worldX, d.worldY);
+      if (existing && existing.type !== 'dungeon_entrance') {
+        setOverworldTile(ow, d.worldX, d.worldY, {
+          type: 'dungeon_entrance',
+          explored: existing.explored,
+          visible: existing.visible,
+          dungeonId: id,
+        });
+      }
+    }
     applyRoadsToChunks(ow);
     updateVisibility(ow);
     return ow;

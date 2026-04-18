@@ -271,7 +271,9 @@ export interface Move {
 }
 
 // ============= DUNGEON =============
-export type TileType = 'floor' | 'wall' | 'door' | 'stairs' | 'trap' | 'treasure' | 'enemy' | 'player' | 'shop' | 'terrain' | 'plant' | 'elevator';
+// 'wall' = bedrock (never mineable). 'mineable_wall' = breakable with a Pickaxe;
+// see `wallTier` and `wallHits` on DungeonTile for hardness/progress.
+export type TileType = 'floor' | 'wall' | 'mineable_wall' | 'door' | 'stairs' | 'trap' | 'treasure' | 'enemy' | 'player' | 'shop' | 'terrain' | 'plant' | 'elevator';
 export type TrapType = 'spike' | 'poison' | 'alarm';
 export type PlantType = 'healing_herb' | 'stamina_root' | 'antidote_leaf' | 'mana_blossom' | 'fire_pepper' | 'ice_mint' | 'revive_moss' | 'golden_ginseng' | 'phoenix_flower' | 'panacea_petal' | 'miracle_lotus';
 
@@ -293,6 +295,9 @@ export interface DungeonTile {
   terrainType?: import('./terrain').TerrainType; // For terrain hazard tiles
   plantType?: PlantType; // For harvestable plant tiles
   harvested?: boolean; // Whether the plant has been harvested
+  // Mineable wall metadata (only set when type === 'mineable_wall')
+  wallTier?: import('./tools').MineableWallTier; // 1=Cavestone, 2=Deepstone, 3=Coreshard
+  wallHits?: number; // Accumulated hits with a Pickaxe; breaks at hitsToBreak()
 }
 
 export interface Position {
@@ -629,6 +634,7 @@ export interface SaveData {
   unlockedRecipes: string[];      // Recipe IDs unlocked by bringing equipment back
   overworldState?: import('./overworld').OverworldState; // Persisted overworld
   dungeonEntrances: Record<string, DungeonEntrance>; // Persistent dungeon data
+  tools?: import('./tools').PlayerTools; // Singleton upgradeable tools (pickaxe, etc.)
 }
 
 export interface GameState {

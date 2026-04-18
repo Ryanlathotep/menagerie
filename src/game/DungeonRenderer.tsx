@@ -10,6 +10,7 @@ import { MatchupIndicator } from './MatchupIndicator';
 import { 
   FloorTile, 
   WallTile, 
+  MineableWallTile,
   TerrainTile, 
   StairsTile, 
   TreasureTile, 
@@ -186,6 +187,25 @@ function Tile({
       <div className={`flex items-center justify-center overflow-hidden ${pathOverlayClass}`} style={tileStyle}>
         {tile.visible ? (
           <WallTile size={tileSize} seed={tileSeed} />
+        ) : (
+          <div className="w-full h-full bg-tile-wall opacity-60" />
+        )}
+      </div>
+    );
+  }
+
+  // Mineable wall — tier-tinted with ore veins and crack overlay for hits.
+  if (tile.type === 'mineable_wall' && tile.wallTier) {
+    return (
+      <div className={`flex items-center justify-center overflow-hidden ${pathOverlayClass}`} style={tileStyle} onClick={onClick}>
+        {tile.visible ? (
+          <MineableWallTile
+            size={tileSize}
+            seed={tileSeed}
+            tier={tile.wallTier}
+            hits={tile.wallHits || 0}
+            hitsNeeded={3}
+          />
         ) : (
           <div className="w-full h-full bg-tile-wall opacity-60" />
         )}

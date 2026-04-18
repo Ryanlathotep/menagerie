@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getComboId, UnlockedMonster, InventoryItem, MonsterStats, Monster, Position } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
-import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, hasVisibleEnemy, LOOT_TABLE } from '@/game/dungeon';
+import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, hasVisibleEnemy, LOOT_TABLE, mineWall, mineableWallName } from '@/game/dungeon';
+import { PICKAXE_TIERS, hitsToBreak } from '@/game/tools';
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScrollText } from 'lucide-react';
@@ -822,7 +823,39 @@ function DungeonView({
   const handleMove = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
     if (!dungeon || !state.run) return;
     const result = movePlayer(dungeon, direction);
-    
+
+    // Mining: bumped into a mineable wall. If the player owns a strong enough
+    // pickaxe, apply a hit (consumes the turn). Otherwise show a hint toast.
+    if (result.mineableBump) {
+      const pickaxeTier = state.saveData.tools?.pickaxe;
+      const wallTier = result.mineableBump.tier;
+      const wallName = mineableWallName(wallTier);
+      if (!pickaxeTier) {
+        toast.info(`This is ${wallName}. You need a Pickaxe to mine it.`);
+        return;
+      }
+      const needed = hitsToBreak(wallTier, pickaxeTier);
+      if (!isFinite(needed)) {
+        toast.info(`Your ${PICKAXE_TIERS[pickaxeTier].name} is too weak for ${wallName}.`);
+        return;
+      }
+      const mineResult = mineWall(dungeon, result.mineableBump.x, result.mineableBump.y, pickaxeTier);
+      if (!mineResult) return;
+      dispatch({ type: 'SET_DUNGEON', dungeon: mineResult.dungeon });
+      if (mineResult.broken && mineResult.drop) {
+        dispatch({
+          type: 'ADD_MATERIAL',
+          materialId: mineResult.drop.materialId,
+          quantity: mineResult.drop.quantity,
+        });
+        addLog(`⛏️ Mined ${wallName}! +${mineResult.drop.quantity} ${wallName}`, 'loot');
+      } else {
+        addLog(`⛏️ Chipped ${wallName} (${mineResult.hits}/${mineResult.hitsNeeded})`, 'system');
+      }
+      return;
+    }
+
+
     // If not blocked, apply minor HP and Stamina regeneration to ALL conscious party members
     if (!result.blocked) {
       // Regenerate active monster

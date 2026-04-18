@@ -17,6 +17,7 @@ import {
   createAllThemedTowers,
 } from './types';
 import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot, dismantleEquipment, getRecipeFromEquipment, getConsumableRecipeFromItem } from './equipment';
+import type { PickaxeTier } from './tools';
 import { xpToNextLevel } from './combat';
 import { calculateStats } from './utils';
 import { findNearestEmptyOverworldTile, slimOverworldForSave, expandOverworldFromSave } from './overworld';
@@ -44,6 +45,7 @@ const DEFAULT_SAVE_DATA: SaveData = {
   storedItems: [],            // Town item storage
   unlockedRecipes: [],        // Unlocked crafting recipes
   dungeonEntrances: createAllThemedTowers(), // Tower of the Infinite + element/class/species towers
+  tools: {},                  // Singleton tools (pickaxe, etc.) - undefined until crafted
 };
 
 // Initial game state
@@ -109,7 +111,9 @@ type GameAction =
   | { type: 'SET_PARTY_EFFECTS'; partyIndex: number; effects: PartyEffects }
   | { type: 'CLEAR_ALL_PARTY_EFFECTS' }
   // Overworld
-  | { type: 'UPDATE_OVERWORLD'; overworld: import('./overworld').OverworldState };
+  | { type: 'UPDATE_OVERWORLD'; overworld: import('./overworld').OverworldState }
+  // Tools (singleton, upgradeable in place — sets pickaxe to a specific tier)
+  | { type: 'SET_PICKAXE_TIER'; tier: PickaxeTier };
 
 // Reducer
 function gameReducer(state: GameState, action: GameAction): GameState {
@@ -834,6 +838,20 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         saveData: {
           ...state.saveData,
           materials: updatedMaterials,
+        },
+      };
+
+    // Singleton tool upgrade — sets the pickaxe to a specific tier (replaces
+    // any previous tier). Materials are spent separately via USE_MATERIALS.
+    case 'SET_PICKAXE_TIER':
+      return {
+        ...state,
+        saveData: {
+          ...state.saveData,
+          tools: {
+            ...(state.saveData.tools || {}),
+            pickaxe: action.tier,
+          },
         },
       };
     

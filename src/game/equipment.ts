@@ -647,6 +647,12 @@ export interface CraftingMaterial {
 }
 
 export const CRAFTING_MATERIALS: CraftingMaterial[] = [
+  // ============= DUNGEON STONES (mined from dungeon walls only) =============
+  // Tiered hardness; feed into pickaxe upgrades and future dungeon-themed gear.
+  { id: 'cavestone', name: 'Cavestone', type: 'ore', rarity: 'common', icon: '🪨', value: 4, description: 'Soft stone chipped from shallow dungeon walls.' },
+  { id: 'deepstone', name: 'Deepstone', type: 'ore', rarity: 'uncommon', icon: '🗿', value: 14, description: 'Dense stone found in the deeper layers of dungeons.' },
+  { id: 'coreshard', name: 'Coreshard', type: 'ore', rarity: 'rare', icon: '💎', value: 38, description: 'A glittering shard from the dungeon\'s core. Used for legendary tools.' },
+
   // ============= BASIC ORES =============
   { id: 'iron_ore', name: 'Iron Ore', type: 'ore', rarity: 'common', icon: '🪨', value: 5 },
   { id: 'copper_ore', name: 'Copper Ore', type: 'ore', rarity: 'common', icon: '🟤', value: 4, description: 'A soft, malleable ore useful for basic crafting.' },

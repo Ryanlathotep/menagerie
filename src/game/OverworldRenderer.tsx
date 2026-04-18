@@ -240,6 +240,15 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
               {tile.type === 'player_building' && playerBuilding?.type === 'farm' && playerBuilding.harvestReady && (
                 <div className="absolute inset-0 ring-2 ring-yellow-400 animate-pulse pointer-events-none" />
               )}
+              {/* AoE / area-of-effect shading — drawn on top so it's clearly visible.
+                  Center (hovered) tile gets a slightly darker red so it stands out. */}
+              {isAffected && (
+                <div
+                  className={`absolute inset-0 pointer-events-none ${
+                    isHovered ? 'bg-red-600/55' : 'bg-red-500/40'
+                  }`}
+                />
+              )}
             </div>
           );
 

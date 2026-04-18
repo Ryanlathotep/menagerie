@@ -26,7 +26,7 @@ import {
   ConsumableRecipe,
 } from './equipment';
 import { isCreativeMode, onCreativeModeChange } from './creativeMode';
-import { useEffect, useState as useStateReact } from 'react';
+import { useEffect } from 'react';
 
 interface MaterialInventory {
   [materialId: string]: number;

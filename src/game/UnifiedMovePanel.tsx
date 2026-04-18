@@ -88,6 +88,19 @@ export function UnifiedMovePanel({
   const [assigningKeybind, setAssigningKeybind] = useState<string | null>(null); // moveId being assigned
   const monsterComboId = `${monster.species}_${monster.element}_${monster.class}`;
   const monsterKeybinds = getMonsterKeybinds(keybindData, monsterComboId);
+
+  // Resolve external slot host (for rendering sort/filter controls in the panel header)
+  const [controlsHost, setControlsHost] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    if (!controlsSlotId || typeof document === 'undefined') {
+      setControlsHost(null);
+      return;
+    }
+    const find = () => setControlsHost(document.getElementById(controlsSlotId));
+    find();
+    const raf = requestAnimationFrame(find);
+    return () => cancelAnimationFrame(raf);
+  }, [controlsSlotId]);
   
   // Persist sort/filter changes
   const handleSortChange = (option: MoveSortOption) => {
@@ -359,13 +372,25 @@ export function UnifiedMovePanel({
 
   return (
     <div className="space-y-3">
-      {/* Sort and Filter Controls */}
-      <MoveSortFilter
-        sortOption={sortOption}
-        filters={filters}
-        onSortChange={handleSortChange}
-        onFilterChange={handleFilterChange}
-      />
+      {/* Sort and Filter Controls — render inline if no slot host found, else portal them */}
+      {controlsHost
+        ? createPortal(
+            <MoveSortFilter
+              sortOption={sortOption}
+              filters={filters}
+              onSortChange={handleSortChange}
+              onFilterChange={handleFilterChange}
+            />,
+            controlsHost,
+          )
+        : (
+          <MoveSortFilter
+            sortOption={sortOption}
+            filters={filters}
+            onSortChange={handleSortChange}
+            onFilterChange={handleFilterChange}
+          />
+        )}
       
       {/* Visible Moves */}
       <div 

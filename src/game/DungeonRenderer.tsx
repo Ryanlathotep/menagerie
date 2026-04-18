@@ -83,6 +83,7 @@ interface DungeonRendererProps {
   hoveredTile?: { x: number; y: number } | null;
   onTileHover?: (x: number, y: number) => void;
   onTileHoverEnd?: () => void;
+  dungeonEntrance?: DungeonEntrance | null; // For rich header info (name/theme/best floor)
 }
 export interface DungeonRendererHandle {
   scrollToPlayer: () => void;
@@ -567,6 +568,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   hoveredTile,
   onTileHover,
   onTileHoverEnd,
+  dungeonEntrance,
 }, ref) => {
   // Calculate tile size based on zoom (base size is 28px at 100%)
   const baseTileSize = 28;

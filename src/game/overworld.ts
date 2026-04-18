@@ -183,7 +183,17 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
         continue;
       }
       
-      // Dungeon entrance (procedural or legacy)
+      // Themed dungeon tower at this exact world position?
+      // (Tower of the Infinite + element/class/species towers all live on the map.)
+      const themedTowerId = findThemedTowerAt(dungeonEntrances, worldX, worldY);
+      if (themedTowerId) {
+        // Discovered by default so the main-menu list & arrows still know about it,
+        // but we don't reveal the tile until the player walks within sight.
+        row.push({ type: 'dungeon_entrance', explored: false, visible: false, dungeonId: themedTowerId });
+        continue;
+      }
+
+      // Procedural dungeon entrance (deterministic hash placement).
       if (isDungeonEntranceAt(worldX, worldY)) {
         const dungeonId = `dungeon_${worldX}_${worldY}`;
         if (!dungeonEntrances[dungeonId]) {

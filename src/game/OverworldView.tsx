@@ -429,7 +429,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     }
     
     const config = getAttackConfig(targetingMove);
-    const affected = getOverworldAffectedTiles(overworld.playerPosition, { x: worldX, y: worldY }, config);
+    const affected = getOverworldAffectedTiles(overworld.playerPosition, { x: worldX, y: worldY }, config, overworld);
     
     const staminaCost = targetingMove.staminaCost || 0;
     const maxSta = monster.stats.stamina ?? 50;

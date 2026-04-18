@@ -132,28 +132,66 @@ export function generateDungeon(floor: number, theme?: DungeonTheme, startingFlo
     }
   }
 
-  // Convert ~35% of internal walls that border a floor into mineable walls.
-  // Skip the outer border (always bedrock) so dungeons can't be holed open
-  // to nothing. Mineable walls cluster naturally on room edges because
-  // those are the only walls touching open floors.
-  for (let y = 1; y < DUNGEON_HEIGHT - 1; y++) {
-    for (let x = 1; x < DUNGEON_WIDTH - 1; x++) {
-      if (tiles[y][x].type !== 'wall') continue;
-      // Only convert walls that touch at least one floor tile.
-      const neighbors = [
-        tiles[y - 1]?.[x], tiles[y + 1]?.[x],
-        tiles[y]?.[x - 1], tiles[y]?.[x + 1],
-      ];
-      const touchesFloor = neighbors.some(n => n && n.type === 'floor');
-      if (!touchesFloor) continue;
-      if (Math.random() < 0.35) {
-        const wallTier = getWallTierForFloor(floor);
-        tiles[y][x].type = 'mineable_wall';
-        tiles[y][x].wallTier = wallTier;
-        tiles[y][x].wallHits = 0;
+  // ===== Mazes-within-mazes wall layer =====
+  // Players are NEVER permanently walled in. Bedrock is reserved for tiny
+  // structural pillars only; everything else (including the outer border)
+  // is mineable, with hardness scaling by distance from the nearest open
+  // floor. Close to rooms = Cavestone (soft); middle bands = Deepstone;
+  // deep pockets and the outer frame = Coreshard (toughest mineable —
+  // slows outward expansion without ever blocking it).
+
+  // BFS distance from any floor tile.
+  const dist: number[][] = Array(DUNGEON_HEIGHT).fill(null).map(() =>
+    Array(DUNGEON_WIDTH).fill(Infinity)
+  );
+  const bfsQueue: { x: number; y: number }[] = [];
+  for (let y = 0; y < DUNGEON_HEIGHT; y++) {
+    for (let x = 0; x < DUNGEON_WIDTH; x++) {
+      if (tiles[y][x].type === 'floor') {
+        dist[y][x] = 0;
+        bfsQueue.push({ x, y });
       }
     }
   }
+  while (bfsQueue.length > 0) {
+    const { x, y } = bfsQueue.shift()!;
+    const d = dist[y][x];
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || nx >= DUNGEON_WIDTH || ny < 0 || ny >= DUNGEON_HEIGHT) continue;
+      if (dist[ny][nx] <= d + 1) continue;
+      dist[ny][nx] = d + 1;
+      bfsQueue.push({ x: nx, y: ny });
+    }
+  }
+
+  const pickTier = (d: number, isBorder: boolean): MineableWallTier => {
+    if (isBorder) return 3;          // outer frame: always toughest mineable
+    if (d <= 1) return 1;            // direct room edge: Cavestone
+    if (d <= 3) return Math.random() < 0.7 ? 1 : 2;
+    if (d <= 5) return Math.random() < 0.5 ? 2 : 3;
+    return 3;                        // deep pockets: Coreshard
+  };
+
+  for (let y = 0; y < DUNGEON_HEIGHT; y++) {
+    for (let x = 0; x < DUNGEON_WIDTH; x++) {
+      if (tiles[y][x].type !== 'wall') continue;
+      const isBorder = x === 0 || y === 0 || x === DUNGEON_WIDTH - 1 || y === DUNGEON_HEIGHT - 1;
+      const d = dist[y][x];
+
+      // Tiny interior bedrock pillars (~6%) for maze backbone. Never on the
+      // border (must stay expandable) and never adjacent to a floor (so a
+      // single bedrock tile can't seal off a room).
+      if (!isBorder && d > 2 && Math.random() < 0.06) continue;
+
+      const tier = pickTier(d, isBorder);
+      tiles[y][x].type = 'mineable_wall';
+      tiles[y][x].wallTier = tier;
+      tiles[y][x].wallHits = 0;
+    }
+  }
+  // `getWallTierForFloor` is no longer used here but kept exported for tools.
+  void getWallTierForFloor;
   if (rooms.length > 0) {
     const lastRoom = rooms[rooms.length - 1];
     const stairsX = lastRoom.x + Math.floor(lastRoom.width / 2);

@@ -18,6 +18,10 @@ export interface GameSettings {
   dungeonZoom: number;       // zoom level for dungeon tiles (50-400, 100 = default)
   showDamageNumbers: boolean;
   soundEnabled: boolean;
+  // Overworld direction arrow overlays
+  showHomeArrow: boolean;
+  showHomeTowerArrow: boolean;
+  showMajorDungeonArrows: boolean;
 }
 
 const DEFAULT_SETTINGS: GameSettings = {
@@ -26,6 +30,9 @@ const DEFAULT_SETTINGS: GameSettings = {
   dungeonZoom: 100,          // 100% = default size
   showDamageNumbers: true,
   soundEnabled: true,
+  showHomeArrow: true,
+  showHomeTowerArrow: true,
+  showMajorDungeonArrows: true,
 };
 
 // Settings Context

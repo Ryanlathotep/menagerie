@@ -148,6 +148,7 @@ interface TileProps {
   isOnPath?: boolean; // Is this tile part of the click-to-move path?
   onDisarmTrap?: (x: number, y: number, success: boolean) => void;
   onClick?: () => void;
+  playerPickaxeTier?: PickaxeTier; // For mineable wall tooltips
 }
 function Tile({
   tile,

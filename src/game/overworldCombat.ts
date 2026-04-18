@@ -6,6 +6,56 @@ import { Move } from './moves';
 import { EvolvedMove } from './moveMastery';
 import { AttackConfig, getAttackConfig, getEnemyBehavior } from './dungeonCombat';
 
+// A tile is "blocking" for line-of-sight / AoE propagation if a projectile or
+// blast can't physically pass through it: water, rock walls, trees, buildings,
+// and active nests all qualify. Grass, roads, and even enemies/items are passable.
+function isOverworldBlocker(tile: OverworldTile | null | undefined): boolean {
+  if (!tile) return true; // off-map = blocked
+  switch (tile.type) {
+    case 'rock':
+    case 'water':
+    case 'tree':
+    case 'player_building':
+    case 'nest':
+    case 'dungeon_entrance':
+      return true;
+    default:
+      return false;
+  }
+}
+
+// Bresenham line LOS check between two positions on the overworld.
+// Endpoints themselves are never treated as blockers — only tiles strictly
+// between origin and target.
+function overworldHasLineOfSight(
+  overworld: OverworldState,
+  from: Position,
+  to: Position,
+): boolean {
+  let x0 = from.x;
+  let y0 = from.y;
+  const x1 = to.x;
+  const y1 = to.y;
+  const dx = Math.abs(x1 - x0);
+  const dy = Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1;
+  const sy = y0 < y1 ? 1 : -1;
+  let err = dx - dy;
+
+  while (true) {
+    const isEndpoint =
+      (x0 === from.x && y0 === from.y) || (x0 === to.x && y0 === to.y);
+    if (!isEndpoint) {
+      if (isOverworldBlocker(getOverworldTile(overworld, x0, y0))) return false;
+    }
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err;
+    if (e2 > -dy) { err -= dy; x0 += sx; }
+    if (e2 < dx) { err += dx; y0 += sy; }
+  }
+  return true;
+}
+
 // Get valid target tiles around the player within range
 export function getOverworldValidTargets(
   playerPos: Position,
@@ -40,13 +90,30 @@ export function getOverworldValidTargets(
   return validTiles;
 }
 
-// Get tiles affected by an attack
+// Get tiles affected by an attack.
+// IMPORTANT: the AoE radius is INDEPENDENT of the player's targeting range —
+// once a tile is "the target", the splash spreads from it regardless of how
+// far the player can normally reach. Walls / buildings DO block the splash.
 export function getOverworldAffectedTiles(
   origin: Position,
   target: Position,
   config: AttackConfig,
+  overworld?: OverworldState,
 ): Position[] {
   const affected: Position[] = [];
+  const ignoreWalls = config.wallPenetrate || false;
+
+  // Helper: only push a tile if it's reachable from `from` (LOS) — used by
+  // splash patterns so blasts can't bleed through buildings or rocks.
+  const pushIfReachable = (from: Position, p: Position) => {
+    if (ignoreWalls || !overworld) {
+      affected.push(p);
+      return;
+    }
+    if (overworldHasLineOfSight(overworld, from, p)) {
+      affected.push(p);
+    }
+  };
 
   switch (config.pattern) {
     case 'self':
@@ -59,8 +126,11 @@ export function getOverworldAffectedTiles(
       const dx = Math.sign(target.x - origin.x);
       const dy = Math.sign(target.y - origin.y);
       for (let i = 1; i <= config.range; i++) {
-        affected.push({ x: origin.x + dx * i, y: origin.y + dy * i });
-        if (!config.piercing && target.x === origin.x + dx * i && target.y === origin.y + dy * i) break;
+        const p = { x: origin.x + dx * i, y: origin.y + dy * i };
+        // Stop the line at the first blocker (unless wallPenetrate).
+        if (!ignoreWalls && overworld && isOverworldBlocker(getOverworldTile(overworld, p.x, p.y))) break;
+        affected.push(p);
+        if (!config.piercing && target.x === p.x && target.y === p.y) break;
       }
       break;
     }
@@ -68,17 +138,18 @@ export function getOverworldAffectedTiles(
       const dx = Math.sign(target.x - origin.x);
       const dy = Math.sign(target.y - origin.y);
       for (let i = 1; i <= config.range; i++) {
-        affected.push({ x: origin.x + dx * i, y: origin.y + dy * i });
+        const center = { x: origin.x + dx * i, y: origin.y + dy * i };
+        pushIfReachable(origin, center);
         // Spread perpendicular
         if (dx !== 0) {
           for (let s = 1; s <= Math.min(i, config.width || 1); s++) {
-            affected.push({ x: origin.x + dx * i, y: origin.y + s });
-            affected.push({ x: origin.x + dx * i, y: origin.y - s });
+            pushIfReachable(origin, { x: center.x, y: origin.y + s });
+            pushIfReachable(origin, { x: center.x, y: origin.y - s });
           }
         } else {
           for (let s = 1; s <= Math.min(i, config.width || 1); s++) {
-            affected.push({ x: origin.x + s, y: origin.y + dy * i });
-            affected.push({ x: origin.x - s, y: origin.y + dy * i });
+            pushIfReachable(origin, { x: origin.x + s, y: center.y });
+            pushIfReachable(origin, { x: origin.x - s, y: center.y });
           }
         }
       }
@@ -86,27 +157,32 @@ export function getOverworldAffectedTiles(
     }
     case 'cross':
       affected.push(target);
-      affected.push({ x: target.x + 1, y: target.y });
-      affected.push({ x: target.x - 1, y: target.y });
-      affected.push({ x: target.x, y: target.y + 1 });
-      affected.push({ x: target.x, y: target.y - 1 });
+      pushIfReachable(target, { x: target.x + 1, y: target.y });
+      pushIfReachable(target, { x: target.x - 1, y: target.y });
+      pushIfReachable(target, { x: target.x, y: target.y + 1 });
+      pushIfReachable(target, { x: target.x, y: target.y - 1 });
       break;
     case 'aura': {
       const r = config.range;
       for (let dy = -r; dy <= r; dy++) {
         for (let dx = -r; dx <= r; dx++) {
           if (Math.abs(dx) + Math.abs(dy) <= r) {
-            affected.push({ x: origin.x + dx, y: origin.y + dy });
+            // Aura emanates from the caster — block by walls from origin.
+            pushIfReachable(origin, { x: origin.x + dx, y: origin.y + dy });
           }
         }
       }
       break;
     }
     case 'area': {
+      // Splash radius is INDEPENDENT of the player's targeting range —
+      // it expands fully from the target tile. Walls block the splash from
+      // bleeding through buildings.
       const radius = config.width || 1;
       for (let dy = -radius; dy <= radius; dy++) {
         for (let dx = -radius; dx <= radius; dx++) {
-          affected.push({ x: target.x + dx, y: target.y + dy });
+          // Splash propagates from the target tile outward.
+          pushIfReachable(target, { x: target.x + dx, y: target.y + dy });
         }
       }
       break;

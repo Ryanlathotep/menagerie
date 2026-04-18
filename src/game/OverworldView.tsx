@@ -1322,6 +1322,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
               home: settings.showHomeArrow,
               homeTower: settings.showHomeTowerArrow,
               majorDungeons: settings.showMajorDungeonArrows,
+              dungeonWaypoints: settings.dungeonWaypoints,
             }}
           />
 

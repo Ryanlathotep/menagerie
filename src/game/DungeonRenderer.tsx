@@ -194,6 +194,25 @@ function Tile({
     );
   }
 
+  // Mineable wall — tier-tinted with ore veins and crack overlay for hits.
+  if (tile.type === 'mineable_wall' && tile.wallTier) {
+    return (
+      <div className={`flex items-center justify-center overflow-hidden ${pathOverlayClass}`} style={tileStyle} onClick={onClick}>
+        {tile.visible ? (
+          <MineableWallTile
+            size={tileSize}
+            seed={tileSeed}
+            tier={tile.wallTier}
+            hits={tile.wallHits || 0}
+            hitsNeeded={3}
+          />
+        ) : (
+          <div className="w-full h-full bg-tile-wall opacity-60" />
+        )}
+      </div>
+    );
+  }
+
   // Player tile - show player's monster sprite on floor graphic
   if (isPlayer && playerElement && playerSpecies) {
     return (

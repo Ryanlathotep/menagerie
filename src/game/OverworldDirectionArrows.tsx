@@ -117,17 +117,32 @@ export function OverworldDirectionArrows({ overworld, toggles }: Props) {
   const addedDungeonIds = new Set<string>();
 
   if (toggles.majorDungeons) {
-    for (const d of dungeons) {
-      if (d.isHome) continue;
-      // Major = themed towers (element / class / species). Skip procedural.
-      if (!d.category || d.category === 'procedural') continue;
+    // Major = themed towers (element / class / species). Skip procedural & home.
+    const majors = dungeons.filter(
+      d => !d.isHome && d.category && d.category !== 'procedural',
+    );
+    // Show every already-discovered major tower, PLUS the single next-easiest
+    // still-undiscovered one. This makes them reveal one at a time, leading
+    // the player out from home in difficulty order.
+    const discoveredMajors = majors.filter(d => d.discovered);
+    const undiscoveredMajors = majors
+      .filter(d => !d.discovered)
+      .sort((a, b) => (a.difficulty || 1) - (b.difficulty || 1));
+    const nextMajor = undiscoveredMajors[0];
+
+    const visibleMajors = nextMajor ? [...discoveredMajors, nextMajor] : discoveredMajors;
+
+    for (const d of visibleMajors) {
+      const isMystery = !d.discovered;
       targets.push({
         key: d.id,
         x: d.worldX,
         y: d.worldY,
-        label: d.name || 'Dungeon',
-        icon: dungeonIcon(d),
-        colorClass: 'text-sky-300 bg-sky-500/15 border-sky-400/60',
+        label: isMystery ? 'Unknown tower' : (d.name || 'Dungeon'),
+        icon: isMystery ? '❓' : dungeonIcon(d),
+        colorClass: isMystery
+          ? 'text-amber-200 bg-amber-500/10 border-amber-300/50'
+          : 'text-sky-300 bg-sky-500/15 border-sky-400/60',
       });
       addedDungeonIds.add(d.id);
     }

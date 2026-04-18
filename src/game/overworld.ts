@@ -514,6 +514,13 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
       }
     }
   }
+
+  // Slow forest/outcrop spread: every 500 steps, mature trees & rocks within
+  // sight have a 10% chance to seed an adjacent grass tile. Keeps groves
+  // growing organically without overrunning the map.
+  if (state.totalSteps % 500 === 0) {
+    spreadResources(state, newX, newY);
+  }
   
   // Check if destination is a road
   const roadKey = `${newX},${newY}`;

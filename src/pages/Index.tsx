@@ -298,7 +298,7 @@ function MainMenu() {
       
       {showShop && (
         <TownShop
-          gold={state.saveData.gold || 0}
+          gold={isCreativeMode() ? Number.MAX_SAFE_INTEGER : (state.saveData.gold || 0)}
           storedEquipment={state.saveData.storedEquipment || []}
           onBuyItem={handleBuyItem}
           onBuyEquipment={handleBuyEquipment}
@@ -2076,7 +2076,7 @@ function DungeonView({
       />
       
       {showShop && <ShopView 
-        gold={state.run?.gold || 0} 
+        gold={isCreativeMode() ? Number.MAX_SAFE_INTEGER : (state.run?.gold || 0)} 
         floor={dungeon.floor}
         onBuy={handleBuyItem} 
         onBuyEquipment={handleBuyEquipment}

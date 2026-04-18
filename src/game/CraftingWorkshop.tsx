@@ -26,7 +26,7 @@ import {
   ConsumableRecipe,
 } from './equipment';
 import { isCreativeMode, onCreativeModeChange } from './creativeMode';
-import { PICKAXE_TIERS, PICKAXE_TIER_ORDER, nextPickaxeTier, type PickaxeTier, type PlayerTools } from './tools';
+import { PICKAXE_TIERS, PICKAXE_TIER_ORDER, nextPickaxeTier, SHOVEL_TIERS, SHOVEL_TIER_ORDER, nextShovelTier, type PickaxeTier, type ShovelTier, type PlayerTools } from './tools';
 import { useEffect } from 'react';
 
 interface MaterialInventory {

@@ -122,13 +122,13 @@ function Section({ title, items, onLaunch }: { title: string; items: DungeonEntr
 
 export function DungeonListPanel({ dungeonEntrances, onLaunch }: DungeonListPanelProps) {
   const all = Object.values(dungeonEntrances || {});
-  // Discovered: home + themed towers are always visible; procedural require seeing on overworld.
-  const discovered = all.filter(d =>
-    d.isHome ||
-    d.discovered ||
-    d.deepestFloor > 0 ||
-    (d.category && d.category !== 'procedural')
-  );
+  // A dungeon counts as discovered once the player has physically seen it on
+  // the overworld (or already cleared a floor in it). Home is always visible.
+  // Themed towers no longer auto-reveal — the player must explore to them.
+  const isDiscovered = (d: DungeonEntrance) =>
+    !!(d.isHome || d.discovered || d.deepestFloor > 0);
+
+  const discovered = all.filter(isDiscovered);
 
   const sortByDifficulty = (a: DungeonEntrance, b: DungeonEntrance) => (a.difficulty || 1) - (b.difficulty || 1);
 
@@ -142,6 +142,14 @@ export function DungeonListPanel({ dungeonEntrances, onLaunch }: DungeonListPane
 
   const undiscoveredCount = all.length - discovered.length;
 
+  // Defense in depth: never let an undiscovered dungeon be launched, even if
+  // somehow surfaced through stale UI.
+  const safeLaunch = (d: DungeonEntrance) => {
+    if (!isDiscovered(d)) return;
+    onLaunch(d);
+  };
+
+
   return (
     <Card className="p-3 w-full max-w-md mx-auto">
       <div className="flex items-center justify-between mb-2">
@@ -153,16 +161,16 @@ export function DungeonListPanel({ dungeonEntrances, onLaunch }: DungeonListPane
 
       <ScrollArea className="h-[360px] pr-2">
         <div className="space-y-4">
-          <Section title="Home" items={home} onLaunch={onLaunch} />
-          <Section title="Elemental Towers" items={elementTowers} onLaunch={onLaunch} />
-          <Section title="Class Towers" items={classTowers} onLaunch={onLaunch} />
-          <Section title="Species Towers" items={speciesTowers} onLaunch={onLaunch} />
-          <Section title="Overworld Dungeons" items={overworldDungeons} onLaunch={onLaunch} />
+          <Section title="Home" items={home} onLaunch={safeLaunch} />
+          <Section title="Elemental Towers" items={elementTowers} onLaunch={safeLaunch} />
+          <Section title="Class Towers" items={classTowers} onLaunch={safeLaunch} />
+          <Section title="Species Towers" items={speciesTowers} onLaunch={safeLaunch} />
+          <Section title="Overworld Dungeons" items={overworldDungeons} onLaunch={safeLaunch} />
 
           {undiscoveredCount > 0 && (
             <div className="rounded-md border border-dashed border-muted-foreground/30 p-3 text-center text-xs text-muted-foreground">
               <span className="font-medium">🔍 {undiscoveredCount}</span> undiscovered{' '}
-              {undiscoveredCount === 1 ? 'dungeon' : 'dungeons'} on the overworld — explore to reveal.
+              {undiscoveredCount === 1 ? 'dungeon' : 'dungeons'} out in the world — explore the overworld to reveal them.
             </div>
           )}
         </div>

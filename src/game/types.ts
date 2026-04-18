@@ -539,7 +539,7 @@ export function createElementTowerEntrance(element: ElementType, index: number):
     difficulty: 5 + index * 5, // 5, 10, 15, 20, 25, 30
     element,
     name: ELEMENT_TOWER_NAMES[element],
-    discovered: true,
+    discovered: false,
     theme: { kind: 'element', value: element },
     category: 'element',
   };
@@ -558,7 +558,7 @@ export function createClassTowerEntrance(classType: ClassType, index: number): D
     // Class towers start higher than element towers
     difficulty: 40 + index * 5, // 40, 45, 50, 55, 60, 65
     name: CLASS_TOWER_NAMES[classType],
-    discovered: true,
+    discovered: false,
     theme: { kind: 'class', value: classType },
     category: 'class',
   };
@@ -578,7 +578,7 @@ export function createSpeciesTowerEntrance(species: SpeciesType, index: number):
     // Species towers are the highest tier
     difficulty: 75 + index * 3, // 75 .. 132
     name: SPECIES_TOWER_NAMES[species],
-    discovered: true,
+    discovered: false,
     theme: { kind: 'species', value: species },
     category: 'species',
   };

@@ -1579,6 +1579,35 @@ function DungeonView({
     setAffectedTiles([]);
     setHoveredTile(null);
   }, []);
+
+  // While aiming a skill, recompute valid target tiles (and the AoE preview
+  // under the cursor) whenever the player moves. This lets the player walk
+  // and aim simultaneously without having to re-open the move.
+  useEffect(() => {
+    if (!targetingMove || !dungeon) return;
+    const config = getAttackConfig(targetingMove);
+    const newValid = getValidTargets(
+      dungeon.playerPosition,
+      config,
+      dungeon.tiles,
+      dungeon.width,
+      dungeon.height,
+      true,
+    );
+    setTargetingTiles(newValid);
+    if (hoveredTile) {
+      const tiles = getAffectedTiles(
+        dungeon.playerPosition,
+        hoveredTile,
+        config,
+        dungeon.width,
+        dungeon.height,
+        dungeon.tiles,
+      );
+      setAffectedTiles(tiles);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dungeon?.playerPosition.x, dungeon?.playerPosition.y, targetingMove]);
   
   // Handle tile hover during targeting
   const handleTileHover = useCallback((x: number, y: number) => {

@@ -187,9 +187,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   }, [state.run, dispatch, addLog]);
   
   // ─── Movement ───
+  // NOTE: Movement is allowed while targeting a skill — valid target / AoE
+  // tiles are recomputed from the new player position by the effect below.
   const handleMove = useCallback((dx: number, dy: number) => {
-    if (targetingMove) return;
-    
     setOverworld(prev => {
       const newState = JSON.parse(JSON.stringify(prev)) as OverworldState;
       ensureChunksLoaded(newState, newState.playerPosition.x + dx, newState.playerPosition.y + dy);
@@ -332,7 +332,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       saveOverworld(newState);
       return newState;
     });
-  }, [addLog, saveOverworld, state.run, dispatch, targetingMove, processEnemyTurns]);
+  }, [addLog, saveOverworld, state.run, dispatch, processEnemyTurns]);
   
   // ─── Directional movement wrapper for keyboard ───
   const handleDirectionMove = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
@@ -409,6 +409,21 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     setAffectedTiles([]);
     setHoveredTile(null);
   }, []);
+
+  // While aiming a skill, recompute valid targets (and the AoE preview under
+  // the cursor) whenever the player moves. This lets the player walk and aim
+  // simultaneously without having to re-open the move.
+  useEffect(() => {
+    if (!targetingMove) return;
+    const config = getAttackConfig(targetingMove);
+    const newValid = getOverworldValidTargets(overworld.playerPosition, config, overworld);
+    setTargetingTiles(newValid);
+    if (hoveredTile) {
+      const tiles = getOverworldAffectedTiles(overworld.playerPosition, hoveredTile, config, overworld);
+      setAffectedTiles(tiles);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overworld.playerPosition.x, overworld.playerPosition.y, targetingMove]);
   
   const handleTileHover = useCallback((worldX: number, worldY: number) => {
     if (!targetingMove) return;

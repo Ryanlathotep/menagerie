@@ -54,6 +54,8 @@ interface UnifiedMovePanelProps {
   onUseMove?: (move: Move | EvolvedMove) => void;
   // Add struggle automatically when out of stamina
   autoAddStruggle?: boolean;
+  // Optional: portal sort/filter controls into an external slot (e.g. panel header)
+  controlsSlotId?: string;
 }
 
 export function UnifiedMovePanel({ 
@@ -69,6 +71,7 @@ export function UnifiedMovePanel({
   enemyMonster,
   onUseMove,
   autoAddStruggle = false,
+  controlsSlotId,
 }: UnifiedMovePanelProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);

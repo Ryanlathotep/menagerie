@@ -27,6 +27,10 @@ export interface PlayerBuilding {
   growthProgress?: number;       // Steps until harvest (0 = ready)
   harvestReady?: boolean;
   harvestOutput?: { materialId: string; quantity: number }[];
+  // Gate-specific (only meaningful when wall is acting as a gate):
+  // true → "inside" face is flipped to the opposite side of the road axis.
+  // Defaults to auto-orientation toward the home base when undefined.
+  gateFlipped?: boolean;
 }
 
 // ============= BUILDING DEFINITIONS =============
@@ -283,6 +287,28 @@ export function getGateAxis(building: PlayerBuilding, state: OverworldState): 'h
   const { worldX: x, worldY: y } = building;
   if (isRoadAt(state, x - 1, y) && isRoadAt(state, x + 1, y)) return 'horizontal';
   return 'vertical';
+}
+
+// Which side of the gate is the "inside" (banner-bearing, home-facing) side?
+// Returns 'n' | 's' for vertical gates (E-W road), 'e' | 'w' for horizontal gates (N-S road).
+// Auto-orients so the inside faces the home base; gateFlipped inverts that choice.
+export function getGateInsideDirection(
+  building: PlayerBuilding,
+  state: OverworldState,
+): 'n' | 's' | 'e' | 'w' {
+  const axis = getGateAxis(building, state);
+  const home = state.homeBase?.position ?? { x: 0, y: 0 };
+  const flipped = !!building.gateFlipped;
+  if (axis === 'horizontal') {
+    // Road runs E-W → walls/banners sit on N or S edge.
+    const homeIsNorth = home.y <= building.worldY;
+    const inside: 'n' | 's' = homeIsNorth ? 'n' : 's';
+    return flipped ? (inside === 'n' ? 's' : 'n') : inside;
+  }
+  // Vertical road (N-S) → walls/banners sit on E or W edge.
+  const homeIsWest = home.x <= building.worldX;
+  const inside: 'e' | 'w' = homeIsWest ? 'w' : 'e';
+  return flipped ? (inside === 'w' ? 'e' : 'w') : inside;
 }
 
 // Wall connects to other walls AND to scout towers (towers anchor castle corners).

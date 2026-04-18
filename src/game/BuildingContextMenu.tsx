@@ -1,5 +1,5 @@
 // Right-click context menu for player buildings:
-// Assign/Manage monster, Repair, Disassemble.
+// Assign/Manage monster, Repair, Disassemble, Flip Gate (gates only).
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -10,16 +10,20 @@ import {
   getRepairCost,
 } from './buildings';
 import { Monster } from './types';
-import { Hammer, Recycle, UserPlus, X } from 'lucide-react';
+import { Hammer, Recycle, RefreshCw, UserPlus, X } from 'lucide-react';
 
 interface BuildingContextMenuProps {
   building: PlayerBuilding;
   party: Monster[];
   woodAvailable: number;
   stoneAvailable: number;
+  /** True iff this wall is currently acting as a gate (between two roads). */
+  isGate?: boolean;
   onAssign: () => void;
   onRepair: () => void;
   onDisassemble: () => void;
+  /** Toggle the gate's banner-side / outward-side. Only used when isGate is true. */
+  onFlipGate?: () => void;
   onClose: () => void;
 }
 
@@ -28,9 +32,11 @@ export function BuildingContextMenu({
   party,
   woodAvailable,
   stoneAvailable,
+  isGate,
   onAssign,
   onRepair,
   onDisassemble,
+  onFlipGate,
   onClose,
 }: BuildingContextMenuProps) {
   const def = BUILDING_DEFINITIONS[building.type];
@@ -79,6 +85,20 @@ export function BuildingContextMenu({
             >
               <UserPlus className="h-4 w-4 mr-2" />
               {assigned ? 'Manage Assigned Monster' : 'Assign Monster'}
+            </Button>
+          )}
+
+          {isGate && onFlipGate && (
+            <Button
+              variant="secondary"
+              className="w-full justify-start"
+              onClick={onFlipGate}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              <span className="flex-1 text-left">Flip Gate Facing</span>
+              <span className="text-[11px] text-muted-foreground">
+                (banner side)
+              </span>
             </Button>
           )}
 

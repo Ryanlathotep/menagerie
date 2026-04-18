@@ -31,7 +31,7 @@ import {
 import { TREE_TIER_DATA, STONE_TIER_DATA, TreeTier, StoneTier } from './resourceHierarchy';
 import { 
   PlayerBuildingType, BUILDING_DEFINITIONS, canPlaceBuilding, createBuilding, tickFarm,
-  processScoutTowerAttacks, PlayerBuilding, getDisassembleRefund, getRepairCost,
+  processScoutTowerAttacks, PlayerBuilding, getDisassembleRefund, getRepairCost, isWallActingAsGate,
 } from './buildings';
 import { OverworldRenderer, OverworldRendererHandle } from './OverworldRenderer';
 import { OverworldDirectionArrows } from './OverworldDirectionArrows';
@@ -1268,6 +1268,23 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     setAssignBuilding(contextMenuBuilding);
     setContextMenuBuilding(null);
   }, [contextMenuBuilding]);
+
+  // Flip a gate's banner-side / outward-side. Only meaningful for walls
+  // currently acting as gates; the renderer auto-orients toward home base
+  // by default and `gateFlipped` inverts that choice.
+  const handleFlipGate = useCallback(() => {
+    if (!contextMenuBuilding) return;
+    setOverworld(prev => {
+      const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
+      const b = newOw.playerBuildings?.find(pb => pb.id === contextMenuBuilding.id);
+      if (!b) return prev;
+      b.gateFlipped = !b.gateFlipped;
+      addLog(`🔄 Flipped gate facing at (${b.worldX},${b.worldY}).`, 'system');
+      saveOverworld(newOw);
+      setContextMenuBuilding({ ...b });
+      return newOw;
+    });
+  }, [contextMenuBuilding, addLog, saveOverworld]);
   
   // Resizable bottom bar
   const isMobileLayout = typeof window !== 'undefined' && window.innerWidth < 640;
@@ -1792,9 +1809,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         party={state.run.party}
         woodAvailable={overworld.woodCollected}
         stoneAvailable={overworld.stoneCollected}
+        isGate={contextMenuBuilding.type === 'wall' && isWallActingAsGate(contextMenuBuilding, overworld)}
         onAssign={handleContextMenuAssign}
         onRepair={handleRepairBuilding}
         onDisassemble={handleDisassembleBuilding}
+        onFlipGate={handleFlipGate}
         onClose={() => setContextMenuBuilding(null)}
       />
     )}

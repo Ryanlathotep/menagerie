@@ -37,21 +37,105 @@ export function PlayerWallTile({ size, fit, damaged }: WallTileProps) {
 }
 
 // Gate — visually a wall with a wooden door + arch oriented along the road axis.
-// The `fit` is interpreted ONLY for orientation (gate uses 'straight' shape always).
 // `axisHorizontal` indicates whether the road runs east-west (true) or north-south (false).
-export function GateTile({ size, axisHorizontal }: { size: number; axisHorizontal: boolean }) {
+// `insideDir` marks which edge faces the player's home (banner side); the opposite
+// edge gets a portcullis "spike" lip so two adjacent gates can be told apart.
+export function GateTile({
+  size,
+  axisHorizontal,
+  insideDir = 's',
+}: {
+  size: number;
+  axisHorizontal: boolean;
+  insideDir?: 'n' | 's' | 'e' | 'w';
+}) {
+  // Base art is drawn as if road runs N-S (pillars on left/right edges, opening top→bottom).
+  // For an E-W road we rotate the whole pillar/door group 90° so the opening lines up.
+  const rotateForHorizontalRoad = axisHorizontal ? 'rotate(90 12 12)' : undefined;
+
+  // Asymmetric edge marks (drawn in screen-space, after rotation, so they
+  // always point at the correct world direction).
+  const edge = (dir: 'n' | 's' | 'e' | 'w', kind: 'banner' | 'spikes') => {
+    const banner = kind === 'banner';
+    const color = banner ? 'hsl(0 60% 40%)' : 'hsl(35 15% 25%)';
+    if (dir === 'n') {
+      return banner ? (
+        <g key="in-n">
+          <path d="M10 0 L14 0 L14 5 L12 4 L10 5 Z" fill={color} opacity={0.9}/>
+          <line x1="12" y1="0" x2="12" y2="4" stroke={INK.dark} strokeWidth={0.3} opacity={0.7}/>
+        </g>
+      ) : (
+        <g key="out-n" stroke={color} strokeWidth={0.6} opacity={0.85}>
+          <line x1="7"  y1="0" x2="7"  y2="2"/>
+          <line x1="10" y1="0" x2="10" y2="2.5"/>
+          <line x1="14" y1="0" x2="14" y2="2.5"/>
+          <line x1="17" y1="0" x2="17" y2="2"/>
+        </g>
+      );
+    }
+    if (dir === 's') {
+      return banner ? (
+        <g key="in-s">
+          <path d="M10 24 L14 24 L14 19 L12 20 L10 19 Z" fill={color} opacity={0.9}/>
+          <line x1="12" y1="24" x2="12" y2="20" stroke={INK.dark} strokeWidth={0.3} opacity={0.7}/>
+        </g>
+      ) : (
+        <g key="out-s" stroke={color} strokeWidth={0.6} opacity={0.85}>
+          <line x1="7"  y1="24" x2="7"  y2="22"/>
+          <line x1="10" y1="24" x2="10" y2="21.5"/>
+          <line x1="14" y1="24" x2="14" y2="21.5"/>
+          <line x1="17" y1="24" x2="17" y2="22"/>
+        </g>
+      );
+    }
+    if (dir === 'w') {
+      return banner ? (
+        <g key="in-w">
+          <path d="M0 10 L0 14 L5 14 L4 12 L5 10 Z" fill={color} opacity={0.9}/>
+          <line x1="0" y1="12" x2="4" y2="12" stroke={INK.dark} strokeWidth={0.3} opacity={0.7}/>
+        </g>
+      ) : (
+        <g key="out-w" stroke={color} strokeWidth={0.6} opacity={0.85}>
+          <line x1="0" y1="7"  x2="2"   y2="7"/>
+          <line x1="0" y1="10" x2="2.5" y2="10"/>
+          <line x1="0" y1="14" x2="2.5" y2="14"/>
+          <line x1="0" y1="17" x2="2"   y2="17"/>
+        </g>
+      );
+    }
+    // 'e'
+    return banner ? (
+      <g key="in-e">
+        <path d="M24 10 L24 14 L19 14 L20 12 L19 10 Z" fill={color} opacity={0.9}/>
+        <line x1="24" y1="12" x2="20" y2="12" stroke={INK.dark} strokeWidth={0.3} opacity={0.7}/>
+      </g>
+    ) : (
+      <g key="out-e" stroke={color} strokeWidth={0.6} opacity={0.85}>
+        <line x1="24" y1="7"  x2="22"   y2="7"/>
+        <line x1="24" y1="10" x2="21.5" y2="10"/>
+        <line x1="24" y1="14" x2="21.5" y2="14"/>
+        <line x1="24" y1="17" x2="22"   y2="17"/>
+      </g>
+    );
+  };
+
+  const opposite: Record<'n' | 's' | 'e' | 'w', 'n' | 's' | 'e' | 'w'> = {
+    n: 's', s: 'n', e: 'w', w: 'e',
+  };
+  const outsideDir = opposite[insideDir];
+
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className="block">
       <rect width="24" height="24" fill="hsl(35 30% 50%)" opacity={0.18}/>
-      <g transform={axisHorizontal ? undefined : 'rotate(90 12 12)'}>
-        {/* Two stone pillars flanking the gate (oriented for E-W road by default) */}
+      <g transform={rotateForHorizontalRoad}>
+        {/* Two stone pillars flanking the gate (oriented for N-S road by default) */}
         <rect x="0"  y="4" width="6" height="16" fill="hsl(35 25% 55%)" opacity={0.75}/>
         <rect x="18" y="4" width="6" height="16" fill="hsl(35 25% 55%)" opacity={0.75}/>
         <rect x="0"  y="4" width="6" height="16" stroke={INK.medium} strokeWidth={0.4} fill="none" opacity={0.55}/>
         <rect x="18" y="4" width="6" height="16" stroke={INK.medium} strokeWidth={0.4} fill="none" opacity={0.55}/>
         {/* Battlement crenellations on top */}
-        <rect x="0" y="3" width="2" height="2" fill="hsl(35 20% 45%)" opacity={0.7}/>
-        <rect x="3" y="3" width="2" height="2" fill="hsl(35 20% 45%)" opacity={0.7}/>
+        <rect x="0"  y="3" width="2" height="2" fill="hsl(35 20% 45%)" opacity={0.7}/>
+        <rect x="3"  y="3" width="2" height="2" fill="hsl(35 20% 45%)" opacity={0.7}/>
         <rect x="19" y="3" width="2" height="2" fill="hsl(35 20% 45%)" opacity={0.7}/>
         <rect x="22" y="3" width="2" height="2" fill="hsl(35 20% 45%)" opacity={0.7}/>
         {/* Stone arch */}
@@ -66,6 +150,9 @@ export function GateTile({ size, axisHorizontal }: { size: number; axisHorizonta
         <circle cx="10.5" cy="16" r="0.5" fill={INK.dark} opacity={0.8}/>
         <circle cx="13.5" cy="16" r="0.5" fill={INK.dark} opacity={0.8}/>
       </g>
+      {/* Asymmetric inside (banner) + outside (spikes) — drawn in screen-space. */}
+      {edge(insideDir, 'banner')}
+      {edge(outsideDir, 'spikes')}
       <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
       <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
     </svg>

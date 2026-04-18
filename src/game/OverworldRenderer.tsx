@@ -11,7 +11,7 @@ import {
   OverworldDirtRoadTile, OverworldStoneRoadTile,
 } from './OverworldTileGraphics';
 import { OverworldBuildingTileGraphic } from './OverworldBuildingTileGraphics';
-import { PlayerBuilding, isWallActingAsGate, getGateAxis, wallConnectsTo, roadConnectsTo } from './buildings';
+import { PlayerBuilding, isWallActingAsGate, getGateAxis, getGateInsideDirection, wallConnectsTo, roadConnectsTo } from './buildings';
 import { fitFromNeighbors } from './autoTiling';
 import { NestState } from './nests';
 import { MatchupIndicator } from './MatchupIndicator';

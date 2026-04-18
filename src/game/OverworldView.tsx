@@ -33,6 +33,7 @@ import {
 import { OverworldRenderer, OverworldRendererHandle } from './OverworldRenderer';
 import { OverworldDirectionArrows } from './OverworldDirectionArrows';
 import { DungeonWaypointMenu } from './DungeonWaypointMenu';
+import { WaterTileContextMenu } from './WaterTileContextMenu';
 import { useSettings } from './Settings';
 import { GameSidebar } from './GameSidebar';
 import { getMonsterMoves, Move, getNewMovesAtLevel } from './moves';
@@ -129,6 +130,8 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [attackMenuTarget, setAttackMenuTarget] = useState<EnemyAttackTarget | null>(null);
   // Right-click context menu for dungeon entrance tiles (waypoint pin / enter)
   const [dungeonMenu, setDungeonMenu] = useState<{ entrance: DungeonEntrance; worldX: number; worldY: number } | null>(null);
+  // Right-click context menu for water tiles (fill with grass)
+  const [waterMenu, setWaterMenu] = useState<{ x: number; y: number } | null>(null);
   
   // Targeting state
   const [targetingMove, setTargetingMove] = useState<Move | null>(null);

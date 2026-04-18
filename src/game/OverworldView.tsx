@@ -32,6 +32,7 @@ import {
 } from './buildings';
 import { OverworldRenderer, OverworldRendererHandle } from './OverworldRenderer';
 import { OverworldDirectionArrows } from './OverworldDirectionArrows';
+import { DungeonWaypointMenu } from './DungeonWaypointMenu';
 import { useSettings } from './Settings';
 import { GameSidebar } from './GameSidebar';
 import { getMonsterMoves, Move, getNewMovesAtLevel } from './moves';
@@ -126,6 +127,8 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [tileContextMenu, setTileContextMenu] = useState<{ x: number; y: number } | null>(null);
   // Right-click context menu state for enemy/nest tiles (attack picker)
   const [attackMenuTarget, setAttackMenuTarget] = useState<EnemyAttackTarget | null>(null);
+  // Right-click context menu for dungeon entrance tiles (waypoint pin / enter)
+  const [dungeonMenu, setDungeonMenu] = useState<{ entrance: DungeonEntrance; worldX: number; worldY: number } | null>(null);
   
   // Targeting state
   const [targetingMove, setTargetingMove] = useState<Move | null>(null);

@@ -166,7 +166,8 @@ function Tile({
   unlockedMonsters = [],
   isOnPath = false,
   onDisarmTrap,
-  onClick
+  onClick,
+  playerPickaxeTier,
 }: TileProps) {
   const tileStyle = {
     width: `${tileSize}px`,

@@ -165,7 +165,7 @@ export function FarmTile({ size, seed = 0, harvestReady = false }: BuildingTileP
 
 // Dispatcher component
 export function OverworldBuildingTileGraphic({
-  type, size, seed = 0, harvestReady, wallFit, isGate, gateAxis, damaged,
+  type, size, seed = 0, harvestReady, wallFit, isGate, gateAxis, damaged, wallAttachments,
 }: {
   type: PlayerBuildingType;
   size: number;
@@ -176,6 +176,8 @@ export function OverworldBuildingTileGraphic({
   isGate?: boolean;
   gateAxis?: 'horizontal' | 'vertical';
   damaged?: boolean;
+  // Wall-merge props (only scout towers use this)
+  wallAttachments?: { n: boolean; e: boolean; s: boolean; w: boolean };
 }) {
   switch (type) {
     case 'wall':
@@ -185,7 +187,7 @@ export function OverworldBuildingTileGraphic({
     case 'poison_trap': return <TrapTile size={size} seed={seed} trapVariant="poison" />;
     case 'fire_trap': return <TrapTile size={size} seed={seed} trapVariant="fire" />;
     case 'ice_trap': return <TrapTile size={size} seed={seed} trapVariant="ice" />;
-    case 'scout_tower': return <ScoutTowerTile size={size} seed={seed} />;
+    case 'scout_tower': return <ScoutTowerTile size={size} seed={seed} wallAttachments={wallAttachments} />;
     case 'farm': return <FarmTile size={size} seed={seed} harvestReady={harvestReady} />;
   }
 }

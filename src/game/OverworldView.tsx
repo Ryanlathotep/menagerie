@@ -1809,9 +1809,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         party={state.run.party}
         woodAvailable={overworld.woodCollected}
         stoneAvailable={overworld.stoneCollected}
+        isGate={contextMenuBuilding.type === 'wall' && isWallActingAsGate(contextMenuBuilding, overworld)}
         onAssign={handleContextMenuAssign}
         onRepair={handleRepairBuilding}
         onDisassemble={handleDisassembleBuilding}
+        onFlipGate={handleFlipGate}
         onClose={() => setContextMenuBuilding(null)}
       />
     )}

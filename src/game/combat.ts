@@ -426,17 +426,29 @@ export function checkImpSteal(attacker: Monster): { stolen: boolean; stat: strin
   return { stolen: true, stat: stats[Math.floor(Math.random() * stats.length)] };
 }
 
-// Calculate XP awarded for defeating an enemy
+// Calculate XP awarded for defeating an enemy.
+// There is NO level cap — players can keep leveling indefinitely. To make sure
+// progression doesn't stall when a high-level monster is fighting low-level
+// enemies, we keep the minimum multiplier reasonable (0.25x of base XP scaled
+// to player level) so every kill still meaningfully advances the bar.
 export function calculateXpReward(enemyLevel: number, playerLevel: number): number {
   const baseXp = 20 + enemyLevel * 10;
   const levelDiff = enemyLevel - playerLevel;
-  const multiplier = Math.max(0.5, Math.min(2, 1 + levelDiff * 0.1));
-  return Math.floor(baseXp * multiplier);
+  // Multiplier ranges from 0.25x (much weaker enemy) up to 2.5x (much stronger).
+  const multiplier = Math.max(0.25, Math.min(2.5, 1 + levelDiff * 0.1));
+  // Floor scales with player level so a level 50 monster still gets ~something
+  // meaningful from a level 1 kill instead of effectively 0 progress.
+  const scaledXp = Math.floor(baseXp * multiplier);
+  const minFloor = Math.max(5, Math.floor(playerLevel * 0.5));
+  return Math.max(minFloor, scaledXp);
 }
 
-// Calculate XP needed for next level
+// Calculate XP needed for next level.
+// Uses a gentle quadratic-ish curve so leveling never becomes unreachable but
+// remains meaningful at high levels. No cap — supports indefinite progression.
 export function xpToNextLevel(level: number): number {
-  return 50 + level * 50; // 100, 150, 200, etc.
+  // Base 50 + linear ramp + small quadratic term keeps requirements sane.
+  return 50 + level * 50 + Math.floor(level * level * 1.5);
 }
 
 // Check if monster levels up and return new stats if so

@@ -719,6 +719,38 @@ export function placeRoad(state: OverworldState, worldX: number, worldY: number,
   return true;
 }
 
+// Refund for disassembling a road (50% of original cost, rounded down, min 0)
+export function getRoadRefund(roadType: RoadType): { wood: number; stone: number } {
+  const cost = ROAD_DEFINITIONS[roadType].cost;
+  return {
+    wood: Math.floor(cost.wood * 0.5),
+    stone: Math.floor(cost.stone * 0.5),
+  };
+}
+
+// Remove a road tile, refunding partial materials and restoring grass.
+export function removeRoad(state: OverworldState, worldX: number, worldY: number): boolean {
+  const key = `${worldX},${worldY}`;
+  const roadType = state.roads?.[key];
+  if (!roadType) return false;
+
+  const refund = getRoadRefund(roadType);
+  state.woodCollected += refund.wood;
+  state.stoneCollected += refund.stone;
+
+  delete state.roads[key];
+
+  // Restore the underlying tile to grass (harvested, since it was cleared to build).
+  setOverworldTile(state, worldX, worldY, {
+    type: 'grass',
+    explored: true,
+    visible: true,
+    harvested: true,
+  });
+
+  return true;
+}
+
 // Check if a world position is near a road (within radius tiles)
 export function isNearRoad(state: OverworldState, worldX: number, worldY: number, radius: number = 2): boolean {
   if (!state.roads) return false;

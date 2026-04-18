@@ -23,6 +23,8 @@ import {
   canPlaceRoad,
   placeRoad,
   applyRoadsToChunks,
+  removeRoad,
+  getRoadRefund,
   findNearestEmptyOverworldTile,
   expandOverworldFromSave,
 } from './overworld';
@@ -35,6 +37,7 @@ import { OverworldRenderer, OverworldRendererHandle } from './OverworldRenderer'
 import { OverworldDirectionArrows } from './OverworldDirectionArrows';
 import { DungeonWaypointMenu } from './DungeonWaypointMenu';
 import { WaterTileContextMenu } from './WaterTileContextMenu';
+import { RoadContextMenu } from './RoadContextMenu';
 import { useSettings } from './Settings';
 import { GameSidebar } from './GameSidebar';
 import { getMonsterMoves, Move, getNewMovesAtLevel } from './moves';
@@ -163,6 +166,8 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [dungeonMenu, setDungeonMenu] = useState<{ entrance: DungeonEntrance; worldX: number; worldY: number } | null>(null);
   // Right-click context menu for water tiles (fill with grass)
   const [waterMenu, setWaterMenu] = useState<{ x: number; y: number } | null>(null);
+  // Right-click context menu for road tiles (disassemble)
+  const [roadMenu, setRoadMenu] = useState<{ x: number; y: number; roadType: 'dirt_road' | 'stone_road' } | null>(null);
   
   // Targeting state
   const [targetingMove, setTargetingMove] = useState<Move | null>(null);
@@ -839,6 +844,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     // Water → offer to fill it in with grass for resources
     if (tile?.type === 'water') {
       setWaterMenu({ x: worldX, y: worldY });
+      return;
+    }
+
+    // Road → offer to disassemble (refund partial materials)
+    if (tile?.type === 'dirt_road' || tile?.type === 'stone_road') {
+      setRoadMenu({ x: worldX, y: worldY, roadType: tile.type });
       return;
     }
 
@@ -1778,6 +1789,33 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         />
       );
     })()}
+
+    {/* Road Right-Click Disassemble Menu */}
+    {roadMenu && (
+      <RoadContextMenu
+        worldX={roadMenu.x}
+        worldY={roadMenu.y}
+        roadType={roadMenu.roadType}
+        onClose={() => setRoadMenu(null)}
+        onDisassemble={() => {
+          const { x, y, roadType } = roadMenu;
+          setOverworld(prev => {
+            const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
+            if (!removeRoad(newOw, x, y)) {
+              toast.error('No road to disassemble here.');
+              return prev;
+            }
+            const refund = getRoadRefund(roadType);
+            const def = ROAD_DEFINITIONS[roadType];
+            addLog(`♻️ Disassembled ${def.name} at (${x},${y}). Recovered 🪵${refund.wood} 🪨${refund.stone}.`, 'loot');
+            toast.success(`Road removed! +🪵${refund.wood} +🪨${refund.stone}`);
+            saveOverworld(newOw);
+            return newOw;
+          });
+          setRoadMenu(null);
+        }}
+      />
+    )}
 
     {attackMenuTarget && monster && (
       <EnemyAttackMenu

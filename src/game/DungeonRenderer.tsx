@@ -5,6 +5,7 @@ import { DungeonState, DungeonTile, TileType, ElementType, ClassType, Monster, S
 import { CRAFTING_MATERIALS } from './equipment';
 import { MonsterSprite } from './sprites';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { MINEABLE_WALL_TIERS, PICKAXE_TIERS, hitsToBreak, type PickaxeTier } from './tools';
 import { TERRAIN_CONFIG } from './terrain';
 import { MatchupIndicator } from './MatchupIndicator';
 import { 

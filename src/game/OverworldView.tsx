@@ -31,6 +31,8 @@ import {
   processScoutTowerAttacks, PlayerBuilding, getDisassembleRefund, getRepairCost,
 } from './buildings';
 import { OverworldRenderer, OverworldRendererHandle } from './OverworldRenderer';
+import { OverworldDirectionArrows } from './OverworldDirectionArrows';
+import { useSettings } from './Settings';
 import { GameSidebar } from './GameSidebar';
 import { getMonsterMoves, Move, getNewMovesAtLevel } from './moves';
 import { getAttackConfig } from './dungeonCombat';
@@ -78,6 +80,7 @@ interface LevelUpEntry {
 
 export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const { state, dispatch } = useGame();
+  const { settings } = useSettings();
   const rendererRef = useRef<OverworldRendererHandle>(null);
   
   // Initialize or load overworld state
@@ -1299,7 +1302,17 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             onTileHover={handleTileHover}
             onTileHoverEnd={() => { setHoveredTile(null); setAffectedTiles([]); }}
           />
-          
+
+          {/* Edge-of-viewport direction arrows for off-screen landmarks */}
+          <OverworldDirectionArrows
+            overworld={overworld}
+            toggles={{
+              home: settings.showHomeArrow,
+              homeTower: settings.showHomeTowerArrow,
+              majorDungeons: settings.showMajorDungeonArrows,
+            }}
+          />
+
           {/* Targeting mode indicator */}
           {targetingMove && (
             <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-card/95 backdrop-blur-sm border border-accent/50 rounded-lg px-4 py-2 flex items-center gap-3 z-20">

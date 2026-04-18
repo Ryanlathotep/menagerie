@@ -141,13 +141,18 @@ function MainMenu() {
   };
   
   const handleBuyItem = (item: InventoryItem, price: number) => {
-    dispatch({ type: 'SPEND_TOWN_GOLD', amount: price });
+    // Creative mode: admins skip the gold cost entirely.
+    if (!isCreativeMode()) {
+      dispatch({ type: 'SPEND_TOWN_GOLD', amount: price });
+    }
     dispatch({ type: 'STORE_ITEM', item });
     toast.success(`Bought ${item.name}!`);
   };
   
   const handleBuyEquipment = (item: import('@/game/equipment').EquipmentItem, price: number) => {
-    dispatch({ type: 'SPEND_TOWN_GOLD', amount: price });
+    if (!isCreativeMode()) {
+      dispatch({ type: 'SPEND_TOWN_GOLD', amount: price });
+    }
     dispatch({ type: 'STORE_EQUIPMENT', item });
     toast.success(`Bought ${item.name}!`);
   };

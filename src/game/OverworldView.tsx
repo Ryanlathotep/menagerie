@@ -128,6 +128,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
     }
     // Re-stamp player buildings onto chunks (in case overrides missed them).
+    const validBuildingIds = new Set((ow.playerBuildings || []).map(b => b.id));
     for (const b of ow.playerBuildings || []) {
       const existing = getOverworldTile(ow, b.worldX, b.worldY);
       if (existing && (existing.type !== 'player_building' || existing.playerBuildingId !== b.id)) {
@@ -137,6 +138,29 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           visible: existing.visible,
           playerBuildingId: b.id,
         });
+      }
+    }
+    // Sweep loaded chunks for STALE player_building tiles whose ID no longer
+    // exists in the playerBuildings list (e.g. building was disassembled but
+    // the chunk tile was persisted before the reset, or saves got out of sync).
+    // Without this, those tiles would block new placement and show phantom buildings.
+    for (const chunkKey in ow.chunks) {
+      const chunk = ow.chunks[chunkKey];
+      if (!chunk) continue;
+      for (let ly = 0; ly < chunk.tiles.length; ly++) {
+        const row = chunk.tiles[ly];
+        if (!row) continue;
+        for (let lx = 0; lx < row.length; lx++) {
+          const t = row[lx];
+          if (t?.type === 'player_building' && (!t.playerBuildingId || !validBuildingIds.has(t.playerBuildingId))) {
+            row[lx] = {
+              type: 'grass',
+              explored: t.explored,
+              visible: t.visible,
+              harvested: false,
+            };
+          }
+        }
       }
     }
     applyRoadsToChunks(ow);

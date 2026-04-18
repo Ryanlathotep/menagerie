@@ -177,8 +177,12 @@ export function canPlaceBuilding(
 
 export function createBuilding(type: PlayerBuildingType, worldX: number, worldY: number): PlayerBuilding {
   const def = BUILDING_DEFINITIONS[type];
+  // Unique ID (timestamp + random) so a disassembled-then-rebuilt tile never
+  // shares an ID with the previous building. Coord-only IDs caused stale
+  // chunk tiles to silently link back to "the same" building.
+  const uid = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
   return {
-    id: `building_${worldX}_${worldY}`,
+    id: `building_${worldX}_${worldY}_${uid}`,
     type,
     worldX,
     worldY,

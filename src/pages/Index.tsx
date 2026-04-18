@@ -2214,35 +2214,23 @@ function DungeonView({
             </div>
             <div className="flex-1 min-h-0 px-2 pb-2">
             <div className="flex h-full gap-2">
-              {/* Left: Controls */}
-              <div className="flex-shrink-0 flex items-center">
-                {/* Mobile controls */}
-                <div className="flex sm:hidden">
-                  <div className="grid grid-cols-3 gap-0.5 w-28">
-                    <div />
-                    <Button size="sm" className="h-9 text-base font-bold active:scale-95 p-0" onClick={() => handleMove('up')}>↑</Button>
-                    <div />
-                    <Button size="sm" className="h-9 text-base font-bold active:scale-95 p-0" onClick={() => handleMove('left')}>←</Button>
-                    <div />
-                    <Button size="sm" className="h-9 text-base font-bold active:scale-95 p-0" onClick={() => handleMove('right')}>→</Button>
-                    <div />
-                    <Button size="sm" className="h-9 text-base font-bold active:scale-95 p-0" onClick={() => handleMove('down')}>↓</Button>
-                    <div />
-                  </div>
-                </div>
-                <div className="hidden sm:flex flex-col items-center justify-center px-2">
-                  <p className="text-muted-foreground text-xs text-center mb-1">WASD / Arrows to move</p>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground justify-center">
-                    <span>💎 Treasure</span>
-                    <span>⬇️ Stairs</span>
-                    <span>⚠️ Trap</span>
-                    <span>🏪 Shop</span>
-                  </div>
+              {/* Left: Mobile d-pad only (desktop has no separate map key here anymore) */}
+              <div className="flex-shrink-0 flex sm:hidden items-center">
+                <div className="grid grid-cols-3 gap-0.5 w-28">
+                  <div />
+                  <Button size="sm" className="h-9 text-base font-bold active:scale-95 p-0" onClick={() => handleMove('up')}>↑</Button>
+                  <div />
+                  <Button size="sm" className="h-9 text-base font-bold active:scale-95 p-0" onClick={() => handleMove('left')}>←</Button>
+                  <div />
+                  <Button size="sm" className="h-9 text-base font-bold active:scale-95 p-0" onClick={() => handleMove('right')}>→</Button>
+                  <div />
+                  <Button size="sm" className="h-9 text-base font-bold active:scale-95 p-0" onClick={() => handleMove('down')}>↓</Button>
+                  <div />
                 </div>
               </div>
 
-              {/* Right: Game log - fills remaining space */}
-              <div className="flex-1 min-w-0 p-2 bg-muted/30 rounded-lg border border-border/50 overflow-hidden flex flex-col">
+              {/* Game log - shrinks to half-width when a menu panel is open so they sit side-by-side */}
+              <div className={`${menuOpen ? 'sm:w-1/2' : 'flex-1'} min-w-0 p-2 bg-muted/30 rounded-lg border border-border/50 overflow-hidden flex flex-col transition-[width] duration-200`}>
                 <div className="flex items-center gap-1 mb-1 flex-shrink-0">
                   <ScrollText className="w-3 h-3 text-muted-foreground" />
                   <span className="text-xs font-semibold text-muted-foreground">Log</span>
@@ -2258,6 +2246,9 @@ function DungeonView({
                   )}
                 </div>
               </div>
+
+              {/* Reserved space for the GameSidebar slide-in menu panel (rendered as fixed overlay aligned to the right half) */}
+              {menuOpen && <div className="hidden sm:block sm:w-1/2 flex-shrink-0" aria-hidden />}
             </div>
             </div>
           </div>

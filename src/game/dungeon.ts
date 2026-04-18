@@ -467,6 +467,9 @@ export interface MoveResult {
   // Bumped into a mineable wall (player did NOT move). Index.tsx uses this
   // to apply a Pickaxe hit if the player owns one strong enough.
   mineableBump: { x: number; y: number; tier: MineableWallTier } | null;
+  // Bumped into a rune tile (terrain). The caller decides whether to dig
+  // (if a strong enough Shovel is held) or step onto it normally.
+  runeBump: { x: number; y: number; terrainType: TerrainType } | null;
 }
 
 // Check if a tile should stop auto-run

@@ -772,8 +772,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           return prev;
         }
         const def = BUILDING_DEFINITIONS[selectedBuildType];
-        newOw.woodCollected -= def.cost.wood;
-        newOw.stoneCollected -= def.cost.stone;
+        // Creative mode: skip the resource deduction (canPlaceBuilding already
+        // accepted the placement without a resource check).
+        if (!isCreativeMode()) {
+          newOw.woodCollected -= def.cost.wood;
+          newOw.stoneCollected -= def.cost.stone;
+        }
         const building = createBuilding(selectedBuildType, worldX, worldY);
         if (!newOw.playerBuildings) newOw.playerBuildings = [];
         newOw.playerBuildings.push(building);

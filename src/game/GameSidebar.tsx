@@ -334,14 +334,16 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
           <div className="h-full overflow-y-auto bg-card animate-fade-in">
             <div className="p-3">
             {/* Panel header */}
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-sm font-bold text-primary">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <h2 className="text-sm font-bold text-primary flex-shrink-0">
                 {activePanel === 'character' && '📋 Character'}
                 {activePanel === 'moves' && '⚔️ Moves'}
                 {activePanel === 'inventory' && '🎒 Inventory'}
                 {activePanel === 'party' && '👥 Party'}
               </h2>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handlePanelChange(null)}>✕</Button>
+              {/* Slot for panel-specific inline controls (e.g. Moves sort/filter) */}
+              <div id="panel-header-controls" className="flex-1 min-w-0 flex items-center justify-end overflow-hidden" />
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={() => handlePanelChange(null)}>✕</Button>
             </div>
             
             {/* Character Panel - Enhanced with passives & base vs equipped stats */}
@@ -506,6 +508,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 currentStamina={expandedStats?.currentStamina ?? monster.stats.currentStamina ?? monster.stats.stamina ?? 50}
                 enemyMonster={enemyMonster}
                 onUseMove={onUseMove}
+                controlsSlotId="panel-header-controls"
               />
             )}
             

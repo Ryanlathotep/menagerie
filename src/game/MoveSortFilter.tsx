@@ -110,7 +110,7 @@ export function MoveSortFilter({
   const activeFilterCount = filters.includes('all') ? 0 : filters.length;
 
   return (
-    <div className="flex items-center gap-1.5 mb-2">
+    <div className="flex items-center gap-1.5 flex-wrap justify-end">
       {/* Sort Dropdown */}
       <Popover open={sortOpen} onOpenChange={setSortOpen}>
         <PopoverTrigger asChild>

@@ -2,7 +2,8 @@
 // Supports tier selection, move usage, sorting, filtering, drag-and-drop reordering,
 // and effectiveness indicators when enemy is present
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -53,6 +54,8 @@ interface UnifiedMovePanelProps {
   onUseMove?: (move: Move | EvolvedMove) => void;
   // Add struggle automatically when out of stamina
   autoAddStruggle?: boolean;
+  // Optional: portal sort/filter controls into an external slot (e.g. panel header)
+  controlsSlotId?: string;
 }
 
 export function UnifiedMovePanel({ 
@@ -68,6 +71,7 @@ export function UnifiedMovePanel({
   enemyMonster,
   onUseMove,
   autoAddStruggle = false,
+  controlsSlotId,
 }: UnifiedMovePanelProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -84,6 +88,19 @@ export function UnifiedMovePanel({
   const [assigningKeybind, setAssigningKeybind] = useState<string | null>(null); // moveId being assigned
   const monsterComboId = `${monster.species}_${monster.element}_${monster.class}`;
   const monsterKeybinds = getMonsterKeybinds(keybindData, monsterComboId);
+
+  // Resolve external slot host (for rendering sort/filter controls in the panel header)
+  const [controlsHost, setControlsHost] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    if (!controlsSlotId || typeof document === 'undefined') {
+      setControlsHost(null);
+      return;
+    }
+    const find = () => setControlsHost(document.getElementById(controlsSlotId));
+    find();
+    const raf = requestAnimationFrame(find);
+    return () => cancelAnimationFrame(raf);
+  }, [controlsSlotId]);
   
   // Persist sort/filter changes
   const handleSortChange = (option: MoveSortOption) => {
@@ -355,13 +372,25 @@ export function UnifiedMovePanel({
 
   return (
     <div className="space-y-3">
-      {/* Sort and Filter Controls */}
-      <MoveSortFilter
-        sortOption={sortOption}
-        filters={filters}
-        onSortChange={handleSortChange}
-        onFilterChange={handleFilterChange}
-      />
+      {/* Sort and Filter Controls — render inline if no slot host found, else portal them */}
+      {controlsHost
+        ? createPortal(
+            <MoveSortFilter
+              sortOption={sortOption}
+              filters={filters}
+              onSortChange={handleSortChange}
+              onFilterChange={handleFilterChange}
+            />,
+            controlsHost,
+          )
+        : (
+          <MoveSortFilter
+            sortOption={sortOption}
+            filters={filters}
+            onSortChange={handleSortChange}
+            onFilterChange={handleFilterChange}
+          />
+        )}
       
       {/* Visible Moves */}
       <div 

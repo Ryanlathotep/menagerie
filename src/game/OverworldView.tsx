@@ -71,6 +71,8 @@ import {
   damageNest, getNestDestroyRewards, countNearbyNestEnemies,
 } from './nests';
 
+import { useCloudSave } from '@/hooks/useCloudSave';
+
 interface OverworldViewProps {
   gameLog: LogMessage[];
   addLog: (text: string, type?: LogMessage['type']) => void;

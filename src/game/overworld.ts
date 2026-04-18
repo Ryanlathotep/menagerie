@@ -138,6 +138,21 @@ function isDungeonEntranceAt(worldX: number, worldY: number): boolean {
   return worldX === dungeonWorldX && worldY === dungeonWorldY;
 }
 
+// If any themed tower (home / element / class / species) lives at this world position,
+// return its dungeon id so the chunk generator can place a `dungeon_entrance` tile.
+function findThemedTowerAt(
+  dungeonEntrances: Record<string, DungeonEntrance>,
+  worldX: number,
+  worldY: number,
+): string | null {
+  for (const id in dungeonEntrances) {
+    const d = dungeonEntrances[id];
+    if (!d || !d.category || d.category === 'procedural') continue;
+    if (d.worldX === worldX && d.worldY === worldY) return id;
+  }
+  return null;
+}
+
 // Create a DungeonEntrance for a world position
 function createDungeonEntrance(worldX: number, worldY: number): DungeonEntrance {
   const id = `dungeon_${worldX}_${worldY}`;

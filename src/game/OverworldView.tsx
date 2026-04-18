@@ -734,19 +734,40 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
     }
     
-    if ((tile?.type === 'enemy' && tile.enemyId || tile?.type === 'nest' && tile.nestId) && monster) {
-      const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
-      const attackMove = moves.find(m => m.type === 'melee' || m.type === 'ranged');
-      if (attackMove) {
-        const config = getAttackConfig(attackMove);
-        const dist = Math.abs(worldX - overworld.playerPosition.x) + Math.abs(worldY - overworld.playerPosition.y);
-        if (dist <= config.range) {
-          setTargetingMove(attackMove);
-          setTargetingTiles(getOverworldValidTargets(overworld.playerPosition, config, overworld));
-          setTimeout(() => handleTargetingClick(worldX, worldY), 0);
-        } else {
-          toast.info('Enemy out of range!');
-        }
+    // Enemy or nest → open the attack picker (sorted by user move-panel prefs)
+    if (tile?.type === 'enemy' && tile.enemyId && monster) {
+      const enemy = getOverworldEnemy(overworld, tile.enemyId);
+      if (enemy) {
+        setAttackMenuTarget({
+          enemy,
+          enemyPos: { x: worldX, y: worldY },
+          playerPos: overworld.playerPosition,
+        });
+      }
+      return;
+    }
+    if (tile?.type === 'nest' && tile.nestId && monster) {
+      const nest = overworld.nests?.[tile.nestId];
+      if (nest) {
+        // Build a synthetic Monster-like target so the attack menu can show
+        // effectiveness/HP info against the nest itself.
+        const nestAsMonster: Monster = {
+          ...monster,
+          id: nest.id,
+          name: `${nest.element[0].toUpperCase()}${nest.element.slice(1)} Nest`,
+          element: nest.element,
+          level: nest.level,
+          stats: {
+            ...monster.stats,
+            currentHp: nest.hp,
+            maxHp: nest.maxHp,
+          },
+        };
+        setAttackMenuTarget({
+          enemy: nestAsMonster,
+          enemyPos: { x: worldX, y: worldY },
+          playerPos: overworld.playerPosition,
+        });
       }
       return;
     }

@@ -266,6 +266,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             updatedUnlockedMonsters[existingIdx] = {
               ...updatedUnlockedMonsters[existingIdx],
               level: Math.max(updatedUnlockedMonsters[existingIdx].level, partyMember.level),
+              // Persist banked XP and move-mastery progress so partial
+              // progression earned this run survives the run ending.
+              experience: partyMember.experience ?? 0,
+              moveMastery: partyMember.moveMastery,
               equipment: cleanedEquipment,
             };
           }

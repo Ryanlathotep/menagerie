@@ -255,6 +255,15 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
       else if (biome === 'air') { treeChance = 0.05; waterChance = 0.02; }
       else if (biome === 'void') { rockChance = 0.08; treeChance = 0.06; }
 
+      // Cluster bias: separate low-frequency noise fields for forests and
+      // outcrops. Where the field is high, we boost the spawn chance so trees
+      // and rocks form loose groves instead of scattered single tiles.
+      // Scale 0.18 → ~5-7 tile blob radius.
+      const forestNoise = biomeNoise(worldX, worldY, 0.18);
+      const outcropNoise = biomeNoise(worldX + 1000, worldY - 1000, 0.22);
+      if (forestNoise > 0.55) treeChance += (forestNoise - 0.55) * 0.9; // up to +0.4
+      if (outcropNoise > 0.6) rockChance += (outcropNoise - 0.6) * 0.8; // up to +0.32
+
       // Reduce enemy spawns near roads (check 2-tile radius)
       let enemyChanceMultiplier = 1.0;
       if (typeof dungeonEntrances === 'object') {

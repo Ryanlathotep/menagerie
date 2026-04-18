@@ -3841,6 +3841,8 @@ function BattleView({
         activePartyIndex={state.run.activePartyIndex}
         partyEffects={(state.run.partyEffects || []) as CombatEffects[]}
       />
+        );
+      })()}
     </div>
     </>
   );

@@ -152,11 +152,9 @@ export function canPlaceBuilding(
   buildingType: PlayerBuildingType,
 ): { canPlace: boolean; reason?: string } {
   const def = BUILDING_DEFINITIONS[buildingType];
-  // Inline import to keep this file dependency-free at module load time.
   // Creative mode bypasses ONLY the cost check — placement rules (no overlap,
   // not on home tile, within build radius) still apply so the world stays sane.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const creative = (require('./creativeMode') as typeof import('./creativeMode')).isCreativeMode();
+  const creative = isCreativeMode();
 
   // Check resources (skipped in creative mode)
   if (!creative) {

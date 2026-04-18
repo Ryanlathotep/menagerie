@@ -17,7 +17,7 @@ import {
   createAllThemedTowers,
 } from './types';
 import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot, dismantleEquipment, getRecipeFromEquipment, getConsumableRecipeFromItem } from './equipment';
-import type { PickaxeTier } from './tools';
+import type { PickaxeTier, ShovelTier } from './tools';
 import { xpToNextLevel } from './combat';
 import { calculateStats } from './utils';
 import { findNearestEmptyOverworldTile, slimOverworldForSave, expandOverworldFromSave } from './overworld';
@@ -112,8 +112,9 @@ type GameAction =
   | { type: 'CLEAR_ALL_PARTY_EFFECTS' }
   // Overworld
   | { type: 'UPDATE_OVERWORLD'; overworld: import('./overworld').OverworldState }
-  // Tools (singleton, upgradeable in place — sets pickaxe to a specific tier)
-  | { type: 'SET_PICKAXE_TIER'; tier: PickaxeTier };
+  // Tools (singleton, upgradeable in place — sets pickaxe/shovel to a specific tier)
+  | { type: 'SET_PICKAXE_TIER'; tier: PickaxeTier }
+  | { type: 'SET_SHOVEL_TIER'; tier: ShovelTier };
 
 // Reducer
 function gameReducer(state: GameState, action: GameAction): GameState {
@@ -851,6 +852,19 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           tools: {
             ...(state.saveData.tools || {}),
             pickaxe: action.tier,
+          },
+        },
+      };
+
+    // Same as pickaxe — singleton, in-place upgrade.
+    case 'SET_SHOVEL_TIER':
+      return {
+        ...state,
+        saveData: {
+          ...state.saveData,
+          tools: {
+            ...(state.saveData.tools || {}),
+            shovel: action.tier,
           },
         },
       };

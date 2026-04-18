@@ -316,27 +316,10 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
         )}
       </div>
       
-      {/* Menu panel - sits inside the bottom bar's right half so map / log / menu are all visible at once.
-          Position is computed from CSS vars set by the active view (--menagerie-bar-h / --menagerie-sidebar-h) so
-          every panel ends up exactly the same size as the log box. */}
-      {activePanel && <div 
-        className="fixed left-0 right-0 sm:left-auto sm:right-2 sm:w-[calc(50%-1rem)] bg-card border-2 border-primary/20 sm:rounded-lg shadow-xl z-40 animate-fade-in overflow-y-auto"
-        style={{
-          // Mobile (no CSS vars set): keep legacy behavior just above the bottom bar
-          // Desktop: align exactly to the log box (bar height minus its resize handle and inner padding)
-          bottom: `calc(var(--menagerie-sidebar-h, ${isMobileView ? '64px' : '96px'}) + 0.25rem)`,
-          height: `calc(var(--menagerie-bar-h, ${isMobileView ? '160px' : '180px'}) - 1rem)`,
-        }}
-      >
-          {/* Resize drag handle */}
-          <div 
-            className="sticky top-0 z-10 flex justify-center py-1 cursor-row-resize bg-card/90 backdrop-blur-sm border-b border-border/30 touch-none select-none"
-            onMouseDown={handleResizeStart}
-            onTouchStart={handleResizeStart}
-          >
-            <div className="w-10 h-1 rounded-full bg-muted-foreground/40" />
-          </div>
-          <div className="p-3">
+      {(activePanel && panelHost)
+        ? createPortal(
+          <div className="h-full overflow-y-auto bg-card animate-fade-in">
+            <div className="p-3">
             {/* Panel header */}
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-sm font-bold text-primary">
@@ -653,8 +636,31 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 partyEffects={partyEffects}
               />
             )}
+            </div>
+          </div>,
+          panelHost,
+        )
+        : activePanel && (
+          <div 
+            className="fixed left-0 right-0 bg-card border-2 border-primary/20 shadow-xl z-40 animate-fade-in overflow-y-auto"
+            style={{
+              bottom: `calc(var(--menagerie-sidebar-h, ${isMobileView ? '64px' : '96px'}) + 0.25rem)`,
+              height: `calc(var(--menagerie-bar-h, ${isMobileView ? '160px' : '180px'}) - 0.5rem)`,
+            }}
+          >
+            <div className="p-3">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-sm font-bold text-primary">
+                  {activePanel === 'character' && '📋 Character'}
+                  {activePanel === 'moves' && '⚔️ Moves'}
+                  {activePanel === 'inventory' && '🎒 Inventory'}
+                  {activePanel === 'party' && '👥 Party'}
+                </h2>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handlePanelChange(null)}>✕</Button>
+              </div>
+            </div>
           </div>
-        </div>}
+        )}
       
       {/* Settings Panel */}
       <SettingsPanel isOpen={showSettings} onClose={() => setShowSettings(false)} />

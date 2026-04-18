@@ -76,6 +76,7 @@ interface DungeonRendererProps {
   }[]; // Path for click-to-move
   onDisarmTrap?: (x: number, y: number, success: boolean) => void;
   onTileClick?: (x: number, y: number) => void; // Click-to-move handler
+  onTileRightClick?: (x: number, y: number) => void; // Right-click handler (e.g. open enemy attack menu)
   // Targeting mode for attacks
   targetingMode?: boolean;
   targetingTiles?: { x: number; y: number }[]; // Valid target tiles
@@ -562,6 +563,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   targetPath = [],
   onDisarmTrap,
   onTileClick,
+  onTileRightClick,
   targetingMode = false,
   targetingTiles = [],
   affectedTiles = [],
@@ -692,6 +694,11 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                     style={{ width: tileSize, height: tileSize }}
                     onMouseEnter={() => targetingMode && onTileHover?.(x, y)}
                     onMouseLeave={() => targetingMode && onTileHoverEnd?.()}
+                    onContextMenu={(e) => {
+                      if (!onTileRightClick || !tile.explored) return;
+                      e.preventDefault();
+                      onTileRightClick(x, y);
+                    }}
                   >
                     <Tile
                       tile={tile}

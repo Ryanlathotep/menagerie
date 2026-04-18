@@ -23,6 +23,8 @@ import {
   canPlaceRoad,
   placeRoad,
   applyRoadsToChunks,
+  removeRoad,
+  getRoadRefund,
   findNearestEmptyOverworldTile,
   expandOverworldFromSave,
 } from './overworld';
@@ -1787,6 +1789,33 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         />
       );
     })()}
+
+    {/* Road Right-Click Disassemble Menu */}
+    {roadMenu && (
+      <RoadContextMenu
+        worldX={roadMenu.x}
+        worldY={roadMenu.y}
+        roadType={roadMenu.roadType}
+        onClose={() => setRoadMenu(null)}
+        onDisassemble={() => {
+          const { x, y, roadType } = roadMenu;
+          setOverworld(prev => {
+            const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
+            if (!removeRoad(newOw, x, y)) {
+              toast.error('No road to disassemble here.');
+              return prev;
+            }
+            const refund = getRoadRefund(roadType);
+            const def = ROAD_DEFINITIONS[roadType];
+            addLog(`♻️ Disassembled ${def.name} at (${x},${y}). Recovered 🪵${refund.wood} 🪨${refund.stone}.`, 'loot');
+            toast.success(`Road removed! +🪵${refund.wood} +🪨${refund.stone}`);
+            saveOverworld(newOw);
+            return newOw;
+          });
+          setRoadMenu(null);
+        }}
+      />
+    )}
 
     {attackMenuTarget && monster && (
       <EnemyAttackMenu

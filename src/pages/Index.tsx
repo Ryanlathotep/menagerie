@@ -3807,7 +3807,16 @@ function BattleView({
         const battleEntrance = battleDungeonId
           ? state.saveData?.dungeonEntrances?.[battleDungeonId]
           : undefined;
+        const battleTheme = battleEntrance?.theme ?? state.run?.dungeon?.theme;
+        const battleThemeName = battleTheme
+          ? (battleTheme.kind === 'all'
+              ? 'Tower of the Infinite'
+              : battleTheme.value
+                ? `${String(battleTheme.value)[0].toUpperCase()}${String(battleTheme.value).slice(1)} Tower`
+                : null)
+          : null;
         const battleLocationName = battleEntrance?.name
+          || battleThemeName
           || (battleEntrance?.element
               ? `${battleEntrance.element[0].toUpperCase()}${battleEntrance.element.slice(1)} Wilderness Dungeon`
               : 'Tower of the Infinite');

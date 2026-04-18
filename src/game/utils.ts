@@ -64,13 +64,20 @@ export function calculateStatGains(
   };
 }
 
-// Create a new monster
+
+// Create a new monster.
+//
+// `experience` and `moveMastery` let callers re-hydrate persisted progression
+// from `UnlockedMonster` records when starting a new run, so XP banked
+// toward the next level and move-mastery use counts survive run transitions.
 export function createMonster(
   species: SpeciesType, 
   classType: ClassType, 
   element: ElementType, 
   level: number = 1,
-  equipment?: MonsterEquipment
+  equipment?: MonsterEquipment,
+  experience?: number,
+  moveMastery?: Monster['moveMastery'],
 ): Monster {
   const speciesData = SPECIES_DATA[species];
   
@@ -83,6 +90,8 @@ export function createMonster(
     stats: calculateStats(species, classType, level),
     name: `${element.charAt(0).toUpperCase() + element.slice(1)} ${speciesData.name}`,
     equipment,
+    experience: experience ?? 0,
+    moveMastery,
   };
 }
 

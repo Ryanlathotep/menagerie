@@ -222,12 +222,12 @@ export function OverworldTooltipContent({
       const elem = d?.element as ElementType | undefined;
       const elemEmoji = elem ? (ELEMENT_EMOJI[elem] ?? '') : '';
       const themeKind = d?.theme?.kind;
-      const theme = d?.theme as any;
+      const themeValue = d?.theme?.value as string | undefined;
       const themeLabel =
         themeKind === 'all' ? 'All monsters' :
-        themeKind === 'element' && theme ? `${theme.element} element` :
-        themeKind === 'class' && theme ? `${theme.classType} class` :
-        themeKind === 'species' && theme ? `${theme.species} species` :
+        themeKind === 'element' && themeValue ? `${themeValue} element` :
+        themeKind === 'class' && themeValue ? `${themeValue} class` :
+        themeKind === 'species' && themeValue ? `${themeValue} species` :
         elem ? `${elem} biome` : null;
       return (
         <div className="space-y-1 text-xs">

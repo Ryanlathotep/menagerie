@@ -19,6 +19,7 @@ import {
   ElevatorTile,
   DoorTile 
 } from './TileGraphics';
+import { fitFromNeighbors } from './autoTiling';
 
 // Check if a monster combo has been captured at equal or lower level
 function isCaptured(enemy: Monster, unlockedMonsters: UnlockedMonster[]): {
@@ -433,15 +434,26 @@ function Tile({
   // Terrain tiles with SVG watercolor graphics and tooltips
   if (tile.type === 'terrain' && tile.visible && tile.terrainType) {
     const terrainConfig = TERRAIN_CONFIG[tile.terrainType];
-    
+    // Auto-tile fit: same terrain type in adjacent tile = "open" side, so the
+    // watercolor wash bleeds across the seam and connected pools read as one.
+    const sameTerrain = (tx: number, ty: number) =>
+      ty >= 0 && ty < tiles.length && tx >= 0 && tx < tiles[0].length &&
+      tiles[ty][tx].type === 'terrain' && tiles[ty][tx].terrainType === tile.terrainType;
+    const terrainFit = fitFromNeighbors(
+      sameTerrain(x, y - 1),
+      sameTerrain(x + 1, y),
+      sameTerrain(x, y + 1),
+      sameTerrain(x - 1, y),
+    );
+
     return <Tooltip>
       <TooltipTrigger asChild>
-        <div 
-          className={`flex items-center justify-center relative ${pathOverlayClass} cursor-pointer hover:brightness-110`} 
+        <div
+          className={`flex items-center justify-center relative ${pathOverlayClass} cursor-pointer hover:brightness-110`}
           style={tileStyle}
           onClick={onClick}
         >
-          <TerrainTile size={tileSize} terrainType={tile.terrainType} seed={tileSeed} />
+          <TerrainTile size={tileSize} terrainType={tile.terrainType} seed={tileSeed} fit={terrainFit} />
         </div>
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-[240px] p-2">

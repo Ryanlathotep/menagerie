@@ -786,8 +786,11 @@ export function canPlaceRoad(
   roadType: RoadType,
 ): { canPlace: boolean; reason?: string } {
   const def = ROAD_DEFINITIONS[roadType];
-  if (state.woodCollected < def.cost.wood) return { canPlace: false, reason: `Need ${def.cost.wood} wood` };
-  if (state.stoneCollected < def.cost.stone) return { canPlace: false, reason: `Need ${def.cost.stone} stone` };
+  const creative = isCreativeMode();
+  if (!creative) {
+    if (state.woodCollected < def.cost.wood) return { canPlace: false, reason: `Need ${def.cost.wood} wood` };
+    if (state.stoneCollected < def.cost.stone) return { canPlace: false, reason: `Need ${def.cost.stone} stone` };
+  }
 
   const key = `${worldX},${worldY}`;
   if (state.roads[key]) return { canPlace: false, reason: 'Road already exists here' };
@@ -807,8 +810,10 @@ export function placeRoad(state: OverworldState, worldX: number, worldY: number,
   if (!check.canPlace) return false;
 
   const def = ROAD_DEFINITIONS[roadType];
-  state.woodCollected -= def.cost.wood;
-  state.stoneCollected -= def.cost.stone;
+  if (!isCreativeMode()) {
+    state.woodCollected -= def.cost.wood;
+    state.stoneCollected -= def.cost.stone;
+  }
 
   const key = `${worldX},${worldY}`;
   if (!state.roads) state.roads = {};

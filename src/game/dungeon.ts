@@ -699,6 +699,29 @@ export function mineableWallName(tier: MineableWallTier): string {
   return MINEABLE_WALL_TIERS[tier].name;
 }
 
+// ============= RUNE DIGGING =============
+// Strip the rune (terrainType) from a tile, converting it back to floor.
+// Player-occupied tiles are handled too — the player keeps standing where
+// they are but no longer atop a rune. Returns the updated dungeon, or null
+// if the tile is not a rune.
+export function digRune(
+  dungeon: DungeonState,
+  x: number,
+  y: number,
+): DungeonState | null {
+  const tile = dungeon.tiles[y]?.[x];
+  if (!tile || !tile.terrainType) return null;
+  const newTiles = dungeon.tiles.map(row => row.map(t => ({ ...t })));
+  const target = newTiles[y][x];
+  target.terrainType = undefined;
+  // If the tile currently shows the player or an enemy, preserve that;
+  // otherwise it becomes a plain floor.
+  if (target.type === 'terrain') {
+    target.type = 'floor';
+  }
+  return { ...dungeon, tiles: newTiles };
+}
+
 // Remove enemy from dungeon after defeat
 export function removeEnemy(dungeon: DungeonState, enemyId: string): DungeonState {
   const newTiles = dungeon.tiles.map(row => 

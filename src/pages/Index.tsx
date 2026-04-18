@@ -1965,7 +1965,17 @@ function DungeonView({
   const activeDungeonEntrance = activeDungeonId
     ? state.saveData?.dungeonEntrances?.[activeDungeonId]
     : undefined;
+  // Fallback: derive a name from the dungeon's theme (in case the entrance lookup misses).
+  const themeForName = activeDungeonEntrance?.theme ?? dungeon.theme;
+  const themeDerivedName = themeForName
+    ? (themeForName.kind === 'all'
+        ? 'Tower of the Infinite'
+        : themeForName.value
+          ? `${String(themeForName.value)[0].toUpperCase()}${String(themeForName.value).slice(1)} Tower`
+          : null)
+    : null;
   const dungeonLocationName = activeDungeonEntrance?.name
+    || themeDerivedName
     || (activeDungeonEntrance?.element
         ? `${activeDungeonEntrance.element[0].toUpperCase()}${activeDungeonEntrance.element.slice(1)} Wilderness Dungeon`
         : 'Tower of the Infinite');
@@ -3797,7 +3807,16 @@ function BattleView({
         const battleEntrance = battleDungeonId
           ? state.saveData?.dungeonEntrances?.[battleDungeonId]
           : undefined;
+        const battleTheme = battleEntrance?.theme ?? state.run?.dungeon?.theme;
+        const battleThemeName = battleTheme
+          ? (battleTheme.kind === 'all'
+              ? 'Tower of the Infinite'
+              : battleTheme.value
+                ? `${String(battleTheme.value)[0].toUpperCase()}${String(battleTheme.value).slice(1)} Tower`
+                : null)
+          : null;
         const battleLocationName = battleEntrance?.name
+          || battleThemeName
           || (battleEntrance?.element
               ? `${battleEntrance.element[0].toUpperCase()}${battleEntrance.element.slice(1)} Wilderness Dungeon`
               : 'Tower of the Infinite');

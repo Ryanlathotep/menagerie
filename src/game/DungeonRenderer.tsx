@@ -615,6 +615,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
 
         // Title: prefer entrance name, then theme-derived, then fallback
         const dungeonTitle = dungeonEntrance?.name
+          ?? (theme?.kind === 'all' ? 'Tower of the Infinite' : null)
           ?? (theme?.kind === 'element' && theme.value ? `${theme.value} Tower` : null)
           ?? (theme?.kind === 'class' && theme.value ? `${theme.value} Tower` : null)
           ?? (theme?.kind === 'species' && theme.value ? `${theme.value} Tower` : null)

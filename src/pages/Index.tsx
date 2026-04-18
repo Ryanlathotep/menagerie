@@ -27,6 +27,7 @@ import { EquipmentView } from '@/game/EquipmentView';
 import { PreRunEquipment } from '@/game/PreRunEquipment';
 import { OverworldView } from '@/game/OverworldView';
 import { DungeonListPanel } from '@/game/DungeonListPanel';
+import { EnemyAttackMenu, EnemyAttackTarget } from '@/game/EnemyAttackMenu';
 import { 
   CombatEffects, 
   EMPTY_COMBAT_EFFECTS, 
@@ -681,6 +682,8 @@ function DungeonView({
   const [hoveredTile, setHoveredTile] = useState<Position | null>(null);
   const [targetingTiles, setTargetingTiles] = useState<Position[]>([]);
   const [affectedTiles, setAffectedTiles] = useState<Position[]>([]);
+  // Right-click an enemy → opens this attack menu
+  const [attackMenuTarget, setAttackMenuTarget] = useState<EnemyAttackTarget | null>(null);
   
   // Level up screen queue state - supports multiple level-ups (active + passive party members)
   interface LevelUpEntry {

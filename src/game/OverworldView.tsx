@@ -805,6 +805,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
     }
 
+    // Water → offer to fill it in with grass for resources
+    if (tile?.type === 'water') {
+      setWaterMenu({ x: worldX, y: worldY });
+      return;
+    }
+
     // Plain grass / harvested grass → open tile context menu (Build, etc.)
     if (tile?.type === 'grass') {
       setTileContextMenu({ x: worldX, y: worldY });

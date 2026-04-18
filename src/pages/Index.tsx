@@ -400,7 +400,15 @@ function CharacterSelect() {
     // so previously equipped gear is still equipped at the pre-run screen.
     const monsters = selectedParty.map(m => {
       const saved = state.saveData.unlockedMonsters.find(u => u.comboId === m.comboId);
-      return createMonster(m.species, m.classType, m.element, m.level, saved?.equipment);
+      return createMonster(
+        m.species,
+        m.classType,
+        m.element,
+        m.level,
+        saved?.equipment,
+        saved?.experience,
+        saved?.moveMastery,
+      );
     });
     setPartyForRun(monsters);
     setShowEquipmentSelect(true);

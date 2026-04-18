@@ -604,6 +604,7 @@ export function mineWall(
   x: number,
   y: number,
   pickaxeTier: PickaxeTier,
+  hitCount: number = 1,
 ): MineResult | null {
   const tile = dungeon.tiles[y]?.[x];
   if (!tile || tile.type !== 'mineable_wall' || !tile.wallTier) return null;
@@ -613,7 +614,7 @@ export function mineWall(
 
   const newTiles = dungeon.tiles.map(row => row.map(t => ({ ...t })));
   const target = newTiles[y][x];
-  const newHits = (target.wallHits || 0) + 1;
+  const newHits = (target.wallHits || 0) + hitCount;
 
   if (newHits >= needed) {
     // Break: convert to floor and drop material.

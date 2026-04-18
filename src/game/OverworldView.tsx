@@ -31,7 +31,7 @@ import {
 import { TREE_TIER_DATA, STONE_TIER_DATA, TreeTier, StoneTier } from './resourceHierarchy';
 import { 
   PlayerBuildingType, BUILDING_DEFINITIONS, canPlaceBuilding, createBuilding, tickFarm,
-  processScoutTowerAttacks, PlayerBuilding, getDisassembleRefund, getRepairCost,
+  processScoutTowerAttacks, PlayerBuilding, getDisassembleRefund, getRepairCost, isWallActingAsGate,
 } from './buildings';
 import { OverworldRenderer, OverworldRendererHandle } from './OverworldRenderer';
 import { OverworldDirectionArrows } from './OverworldDirectionArrows';

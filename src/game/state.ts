@@ -552,10 +552,21 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         m => m.comboId === action.monster.comboId
       );
       if (existingIndex !== -1) {
-        // Update level if new level is higher
+        // Update level if new level is higher.
+        // CRITICAL: preserve any equipment already persisted on the existing
+        // record. The action payload is built from a defeated wild enemy and
+        // does NOT carry the player's equipped gear, so a naive replace would
+        // wipe equipment off the player's matching party member.
         if (action.monster.level > state.saveData.unlockedMonsters[existingIndex].level) {
           const updatedMonsters = [...state.saveData.unlockedMonsters];
-          updatedMonsters[existingIndex] = action.monster;
+          const existing = updatedMonsters[existingIndex];
+          updatedMonsters[existingIndex] = {
+            ...action.monster,
+            // Always keep the player's persisted equipment if any was set;
+            // only fall back to the incoming payload's equipment when the
+            // existing record had none.
+            equipment: existing.equipment ?? action.monster.equipment,
+          };
           return {
             ...state,
             saveData: {

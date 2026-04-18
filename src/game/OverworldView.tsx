@@ -187,9 +187,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   }, [state.run, dispatch, addLog]);
   
   // ─── Movement ───
+  // NOTE: Movement is allowed while targeting a skill — valid target / AoE
+  // tiles are recomputed from the new player position by the effect below.
   const handleMove = useCallback((dx: number, dy: number) => {
-    if (targetingMove) return;
-    
     setOverworld(prev => {
       const newState = JSON.parse(JSON.stringify(prev)) as OverworldState;
       ensureChunksLoaded(newState, newState.playerPosition.x + dx, newState.playerPosition.y + dy);

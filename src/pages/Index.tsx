@@ -1334,7 +1334,12 @@ function DungeonView({
     window.addEventListener('touchend', onEnd);
   }, [controlsBarHeight]);
   
-  const dungeonBottomStyle = { bottom: `${sidebarHeight}px` };
+  const dungeonBottomStyle = {
+    bottom: `${sidebarHeight}px`,
+    // Expose to GameSidebar so the slide-up menu panel can perfectly overlay the log box's right half
+    ['--menagerie-bar-h' as string]: `${controlsBarHeight}px`,
+    ['--menagerie-sidebar-h' as string]: `${sidebarHeight}px`,
+  } as React.CSSProperties;
   const handleDropItem = (itemId: string) => {
     dispatch({
       type: 'DROP_ITEM',

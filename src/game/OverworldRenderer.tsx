@@ -173,8 +173,8 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
             <div
               key={`${worldX},${worldY}`}
               className={`absolute cursor-pointer overflow-hidden ${
-                isTargetable ? 'ring-2 ring-red-500/50' : ''
-              } ${isAffected ? 'ring-2 ring-red-400' : ''} ${isHovered ? 'ring-2 ring-yellow-400' : ''} ${
+                isTargetable && !isAffected ? 'ring-1 ring-red-500/40' : ''
+              } ${isAffected ? 'ring-2 ring-red-500' : ''} ${isHovered ? 'ring-2 ring-yellow-400' : ''} ${
                 !tile.visible && tile.explored ? 'opacity-40' : ''
               }`}
               style={{
@@ -239,6 +239,15 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
               {/* Harvest-ready glow on farms */}
               {tile.type === 'player_building' && playerBuilding?.type === 'farm' && playerBuilding.harvestReady && (
                 <div className="absolute inset-0 ring-2 ring-yellow-400 animate-pulse pointer-events-none" />
+              )}
+              {/* AoE / area-of-effect shading — drawn on top so it's clearly visible.
+                  Center (hovered) tile gets a slightly darker red so it stands out. */}
+              {isAffected && (
+                <div
+                  className={`absolute inset-0 pointer-events-none ${
+                    isHovered ? 'bg-red-600/55' : 'bg-red-500/40'
+                  }`}
+                />
               )}
             </div>
           );

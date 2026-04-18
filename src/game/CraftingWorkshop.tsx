@@ -72,7 +72,9 @@ export function CraftingWorkshop({
   };
   
   // Check if recipe is unlocked (works for both equipment and consumables)
+  // Creative mode unlocks every recipe so admins can test any tier.
   const isUnlocked = (recipe: CraftingRecipe | ConsumableRecipe): boolean => {
+    if (creative) return true;
     // Common recipes are always unlocked
     const rarity = 'resultRarity' in recipe ? recipe.resultRarity : recipe.rarity;
     if (rarity === 'common') return true;

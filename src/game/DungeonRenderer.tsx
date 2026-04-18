@@ -643,6 +643,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   onTileHover,
   onTileHoverEnd,
   dungeonEntrance,
+  playerPickaxeTier,
 }, ref) => {
   // Calculate tile size based on zoom (base size is 28px at 100%)
   const baseTileSize = 28;

@@ -2,7 +2,8 @@
 // Supports tier selection, move usage, sorting, filtering, drag-and-drop reordering,
 // and effectiveness indicators when enemy is present
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

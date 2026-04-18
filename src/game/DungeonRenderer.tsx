@@ -640,14 +640,6 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                   </span>
                 ))}
               </div>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded-full bg-gradient-to-br from-pink-400 to-primary" /> You
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded-full bg-gradient-to-br from-red-400 to-orange-400" /> Enemy
-                </span>
-              </div>
             </div>
             <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
               <span>
@@ -738,6 +730,19 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
             </div>
           ))}
         </div>
+      </div>
+      {/* Map key - centered below the grid */}
+      <div className="flex items-center justify-center gap-4 mt-2 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded-full bg-gradient-to-br from-pink-400 to-primary" /> You
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded-full bg-gradient-to-br from-red-400 to-orange-400" /> Enemy
+        </span>
+        <span>💎 Treasure</span>
+        <span>⬇️ Stairs</span>
+        <span>⚠️ Trap</span>
+        <span>🏪 Shop</span>
       </div>
     </div>
     </TooltipProvider>;

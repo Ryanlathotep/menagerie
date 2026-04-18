@@ -1622,5 +1622,32 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         onClose={() => setTileContextMenu(null)}
       />
     )}
+
+    {/* Enemy/Nest Right-Click Attack Menu */}
+    {attackMenuTarget && monster && (
+      <EnemyAttackMenu
+        attacker={monster}
+        target={attackMenuTarget}
+        moveOrder={state.run?.moveOrder || []}
+        onClose={() => setAttackMenuTarget(null)}
+        onPickMove={(move) => {
+          const target = attackMenuTarget;
+          setAttackMenuTarget(null);
+          // Enter targeting mode with this move, then immediately fire on the
+          // saved enemy tile so the right-click feels like a one-step action.
+          const config = getAttackConfig(move);
+          const validTargets = getOverworldValidTargets(
+            overworld.playerPosition,
+            config,
+            overworld,
+          );
+          setTargetingMove(move);
+          setTargetingTiles(validTargets);
+          setAffectedTiles([]);
+          setHoveredTile(null);
+          setTimeout(() => handleTargetingClick(target.enemyPos.x, target.enemyPos.y), 0);
+        }}
+      />
+    )}
   </>;
 }

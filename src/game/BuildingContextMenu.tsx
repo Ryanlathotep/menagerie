@@ -1,5 +1,5 @@
 // Right-click context menu for player buildings:
-// Assign/Manage monster, Repair, Disassemble.
+// Assign/Manage monster, Repair, Disassemble, Flip Gate (gates only).
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -10,7 +10,7 @@ import {
   getRepairCost,
 } from './buildings';
 import { Monster } from './types';
-import { Hammer, Recycle, UserPlus, X } from 'lucide-react';
+import { Hammer, Recycle, RefreshCw, UserPlus, X } from 'lucide-react';
 
 interface BuildingContextMenuProps {
   building: PlayerBuilding;

@@ -1046,7 +1046,31 @@ function DungeonView({
       });
       addLog(`🌿 Harvested ${result.plant.plantType.split('_').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}!`, 'loot');
     }
-    
+
+    // Shovel rune harvest: if the player walked onto a rune AND owns a strong
+    // enough shovel, instantly dig it up. Mismatched diggers still took the
+    // backlash damage above (handled in the terrain branch). Single-hit by
+    // design — runes are surface inscriptions, not bedrock.
+    if (result.runeBump) {
+      const shovelTier = state.saveData.tools?.shovel;
+      const runeType = result.runeBump.terrainType;
+      const needed = shovelHitsToBreak(runeType, shovelTier);
+      if (shovelTier && isFinite(needed)) {
+        const newDungeon = digRune(result.dungeon, result.runeBump.x, result.runeBump.y);
+        if (newDungeon) {
+          const drop = rollRuneDrop(runeType);
+          dispatch({ type: 'SET_DUNGEON', dungeon: newDungeon });
+          dispatch({
+            type: 'ADD_MATERIAL',
+            materialId: drop.materialId,
+            quantity: drop.quantity,
+          });
+          const cfg = TERRAIN_CONFIG[runeType];
+          addLog(`🪏 Dug up ${cfg.name}! +${drop.quantity} ${cfg.name} Stone`, 'loot');
+        }
+      }
+    }
+
     // Check for step-based respawn (only on successful moves)
     if (!result.blocked) {
       checkStepRespawn();

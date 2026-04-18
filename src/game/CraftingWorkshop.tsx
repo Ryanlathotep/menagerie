@@ -60,8 +60,14 @@ export function CraftingWorkshop({
   const [activeTab, setActiveTab] = useState<'craft' | 'consumables' | 'dismantle'>('craft');
   const [selectedDismantle, setSelectedDismantle] = useState<EquipmentItem | null>(null);
   
-  // Check if player has materials for recipe
+  // Creative mode flag — re-renders when toggled so disabled buttons & "missing
+  // materials" labels flip live.
+  const [creative, setCreative] = useState(isCreativeMode());
+  useEffect(() => onCreativeModeChange(setCreative), []);
+
+  // Check if player has materials for recipe (always true in creative mode)
   const canCraft = (recipe: CraftingRecipe | ConsumableRecipe): boolean => {
+    if (creative) return true;
     return recipe.materials.every(req => (materials[req.materialId] || 0) >= req.quantity);
   };
   

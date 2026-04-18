@@ -443,10 +443,11 @@ export const HOME_TOWER_NAME = 'Tower of the Infinite';
 export const INFINITE_FLOORS = Infinity;
 
 export function createHomeTowerEntrance(): DungeonEntrance {
+  // Sit a few tiles directly north of home so the player always finds it on day one.
   return {
     id: HOME_TOWER_ID,
     worldX: 0,
-    worldY: 0,
+    worldY: -3,
     seed: 1337,
     deepestFloor: 0,
     difficulty: 1,

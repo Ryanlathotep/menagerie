@@ -211,7 +211,12 @@ export function OverworldTooltipContent({
 
     case 'dungeon_entrance': {
       const d = dungeonEntrance;
-      const name = d?.name || 'Dungeon Entrance';
+      // Fallback chain: explicit name → element-based wilderness name → coordinate-based name.
+      const elemForName = d?.element as ElementType | undefined;
+      const fallbackElem = elemForName
+        ? `${elemForName.charAt(0).toUpperCase()}${elemForName.slice(1)} Wilderness Dungeon`
+        : null;
+      const name = d?.name || fallbackElem || `Dungeon at (${worldX}, ${worldY})`;
       const startFloor = d?.difficulty ?? 1;
       const deepest = d?.deepestFloor ?? 0;
       const elem = d?.element as ElementType | undefined;

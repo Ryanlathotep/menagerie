@@ -56,6 +56,10 @@ export interface OverworldState {
   roads: Record<string, 'dirt_road' | 'stone_road'>; // Road tiles keyed by "x,y"
   resourceUpgrades: Record<string, ResourceUpgradeState>; // Resource tier tracking keyed by "x,y"
   totalSteps: number; // Total steps taken (for resource upgrade ticking)
+  // Persisted per-tile overrides applied AFTER chunks regenerate from seed.
+  // Keyed by "x,y". Used so refresh-time chunk regeneration doesn't wipe
+  // player edits (water-fills, harvested grass, depleted resources, fog-of-war).
+  tileOverrides?: Record<string, OverworldTile>;
 }
 
 // ============= CONSTANTS =============

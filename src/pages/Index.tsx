@@ -3192,42 +3192,59 @@ function BattleView({
       const allLevelUps: LevelUpEntry[] = [];
       
       if (levelUpResult.leveled) {
-        // Level up! Store previous stats for comparison
-        const previousStats = { ...battle.playerMonster.stats };
-        const previousLevel = battle.playerMonster.level;
-        
-        const newStats = calculateStats(battle.playerMonster.species, battle.playerMonster.class, levelUpResult.newLevel);
+        // Loop level-ups so a single big XP gain can grant multiple levels.
+        // There is NO max level — keep leveling until remaining XP < threshold.
+        let runningXp = newXp;
+        let runningLevel = battle.playerMonster.level;
+        let runningStats = { ...battle.playerMonster.stats };
+        let runningCurrentHp = newPlayerHp;
+        const accumulatedNewMoves: Move[] = [];
+        const veryFirstPreviousStats = { ...battle.playerMonster.stats };
+        const veryFirstPreviousLevel = battle.playerMonster.level;
+
+        while (runningXp >= xpToNextLevel(runningLevel)) {
+          runningXp -= xpToNextLevel(runningLevel);
+          runningLevel += 1;
+          const nextStats = calculateStats(battle.playerMonster.species, battle.playerMonster.class, runningLevel);
+          runningCurrentHp = Math.min(runningCurrentHp + 10, nextStats.maxHp);
+          runningStats = {
+            ...nextStats,
+            currentHp: runningCurrentHp,
+            currentStamina: nextStats.stamina,
+          };
+          const movesThisLevel = getNewMovesAtLevel(
+            battle.playerMonster.species,
+            battle.playerMonster.element,
+            battle.playerMonster.class,
+            runningLevel
+          );
+          accumulatedNewMoves.push(...movesThisLevel);
+        }
+
         const leveledMonster = {
           ...battle.playerMonster,
-          level: levelUpResult.newLevel,
-          stats: {
-            ...newStats,
-            currentHp: Math.min(newPlayerHp + 10, newStats.maxHp), // Small HP boost on level up
-            currentStamina: newStats.stamina // Full stamina restore on level up
-          }
+          level: runningLevel,
+          stats: runningStats,
         };
-        
-        // Check for new moves at this level
-        const newMoves = getNewMovesAtLevel(
-          battle.playerMonster.species, 
-          battle.playerMonster.element, 
-          battle.playerMonster.class, 
-          levelUpResult.newLevel
-        );
-        
+
         dispatch({
           type: 'UPDATE_PLAYER_MONSTER',
           monster: leveledMonster
         });
-        // Set XP to remainder after level up
-        dispatch({ type: 'ADD_XP', amount: levelUpResult.xpRemaining - experience });
-        
-        toast.success(`🎉 LEVEL UP! Now level ${levelUpResult.newLevel}!`);
-        
+        // Replace XP delta so global XP equals the leftover after all level-ups.
+        dispatch({ type: 'ADD_XP', amount: runningXp - experience });
+
+        const levelsGained = runningLevel - battle.playerMonster.level;
+        toast.success(
+          levelsGained > 1
+            ? `🎉 LEVEL UP x${levelsGained}! Now level ${runningLevel}!`
+            : `🎉 LEVEL UP! Now level ${runningLevel}!`
+        );
+
         allLevelUps.push({
-          previousStats,
-          previousLevel,
-          newMoves,
+          previousStats: veryFirstPreviousStats,
+          previousLevel: veryFirstPreviousLevel,
+          newMoves: accumulatedNewMoves,
           monster: leveledMonster,
           isPassive: false,
         });

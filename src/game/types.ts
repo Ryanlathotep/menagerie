@@ -399,6 +399,12 @@ export interface UnlockedMonster {
   element: ElementType;
   classType: ClassType;
   level: number; // Level when defeated
+  // XP banked toward the next level. Persisted across runs so partial
+  // progress isn't lost when entering / leaving dungeons.
+  experience?: number;
+  // Move-mastery progress (use counts + current tier per move). Persisted
+  // across runs so move evolution survives dungeon transitions.
+  moveMastery?: Monster['moveMastery'];
   // Persistent equipment that stays equipped across runs. Players can edit it
   // in the pre-run equipment screen but it won't reset between runs.
   equipment?: import('./equipment').MonsterEquipment;

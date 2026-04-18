@@ -17,9 +17,13 @@ interface BuildingContextMenuProps {
   party: Monster[];
   woodAvailable: number;
   stoneAvailable: number;
+  /** True iff this wall is currently acting as a gate (between two roads). */
+  isGate?: boolean;
   onAssign: () => void;
   onRepair: () => void;
   onDisassemble: () => void;
+  /** Toggle the gate's banner-side / outward-side. Only used when isGate is true. */
+  onFlipGate?: () => void;
   onClose: () => void;
 }
 
@@ -28,9 +32,11 @@ export function BuildingContextMenu({
   party,
   woodAvailable,
   stoneAvailable,
+  isGate,
   onAssign,
   onRepair,
   onDisassemble,
+  onFlipGate,
   onClose,
 }: BuildingContextMenuProps) {
   const def = BUILDING_DEFINITIONS[building.type];

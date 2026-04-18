@@ -10,6 +10,7 @@ import { MatchupIndicator } from './MatchupIndicator';
 import { 
   FloorTile, 
   WallTile, 
+  MineableWallTile,
   TerrainTile, 
   StairsTile, 
   TreasureTile, 

@@ -118,6 +118,81 @@ export function WallTile({ size, seed = 0 }: TileGraphicProps) {
   );
 }
 
+// Mineable wall — same rocky base as bedrock but tinted by tier and with
+// visible ore veins. `hits` shows accumulated pickaxe hits as crack overlays.
+import { MINEABLE_WALL_TIERS, type MineableWallTier } from './tools';
+
+interface MineableWallTileProps extends TileGraphicProps {
+  tier: MineableWallTier;
+  hits?: number;          // 0..hitsNeeded-1 (visualized as cracks)
+  hitsNeeded?: number;    // total hits to break
+}
+
+export function MineableWallTile({ size, seed = 0, tier, hits = 0, hitsNeeded = 3 }: MineableWallTileProps) {
+  const data = MINEABLE_WALL_TIERS[tier];
+  const r1 = seededRandom(seed);
+  const r2 = seededRandom(seed + 1);
+  const r3 = seededRandom(seed + 2);
+  const crackProgress = Math.min(1, hits / Math.max(1, hitsNeeded));
+
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className="block">
+      {/* Tier-tinted base */}
+      <rect width="24" height="24" fill={data.fill} />
+
+      {/* Rocky highlights */}
+      <circle cx={5 + r1 * 3} cy={5 + r2 * 3} r={3 + r3} fill={data.fill} opacity={0.85} />
+      <circle cx={15 + r2 * 4} cy={8 + r1 * 3} r={2.5 + r1 * 1.5} fill="hsl(0 0% 100% / 0.08)" />
+      <circle cx={8 + r3 * 4} cy={17 + r1 * 3} r={3 + r2} fill="hsl(0 0% 0% / 0.15)" />
+
+      {/* Ore veins — distinguishing feature vs bedrock */}
+      <circle cx={6 + r1 * 4} cy={12 + r2 * 4} r={1.4 + r3 * 0.6} fill={data.ore} opacity={0.9} />
+      <circle cx={17 + r2 * 3} cy={15 + r1 * 3} r={1.1 + r1 * 0.5} fill={data.ore} opacity={0.85} />
+      <circle cx={12 + r3 * 2} cy={5 + r2 * 2} r={0.9 + r2 * 0.5} fill={data.ore} opacity={0.7} />
+
+      {/* Ink outline strokes */}
+      <path
+        d={`M${2 + r1 * 2} ${6 + r2} Q${6} ${4 + r3 * 2} ${10 + r1 * 2} ${5 + r2}`}
+        stroke={INK_COLORS.dark}
+        strokeWidth={0.8}
+        fill="none"
+        strokeLinecap="round"
+        opacity={0.7}
+      />
+      <path
+        d={`M${3 + r3} ${14 + r1} Q${8 + r2} ${16} ${12 + r1} ${18 + r3}`}
+        stroke={INK_COLORS.dark}
+        strokeWidth={0.7}
+        fill="none"
+        strokeLinecap="round"
+        opacity={0.65}
+      />
+
+      {/* Crack overlay grows with hits */}
+      {crackProgress > 0 && (
+        <g opacity={0.4 + crackProgress * 0.6}>
+          <path
+            d={`M2 ${4 + r1 * 4} L${8 + r2 * 4} ${10 + r3 * 2} L${14 + r1 * 3} ${8 + r2 * 4} L${22} ${14 + r3 * 2}`}
+            stroke="hsl(0 0% 95%)"
+            strokeWidth={0.7 + crackProgress * 0.8}
+            fill="none"
+            strokeLinecap="round"
+          />
+          {crackProgress > 0.5 && (
+            <path
+              d={`M${4 + r2 * 3} 22 L${10 + r1 * 3} ${16 + r2 * 2} L${18 + r3 * 2} 20`}
+              stroke="hsl(0 0% 95%)"
+              strokeWidth={0.6 + crackProgress * 0.6}
+              fill="none"
+              strokeLinecap="round"
+            />
+          )}
+        </g>
+      )}
+    </svg>
+  );
+}
+
 // Terrain tile with watercolor wash effect.
 //
 // Auto-tiling: when `fit` is supplied, the watercolor "pool" extends to the

@@ -173,8 +173,8 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
             <div
               key={`${worldX},${worldY}`}
               className={`absolute cursor-pointer overflow-hidden ${
-                isTargetable ? 'ring-2 ring-red-500/50' : ''
-              } ${isAffected ? 'ring-2 ring-red-400' : ''} ${isHovered ? 'ring-2 ring-yellow-400' : ''} ${
+                isTargetable && !isAffected ? 'ring-1 ring-red-500/40' : ''
+              } ${isAffected ? 'ring-2 ring-red-500' : ''} ${isHovered ? 'ring-2 ring-yellow-400' : ''} ${
                 !tile.visible && tile.explored ? 'opacity-40' : ''
               }`}
               style={{

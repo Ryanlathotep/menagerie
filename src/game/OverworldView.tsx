@@ -1664,7 +1664,37 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       />
     )}
 
-    {/* Enemy/Nest Right-Click Attack Menu */}
+    {/* Dungeon Right-Click Waypoint / Enter Menu */}
+    {dungeonMenu && (
+      <DungeonWaypointMenu
+        worldX={dungeonMenu.worldX}
+        worldY={dungeonMenu.worldY}
+        dungeon={dungeonMenu.entrance}
+        isWaypointed={!!settings.dungeonWaypoints?.[dungeonMenu.entrance.id]}
+        onToggleWaypoint={() => {
+          const id = dungeonMenu.entrance.id;
+          const current = { ...(settings.dungeonWaypoints || {}) };
+          if (current[id]) {
+            delete current[id];
+            toast.info(`Waypoint hidden: ${dungeonMenu.entrance.name || 'dungeon'}`);
+          } else {
+            current[id] = true;
+            toast.success(`Waypoint pinned: ${dungeonMenu.entrance.name || 'dungeon'}`);
+          }
+          updateSetting('dungeonWaypoints', current);
+          setDungeonMenu(null);
+        }}
+        onEnter={() => {
+          const entrance = dungeonMenu.entrance;
+          setDungeonMenu(null);
+          setSelectedDungeon(entrance);
+          setShowDungeonPrompt(true);
+        }}
+        onClose={() => setDungeonMenu(null)}
+      />
+    )}
+
+
     {attackMenuTarget && monster && (
       <EnemyAttackMenu
         attacker={monster}

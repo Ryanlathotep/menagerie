@@ -130,9 +130,23 @@ export function OverworldRockTile({ size, seed = 0, tier = 'stone' }: TileGraphi
 }
 
 // ─── Water ───
-export function OverworldWaterTile({ size, seed = 0 }: TileGraphicProps) {
+// Optional auto-tile shape: when supplied, draws a sandy shoreline on the
+// "closed" sides so adjacent water cells flow into each other and isolated
+// puddles get a full beach ring.
+import type { AutoTileFit } from './autoTiling';
+
+export function OverworldWaterTile({ size, seed = 0, fit }: TileGraphicProps & { fit?: AutoTileFit }) {
   const r1 = seededRandom(seed);
   const r2 = seededRandom(seed + 1);
+
+  // Determine which sides have water neighbors. Defaults to "all open" so
+  // legacy callers without auto-tiling still render the original look.
+  let n = true, e = true, s = true, w = true;
+  if (fit) {
+    const opens = openSidesFromFit(fit);
+    n = opens.n; e = opens.e; s = opens.s; w = opens.w;
+  }
+  const SHORE = 'hsl(40 55% 70%)';
 
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className="block">
@@ -142,10 +156,43 @@ export function OverworldWaterTile({ size, seed = 0 }: TileGraphicProps) {
       {/* Wave lines */}
       <path d={`M2 ${10+r1*3} Q7 ${8+r2*2} 12 ${10+r1*2} T22 ${9+r2*3}`} stroke="hsl(190 50% 70%)" strokeWidth={1.2} fill="none" opacity={0.6}/>
       <path d={`M2 ${14+r2*2} Q8 ${12+r1*2} 13 ${14+r2} T23 ${13+r1*2}`} stroke="white" strokeWidth={0.7} fill="none" opacity={0.4}/>
+      {/* Shoreline edges (drawn only on closed sides) */}
+      {!n && <rect x="0" y="0"  width="24" height="2.5" fill={SHORE} opacity={0.85}/>}
+      {!s && <rect x="0" y="21.5" width="24" height="2.5" fill={SHORE} opacity={0.85}/>}
+      {!w && <rect x="0" y="0"  width="2.5" height="24" fill={SHORE} opacity={0.85}/>}
+      {!e && <rect x="21.5" y="0" width="2.5" height="24" fill={SHORE} opacity={0.85}/>}
+      {/* Soft pebble specks on shores */}
+      {!n && <circle cx={6+r1*8} cy={1.5} r={0.5} fill={INK.medium} opacity={0.5}/>}
+      {!s && <circle cx={10+r2*8} cy={22.5} r={0.5} fill={INK.medium} opacity={0.5}/>}
       <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
       <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
     </svg>
   );
+}
+
+// Compute which cardinal sides are "open" (i.e., connect to a same-type neighbor)
+// based on the inverse-encoded AutoTileFit (since water uses "open = connection").
+function openSidesFromFit(fit: AutoTileFit): { n: boolean; e: boolean; s: boolean; w: boolean } {
+  // Convert shape+rotation back into NESW open-flags. Keep this in sync with autoTiling.ts.
+  const rotateNESW = (n: boolean, e: boolean, s: boolean, w: boolean, deg: number) => {
+    // Rotate the open-flag vector clockwise by `deg`. After rotating the source
+    // pattern by `deg` to get the rendered orientation, sides shift accordingly.
+    const steps = ((deg / 90) % 4 + 4) % 4;
+    let arr = [n, e, s, w];
+    for (let i = 0; i < steps; i++) {
+      arr = [arr[3], arr[0], arr[1], arr[2]]; // CW rotation
+    }
+    return { n: arr[0], e: arr[1], s: arr[2], w: arr[3] };
+  };
+
+  switch (fit.shape) {
+    case 'cross':    return { n: true, e: true, s: true, w: true };
+    case 'single':   return { n: false, e: false, s: false, w: false };
+    case 'straight': return rotateNESW(false, true, false, true, fit.rotation); // base = E+W open
+    case 'corner':   return rotateNESW(true, true, false, false, fit.rotation); // base = N+E open
+    case 't':        return rotateNESW(false, true, true, true, fit.rotation);  // base = E+S+W open
+    case 'end':      return rotateNESW(false, true, false, false, fit.rotation); // base = E open
+  }
 }
 
 // ─── Building (campfire / cabin / town hall) ───

@@ -4,7 +4,7 @@ import { DungeonState, DungeonTile, Position, Monster, SpeciesType, TrapType, Pl
 import { generateRandomMonster } from './utils';
 import { generateEquipment, generateMaterialDrop, CraftingMaterial, EquipmentItem } from './equipment';
 import { getRandomTerrainType, TerrainType } from './terrain';
-import { getWallTierForFloor, MineableWallTier, hitsToBreak, rollWallDrop, PickaxeTier } from './tools';
+import { getWallTierForFloor, MineableWallTier, hitsToBreak, rollWallDrop, PickaxeTier, MINEABLE_WALL_TIERS } from './tools';
 
 // Larger dungeons with scrolling viewport
 const DUNGEON_WIDTH = 30;
@@ -480,14 +480,25 @@ export function movePlayer(
 
   // Check bounds
   if (newX < 0 || newX >= dungeon.width || newY < 0 || newY >= dungeon.height) {
-    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null };
+    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null };
   }
 
   const targetTile = tiles[newY][newX];
-  
-  // Can't move into walls
+
+  // Bedrock walls — flat block, no mining possible
   if (targetTile.type === 'wall') {
-    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null };
+    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null };
+  }
+
+  // Mineable walls — also block movement, but signal a "bump" so Index.tsx
+  // can apply a Pickaxe hit if the player owns one strong enough.
+  if (targetTile.type === 'mineable_wall' && targetTile.wallTier) {
+    return {
+      dungeon, encounter: null, treasure: false, stairs: false, trap: null,
+      terrain: null, shop: false, elevator: false, loot: null, blocked: true,
+      plant: null,
+      mineableBump: { x: newX, y: newY, tier: targetTile.wallTier },
+    };
   }
 
   // Create new tiles array
@@ -570,7 +581,71 @@ export function movePlayer(
     loot,
     plant,
     blocked: false,
+    mineableBump: null,
   };
+}
+
+// ============= MINING =============
+// Apply one Pickaxe hit to a mineable wall. Returns the updated dungeon and,
+// if the wall broke, the material drop. Returns null if the pickaxe is too
+// weak for this wall's tier (caller should show a "need a better pickaxe"
+// message instead). Caller is responsible for actually granting the drop.
+export interface MineResult {
+  dungeon: DungeonState;
+  broken: boolean;
+  drop: { materialId: string; quantity: number } | null;
+  hits: number;
+  hitsNeeded: number;
+  tier: MineableWallTier;
+}
+
+export function mineWall(
+  dungeon: DungeonState,
+  x: number,
+  y: number,
+  pickaxeTier: PickaxeTier,
+): MineResult | null {
+  const tile = dungeon.tiles[y]?.[x];
+  if (!tile || tile.type !== 'mineable_wall' || !tile.wallTier) return null;
+
+  const needed = hitsToBreak(tile.wallTier, pickaxeTier);
+  if (!isFinite(needed)) return null; // pickaxe too weak
+
+  const newTiles = dungeon.tiles.map(row => row.map(t => ({ ...t })));
+  const target = newTiles[y][x];
+  const newHits = (target.wallHits || 0) + 1;
+
+  if (newHits >= needed) {
+    // Break: convert to floor and drop material.
+    target.type = 'floor';
+    target.wallTier = undefined;
+    target.wallHits = undefined;
+    const drop = rollWallDrop(tile.wallTier);
+    return {
+      dungeon: { ...dungeon, tiles: newTiles },
+      broken: true,
+      drop,
+      hits: newHits,
+      hitsNeeded: needed,
+      tier: tile.wallTier,
+    };
+  }
+
+  // Just chip: increment hit counter
+  target.wallHits = newHits;
+  return {
+    dungeon: { ...dungeon, tiles: newTiles },
+    broken: false,
+    drop: null,
+    hits: newHits,
+    hitsNeeded: needed,
+    tier: tile.wallTier,
+  };
+}
+
+// Convenience: pretty name for a mineable wall tier (for log messages).
+export function mineableWallName(tier: MineableWallTier): string {
+  return MINEABLE_WALL_TIERS[tier].name;
 }
 
 // Remove enemy from dungeon after defeat

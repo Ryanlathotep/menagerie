@@ -80,6 +80,7 @@ interface LevelUpEntry {
 
 export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const { state, dispatch } = useGame();
+  const { settings } = useSettings();
   const rendererRef = useRef<OverworldRendererHandle>(null);
   
   // Initialize or load overworld state

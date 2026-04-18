@@ -108,6 +108,7 @@ function renderTileGraphic(
         );
         const isGate = isWallActingAsGate(playerBuilding, state);
         const gateAxis = isGate ? getGateAxis(playerBuilding, state) : undefined;
+        const gateInsideDir = isGate ? getGateInsideDirection(playerBuilding, state) : undefined;
         const damaged = playerBuilding.hp < playerBuilding.maxHp;
         return (
           <OverworldBuildingTileGraphic
@@ -117,6 +118,7 @@ function renderTileGraphic(
             wallFit={fit}
             isGate={isGate}
             gateAxis={gateAxis}
+            gateInsideDir={gateInsideDir}
             damaged={damaged}
           />
         );

@@ -332,7 +332,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       saveOverworld(newState);
       return newState;
     });
-  }, [addLog, saveOverworld, state.run, dispatch, targetingMove, processEnemyTurns]);
+  }, [addLog, saveOverworld, state.run, dispatch, processEnemyTurns]);
   
   // ─── Directional movement wrapper for keyboard ───
   const handleDirectionMove = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {

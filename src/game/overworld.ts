@@ -10,6 +10,7 @@ import {
   getInitialTreeTier, getInitialStoneTier,
   tickResourceUpgrades,
 } from './resourceHierarchy';
+import { isCreativeMode } from './creativeMode';
 
 const ALL_SPECIES = Object.keys(SPECIES_DATA) as SpeciesType[];
 

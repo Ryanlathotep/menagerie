@@ -840,6 +840,20 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           materials: updatedMaterials,
         },
       };
+
+    // Singleton tool upgrade — sets the pickaxe to a specific tier (replaces
+    // any previous tier). Materials are spent separately via USE_MATERIALS.
+    case 'SET_PICKAXE_TIER':
+      return {
+        ...state,
+        saveData: {
+          ...state.saveData,
+          tools: {
+            ...(state.saveData.tools || {}),
+            pickaxe: action.tier,
+          },
+        },
+      };
     
     case 'STORE_EQUIPMENT':
       return {

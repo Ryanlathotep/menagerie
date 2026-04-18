@@ -248,6 +248,14 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
             ? overworld.dungeonEntrances?.[tile.dungeonId]
             : undefined;
 
+          // Suppress hover tooltips on plain grass — they get in the way of exploration.
+          // Right-click on grass still opens a tile context menu (handled by OverworldView).
+          const suppressTooltip = tile.type === 'grass';
+
+          if (suppressTooltip) {
+            return <div key={`${worldX},${worldY}`}>{tileContent}</div>;
+          }
+
           const tooltipBody = tile.type === 'player_building' && playerBuilding
             ? <BuildingTooltipContent building={playerBuilding} party={party} />
             : <OverworldTooltipContent

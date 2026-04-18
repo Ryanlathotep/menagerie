@@ -24,6 +24,7 @@ import {
   placeRoad,
   applyRoadsToChunks,
   findNearestEmptyOverworldTile,
+  expandOverworldFromSave,
 } from './overworld';
 import { TREE_TIER_DATA, STONE_TIER_DATA, TreeTier, StoneTier } from './resourceHierarchy';
 import { 
@@ -90,6 +91,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     let ow: OverworldState;
     if (state.saveData.overworldState) {
       ow = JSON.parse(JSON.stringify(state.saveData.overworldState));
+      // Slimmed saves come back without chunks. Re-hydrate them now so the
+      // rest of the file (which always assumes a populated `chunks` map) works.
+      ow = expandOverworldFromSave(ow);
     } else {
       ow = createOverworldState();
     }
@@ -102,6 +106,33 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     if (!ow.nests) ow.nests = {};
     if (!ow.roads) ow.roads = {};
     ensureChunksLoaded(ow, ow.playerPosition.x, ow.playerPosition.y);
+    // Stamp themed tower tiles onto any already-loaded chunks. Needed for
+    // legacy saves whose chunks were generated before towers were placed.
+    for (const id in ow.dungeonEntrances) {
+      const d = ow.dungeonEntrances[id];
+      if (!d || !d.category || d.category === 'procedural') continue;
+      const existing = getOverworldTile(ow, d.worldX, d.worldY);
+      if (existing && existing.type !== 'dungeon_entrance') {
+        setOverworldTile(ow, d.worldX, d.worldY, {
+          type: 'dungeon_entrance',
+          explored: existing.explored,
+          visible: existing.visible,
+          dungeonId: id,
+        });
+      }
+    }
+    // Re-stamp player buildings onto chunks (in case overrides missed them).
+    for (const b of ow.playerBuildings || []) {
+      const existing = getOverworldTile(ow, b.worldX, b.worldY);
+      if (existing && (existing.type !== 'player_building' || existing.playerBuildingId !== b.id)) {
+        setOverworldTile(ow, b.worldX, b.worldY, {
+          type: 'player_building',
+          explored: true,
+          visible: existing.visible,
+          playerBuildingId: b.id,
+        });
+      }
+    }
     applyRoadsToChunks(ow);
     updateVisibility(ow);
     return ow;

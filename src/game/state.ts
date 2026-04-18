@@ -19,7 +19,7 @@ import {
 import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot, dismantleEquipment, getRecipeFromEquipment, getConsumableRecipeFromItem } from './equipment';
 import { xpToNextLevel } from './combat';
 import { calculateStats } from './utils';
-import { findNearestEmptyOverworldTile } from './overworld';
+import { findNearestEmptyOverworldTile, slimOverworldForSave, expandOverworldFromSave } from './overworld';
 
 // Starting monster - Normal Normal Slime
 const STARTER_MONSTER = {
@@ -1349,15 +1349,21 @@ export function GameProvider({ children }: GameProviderProps) {
         }
         // Migration: ensure all themed towers (element/class/species) exist for legacy saves.
         // Preserves any deepestFloor progress already recorded under the same id.
+        // Also migrates legacy synthetic coords (-100000-...) onto the new on-map ring positions.
         const themedDefaults = createAllThemedTowers();
         for (const [id, def] of Object.entries(themedDefaults)) {
-          if (!saveData.dungeonEntrances[id]) {
+          const existing = saveData.dungeonEntrances[id];
+          if (!existing) {
             saveData.dungeonEntrances[id] = def;
           } else {
-            const existing = saveData.dungeonEntrances[id];
+            const hasLegacyCoords = existing.worldX <= -10000 || existing.worldY <= -10000;
             saveData.dungeonEntrances[id] = {
               ...def,
               ...existing,
+              // Force the canonical on-map position when the saved coords are the
+              // old synthetic placeholders.
+              worldX: hasLegacyCoords ? def.worldX : existing.worldX,
+              worldY: hasLegacyCoords ? def.worldY : existing.worldY,
               theme: existing.theme || def.theme,
               category: existing.category || def.category,
               name: existing.name || def.name,
@@ -1372,9 +1378,21 @@ export function GameProvider({ children }: GameProviderProps) {
     }
   }, []);
 
-  // Save to localStorage when saveData changes
+  // Save to localStorage when saveData changes.
+  // Overworld chunks are stripped (regenerable from seed) so we don't blow
+  // past the ~5MB localStorage quota — losing the entire save (including
+  // player buildings) silently when it overflows.
   useEffect(() => {
-    localStorage.setItem('monster-roguelike-save', JSON.stringify(state.saveData));
+    try {
+      const toPersist: SaveData = { ...state.saveData };
+      if (toPersist.overworldState) {
+        toPersist.overworldState = slimOverworldForSave(toPersist.overworldState);
+      }
+      localStorage.setItem('monster-roguelike-save', JSON.stringify(toPersist));
+    } catch (err) {
+      // QuotaExceededError or similar — log loudly so we can diagnose.
+      console.error('[save] Failed to write to localStorage:', err);
+    }
   }, [state.saveData]);
 
   return React.createElement(GameContext.Provider, { value: { state, dispatch } }, children);

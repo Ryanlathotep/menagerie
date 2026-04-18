@@ -1,6 +1,6 @@
 // Overworld system - infinite chunk-based exploration world
 
-import { Monster, Position, SpeciesType, ElementType, SPECIES_DATA, DungeonEntrance } from './types';
+import { Monster, Position, SpeciesType, ElementType, SPECIES_DATA, DungeonEntrance, createAllThemedTowers } from './types';
 import { generateRandomMonster } from './utils';
 import { PlayerBuilding } from './buildings';
 import { NestState, isNestAt, createNest } from './nests';
@@ -56,6 +56,10 @@ export interface OverworldState {
   roads: Record<string, 'dirt_road' | 'stone_road'>; // Road tiles keyed by "x,y"
   resourceUpgrades: Record<string, ResourceUpgradeState>; // Resource tier tracking keyed by "x,y"
   totalSteps: number; // Total steps taken (for resource upgrade ticking)
+  // Persisted per-tile overrides applied AFTER chunks regenerate from seed.
+  // Keyed by "x,y". Used so refresh-time chunk regeneration doesn't wipe
+  // player edits (water-fills, harvested grass, depleted resources, fog-of-war).
+  tileOverrides?: Record<string, OverworldTile>;
 }
 
 // ============= CONSTANTS =============
@@ -138,6 +142,21 @@ function isDungeonEntranceAt(worldX: number, worldY: number): boolean {
   return worldX === dungeonWorldX && worldY === dungeonWorldY;
 }
 
+// If any themed tower (home / element / class / species) lives at this world position,
+// return its dungeon id so the chunk generator can place a `dungeon_entrance` tile.
+function findThemedTowerAt(
+  dungeonEntrances: Record<string, DungeonEntrance>,
+  worldX: number,
+  worldY: number,
+): string | null {
+  for (const id in dungeonEntrances) {
+    const d = dungeonEntrances[id];
+    if (!d || !d.category || d.category === 'procedural') continue;
+    if (d.worldX === worldX && d.worldY === worldY) return id;
+  }
+  return null;
+}
+
 // Create a DungeonEntrance for a world position
 function createDungeonEntrance(worldX: number, worldY: number): DungeonEntrance {
   const id = `dungeon_${worldX}_${worldY}`;
@@ -183,7 +202,17 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
         continue;
       }
       
-      // Dungeon entrance (procedural or legacy)
+      // Themed dungeon tower at this exact world position?
+      // (Tower of the Infinite + element/class/species towers all live on the map.)
+      const themedTowerId = findThemedTowerAt(dungeonEntrances, worldX, worldY);
+      if (themedTowerId) {
+        // Discovered by default so the main-menu list & arrows still know about it,
+        // but we don't reveal the tile until the player walks within sight.
+        row.push({ type: 'dungeon_entrance', explored: false, visible: false, dungeonId: themedTowerId });
+        continue;
+      }
+
+      // Procedural dungeon entrance (deterministic hash placement).
       if (isDungeonEntranceAt(worldX, worldY)) {
         const dungeonId = `dungeon_${worldX}_${worldY}`;
         if (!dungeonEntrances[dungeonId]) {
@@ -302,7 +331,10 @@ export function createOverworldState(): OverworldState {
     woodCollected: 0,
     stoneCollected: 0,
     playerBuildings: [],
-    dungeonEntrances: {},
+    // Seed with the canonical themed-tower set so the initial chunk
+    // generation places the Tower of the Infinite + element/class/species
+    // towers on the map.
+    dungeonEntrances: createAllThemedTowers(),
     nests: {},
     roads: {},
     resourceUpgrades: {},
@@ -750,4 +782,137 @@ export function findNearestEmptyOverworldTile(
   }
   // Fallback: origin even if not strictly standable
   return { x: originX, y: originY };
+}
+
+// ============= SAVE / LOAD SLIMMING =============
+// Chunks contain mostly regenerable data (terrain types, enemies). Storing
+// every explored chunk in localStorage blows past the ~5MB quota and silently
+// drops the entire save — including player buildings. We strip chunks before
+// save and regenerate them on load. Anything the player can modify
+// (water-fills, harvested grass, depleted resources, fog of war) is captured
+// in `tileOverrides` so it survives the round-trip.
+
+const CHUNK_SIZE_LOCAL = CHUNK_SIZE;
+
+// Compute the "default" tile a generator would have produced at (worldX, worldY).
+// We then compare against the live chunk tile and persist a delta if they differ.
+// To keep the helper simple and side-effect free, we re-run the same chunk
+// generator in a throwaway state for that single chunk.
+function generateChunkTilesForCompare(
+  cx: number, cy: number,
+  dungeonEntrances: Record<string, DungeonEntrance>,
+  nests: Record<string, NestState>,
+  resourceUpgrades: Record<string, ResourceUpgradeState>,
+): OverworldTile[][] {
+  const difficulty = getDifficulty(cx * CHUNK_SIZE_LOCAL, cy * CHUNK_SIZE_LOCAL);
+  // Pass *copies* of the records so the comparison run doesn't mutate live state.
+  const fakeEntrances = { ...dungeonEntrances };
+  const fakeNests = { ...nests };
+  const fakeUpgrades = { ...resourceUpgrades };
+  const chunk = generateChunk(cx, cy, difficulty, fakeEntrances, fakeNests, fakeUpgrades);
+  return chunk.tiles;
+}
+
+function tilesDiffer(a: OverworldTile, b: OverworldTile): boolean {
+  if (a.type !== b.type) return true;
+  if ((a.harvested ?? false) !== (b.harvested ?? false)) return true;
+  if ((a.resourceAmount ?? -1) !== (b.resourceAmount ?? -1)) return true;
+  if ((a.treeTier ?? '') !== (b.treeTier ?? '')) return true;
+  if ((a.stoneTier ?? '') !== (b.stoneTier ?? '')) return true;
+  if ((a.playerBuildingId ?? '') !== (b.playerBuildingId ?? '')) return true;
+  if ((a.dungeonId ?? '') !== (b.dungeonId ?? '')) return true;
+  if ((a.nestId ?? '') !== (b.nestId ?? '')) return true;
+  if ((a.buildingType ?? '') !== (b.buildingType ?? '')) return true;
+  // We track explored separately so we don't blow up override count on every step.
+  return false;
+}
+
+// Strip chunks from the overworld state for compact serialization.
+// Returns a NEW object — does not mutate input. Captures the bare minimum
+// (tileOverrides + explored set) needed to faithfully restore on load.
+export function slimOverworldForSave(state: OverworldState): OverworldState {
+  const overrides: Record<string, OverworldTile> = {};
+  const explored: string[] = [];
+
+  for (const [chunkKey, chunk] of Object.entries(state.chunks)) {
+    const [cxStr, cyStr] = chunkKey.split(',');
+    const cx = parseInt(cxStr);
+    const cy = parseInt(cyStr);
+    const defaults = generateChunkTilesForCompare(cx, cy, state.dungeonEntrances || {}, state.nests || {}, state.resourceUpgrades || {});
+
+    for (let y = 0; y < CHUNK_SIZE_LOCAL; y++) {
+      for (let x = 0; x < CHUNK_SIZE_LOCAL; x++) {
+        const tile = chunk.tiles[y]?.[x];
+        if (!tile) continue;
+        const worldX = cx * CHUNK_SIZE_LOCAL + x;
+        const worldY = cy * CHUNK_SIZE_LOCAL + y;
+        const key = `${worldX},${worldY}`;
+        if (tile.explored) explored.push(key);
+        const def = defaults[y]?.[x];
+        if (!def || tilesDiffer(tile, def)) {
+          // Strip transient `visible` flag (recomputed on load via updateVisibility).
+          const { visible, ...rest } = tile;
+          overrides[key] = { ...rest, visible: false };
+        }
+      }
+    }
+  }
+
+  return {
+    ...state,
+    chunks: {}, // Stripped — regenerated on load
+    tileOverrides: { ...(state.tileOverrides || {}), ...overrides },
+    // Stash the explored set inside tileOverrides via a sentinel key so we
+    // don't need to widen the SaveData type. We use an unlikely coord string.
+    // Stored separately as __explored to keep restore logic clean.
+    ...(explored.length > 0 ? { __exploredTiles: explored } as any : {}),
+  } as OverworldState;
+}
+
+// Re-hydrate an overworld state coming out of slimOverworldForSave.
+// Generates chunks around the player, applies tile overrides, and re-marks
+// explored tiles. Safe to call on any state (no-op if chunks already exist).
+export function expandOverworldFromSave(state: OverworldState): OverworldState {
+  // Make sure base maps exist.
+  if (!state.chunks) state.chunks = {};
+  if (!state.dungeonEntrances) state.dungeonEntrances = {};
+  if (!state.playerBuildings) state.playerBuildings = [];
+  if (!state.nests) state.nests = {};
+  if (!state.roads) state.roads = {};
+  if (!state.resourceUpgrades) state.resourceUpgrades = {};
+
+  // Generate the chunk around the player so getOverworldTile/setOverworldTile work.
+  ensureChunksLoaded(state, state.playerPosition.x, state.playerPosition.y);
+
+  // Apply per-tile overrides — but only for chunks that are loaded. Overrides
+  // for unloaded chunks stay in the map and will apply when those chunks load.
+  const overrides = state.tileOverrides || {};
+  for (const [coord, tile] of Object.entries(overrides)) {
+    const [xStr, yStr] = coord.split(',');
+    const wx = parseInt(xStr);
+    const wy = parseInt(yStr);
+    const cx = Math.floor(wx / CHUNK_SIZE_LOCAL);
+    const cy = Math.floor(wy / CHUNK_SIZE_LOCAL);
+    if (state.chunks[`${cx},${cy}`]) {
+      setOverworldTile(state, wx, wy, { ...tile });
+    }
+  }
+
+  // Restore explored flags
+  const explored = (state as any).__exploredTiles as string[] | undefined;
+  if (Array.isArray(explored)) {
+    for (const key of explored) {
+      const [xStr, yStr] = key.split(',');
+      const wx = parseInt(xStr);
+      const wy = parseInt(yStr);
+      const cx = Math.floor(wx / CHUNK_SIZE_LOCAL);
+      const cy = Math.floor(wy / CHUNK_SIZE_LOCAL);
+      if (state.chunks[`${cx},${cy}`]) {
+        const tile = getOverworldTile(state, wx, wy);
+        if (tile) tile.explored = true;
+      }
+    }
+  }
+
+  return state;
 }

@@ -170,7 +170,7 @@ export function DungeonListPanel({ dungeonEntrances, onLaunch }: DungeonListPane
           {undiscoveredCount > 0 && (
             <div className="rounded-md border border-dashed border-muted-foreground/30 p-3 text-center text-xs text-muted-foreground">
               <span className="font-medium">🔍 {undiscoveredCount}</span> undiscovered{' '}
-              {undiscoveredCount === 1 ? 'dungeon' : 'dungeons'} on the overworld — explore to reveal.
+              {undiscoveredCount === 1 ? 'dungeon' : 'dungeons'} out in the world — explore the overworld to reveal them.
             </div>
           )}
         </div>

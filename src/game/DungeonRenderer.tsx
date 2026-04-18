@@ -19,6 +19,7 @@ import {
   ElevatorTile,
   DoorTile 
 } from './TileGraphics';
+import { fitFromNeighbors } from './autoTiling';
 
 // Check if a monster combo has been captured at equal or lower level
 function isCaptured(enemy: Monster, unlockedMonsters: UnlockedMonster[]): {

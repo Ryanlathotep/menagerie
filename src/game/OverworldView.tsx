@@ -31,6 +31,8 @@ import {
   processScoutTowerAttacks, PlayerBuilding, getDisassembleRefund, getRepairCost,
 } from './buildings';
 import { OverworldRenderer, OverworldRendererHandle } from './OverworldRenderer';
+import { OverworldDirectionArrows } from './OverworldDirectionArrows';
+import { useSettings } from './Settings';
 import { GameSidebar } from './GameSidebar';
 import { getMonsterMoves, Move, getNewMovesAtLevel } from './moves';
 import { getAttackConfig } from './dungeonCombat';

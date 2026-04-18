@@ -2,7 +2,7 @@
 
 import { Monster, Position, SpeciesType, ElementType, SPECIES_DATA, DungeonEntrance, createAllThemedTowers } from './types';
 import { generateRandomMonster } from './utils';
-import { PlayerBuilding } from './buildings';
+import { PlayerBuilding, isWallActingAsGate } from './buildings';
 import { NestState, isNestAt, createNest } from './nests';
 import {
   TreeTier, StoneTier, ResourceUpgradeState,
@@ -585,7 +585,10 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
     case 'player_building': {
       const building = state.playerBuildings.find(b => b.id === tile.playerBuildingId);
       if (building && building.type === 'wall') {
-        return { type: 'blocked', reason: 'A wall blocks your path' };
+        // Walls acting as gates are passable for the player (but not for enemies — see overworldCombat).
+        if (!isWallActingAsGate(building, state)) {
+          return { type: 'blocked', reason: 'A wall blocks your path' };
+        }
       }
       state.playerPosition = { x: newX, y: newY };
       updateVisibility(state);

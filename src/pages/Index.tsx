@@ -314,9 +314,17 @@ function MainMenu() {
           playerLevel={1}
           storedEquipment={state.saveData.storedEquipment || []}
           unlockedRecipes={state.saveData.unlockedRecipes || []}
+          tools={state.saveData.tools}
           onCraft={handleCraft}
           onCraftConsumable={handleCraftConsumable}
           onDismantle={handleDismantle}
+          onUpgradePickaxe={(tier, mats) => {
+            if (!isCreativeMode()) {
+              dispatch({ type: 'USE_MATERIALS', materials: mats });
+            }
+            dispatch({ type: 'SET_PICKAXE_TIER', tier });
+            toast.success(`${tier.charAt(0).toUpperCase() + tier.slice(1)} Pickaxe ready!`);
+          }}
           onClose={() => setShowCrafting(false)}
         />
       )}

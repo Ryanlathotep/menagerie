@@ -158,6 +158,14 @@ export function CraftingWorkshop({
             >
               🔧 Dismantle
             </Button>
+            <Button
+              variant={activeTab === 'tools' ? 'default' : 'ghost'}
+              size="sm"
+              className="text-xs h-7 px-2"
+              onClick={() => setActiveTab('tools')}
+            >
+              ⛏️ Tools
+            </Button>
             <Button variant="ghost" size="sm" className="h-7 px-2" onClick={onClose}>✕</Button>
           </div>
         </div>
@@ -186,13 +194,20 @@ export function CraftingWorkshop({
             isUnlocked={isUnlocked}
             handleCraftConsumable={handleCraftConsumable}
           />
-        ) : (
+        ) : activeTab === 'dismantle' ? (
           <DismantleTab
             storedEquipment={storedEquipment}
             selectedDismantle={selectedDismantle}
             setSelectedDismantle={setSelectedDismantle}
             handleDismantle={handleDismantle}
             materials={materials}
+          />
+        ) : (
+          <ToolsTab
+            tools={tools}
+            materials={materials}
+            creative={creative}
+            onUpgradePickaxe={onUpgradePickaxe}
           />
         )}
       </Card>
@@ -792,6 +807,133 @@ function MaterialSummary({ materials }: { materials: MaterialInventory }) {
           <span className="text-[10px] text-muted-foreground">No materials yet</span>
         )}
       </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Tools tab — singleton, upgradeable in place. Pickaxe (and future tools).
+// ============================================================================
+function ToolsTab({
+  tools,
+  materials,
+  creative,
+  onUpgradePickaxe,
+}: {
+  tools?: PlayerTools;
+  materials: MaterialInventory;
+  creative: boolean;
+  onUpgradePickaxe?: (tier: PickaxeTier, materials: { materialId: string; quantity: number }[]) => void;
+}) {
+  const currentPickaxe = tools?.pickaxe;
+  const currentIdx = currentPickaxe ? PICKAXE_TIER_ORDER.indexOf(currentPickaxe) : -1;
+  const nextTier = nextPickaxeTier(currentPickaxe);
+  const nextData = nextTier ? PICKAXE_TIERS[nextTier] : null;
+
+  const canAfford = (mats: { materialId: string; quantity: number }[]): boolean => {
+    if (creative) return true;
+    return mats.every(m => (materials[m.materialId] || 0) >= m.quantity);
+  };
+
+  const handleUpgrade = () => {
+    if (!nextTier || !nextData) return;
+    if (!canAfford(nextData.materials)) return;
+    onUpgradePickaxe?.(nextTier, nextData.materials);
+  };
+
+  return (
+    <div className="flex-1 overflow-hidden flex flex-col min-h-0 p-3">
+      <ScrollArea className="flex-1">
+        <div className="space-y-4 pr-2">
+          {/* Pickaxe section */}
+          <div className="space-y-2">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <span className="text-lg">⛏️</span>
+              Pickaxe
+              {currentPickaxe && (
+                <span className="text-[10px] text-muted-foreground font-normal">
+                  (current: {PICKAXE_TIERS[currentPickaxe].name})
+                </span>
+              )}
+            </h3>
+            <p className="text-[11px] text-muted-foreground">
+              Singleton tool — auto-applied. Upgrade in place to mine harder dungeon walls.
+              Higher tiers also mine faster.
+            </p>
+
+            {/* Tier ladder */}
+            <div className="space-y-1">
+              {PICKAXE_TIER_ORDER.map((tier, idx) => {
+                const data = PICKAXE_TIERS[tier];
+                const owned = idx <= currentIdx;
+                const isNext = tier === nextTier;
+                const affordable = canAfford(data.materials);
+
+                return (
+                  <div
+                    key={tier}
+                    className={`
+                      p-2 rounded border flex items-center gap-2 transition-all
+                      ${owned ? 'border-green-500/50 bg-green-500/5' : ''}
+                      ${isNext ? 'border-primary ring-1 ring-primary/40' : ''}
+                      ${!owned && !isNext ? 'border-muted opacity-50' : ''}
+                    `}
+                  >
+                    <span className="text-lg shrink-0">{data.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-semibold">{data.name}</p>
+                        {owned && <span className="text-[9px] text-green-400">✓ owned</span>}
+                        {isNext && <span className="text-[9px] text-primary">→ next upgrade</span>}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        Mines wall tier ≤ {data.power} • Speed {data.speed}×
+                      </p>
+                      {!owned && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {data.materials.map(req => {
+                            const have = materials[req.materialId] || 0;
+                            const enough = creative || have >= req.quantity;
+                            return (
+                              <span
+                                key={req.materialId}
+                                className={`text-[10px] px-1.5 py-0.5 rounded ${enough ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}
+                              >
+                                {req.materialId.split('_').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}{' '}
+                                {have}/{req.quantity}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    {isNext && (
+                      <Button
+                        size="sm"
+                        className="h-7 text-[10px] px-2 shrink-0 bg-gradient-to-r from-orange-500 to-amber-500"
+                        disabled={!affordable}
+                        onClick={handleUpgrade}
+                      >
+                        {currentPickaxe ? 'Upgrade' : 'Craft'}
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {!nextTier && currentPickaxe && (
+              <div className="p-2 rounded border border-amber-500/40 bg-amber-500/10 text-center">
+                <p className="text-[11px] text-amber-400">
+                  ✨ Mithril Pickaxe — max tier reached!
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </ScrollArea>
+
+      <MaterialSummary materials={materials} />
     </div>
   );
 }

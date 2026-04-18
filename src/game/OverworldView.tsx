@@ -32,6 +32,7 @@ import {
 } from './buildings';
 import { OverworldRenderer, OverworldRendererHandle } from './OverworldRenderer';
 import { OverworldDirectionArrows } from './OverworldDirectionArrows';
+import { DungeonWaypointMenu } from './DungeonWaypointMenu';
 import { useSettings } from './Settings';
 import { GameSidebar } from './GameSidebar';
 import { getMonsterMoves, Move, getNewMovesAtLevel } from './moves';
@@ -80,7 +81,7 @@ interface LevelUpEntry {
 
 export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const { state, dispatch } = useGame();
-  const { settings } = useSettings();
+  const { settings, updateSetting } = useSettings();
   const rendererRef = useRef<OverworldRendererHandle>(null);
   
   // Initialize or load overworld state
@@ -126,6 +127,8 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [tileContextMenu, setTileContextMenu] = useState<{ x: number; y: number } | null>(null);
   // Right-click context menu state for enemy/nest tiles (attack picker)
   const [attackMenuTarget, setAttackMenuTarget] = useState<EnemyAttackTarget | null>(null);
+  // Right-click context menu for dungeon entrance tiles (waypoint pin / enter)
+  const [dungeonMenu, setDungeonMenu] = useState<{ entrance: DungeonEntrance; worldX: number; worldY: number } | null>(null);
   
   // Targeting state
   const [targetingMove, setTargetingMove] = useState<Move | null>(null);
@@ -790,6 +793,15 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       return;
     }
 
+    // Dungeon entrance → waypoint pin / enter menu
+    if (tile?.type === 'dungeon_entrance' && tile.dungeonId) {
+      const entrance = overworld.dungeonEntrances?.[tile.dungeonId];
+      if (entrance) {
+        setDungeonMenu({ entrance, worldX, worldY });
+        return;
+      }
+    }
+
     // Plain grass / harvested grass → open tile context menu (Build, etc.)
     if (tile?.type === 'grass') {
       setTileContextMenu({ x: worldX, y: worldY });
@@ -1310,6 +1322,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
               home: settings.showHomeArrow,
               homeTower: settings.showHomeTowerArrow,
               majorDungeons: settings.showMajorDungeonArrows,
+              dungeonWaypoints: settings.dungeonWaypoints,
             }}
           />
 
@@ -1651,7 +1664,37 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       />
     )}
 
-    {/* Enemy/Nest Right-Click Attack Menu */}
+    {/* Dungeon Right-Click Waypoint / Enter Menu */}
+    {dungeonMenu && (
+      <DungeonWaypointMenu
+        worldX={dungeonMenu.worldX}
+        worldY={dungeonMenu.worldY}
+        dungeon={dungeonMenu.entrance}
+        isWaypointed={!!settings.dungeonWaypoints?.[dungeonMenu.entrance.id]}
+        onToggleWaypoint={() => {
+          const id = dungeonMenu.entrance.id;
+          const current = { ...(settings.dungeonWaypoints || {}) };
+          if (current[id]) {
+            delete current[id];
+            toast.info(`Waypoint hidden: ${dungeonMenu.entrance.name || 'dungeon'}`);
+          } else {
+            current[id] = true;
+            toast.success(`Waypoint pinned: ${dungeonMenu.entrance.name || 'dungeon'}`);
+          }
+          updateSetting('dungeonWaypoints', current);
+          setDungeonMenu(null);
+        }}
+        onEnter={() => {
+          const entrance = dungeonMenu.entrance;
+          setDungeonMenu(null);
+          setSelectedDungeon(entrance);
+          setShowDungeonPrompt(true);
+        }}
+        onClose={() => setDungeonMenu(null)}
+      />
+    )}
+
+
     {attackMenuTarget && monster && (
       <EnemyAttackMenu
         attacker={monster}

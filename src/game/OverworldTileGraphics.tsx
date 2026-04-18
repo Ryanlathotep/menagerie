@@ -133,7 +133,7 @@ export function OverworldRockTile({ size, seed = 0, tier = 'stone' }: TileGraphi
 // Optional auto-tile shape: when supplied, draws a sandy shoreline on the
 // "closed" sides so adjacent water cells flow into each other and isolated
 // puddles get a full beach ring.
-import type { AutoTileFit } from './autoTiling';
+import type { AutoTileFit, AutoTileShape } from './autoTiling';
 
 export function OverworldWaterTile({ size, seed = 0, fit }: TileGraphicProps & { fit?: AutoTileFit }) {
   const r1 = seededRandom(seed);

@@ -364,9 +364,9 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
         )}
       </div>
       
-      {/* Compact slide-up panels - resizable height */}
+      {/* Compact slide-up panels - resizable height. On desktop sits in the right half so the game log stays visible on the left. */}
       {activePanel && <div 
-        className="fixed bottom-16 sm:bottom-24 left-0 right-0 bg-card border-t-2 border-primary/20 shadow-xl z-40 animate-fade-in overflow-y-auto"
+        className="fixed bottom-16 sm:bottom-24 left-0 right-0 sm:left-auto sm:right-2 sm:w-[calc(50%-1rem)] bg-card border-2 border-primary/20 sm:rounded-lg shadow-xl z-40 animate-fade-in overflow-y-auto"
         style={{ maxHeight: `${panelHeights[activePanel]}vh` }}
       >
           {/* Resize drag handle */}

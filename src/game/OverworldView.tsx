@@ -1302,7 +1302,17 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             onTileHover={handleTileHover}
             onTileHoverEnd={() => { setHoveredTile(null); setAffectedTiles([]); }}
           />
-          
+
+          {/* Edge-of-viewport direction arrows for off-screen landmarks */}
+          <OverworldDirectionArrows
+            overworld={overworld}
+            toggles={{
+              home: settings.showHomeArrow,
+              homeTower: settings.showHomeTowerArrow,
+              majorDungeons: settings.showMajorDungeonArrows,
+            }}
+          />
+
           {/* Targeting mode indicator */}
           {targetingMove && (
             <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-card/95 backdrop-blur-sm border border-accent/50 rounded-lg px-4 py-2 flex items-center gap-3 z-20">

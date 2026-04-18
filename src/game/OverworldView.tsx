@@ -81,7 +81,7 @@ interface LevelUpEntry {
 
 export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const { state, dispatch } = useGame();
-  const { settings } = useSettings();
+  const { settings, updateSetting } = useSettings();
   const rendererRef = useRef<OverworldRendererHandle>(null);
   
   // Initialize or load overworld state
@@ -791,6 +791,15 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         });
       }
       return;
+    }
+
+    // Dungeon entrance → waypoint pin / enter menu
+    if (tile?.type === 'dungeon_entrance' && tile.dungeonId) {
+      const entrance = overworld.dungeonEntrances?.[tile.dungeonId];
+      if (entrance) {
+        setDungeonMenu({ entrance, worldX, worldY });
+        return;
+      }
     }
 
     // Plain grass / harvested grass → open tile context menu (Build, etc.)

@@ -26,6 +26,7 @@ import {
   ConsumableRecipe,
 } from './equipment';
 import { isCreativeMode, onCreativeModeChange } from './creativeMode';
+import { PICKAXE_TIERS, PICKAXE_TIER_ORDER, nextPickaxeTier, type PickaxeTier, type PlayerTools } from './tools';
 import { useEffect } from 'react';
 
 interface MaterialInventory {
@@ -37,9 +38,11 @@ interface CraftingWorkshopProps {
   playerLevel: number;
   storedEquipment: EquipmentItem[];
   unlockedRecipes: string[];
+  tools?: PlayerTools;
   onCraft: (recipe: CraftingRecipe, result: EquipmentItem) => void;
   onCraftConsumable?: (recipe: ConsumableRecipe) => void;
   onDismantle: (itemId: string, materialsGained: { materialId: string; quantity: number }[]) => void;
+  onUpgradePickaxe?: (tier: PickaxeTier, materials: { materialId: string; quantity: number }[]) => void;
   onClose: () => void;
 }
 
@@ -48,16 +51,18 @@ export function CraftingWorkshop({
   playerLevel,
   storedEquipment,
   unlockedRecipes,
+  tools,
   onCraft,
   onCraftConsumable,
   onDismantle,
+  onUpgradePickaxe,
   onClose,
 }: CraftingWorkshopProps) {
   const [selectedRecipe, setSelectedRecipe] = useState<CraftingRecipe | null>(null);
   const [selectedConsumable, setSelectedConsumable] = useState<ConsumableRecipe | null>(null);
   const [craftedItem, setCraftedItem] = useState<EquipmentItem | null>(null);
   const [craftedConsumable, setCraftedConsumable] = useState<ConsumableRecipe | null>(null);
-  const [activeTab, setActiveTab] = useState<'craft' | 'consumables' | 'dismantle'>('craft');
+  const [activeTab, setActiveTab] = useState<'craft' | 'consumables' | 'dismantle' | 'tools'>('craft');
   const [selectedDismantle, setSelectedDismantle] = useState<EquipmentItem | null>(null);
   
   // Creative mode flag — re-renders when toggled so disabled buttons & "missing

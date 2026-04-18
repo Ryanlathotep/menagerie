@@ -122,13 +122,13 @@ function Section({ title, items, onLaunch }: { title: string; items: DungeonEntr
 
 export function DungeonListPanel({ dungeonEntrances, onLaunch }: DungeonListPanelProps) {
   const all = Object.values(dungeonEntrances || {});
-  // Discovered: home + themed towers are always visible; procedural require seeing on overworld.
-  const discovered = all.filter(d =>
-    d.isHome ||
-    d.discovered ||
-    d.deepestFloor > 0 ||
-    (d.category && d.category !== 'procedural')
-  );
+  // A dungeon counts as discovered once the player has physically seen it on
+  // the overworld (or already cleared a floor in it). Home is always visible.
+  // Themed towers no longer auto-reveal — the player must explore to them.
+  const isDiscovered = (d: DungeonEntrance) =>
+    !!(d.isHome || d.discovered || d.deepestFloor > 0);
+
+  const discovered = all.filter(isDiscovered);
 
   const sortByDifficulty = (a: DungeonEntrance, b: DungeonEntrance) => (a.difficulty || 1) - (b.difficulty || 1);
 
@@ -141,6 +141,14 @@ export function DungeonListPanel({ dungeonEntrances, onLaunch }: DungeonListPane
   ).sort(sortByDifficulty);
 
   const undiscoveredCount = all.length - discovered.length;
+
+  // Defense in depth: never let an undiscovered dungeon be launched, even if
+  // somehow surfaced through stale UI.
+  const safeLaunch = (d: DungeonEntrance) => {
+    if (!isDiscovered(d)) return;
+    onLaunch(d);
+  };
+
 
   return (
     <Card className="p-3 w-full max-w-md mx-auto">

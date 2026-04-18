@@ -158,6 +158,14 @@ export function CraftingWorkshop({
             >
               🔧 Dismantle
             </Button>
+            <Button
+              variant={activeTab === 'tools' ? 'default' : 'ghost'}
+              size="sm"
+              className="text-xs h-7 px-2"
+              onClick={() => setActiveTab('tools')}
+            >
+              ⛏️ Tools
+            </Button>
             <Button variant="ghost" size="sm" className="h-7 px-2" onClick={onClose}>✕</Button>
           </div>
         </div>

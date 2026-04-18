@@ -1585,5 +1585,18 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         onClose={() => setContextMenuBuilding(null)}
       />
     )}
+
+    {/* Tile Right-Click Context Menu (grass / harvested grass) */}
+    {tileContextMenu && (
+      <TileContextMenu
+        worldX={tileContextMenu.x}
+        worldY={tileContextMenu.y}
+        onBuild={() => {
+          setTileContextMenu(null);
+          setShowBuildPanel(true);
+        }}
+        onClose={() => setTileContextMenu(null)}
+      />
+    )}
   </>;
 }

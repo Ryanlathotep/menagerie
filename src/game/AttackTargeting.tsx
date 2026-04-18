@@ -48,42 +48,53 @@ export function AttackTargeting({
   
   return (
     <>
-      {/* Range indicator overlay */}
-      {validTargets.map(pos => (
-        <div
-          key={`range-${pos.x}-${pos.y}`}
-          className="absolute pointer-events-none border border-primary/30 bg-primary/10 z-10"
-          style={{
-            left: pos.x * tileSize,
-            top: pos.y * tileSize,
-            width: tileSize,
-            height: tileSize,
-          }}
-        />
-      ))}
+      {/* Range indicator overlay — faint outline of all legal target tiles */}
+      {validTargets.map(pos => {
+        const inAoe = affectedTiles.some(t => t.x === pos.x && t.y === pos.y);
+        if (inAoe) return null; // Don't draw range under AoE shading
+        return (
+          <div
+            key={`range-${pos.x}-${pos.y}`}
+            className="absolute pointer-events-none border border-primary/30 bg-primary/10 z-10"
+            style={{
+              left: pos.x * tileSize,
+              top: pos.y * tileSize,
+              width: tileSize,
+              height: tileSize,
+            }}
+          />
+        );
+      })}
       
-      {/* Affected tiles preview (when hovering) */}
-      {cursorInRange && affectedTiles.map(pos => (
-        <div
-          key={`affected-${pos.x}-${pos.y}`}
-          className={`absolute pointer-events-none z-20 ${
-            isValidTarget 
-              ? 'bg-destructive/40 border-2 border-destructive' 
-              : 'bg-muted/40 border border-muted-foreground/50'
-          }`}
-          style={{
-            left: pos.x * tileSize,
-            top: pos.y * tileSize,
-            width: tileSize,
-            height: tileSize,
-          }}
-        >
-          {/* Attack indicator icon */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-sm animate-pulse">⚔️</span>
+      {/* Affected tiles preview — clearly shaded red so the AoE area is obvious. */}
+      {cursorInRange && affectedTiles.map(pos => {
+        const isCenter = cursorPos && pos.x === cursorPos.x && pos.y === cursorPos.y;
+        return (
+          <div
+            key={`affected-${pos.x}-${pos.y}`}
+            className={`absolute pointer-events-none z-20 ${
+              isValidTarget
+                ? isCenter
+                  ? 'bg-red-600/60 border-2 border-red-500'
+                  : 'bg-red-500/45 border border-red-500/70'
+                : 'bg-muted/40 border border-muted-foreground/50'
+            }`}
+            style={{
+              left: pos.x * tileSize,
+              top: pos.y * tileSize,
+              width: tileSize,
+              height: tileSize,
+            }}
+          >
+            {/* Attack indicator icon on the center tile only */}
+            {isCenter && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-sm animate-pulse">⚔️</span>
+              </div>
+            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
       
       {/* Player origin indicator */}
       <div
@@ -96,11 +107,11 @@ export function AttackTargeting({
         }}
       />
       
-      {/* Cursor highlight */}
+      {/* Cursor highlight — yellow ring marks the aiming center */}
       {cursorPos && cursorInRange && (
         <div
           className={`absolute pointer-events-none z-25 ring-4 ${
-            isValidTarget ? 'ring-destructive' : 'ring-muted-foreground/50'
+            isValidTarget ? 'ring-yellow-400' : 'ring-muted-foreground/50'
           } rounded-sm`}
           style={{
             left: cursorPos.x * tileSize,

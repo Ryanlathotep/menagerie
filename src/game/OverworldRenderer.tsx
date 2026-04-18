@@ -47,7 +47,17 @@ const TILE_SIZE = 40;
 const VIEW_RANGE = 8;
 
 // Tile rendering
-function renderTileGraphic(tile: OverworldTile, tileSize: number, seed: number, dungeonDepth?: number, playerBuilding?: PlayerBuilding, nest?: NestState): React.ReactNode {
+function renderTileGraphic(
+  tile: OverworldTile,
+  tileSize: number,
+  seed: number,
+  worldX: number,
+  worldY: number,
+  state: OverworldState,
+  dungeonDepth?: number,
+  playerBuilding?: PlayerBuilding,
+  nest?: NestState,
+): React.ReactNode {
   if (!tile.visible && !tile.explored) {
     return <OverworldFogTile size={tileSize} />;
   }
@@ -57,19 +67,61 @@ function renderTileGraphic(tile: OverworldTile, tileSize: number, seed: number, 
       : <OverworldGrassTile size={tileSize} seed={seed} />;
     case 'tree': return <OverworldTreeTile size={tileSize} seed={seed} tier={tile.treeTier} />;
     case 'rock': return <OverworldRockTile size={tileSize} seed={seed} tier={tile.stoneTier} />;
-    case 'water': return <OverworldWaterTile size={tileSize} seed={seed} />;
+    case 'water': {
+      const isWater = (x: number, y: number) => getOverworldTile(state, x, y)?.type === 'water';
+      const fit = fitFromNeighbors(
+        isWater(worldX, worldY - 1),
+        isWater(worldX + 1, worldY),
+        isWater(worldX, worldY + 1),
+        isWater(worldX - 1, worldY),
+      );
+      return <OverworldWaterTile size={tileSize} seed={seed} fit={fit} />;
+    }
     case 'building': return <OverworldBuildingTile size={tileSize} buildingType={tile.buildingType} seed={seed} />;
     case 'dungeon_entrance': return <OverworldDungeonTile size={tileSize} seed={seed} depth={dungeonDepth} />;
-    case 'player_building': return playerBuilding
-      ? <OverworldBuildingTileGraphic type={playerBuilding.type} size={tileSize} seed={seed} harvestReady={playerBuilding.harvestReady} />
-      : <OverworldGrassTile size={tileSize} seed={seed} />;
+    case 'player_building': {
+      if (!playerBuilding) return <OverworldGrassTile size={tileSize} seed={seed} />;
+      if (playerBuilding.type === 'wall') {
+        const fit = fitFromNeighbors(
+          wallConnectsTo(state, worldX, worldY - 1),
+          wallConnectsTo(state, worldX + 1, worldY),
+          wallConnectsTo(state, worldX, worldY + 1),
+          wallConnectsTo(state, worldX - 1, worldY),
+        );
+        const isGate = isWallActingAsGate(playerBuilding, state);
+        const gateAxis = isGate ? getGateAxis(playerBuilding, state) : undefined;
+        const damaged = playerBuilding.hp < playerBuilding.maxHp;
+        return (
+          <OverworldBuildingTileGraphic
+            type={playerBuilding.type}
+            size={tileSize}
+            seed={seed}
+            wallFit={fit}
+            isGate={isGate}
+            gateAxis={gateAxis}
+            damaged={damaged}
+          />
+        );
+      }
+      return <OverworldBuildingTileGraphic type={playerBuilding.type} size={tileSize} seed={seed} harvestReady={playerBuilding.harvestReady} />;
+    }
     case 'nest': return nest
       ? <OverworldNestTile size={tileSize} seed={seed} element={nest.element} hpPercent={Math.floor((nest.hp / nest.maxHp) * 100)} />
       : <OverworldGrassTile size={tileSize} seed={seed} />;
     case 'enemy': return <OverworldGrassTile size={tileSize} seed={seed} />;
     case 'player': return <OverworldGrassTile size={tileSize} seed={seed} />;
-    case 'dirt_road': return <OverworldDirtRoadTile size={tileSize} seed={seed} />;
-    case 'stone_road': return <OverworldStoneRoadTile size={tileSize} seed={seed} />;
+    case 'dirt_road':
+    case 'stone_road': {
+      const fit = fitFromNeighbors(
+        roadConnectsTo(state, worldX, worldY - 1),
+        roadConnectsTo(state, worldX + 1, worldY),
+        roadConnectsTo(state, worldX, worldY + 1),
+        roadConnectsTo(state, worldX - 1, worldY),
+      );
+      return tile.type === 'dirt_road'
+        ? <OverworldDirtRoadTile size={tileSize} seed={seed} fit={fit} />
+        : <OverworldStoneRoadTile size={tileSize} seed={seed} fit={fit} />;
+    }
     default: return <OverworldFogTile size={tileSize} />;
   }
 }

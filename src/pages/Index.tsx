@@ -27,6 +27,7 @@ import { EquipmentView } from '@/game/EquipmentView';
 import { PreRunEquipment } from '@/game/PreRunEquipment';
 import { OverworldView } from '@/game/OverworldView';
 import { DungeonListPanel } from '@/game/DungeonListPanel';
+import { EnemyAttackMenu, EnemyAttackTarget } from '@/game/EnemyAttackMenu';
 import { 
   CombatEffects, 
   EMPTY_COMBAT_EFFECTS, 
@@ -681,6 +682,8 @@ function DungeonView({
   const [hoveredTile, setHoveredTile] = useState<Position | null>(null);
   const [targetingTiles, setTargetingTiles] = useState<Position[]>([]);
   const [affectedTiles, setAffectedTiles] = useState<Position[]>([]);
+  // Right-click an enemy → opens this attack menu
+  const [attackMenuTarget, setAttackMenuTarget] = useState<EnemyAttackTarget | null>(null);
   
   // Level up screen queue state - supports multiple level-ups (active + passive party members)
   interface LevelUpEntry {
@@ -2172,6 +2175,20 @@ function DungeonView({
               unlockedMonsters={state.saveData.unlockedMonsters}
               targetPath={targetPath}
               onTileClick={handleDungeonTileClick}
+              onTileRightClick={(x, y) => {
+                if (!dungeon || !state.run) return;
+                const tile = dungeon.tiles[y]?.[x];
+                if (tile?.type === 'enemy' && tile.enemyId) {
+                  const enemy = dungeon.enemies.find(e => e.id === tile.enemyId);
+                  if (enemy) {
+                    setAttackMenuTarget({
+                      enemy,
+                      enemyPos: { x, y },
+                      playerPos: dungeon.playerPosition,
+                    });
+                  }
+                }
+              }}
               targetingMode={!!targetingMove}
               targetingTiles={targetingTiles}
               affectedTiles={affectedTiles}
@@ -2215,6 +2232,33 @@ function DungeonView({
             {/* Targeting mode UI */}
             {targetingMove && (
               <MoveInfoPanel move={targetingMove} onCancel={cancelTargeting} />
+            )}
+
+            {/* Enemy right-click attack menu */}
+            {attackMenuTarget && state.run && (
+              <EnemyAttackMenu
+                attacker={state.run.currentMonster}
+                target={attackMenuTarget}
+                moveOrder={state.run.moveOrder || []}
+                onClose={() => setAttackMenuTarget(null)}
+                onPickMove={(move) => {
+                  const tgt = attackMenuTarget;
+                  setAttackMenuTarget(null);
+                  if (!dungeon) return;
+                  const config = getAttackConfig(move);
+                  const validTargets = getValidTargets(
+                    dungeon.playerPosition,
+                    config,
+                    dungeon.tiles,
+                    dungeon.width,
+                    dungeon.height,
+                    true,
+                  );
+                  setTargetingMove(move);
+                  setTargetingTiles(validTargets);
+                  setTimeout(() => handleTargetingClick(tgt.enemyPos.x, tgt.enemyPos.y), 0);
+                }}
+              />
             )}
           </div>
 

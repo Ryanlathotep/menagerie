@@ -56,6 +56,7 @@ import { CombatEffects } from './statusEffects';
 import { BuildingAssignModal } from './BuildingAssignModal';
 import { BuildingContextMenu } from './BuildingContextMenu';
 import { TileContextMenu } from './TileContextMenu';
+import { EnemyAttackMenu, EnemyAttackTarget } from './EnemyAttackMenu';
 import { FARM_OUTPUTS, FARM_GROWTH_STEPS } from './buildings';
 import { 
   NestState, tickNest, spawnNestMonster, findNestSpawnPosition, 
@@ -120,6 +121,8 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [contextMenuBuilding, setContextMenuBuilding] = useState<PlayerBuilding | null>(null);
   // Right-click context menu state for plain tiles (grass / harvested grass)
   const [tileContextMenu, setTileContextMenu] = useState<{ x: number; y: number } | null>(null);
+  // Right-click context menu state for enemy/nest tiles (attack picker)
+  const [attackMenuTarget, setAttackMenuTarget] = useState<EnemyAttackTarget | null>(null);
   
   // Targeting state
   const [targetingMove, setTargetingMove] = useState<Move | null>(null);
@@ -731,19 +734,40 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
     }
     
-    if ((tile?.type === 'enemy' && tile.enemyId || tile?.type === 'nest' && tile.nestId) && monster) {
-      const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
-      const attackMove = moves.find(m => m.type === 'melee' || m.type === 'ranged');
-      if (attackMove) {
-        const config = getAttackConfig(attackMove);
-        const dist = Math.abs(worldX - overworld.playerPosition.x) + Math.abs(worldY - overworld.playerPosition.y);
-        if (dist <= config.range) {
-          setTargetingMove(attackMove);
-          setTargetingTiles(getOverworldValidTargets(overworld.playerPosition, config, overworld));
-          setTimeout(() => handleTargetingClick(worldX, worldY), 0);
-        } else {
-          toast.info('Enemy out of range!');
-        }
+    // Enemy or nest → open the attack picker (sorted by user move-panel prefs)
+    if (tile?.type === 'enemy' && tile.enemyId && monster) {
+      const enemy = getOverworldEnemy(overworld, tile.enemyId);
+      if (enemy) {
+        setAttackMenuTarget({
+          enemy,
+          enemyPos: { x: worldX, y: worldY },
+          playerPos: overworld.playerPosition,
+        });
+      }
+      return;
+    }
+    if (tile?.type === 'nest' && tile.nestId && monster) {
+      const nest = overworld.nests?.[tile.nestId];
+      if (nest) {
+        // Build a synthetic Monster-like target so the attack menu can show
+        // effectiveness/HP info against the nest itself.
+        const nestAsMonster: Monster = {
+          ...monster,
+          id: nest.id,
+          name: `${nest.element[0].toUpperCase()}${nest.element.slice(1)} Nest`,
+          element: nest.element,
+          level: nest.level,
+          stats: {
+            ...monster.stats,
+            currentHp: nest.hp,
+            maxHp: nest.maxHp,
+          },
+        };
+        setAttackMenuTarget({
+          enemy: nestAsMonster,
+          enemyPos: { x: worldX, y: worldY },
+          playerPos: overworld.playerPosition,
+        });
       }
       return;
     }
@@ -1596,6 +1620,33 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           setShowBuildPanel(true);
         }}
         onClose={() => setTileContextMenu(null)}
+      />
+    )}
+
+    {/* Enemy/Nest Right-Click Attack Menu */}
+    {attackMenuTarget && monster && (
+      <EnemyAttackMenu
+        attacker={monster}
+        target={attackMenuTarget}
+        moveOrder={state.run?.moveOrder || []}
+        onClose={() => setAttackMenuTarget(null)}
+        onPickMove={(move) => {
+          const target = attackMenuTarget;
+          setAttackMenuTarget(null);
+          // Enter targeting mode with this move, then immediately fire on the
+          // saved enemy tile so the right-click feels like a one-step action.
+          const config = getAttackConfig(move);
+          const validTargets = getOverworldValidTargets(
+            overworld.playerPosition,
+            config,
+            overworld,
+          );
+          setTargetingMove(move);
+          setTargetingTiles(validTargets);
+          setAffectedTiles([]);
+          setHoveredTile(null);
+          setTimeout(() => handleTargetingClick(target.enemyPos.x, target.enemyPos.y), 0);
+        }}
       />
     )}
   </>;

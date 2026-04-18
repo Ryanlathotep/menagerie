@@ -18,6 +18,9 @@ export interface ArrowToggles {
   home: boolean;
   homeTower: boolean;
   majorDungeons: boolean;
+  // Per-dungeon waypoint pins (id → enabled). Used for procedural / "minor"
+  // dungeons that don't fall under the major-towers toggle.
+  dungeonWaypoints?: Record<string, boolean>;
 }
 
 interface Props {

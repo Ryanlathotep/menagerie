@@ -23,6 +23,9 @@ export interface GameSettings {
   showHomeArrow: boolean;
   showHomeTowerArrow: boolean;
   showMajorDungeonArrows: boolean;
+  // Per-dungeon waypoint pins (id → enabled). Used for procedural / minor
+  // dungeons that don't have a global toggle. Right-click a dungeon to pin.
+  dungeonWaypoints: Record<string, boolean>;
 }
 
 const DEFAULT_SETTINGS: GameSettings = {
@@ -34,6 +37,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   showHomeArrow: true,
   showHomeTowerArrow: true,
   showMajorDungeonArrows: true,
+  dungeonWaypoints: {},
 };
 
 // Settings Context

@@ -586,25 +586,91 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
 
   return <TooltipProvider delayDuration={200}>
     <div className="w-full h-full flex flex-col">
-      {/* Floor header - anime style */}
-      <div className="flex items-center justify-between mb-3 px-1">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            Floor {dungeon.floor}
-          </span>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-secondary/20 text-secondary-foreground">
-            ⭐ Adventure!
-          </span>
-        </div>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded-full bg-gradient-to-br from-pink-400 to-primary" /> You
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded-full bg-gradient-to-br from-red-400 to-orange-400" /> Enemy
-          </span>
-        </div>
-      </div>
+      {/* Floor header - rich dungeon info */}
+      {(() => {
+        // Compute average enemy level on this floor (alive enemies on the map)
+        const aliveEnemies = dungeon.enemies.filter(e => e.stats.currentHp > 0);
+        const avgLevel = aliveEnemies.length > 0
+          ? Math.round(aliveEnemies.reduce((sum, e) => sum + e.level, 0) / aliveEnemies.length)
+          : Math.max(1, dungeon.floor + (dungeon.startingFloor ?? 0));
+
+        // Theme display
+        const theme = dungeonEntrance?.theme ?? dungeon.theme;
+        const themeChips: { label: string; emoji?: string }[] = [];
+        if (theme) {
+          if (theme.kind === 'all') {
+            themeChips.push({ label: 'All Types', emoji: '🌌' });
+          } else if (theme.kind === 'element' && theme.value) {
+            const ELEMENT_EMOJI: Record<string, string> = {
+              fire: '🔥', water: '💧', earth: '🪨', air: '💨', electric: '⚡',
+              ice: '❄️', poison: '☠️', light: '✨', dark: '🌑', neutral: '⚪',
+            };
+            themeChips.push({ label: `${theme.value} element`, emoji: ELEMENT_EMOJI[theme.value as string] || '🔮' });
+          } else if (theme.kind === 'class' && theme.value) {
+            themeChips.push({ label: `${theme.value} class`, emoji: '⚔️' });
+          } else if (theme.kind === 'species' && theme.value) {
+            themeChips.push({ label: `${theme.value} species`, emoji: '🐾' });
+          }
+        }
+
+        // Title: prefer entrance name, then theme-derived, then fallback
+        const dungeonTitle = dungeonEntrance?.name
+          ?? (theme?.kind === 'element' && theme.value ? `${theme.value} Tower` : null)
+          ?? (theme?.kind === 'class' && theme.value ? `${theme.value} Tower` : null)
+          ?? (theme?.kind === 'species' && theme.value ? `${theme.value} Tower` : null)
+          ?? (dungeonEntrance?.element ? `${dungeonEntrance.element} Wilderness Dungeon` : null)
+          ?? 'Dungeon';
+
+        const startingFloor = dungeonEntrance?.difficulty ?? dungeon.startingFloor ?? 1;
+        const deepestFloor = dungeonEntrance?.deepestFloor ?? 0;
+
+        return (
+          <div className="mb-3 px-1 space-y-1">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                  {dungeonTitle}
+                </span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/15 text-primary font-semibold">
+                  Floor {dungeon.floor}
+                </span>
+                {themeChips.map((chip, i) => (
+                  <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-secondary/20 text-secondary-foreground capitalize">
+                    {chip.emoji ? `${chip.emoji} ` : ''}{chip.label}
+                  </span>
+                ))}
+              </div>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded-full bg-gradient-to-br from-pink-400 to-primary" /> You
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded-full bg-gradient-to-br from-red-400 to-orange-400" /> Enemy
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
+              <span>
+                Avg monster lvl: <span className="text-foreground font-semibold">{avgLevel}</span>
+              </span>
+              <span className="opacity-60">•</span>
+              <span>
+                Starting floor: <span className="text-foreground font-semibold">{startingFloor}</span>
+              </span>
+              <span className="opacity-60">•</span>
+              <span>
+                Best reached: <span className={deepestFloor > 0 ? 'text-foreground font-semibold' : 'text-muted-foreground/60'}>
+                  {deepestFloor > 0 ? `Floor ${deepestFloor}` : '—'}
+                </span>
+              </span>
+              <span className="opacity-60">•</span>
+              <span>
+                Enemies on floor: <span className="text-foreground font-semibold">{aliveEnemies.length}</span>
+              </span>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Dungeon grid - player always centered via CSS transform (same as OverworldRenderer) */}
       <div className="flex-1 w-full overflow-hidden border border-border rounded-lg bg-background relative">

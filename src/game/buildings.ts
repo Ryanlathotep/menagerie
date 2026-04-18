@@ -132,8 +132,9 @@ export const SCOUT_TOWER_DAMAGE = 10;
 
 // ============= PLACEMENT LOGIC =============
 
-// Max building radius from home base (0,0)
-export const MAX_BUILD_RADIUS = 20;
+// Max Manhattan distance from any existing building/home where new buildings may be placed.
+// (No longer a hard radius from the home base — buildings extend the buildable zone.)
+export const MAX_BUILD_RADIUS = 10;
 
 export function canPlaceBuilding(
   worldX: number,
@@ -150,23 +151,24 @@ export function canPlaceBuilding(
   if (woodAvailable < def.cost.wood) return { canPlace: false, reason: `Need ${def.cost.wood} wood (have ${woodAvailable})` };
   if (stoneAvailable < def.cost.stone) return { canPlace: false, reason: `Need ${def.cost.stone} stone (have ${stoneAvailable})` };
 
-  // Check distance from home
-  const dist = Math.abs(worldX - homePosition.x) + Math.abs(worldY - homePosition.y);
-  if (dist > MAX_BUILD_RADIUS) return { canPlace: false, reason: 'Too far from base' };
-  if (dist === 0) return { canPlace: false, reason: 'Cannot build on home tile' };
+  // Cannot build on the home tile itself
+  if (worldX === homePosition.x && worldY === homePosition.y) {
+    return { canPlace: false, reason: 'Cannot build on home tile' };
+  }
 
   // Check if tile already has a building
   if (existingBuildings.some(b => b.worldX === worldX && b.worldY === worldY)) {
     return { canPlace: false, reason: 'Already a building here' };
   }
 
-  // Must be adjacent to existing building or home base
-  const adjacentToBuilding = existingBuildings.some(b =>
-    Math.abs(b.worldX - worldX) <= 1 && Math.abs(b.worldY - worldY) <= 1
+  // Must be within MAX_BUILD_RADIUS Manhattan steps of the home base or any existing building.
+  const distToHome = Math.abs(worldX - homePosition.x) + Math.abs(worldY - homePosition.y);
+  const nearHome = distToHome <= MAX_BUILD_RADIUS;
+  const nearBuilding = existingBuildings.some(b =>
+    Math.abs(b.worldX - worldX) + Math.abs(b.worldY - worldY) <= MAX_BUILD_RADIUS
   );
-  const adjacentToHome = Math.abs(worldX - homePosition.x) <= 1 && Math.abs(worldY - homePosition.y) <= 1;
-  if (!adjacentToBuilding && !adjacentToHome) {
-    return { canPlace: false, reason: 'Must build adjacent to existing structures' };
+  if (!nearHome && !nearBuilding) {
+    return { canPlace: false, reason: `Must build within ${MAX_BUILD_RADIUS} steps of home or another building` };
   }
 
   return { canPlace: true };

@@ -137,21 +137,9 @@ export function OverworldTooltipContent({
       );
 
     case 'grass':
-      return (
-        <div className="space-y-1 text-xs">
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-bold text-sm">
-              {tile.harvested ? '🌾 Cleared Grass' : '🍃 Grass'}
-            </span>
-            {coords}
-          </div>
-          <p className="text-muted-foreground italic">
-            {tile.harvested
-              ? 'A harvested patch — safe to walk on.'
-              : 'Open ground — safe to walk on. Build or place items here.'}
-          </p>
-        </div>
-      );
+      // Grass tooltips are intentionally suppressed — they get in the way during exploration.
+      // Players can still right-click grass to open a tile menu (move / build / place item).
+      return null;
 
     case 'dirt_road':
       return (

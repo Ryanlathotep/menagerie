@@ -5,6 +5,7 @@ import { DungeonState, DungeonTile, TileType, ElementType, ClassType, Monster, S
 import { CRAFTING_MATERIALS } from './equipment';
 import { MonsterSprite } from './sprites';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { MINEABLE_WALL_TIERS, PICKAXE_TIERS, hitsToBreak, type PickaxeTier } from './tools';
 import { TERRAIN_CONFIG } from './terrain';
 import { MatchupIndicator } from './MatchupIndicator';
 import { 
@@ -87,6 +88,7 @@ interface DungeonRendererProps {
   onTileHover?: (x: number, y: number) => void;
   onTileHoverEnd?: () => void;
   dungeonEntrance?: DungeonEntrance | null; // For rich header info (name/theme/best floor)
+  playerPickaxeTier?: PickaxeTier; // For mineable wall tooltips
 }
 export interface DungeonRendererHandle {
   scrollToPlayer: () => void;
@@ -147,6 +149,7 @@ interface TileProps {
   isOnPath?: boolean; // Is this tile part of the click-to-move path?
   onDisarmTrap?: (x: number, y: number, success: boolean) => void;
   onClick?: () => void;
+  playerPickaxeTier?: PickaxeTier; // For mineable wall tooltips
 }
 function Tile({
   tile,
@@ -164,7 +167,8 @@ function Tile({
   unlockedMonsters = [],
   isOnPath = false,
   onDisarmTrap,
-  onClick
+  onClick,
+  playerPickaxeTier,
 }: TileProps) {
   const tileStyle = {
     width: `${tileSize}px`,
@@ -181,35 +185,71 @@ function Tile({
 
   const tileSeed = x * 127 + y * 311; // Consistent seed per tile position
 
-  // Wall tiles - SVG ink texture
+  // Wall tiles - SVG ink texture (bedrock — unmineable)
   if (tile.type === 'wall') {
     return (
-      <div className={`flex items-center justify-center overflow-hidden ${pathOverlayClass}`} style={tileStyle}>
-        {tile.visible ? (
-          <WallTile size={tileSize} seed={tileSeed} />
-        ) : (
-          <div className="w-full h-full bg-tile-wall opacity-60" />
-        )}
-      </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className={`flex items-center justify-center overflow-hidden ${pathOverlayClass}`} style={tileStyle}>
+            {tile.visible ? (
+              <WallTile size={tileSize} seed={tileSeed} />
+            ) : (
+              <div className="w-full h-full bg-tile-wall opacity-60" />
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[220px] p-2">
+          <p className="font-bold text-sm">🪨 Bedrock</p>
+          <p className="text-xs text-muted-foreground">
+            Unbreakable structural rock. Cannot be mined with any pickaxe — route around it.
+          </p>
+        </TooltipContent>
+      </Tooltip>
     );
   }
 
   // Mineable wall — tier-tinted with ore veins and crack overlay for hits.
   if (tile.type === 'mineable_wall' && tile.wallTier) {
+    const wallData = MINEABLE_WALL_TIERS[tile.wallTier];
+    const needed = playerPickaxeTier ? hitsToBreak(tile.wallTier, playerPickaxeTier) : Infinity;
+    const canMine = isFinite(needed);
+    const hits = tile.wallHits || 0;
+    const pickaxeName = playerPickaxeTier ? PICKAXE_TIERS[playerPickaxeTier].name : 'a Pickaxe';
     return (
-      <div className={`flex items-center justify-center overflow-hidden ${pathOverlayClass}`} style={tileStyle} onClick={onClick}>
-        {tile.visible ? (
-          <MineableWallTile
-            size={tileSize}
-            seed={tileSeed}
-            tier={tile.wallTier}
-            hits={tile.wallHits || 0}
-            hitsNeeded={3}
-          />
-        ) : (
-          <div className="w-full h-full bg-tile-wall opacity-60" />
-        )}
-      </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className={`flex items-center justify-center overflow-hidden ${pathOverlayClass} ${canMine ? 'cursor-pointer' : ''}`} style={tileStyle} onClick={onClick}>
+            {tile.visible ? (
+              <MineableWallTile
+                size={tileSize}
+                seed={tileSeed}
+                tier={tile.wallTier}
+                hits={hits}
+                hitsNeeded={canMine ? needed : 3}
+              />
+            ) : (
+              <div className="w-full h-full bg-tile-wall opacity-60" />
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[240px] p-2">
+          <p className="font-bold text-sm">⛏️ {wallData.name} <span className="text-xs text-muted-foreground font-normal">(Tier {tile.wallTier})</span></p>
+          <p className="text-xs text-muted-foreground">
+            Drops {wallData.name} when broken. Walk into it or attack it to mine.
+          </p>
+          {!playerPickaxeTier && (
+            <p className="text-xs text-destructive mt-1">⚠️ You need a Pickaxe to mine this.</p>
+          )}
+          {playerPickaxeTier && !canMine && (
+            <p className="text-xs text-destructive mt-1">⚠️ Your {pickaxeName} is too weak — needs tier {tile.wallTier}+.</p>
+          )}
+          {canMine && (
+            <p className="text-xs text-primary mt-1">
+              Progress: {hits} / {needed} hits with {pickaxeName}
+            </p>
+          )}
+        </TooltipContent>
+      </Tooltip>
     );
   }
 
@@ -603,6 +643,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   onTileHover,
   onTileHoverEnd,
   dungeonEntrance,
+  playerPickaxeTier,
 }, ref) => {
   // Calculate tile size based on zoom (base size is 28px at 100%)
   const baseTileSize = 28;
@@ -749,6 +790,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                       isOnPath={targetPath.some(p => p.x === x && p.y === y)}
                       onDisarmTrap={onDisarmTrap}
                       onClick={tile.explored && tile.type !== 'wall' ? () => onTileClick?.(x, y) : undefined}
+                      playerPickaxeTier={playerPickaxeTier}
                     />
                     {/* Targeting overlay */}
                     {targetingMode && isTargetable && (

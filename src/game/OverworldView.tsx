@@ -1459,7 +1459,16 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
                   <span>🗺️ ({overworld.playerPosition.x}, {overworld.playerPosition.y})</span>
                   <span>🪵 {overworld.woodCollected} • 🪨 {overworld.stoneCollected}</span>
                   <span>Tap enemy to attack</span>
-                  <button className="text-primary hover:underline text-left" onClick={() => setShowBuildPanel(true)}>🏗️ Build</button>
+                  <div className="flex gap-2">
+                    <button className="text-primary hover:underline text-left" onClick={() => setShowBuildPanel(true)}>🏗️ Build</button>
+                    <button
+                      className="text-primary hover:underline text-left disabled:opacity-50"
+                      onClick={handleManualSave}
+                      disabled={syncing}
+                    >
+                      {syncing ? '⏳ Saving…' : '💾 Save'}
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className="hidden sm:flex flex-col items-center">
@@ -1473,6 +1482,14 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
                   <span>🗼 Dungeon</span>
                   <span>Right-click enemy to attack</span>
                   <button className="text-primary hover:underline" onClick={() => setShowBuildPanel(true)}>[B] Build</button>
+                  <button
+                    className="text-primary hover:underline disabled:opacity-50"
+                    onClick={handleManualSave}
+                    disabled={syncing}
+                    title={isAuthenticated ? 'Save progress to cloud' : 'Save progress locally'}
+                  >
+                    {syncing ? '⏳ Saving…' : `💾 Save${isAuthenticated ? '' : ' (local)'}`}
+                  </button>
                 </div>
               </div>
             </div>

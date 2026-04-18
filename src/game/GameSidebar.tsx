@@ -71,6 +71,7 @@ interface GameSidebarProps {
   monster: Monster | null;
   gold: number;
   floor: number;
+  locationName?: string; // Dungeon name (e.g. "Tower of the Infinite") or overworld region
   inventory?: InventoryItem[];
   equipmentInventory?: EquipmentItem[];
   equipment?: MonsterEquipment;
@@ -105,6 +106,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   monster,
   gold,
   floor,
+  locationName,
   inventory = [],
   equipmentInventory = [],
   equipment,
@@ -317,13 +319,20 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
           </Button>
         </div>
         
-        {/* Floor and gold */}
-        <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs flex-shrink-0">
-          <div className="flex items-center gap-0.5 sm:gap-1 text-muted-foreground">
-            <Map className="w-3 h-3" />
-            <span>F{floor}</span>
+        {/* Location, floor and gold */}
+        <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs flex-shrink-0 min-w-0">
+          <div className="flex items-center gap-0.5 sm:gap-1 text-muted-foreground min-w-0" title={locationName}>
+            <Map className="w-3 h-3 flex-shrink-0" />
+            {locationName ? (
+              <span className="truncate max-w-[140px] sm:max-w-[200px]">
+                <span className="text-foreground font-semibold">{locationName}</span>
+                <span className="ml-1">· F{floor}</span>
+              </span>
+            ) : (
+              <span>F{floor}</span>
+            )}
           </div>
-          <div className="text-primary font-bold">💰{gold}</div>
+          <div className="text-primary font-bold flex-shrink-0">💰{gold}</div>
         </div>
         
         {/* Flee button */}

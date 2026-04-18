@@ -1953,11 +1953,24 @@ function DungeonView({
   // Early return for loading state - MUST be after all hooks
   if (!dungeon) return <div className="game-container">Loading...</div>;
 
+  // Resolve current dungeon name for the HUD (falls back gracefully).
+  const activeDungeonId = typeof window !== 'undefined'
+    ? localStorage.getItem('menagerie_active_dungeon_id')
+    : null;
+  const activeDungeonEntrance = activeDungeonId
+    ? state.saveData?.dungeonEntrances?.[activeDungeonId]
+    : undefined;
+  const dungeonLocationName = activeDungeonEntrance?.name
+    || (activeDungeonEntrance?.element
+        ? `${activeDungeonEntrance.element[0].toUpperCase()}${activeDungeonEntrance.element.slice(1)} Wilderness Dungeon`
+        : 'Tower of the Infinite');
+
   return <>
       <GameSidebar 
         monster={state.run?.currentMonster || null} 
         gold={state.run?.gold || 0} 
         floor={dungeon.floor} 
+        locationName={dungeonLocationName}
         inventory={state.run?.inventory || []} 
         equipmentInventory={state.run?.equipmentInventory || []}
         equipment={state.run?.partyEquipment?.[state.run?.activePartyIndex || 0]}
@@ -2211,9 +2224,8 @@ function DungeonView({
                     <div />
                     <Button size="sm" className="h-9 text-base font-bold active:scale-95 p-0" onClick={() => handleMove('down')}>↓</Button>
                     <div />
-            </div>
-            </div>
-          </div>
+                  </div>
+                </div>
                 <div className="hidden sm:flex flex-col items-center justify-center px-2">
                   <p className="text-muted-foreground text-xs text-center mb-1">WASD / Arrows to move</p>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground justify-center">
@@ -2242,6 +2254,7 @@ function DungeonView({
                   )}
                 </div>
               </div>
+            </div>
             </div>
           </div>
         </div>
@@ -3772,10 +3785,23 @@ function BattleView({
       </div>
 
       {/* Unified GameSidebar for battle */}
+      {(() => {
+        const battleDungeonId = typeof window !== 'undefined'
+          ? localStorage.getItem('menagerie_active_dungeon_id')
+          : null;
+        const battleEntrance = battleDungeonId
+          ? state.saveData?.dungeonEntrances?.[battleDungeonId]
+          : undefined;
+        const battleLocationName = battleEntrance?.name
+          || (battleEntrance?.element
+              ? `${battleEntrance.element[0].toUpperCase()}${battleEntrance.element.slice(1)} Wilderness Dungeon`
+              : 'Tower of the Infinite');
+        return (
       <GameSidebar 
         monster={battle.playerMonster}
         gold={state.run.gold}
         floor={state.run.dungeon?.floor || 1}
+        locationName={battleLocationName}
         inventory={inventory}
         equipmentInventory={state.run.equipmentInventory}
         equipment={state.run.partyEquipment[state.run.activePartyIndex]}
@@ -3815,6 +3841,8 @@ function BattleView({
         activePartyIndex={state.run.activePartyIndex}
         partyEffects={(state.run.partyEffects || []) as CombatEffects[]}
       />
+        );
+      })()}
     </div>
     </>
   );

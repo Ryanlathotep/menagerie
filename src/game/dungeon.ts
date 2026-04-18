@@ -426,6 +426,9 @@ export interface MoveResult {
   loot: LootItem | null;
   blocked: boolean; // True if move was blocked by wall
   plant: { plantType: PlantType; materialId: string } | null; // Harvested plant
+  // Bumped into a mineable wall (player did NOT move). Index.tsx uses this
+  // to apply a Pickaxe hit if the player owns one strong enough.
+  mineableBump: { x: number; y: number; tier: MineableWallTier } | null;
 }
 
 // Check if a tile should stop auto-run
@@ -435,8 +438,8 @@ export function shouldStopAutoRun(tiles: DungeonTile[][], x: number, y: number, 
   
   const tile = tiles[y][x];
   
-  // Stop on walls
-  if (tile.type === 'wall') return true;
+  // Stop on walls (bedrock + mineable both block movement)
+  if (tile.type === 'wall' || tile.type === 'mineable_wall') return true;
   
   // Stop on anything interesting
   if (tile.type === 'enemy') return true;

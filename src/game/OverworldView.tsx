@@ -1268,6 +1268,23 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     setAssignBuilding(contextMenuBuilding);
     setContextMenuBuilding(null);
   }, [contextMenuBuilding]);
+
+  // Flip a gate's banner-side / outward-side. Only meaningful for walls
+  // currently acting as gates; the renderer auto-orients toward home base
+  // by default and `gateFlipped` inverts that choice.
+  const handleFlipGate = useCallback(() => {
+    if (!contextMenuBuilding) return;
+    setOverworld(prev => {
+      const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
+      const b = newOw.playerBuildings?.find(pb => pb.id === contextMenuBuilding.id);
+      if (!b) return prev;
+      b.gateFlipped = !b.gateFlipped;
+      addLog(`🔄 Flipped gate facing at (${b.worldX},${b.worldY}).`, 'system');
+      saveOverworld(newOw);
+      setContextMenuBuilding({ ...b });
+      return newOw;
+    });
+  }, [contextMenuBuilding, addLog, saveOverworld]);
   
   // Resizable bottom bar
   const isMobileLayout = typeof window !== 'undefined' && window.innerWidth < 640;

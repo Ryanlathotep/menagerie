@@ -1703,6 +1703,50 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       />
     )}
 
+    {/* Water Right-Click Fill-with-Grass Menu */}
+    {waterMenu && (() => {
+      const COST_WOOD = 2;
+      const COST_STONE = 5;
+      return (
+        <WaterTileContextMenu
+          worldX={waterMenu.x}
+          worldY={waterMenu.y}
+          costWood={COST_WOOD}
+          costStone={COST_STONE}
+          haveWood={overworld.woodCollected}
+          haveStone={overworld.stoneCollected}
+          onClose={() => setWaterMenu(null)}
+          onFill={() => {
+            const { x, y } = waterMenu;
+            if (overworld.woodCollected < COST_WOOD || overworld.stoneCollected < COST_STONE) {
+              toast.error('Not enough resources!');
+              return;
+            }
+            setOverworld(prev => {
+              const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
+              const t = getOverworldTile(newOw, x, y);
+              if (!t || t.type !== 'water') {
+                toast.error('Tile is no longer water.');
+                return prev;
+              }
+              newOw.woodCollected -= COST_WOOD;
+              newOw.stoneCollected -= COST_STONE;
+              setOverworldTile(newOw, x, y, {
+                type: 'grass',
+                explored: true,
+                visible: true,
+                harvested: true,
+              });
+              addLog(`🌱 Filled water at (${x},${y}) with grass. (-${COST_WOOD}🪵 -${COST_STONE}🪨)`, 'system');
+              toast.success('Water filled in!');
+              saveOverworld(newOw);
+              return newOw;
+            });
+            setWaterMenu(null);
+          }}
+        />
+      );
+    })()}
 
     {attackMenuTarget && monster && (
       <EnemyAttackMenu

@@ -2162,6 +2162,10 @@ function DungeonView({
               hoveredTile={hoveredTile}
               onTileHover={handleTileHover}
               onTileHoverEnd={() => setHoveredTile(null)}
+              dungeonEntrance={(() => {
+                const id = typeof window !== 'undefined' ? localStorage.getItem('menagerie_active_dungeon_id') : null;
+                return id ? (state.saveData.dungeonEntrances?.[id] ?? null) : null;
+              })()}
               onDisarmTrap={(x, y, success) => {
                 dispatch({ type: 'DISARM_TRAP', x, y, success });
                 if (success) {

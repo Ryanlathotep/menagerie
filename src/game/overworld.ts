@@ -490,6 +490,8 @@ function spreadResources(state: OverworldState, centerX: number, centerY: number
     }
   }
 }
+
+export function updateVisibility(state: OverworldState): void {
   const { x: px, y: py } = state.playerPosition;
   
   // First pass: hide all visible tiles in loaded chunks

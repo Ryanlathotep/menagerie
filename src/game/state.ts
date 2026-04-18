@@ -19,7 +19,7 @@ import {
 import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot, dismantleEquipment, getRecipeFromEquipment, getConsumableRecipeFromItem } from './equipment';
 import { xpToNextLevel } from './combat';
 import { calculateStats } from './utils';
-import { findNearestEmptyOverworldTile } from './overworld';
+import { findNearestEmptyOverworldTile, slimOverworldForSave, expandOverworldFromSave } from './overworld';
 
 // Starting monster - Normal Normal Slime
 const STARTER_MONSTER = {
@@ -1384,11 +1384,8 @@ export function GameProvider({ children }: GameProviderProps) {
   // player buildings) silently when it overflows.
   useEffect(() => {
     try {
-      const toPersist = { ...state.saveData };
+      const toPersist: SaveData = { ...state.saveData };
       if (toPersist.overworldState) {
-        // Lazy-import to avoid pulling overworld into the initial bundle path
-        // any earlier than necessary.
-        const { slimOverworldForSave } = require('./overworld') as typeof import('./overworld');
         toPersist.overworldState = slimOverworldForSave(toPersist.overworldState);
       }
       localStorage.setItem('monster-roguelike-save', JSON.stringify(toPersist));

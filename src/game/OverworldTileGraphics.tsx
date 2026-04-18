@@ -146,24 +146,51 @@ export function OverworldWaterTile({ size, seed = 0, fit }: TileGraphicProps & {
     const opens = openSidesFromFit(fit);
     n = opens.n; e = opens.e; s = opens.s; w = opens.w;
   }
+  const isolated = !n && !e && !s && !w;
   const SHORE = 'hsl(40 55% 70%)';
+  const WATER_DEEP = 'hsl(200 55% 45%)';
+  const WATER_MID = 'hsl(195 60% 50%)';
+
+  // Inset the water rect on closed sides so a sandy shore appears there;
+  // on open sides, water bleeds all the way to the edge so it visually
+  // merges seamlessly with the neighboring water tile.
+  const left   = w ? 0 : 2.5;
+  const right  = e ? 24 : 21.5;
+  const top    = n ? 0 : 2.5;
+  const bottom = s ? 24 : 21.5;
+  const wWidth  = right - left;
+  const wHeight = bottom - top;
 
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className="block">
-      <rect width="24" height="24" fill="hsl(200 55% 45%)" opacity={0.35}/>
-      {/* Water wash */}
-      <ellipse cx="12" cy="12" rx="11" ry="11" fill="hsl(195 60% 50%)" opacity={0.3}/>
-      {/* Wave lines */}
-      <path d={`M2 ${10+r1*3} Q7 ${8+r2*2} 12 ${10+r1*2} T22 ${9+r2*3}`} stroke="hsl(190 50% 70%)" strokeWidth={1.2} fill="none" opacity={0.6}/>
-      <path d={`M2 ${14+r2*2} Q8 ${12+r1*2} 13 ${14+r2} T23 ${13+r1*2}`} stroke="white" strokeWidth={0.7} fill="none" opacity={0.4}/>
-      {/* Shoreline edges (drawn only on closed sides) */}
-      {!n && <rect x="0" y="0"  width="24" height="2.5" fill={SHORE} opacity={0.85}/>}
-      {!s && <rect x="0" y="21.5" width="24" height="2.5" fill={SHORE} opacity={0.85}/>}
-      {!w && <rect x="0" y="0"  width="2.5" height="24" fill={SHORE} opacity={0.85}/>}
-      {!e && <rect x="21.5" y="0" width="2.5" height="24" fill={SHORE} opacity={0.85}/>}
+      {/* Sand base — only visible where the water rect is inset */}
+      <rect width="24" height="24" fill={SHORE} opacity={0.85}/>
+      {/* Deep water fill, full-bleed on open sides */}
+      <rect x={left} y={top} width={wWidth} height={wHeight} fill={WATER_DEEP} opacity={0.55}/>
+      <rect x={left} y={top} width={wWidth} height={wHeight} fill={WATER_MID} opacity={0.35}/>
+      {/* Soft inner ripple — only for isolated puddles, otherwise it segments connected bodies */}
+      {isolated && <ellipse cx="12" cy="12" rx="9" ry="9" fill={WATER_MID} opacity={0.2}/>}
+      {/* Wave lines — extend to edges on open sides so they flow into neighbors */}
+      <path
+        d={`M${w ? -1 : 4} ${10+r1*3} Q7 ${8+r2*2} 12 ${10+r1*2} T${e ? 25 : 20} ${9+r2*3}`}
+        stroke="hsl(190 50% 70%)" strokeWidth={1.2} fill="none" opacity={0.6}
+      />
+      <path
+        d={`M${w ? -1 : 4} ${14+r2*2} Q8 ${12+r1*2} 13 ${14+r2} T${e ? 25 : 20} ${13+r1*2}`}
+        stroke="white" strokeWidth={0.7} fill="none" opacity={0.4}
+      />
+      {/* Vertical shimmer on N/S open sides for axis variety */}
+      {(n || s) && (
+        <path
+          d={`M${10+r1*2} ${n ? -1 : 4} Q${11+r2} 12 ${10+r2*2} ${s ? 25 : 20}`}
+          stroke="hsl(190 50% 75%)" strokeWidth={0.6} fill="none" opacity={0.35}
+        />
+      )}
       {/* Soft pebble specks on shores */}
       {!n && <circle cx={6+r1*8} cy={1.5} r={0.5} fill={INK.medium} opacity={0.5}/>}
       {!s && <circle cx={10+r2*8} cy={22.5} r={0.5} fill={INK.medium} opacity={0.5}/>}
+      {!w && <circle cx={1.5} cy={8+r1*8} r={0.5} fill={INK.medium} opacity={0.5}/>}
+      {!e && <circle cx={22.5} cy={12+r2*8} r={0.5} fill={INK.medium} opacity={0.5}/>}
       <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
       <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
     </svg>

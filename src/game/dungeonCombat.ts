@@ -277,7 +277,8 @@ export function getAffectedTiles(
     }
     
     case 'cross': {
-      // Cross pattern centered on target
+      // Cross pattern centered on target — splash is blocked by walls
+      // propagating out from the target tile.
       affectedTiles.push(target);
       const directions = [
         { dx: 0, dy: -1 },
@@ -285,19 +286,20 @@ export function getAffectedTiles(
         { dx: -1, dy: 0 },
         { dx: 1, dy: 0 },
       ];
-      
+
       for (const dir of directions) {
         for (let i = 1; i <= (config.width || 1); i++) {
           const x = target.x + dir.dx * i;
           const y = target.y + dir.dy * i;
-          if (x >= 0 && x < dungeonWidth && y >= 0 && y < dungeonHeight) {
-            affectedTiles.push({ x, y });
-          }
+          if (x < 0 || x >= dungeonWidth || y < 0 || y >= dungeonHeight) break;
+          // Stop the arm of the cross at the first wall (unless wallPenetrate)
+          if (tiles && !config.wallPenetrate && tiles[y][x].type === 'wall') break;
+          affectedTiles.push({ x, y });
         }
       }
       break;
     }
-    
+
     case 'area': {
       // Square area centered on target - check LOS to target first
       if (tiles && !config.wallPenetrate) {
@@ -305,15 +307,19 @@ export function getAffectedTiles(
           break; // Can't target an area you can't see
         }
       }
-      
+
       const radius = config.width || 1;
       for (let dy = -radius; dy <= radius; dy++) {
         for (let dx = -radius; dx <= radius; dx++) {
           const x = target.x + dx;
           const y = target.y + dy;
-          if (x >= 0 && x < dungeonWidth && y >= 0 && y < dungeonHeight) {
-            affectedTiles.push({ x, y });
+          if (x < 0 || x >= dungeonWidth || y < 0 || y >= dungeonHeight) continue;
+          // Splash radius is independent of player range, but blocked by
+          // walls propagating from the target outward.
+          if (tiles && !config.wallPenetrate) {
+            if (!hasLineOfSight(target, { x, y }, tiles, dungeonWidth, dungeonHeight, false)) continue;
           }
+          affectedTiles.push({ x, y });
         }
       }
       break;

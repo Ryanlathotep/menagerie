@@ -3,6 +3,7 @@
 
 import { ElementType } from './types';
 import type { OverworldState } from './overworld';
+import { isCreativeMode } from './creativeMode';
 
 // ============= BUILDING TYPES =============
 
@@ -151,10 +152,15 @@ export function canPlaceBuilding(
   buildingType: PlayerBuildingType,
 ): { canPlace: boolean; reason?: string } {
   const def = BUILDING_DEFINITIONS[buildingType];
+  // Creative mode bypasses ONLY the cost check — placement rules (no overlap,
+  // not on home tile, within build radius) still apply so the world stays sane.
+  const creative = isCreativeMode();
 
-  // Check resources
-  if (woodAvailable < def.cost.wood) return { canPlace: false, reason: `Need ${def.cost.wood} wood (have ${woodAvailable})` };
-  if (stoneAvailable < def.cost.stone) return { canPlace: false, reason: `Need ${def.cost.stone} stone (have ${stoneAvailable})` };
+  // Check resources (skipped in creative mode)
+  if (!creative) {
+    if (woodAvailable < def.cost.wood) return { canPlace: false, reason: `Need ${def.cost.wood} wood (have ${woodAvailable})` };
+    if (stoneAvailable < def.cost.stone) return { canPlace: false, reason: `Need ${def.cost.stone} stone (have ${stoneAvailable})` };
+  }
 
   // Cannot build on the home tile itself
   if (worldX === homePosition.x && worldY === homePosition.y) {

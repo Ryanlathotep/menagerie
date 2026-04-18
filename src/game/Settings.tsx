@@ -326,8 +326,19 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 // Admin Panel Trigger Button - only visible to admins (just the button, no dialog)
 function AdminPanelTrigger({ onOpenAdmin }: { onOpenAdmin: () => void }) {
   const { isAdmin, loading } = useAdminRole();
+  const [creative, setCreative] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem('menagerie_creative_mode') === '1';
+  });
 
   if (loading || !isAdmin) return null;
+
+  const toggleCreative = (next: boolean) => {
+    setCreative(next);
+    // Lazy import to avoid pulling creativeMode into Settings' module graph
+    // before admin check passes.
+    import('./creativeMode').then(({ setCreativeMode }) => setCreativeMode(next));
+  };
 
   return (
     <div className="space-y-3 pt-4 border-t">
@@ -335,6 +346,17 @@ function AdminPanelTrigger({ onOpenAdmin }: { onOpenAdmin: () => void }) {
         <Shield className="w-4 h-4 text-primary" />
         Admin Tools
       </Label>
+
+      <div className="flex items-center justify-between rounded-md border border-border p-3">
+        <div className="flex-1">
+          <Label className="text-sm font-semibold">🛠️ Creative Mode</Label>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Skip resource & material costs for building, roads, and crafting. Resets when the tab closes.
+          </p>
+        </div>
+        <Switch checked={creative} onCheckedChange={toggleCreative} />
+      </div>
+
       <Button variant="outline" className="w-full gap-2" onClick={onOpenAdmin}>
         <Shield className="w-4 h-4" />
         Open Admin Panel

@@ -42,6 +42,7 @@ import {
 import { StatusIcons } from '@/game/StatusEffectDisplay';
 import { CraftingWorkshop } from '@/game/CraftingWorkshop';
 import { CraftingRecipe, ConsumableRecipe } from '@/game/equipment';
+import { isCreativeMode } from '@/game/creativeMode';
 import { findPath, getDirection } from '@/game/pathfinding';
 import { RecruitmentModal, calculateRecruitChance } from '@/game/RecruitmentModal';
 import { PartySwitchModal } from '@/game/PartySwitchModal';
@@ -96,11 +97,13 @@ function MainMenu() {
   };
   
   const handleCraft = (recipe: CraftingRecipe, result: import('@/game/equipment').EquipmentItem) => {
-    // Deduct materials
-    dispatch({
-      type: 'USE_MATERIALS',
-      materials: recipe.materials
-    });
+    // Creative mode: skip the material deduction entirely.
+    if (!isCreativeMode()) {
+      dispatch({
+        type: 'USE_MATERIALS',
+        materials: recipe.materials
+      });
+    }
     // Store the crafted equipment
     dispatch({
       type: 'STORE_EQUIPMENT',
@@ -110,11 +113,12 @@ function MainMenu() {
   };
   
   const handleCraftConsumable = (recipe: ConsumableRecipe) => {
-    // Deduct materials
-    dispatch({
-      type: 'USE_MATERIALS',
-      materials: recipe.materials
-    });
+    if (!isCreativeMode()) {
+      dispatch({
+        type: 'USE_MATERIALS',
+        materials: recipe.materials
+      });
+    }
     // Create the consumable item and store it
     const consumableItem: InventoryItem = {
       id: recipe.resultId,

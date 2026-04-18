@@ -25,6 +25,8 @@ import {
   CONSUMABLE_RECIPES,
   ConsumableRecipe,
 } from './equipment';
+import { isCreativeMode, onCreativeModeChange } from './creativeMode';
+import { useEffect } from 'react';
 
 interface MaterialInventory {
   [materialId: string]: number;
@@ -58,13 +60,21 @@ export function CraftingWorkshop({
   const [activeTab, setActiveTab] = useState<'craft' | 'consumables' | 'dismantle'>('craft');
   const [selectedDismantle, setSelectedDismantle] = useState<EquipmentItem | null>(null);
   
-  // Check if player has materials for recipe
+  // Creative mode flag — re-renders when toggled so disabled buttons & "missing
+  // materials" labels flip live.
+  const [creative, setCreative] = useState(isCreativeMode());
+  useEffect(() => onCreativeModeChange(setCreative), []);
+
+  // Check if player has materials for recipe (always true in creative mode)
   const canCraft = (recipe: CraftingRecipe | ConsumableRecipe): boolean => {
+    if (creative) return true;
     return recipe.materials.every(req => (materials[req.materialId] || 0) >= req.quantity);
   };
   
   // Check if recipe is unlocked (works for both equipment and consumables)
+  // Creative mode unlocks every recipe so admins can test any tier.
   const isUnlocked = (recipe: CraftingRecipe | ConsumableRecipe): boolean => {
+    if (creative) return true;
     // Common recipes are always unlocked
     const rarity = 'resultRarity' in recipe ? recipe.resultRarity : recipe.rarity;
     if (rarity === 'common') return true;

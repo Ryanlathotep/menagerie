@@ -2242,6 +2242,7 @@ function DungeonView({
                 </div>
               </div>
             </div>
+            </div>
           </div>
         </div>
       </div>

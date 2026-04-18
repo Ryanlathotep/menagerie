@@ -790,6 +790,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                       isOnPath={targetPath.some(p => p.x === x && p.y === y)}
                       onDisarmTrap={onDisarmTrap}
                       onClick={tile.explored && tile.type !== 'wall' ? () => onTileClick?.(x, y) : undefined}
+                      playerPickaxeTier={playerPickaxeTier}
                     />
                     {/* Targeting overlay */}
                     {targetingMode && isTargetable && (

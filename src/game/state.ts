@@ -1378,9 +1378,24 @@ export function GameProvider({ children }: GameProviderProps) {
     }
   }, []);
 
-  // Save to localStorage when saveData changes
+  // Save to localStorage when saveData changes.
+  // Overworld chunks are stripped (regenerable from seed) so we don't blow
+  // past the ~5MB localStorage quota — losing the entire save (including
+  // player buildings) silently when it overflows.
   useEffect(() => {
-    localStorage.setItem('monster-roguelike-save', JSON.stringify(state.saveData));
+    try {
+      const toPersist = { ...state.saveData };
+      if (toPersist.overworldState) {
+        // Lazy-import to avoid pulling overworld into the initial bundle path
+        // any earlier than necessary.
+        const { slimOverworldForSave } = require('./overworld') as typeof import('./overworld');
+        toPersist.overworldState = slimOverworldForSave(toPersist.overworldState);
+      }
+      localStorage.setItem('monster-roguelike-save', JSON.stringify(toPersist));
+    } catch (err) {
+      // QuotaExceededError or similar — log loudly so we can diagnose.
+      console.error('[save] Failed to write to localStorage:', err);
+    }
   }, [state.saveData]);
 
   return React.createElement(GameContext.Provider, { value: { state, dispatch } }, children);

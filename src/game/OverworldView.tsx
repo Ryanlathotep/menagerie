@@ -24,6 +24,7 @@ import {
   placeRoad,
   applyRoadsToChunks,
   findNearestEmptyOverworldTile,
+  expandOverworldFromSave,
 } from './overworld';
 import { TREE_TIER_DATA, STONE_TIER_DATA, TreeTier, StoneTier } from './resourceHierarchy';
 import { 

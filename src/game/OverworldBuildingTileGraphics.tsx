@@ -2,6 +2,8 @@
 // Matches the hand-drawn ink & watercolor aesthetic
 
 import { PlayerBuildingType } from './buildings';
+import { PlayerWallTile, GateTile } from './PlayerWallTileGraphics';
+import type { AutoTileFit } from './autoTiling';
 
 interface BuildingTileProps {
   size: number;
@@ -137,9 +139,23 @@ export function FarmTile({ size, seed = 0, harvestReady = false }: BuildingTileP
 }
 
 // Dispatcher component
-export function OverworldBuildingTileGraphic({ type, size, seed = 0, harvestReady }: { type: PlayerBuildingType; size: number; seed?: number; harvestReady?: boolean }) {
+export function OverworldBuildingTileGraphic({
+  type, size, seed = 0, harvestReady, wallFit, isGate, gateAxis, damaged,
+}: {
+  type: PlayerBuildingType;
+  size: number;
+  seed?: number;
+  harvestReady?: boolean;
+  // Auto-tiling props (only walls use these)
+  wallFit?: AutoTileFit;
+  isGate?: boolean;
+  gateAxis?: 'horizontal' | 'vertical';
+  damaged?: boolean;
+}) {
   switch (type) {
-    case 'wall': return <WallTile size={size} seed={seed} />;
+    case 'wall':
+      if (isGate) return <GateTile size={size} axisHorizontal={gateAxis !== 'vertical'} />;
+      return <PlayerWallTile size={size} fit={wallFit} damaged={damaged} />;
     case 'spike_trap': return <TrapTile size={size} seed={seed} trapVariant="spike" />;
     case 'poison_trap': return <TrapTile size={size} seed={seed} trapVariant="poison" />;
     case 'fire_trap': return <TrapTile size={size} seed={seed} trapVariant="fire" />;

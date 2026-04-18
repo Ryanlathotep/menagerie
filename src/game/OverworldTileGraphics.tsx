@@ -130,9 +130,23 @@ export function OverworldRockTile({ size, seed = 0, tier = 'stone' }: TileGraphi
 }
 
 // ─── Water ───
-export function OverworldWaterTile({ size, seed = 0 }: TileGraphicProps) {
+// Optional auto-tile shape: when supplied, draws a sandy shoreline on the
+// "closed" sides so adjacent water cells flow into each other and isolated
+// puddles get a full beach ring.
+import type { AutoTileFit, AutoTileShape } from './autoTiling';
+
+export function OverworldWaterTile({ size, seed = 0, fit }: TileGraphicProps & { fit?: AutoTileFit }) {
   const r1 = seededRandom(seed);
   const r2 = seededRandom(seed + 1);
+
+  // Determine which sides have water neighbors. Defaults to "all open" so
+  // legacy callers without auto-tiling still render the original look.
+  let n = true, e = true, s = true, w = true;
+  if (fit) {
+    const opens = openSidesFromFit(fit);
+    n = opens.n; e = opens.e; s = opens.s; w = opens.w;
+  }
+  const SHORE = 'hsl(40 55% 70%)';
 
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className="block">
@@ -142,10 +156,43 @@ export function OverworldWaterTile({ size, seed = 0 }: TileGraphicProps) {
       {/* Wave lines */}
       <path d={`M2 ${10+r1*3} Q7 ${8+r2*2} 12 ${10+r1*2} T22 ${9+r2*3}`} stroke="hsl(190 50% 70%)" strokeWidth={1.2} fill="none" opacity={0.6}/>
       <path d={`M2 ${14+r2*2} Q8 ${12+r1*2} 13 ${14+r2} T23 ${13+r1*2}`} stroke="white" strokeWidth={0.7} fill="none" opacity={0.4}/>
+      {/* Shoreline edges (drawn only on closed sides) */}
+      {!n && <rect x="0" y="0"  width="24" height="2.5" fill={SHORE} opacity={0.85}/>}
+      {!s && <rect x="0" y="21.5" width="24" height="2.5" fill={SHORE} opacity={0.85}/>}
+      {!w && <rect x="0" y="0"  width="2.5" height="24" fill={SHORE} opacity={0.85}/>}
+      {!e && <rect x="21.5" y="0" width="2.5" height="24" fill={SHORE} opacity={0.85}/>}
+      {/* Soft pebble specks on shores */}
+      {!n && <circle cx={6+r1*8} cy={1.5} r={0.5} fill={INK.medium} opacity={0.5}/>}
+      {!s && <circle cx={10+r2*8} cy={22.5} r={0.5} fill={INK.medium} opacity={0.5}/>}
       <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
       <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
     </svg>
   );
+}
+
+// Compute which cardinal sides are "open" (i.e., connect to a same-type neighbor)
+// based on the inverse-encoded AutoTileFit (since water uses "open = connection").
+function openSidesFromFit(fit: AutoTileFit): { n: boolean; e: boolean; s: boolean; w: boolean } {
+  // Convert shape+rotation back into NESW open-flags. Keep this in sync with autoTiling.ts.
+  const rotateNESW = (n: boolean, e: boolean, s: boolean, w: boolean, deg: number) => {
+    // Rotate the open-flag vector clockwise by `deg`. After rotating the source
+    // pattern by `deg` to get the rendered orientation, sides shift accordingly.
+    const steps = ((deg / 90) % 4 + 4) % 4;
+    let arr = [n, e, s, w];
+    for (let i = 0; i < steps; i++) {
+      arr = [arr[3], arr[0], arr[1], arr[2]]; // CW rotation
+    }
+    return { n: arr[0], e: arr[1], s: arr[2], w: arr[3] };
+  };
+
+  switch (fit.shape) {
+    case 'cross':    return { n: true, e: true, s: true, w: true };
+    case 'single':   return { n: false, e: false, s: false, w: false };
+    case 'straight': return rotateNESW(false, true, false, true, fit.rotation); // base = E+W open
+    case 'corner':   return rotateNESW(true, true, false, false, fit.rotation); // base = N+E open
+    case 't':        return rotateNESW(false, true, true, true, fit.rotation);  // base = E+S+W open
+    case 'end':      return rotateNESW(false, true, false, false, fit.rotation); // base = E open
+  }
 }
 
 // ─── Building (campfire / cabin / town hall) ───
@@ -296,62 +343,140 @@ export function OverworldNestTile({ size, seed = 0, element = 'normal', hpPercen
   );
 }
 
-// ─── Dirt Road ───
-export function OverworldDirtRoadTile({ size, seed = 0 }: TileGraphicProps) {
-  const r1 = seededRandom(seed);
-  const r2 = seededRandom(seed + 1);
-
+// ─── Dirt Road (with auto-tile shape) ───
+export function OverworldDirtRoadTile({ size, seed = 0, fit }: TileGraphicProps & { fit?: AutoTileFit }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className="block">
-      {/* Dirt base */}
-      <rect width="24" height="24" fill="hsl(30 40% 42%)" opacity={0.4}/>
-      {/* Path surface */}
-      <rect x="2" y="0" width="20" height="24" rx={1} fill="hsl(28 35% 48%)" opacity={0.5}/>
-      {/* Ruts / tracks */}
-      <line x1={7+r1} y1="0" x2={7+r1} y2="24" stroke="hsl(25 30% 38%)" strokeWidth={1.2} opacity={0.4} strokeDasharray="3 2"/>
-      <line x1={17-r2} y1="0" x2={17-r2} y2="24" stroke="hsl(25 30% 38%)" strokeWidth={1.2} opacity={0.4} strokeDasharray="3 2"/>
-      {/* Pebbles */}
-      <circle cx={5+r1*3} cy={8+r2*4} r={0.6} fill="hsl(30 15% 55%)" opacity={0.5}/>
-      <circle cx={18-r2*2} cy={16+r1*3} r={0.5} fill="hsl(30 15% 55%)" opacity={0.4}/>
-      {/* Grid line */}
+      {/* Grass surround so closed sides feel terminated, not floating */}
+      <rect width="24" height="24" fill="hsl(90 35% 55%)" opacity={0.2}/>
+      <g transform={fit ? `rotate(${fit.rotation} 12 12)` : undefined}>
+        <DirtRoadShape shape={fit?.shape || 'cross'} seed={seed} />
+      </g>
       <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
       <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
     </svg>
   );
 }
 
-// ─── Stone Road ───
-export function OverworldStoneRoadTile({ size, seed = 0 }: TileGraphicProps) {
-  const r1 = seededRandom(seed);
-  const r2 = seededRandom(seed + 1);
-  const r3 = seededRandom(seed + 2);
-
+// ─── Stone Road (with auto-tile shape) ───
+export function OverworldStoneRoadTile({ size, seed = 0, fit }: TileGraphicProps & { fit?: AutoTileFit }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className="block">
-      {/* Stone base */}
-      <rect width="24" height="24" fill="hsl(220 8% 55%)" opacity={0.35}/>
-      {/* Cobblestone pattern - irregular rectangles */}
-      <rect x="1" y="1" width="5" height="4" rx={0.3} fill="hsl(215 10% 62%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
-      <rect x="7" y="1" width="4" height="4" rx={0.3} fill="hsl(220 8% 58%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
-      <rect x="12" y="1" width="5" height="4" rx={0.3} fill="hsl(210 12% 60%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
-      <rect x="18" y="1" width="5" height="4" rx={0.3} fill="hsl(215 9% 57%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
-      <rect x="0" y="6" width="4" height="5" rx={0.3} fill="hsl(218 10% 60%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
-      <rect x="5" y="6" width="6" height="5" rx={0.3} fill="hsl(212 11% 56%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
-      <rect x="12" y="6" width="5" height="5" rx={0.3} fill="hsl(220 9% 61%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
-      <rect x="18" y="6" width="6" height="5" rx={0.3} fill="hsl(216 10% 58%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
-      <rect x="1" y="12" width="5" height="5" rx={0.3} fill="hsl(214 8% 59%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
-      <rect x="7" y="12" width="5" height="5" rx={0.3} fill="hsl(218 11% 55%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
-      <rect x="13" y="12" width="4" height="5" rx={0.3} fill="hsl(210 10% 62%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
-      <rect x="18" y="12" width="5" height="5" rx={0.3} fill="hsl(215 9% 57%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
-      <rect x="0" y="18" width="6" height="5" rx={0.3} fill="hsl(216 10% 60%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
-      <rect x="7" y="18" width="4" height="5" rx={0.3} fill="hsl(220 8% 58%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
-      <rect x="12" y="18" width="6" height="5" rx={0.3} fill="hsl(212 12% 56%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
-      <rect x="19" y="18" width="4" height="5" rx={0.3} fill="hsl(218 9% 61%)" opacity={0.5} stroke={INK.faint} strokeWidth={0.3}/>
-      {/* Grid line */}
+      <rect width="24" height="24" fill="hsl(90 35% 55%)" opacity={0.2}/>
+      <g transform={fit ? `rotate(${fit.rotation} 12 12)` : undefined}>
+        <StoneRoadShape shape={fit?.shape || 'cross'} seed={seed} />
+      </g>
       <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
       <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
     </svg>
   );
+}
+
+// Internal: dirt-road body for a given canonical (unrotated) shape.
+//   straight base = horizontal (E-W band)
+//   corner   base = N+E (┘)
+//   t        base = E+W+S (T opens south, trunk on top)
+//   end      base = single connection on east; cap on west
+//   cross    = plus
+//   single   = round patch
+function DirtRoadShape({ shape, seed }: { shape: AutoTileShape; seed: number }) {
+  const DIRT = 'hsl(28 35% 48%)';
+  const DIRT_DARK = 'hsl(25 30% 38%)';
+  const PEBBLE = 'hsl(30 15% 55%)';
+  const r1 = seededRandom(seed);
+
+  switch (shape) {
+    case 'cross':
+      return (
+        <>
+          <rect x="0" y="7" width="24" height="10" fill={DIRT} opacity={0.55}/>
+          <rect x="7" y="0" width="10" height="24" fill={DIRT} opacity={0.55}/>
+          <circle cx={12} cy={12} r={5} fill={DIRT} opacity={0.6}/>
+        </>
+      );
+    case 't':
+      return (
+        <>
+          <rect x="0" y="7" width="24" height="10" fill={DIRT} opacity={0.55}/>
+          <rect x="7" y="12" width="10" height="12" fill={DIRT} opacity={0.55}/>
+        </>
+      );
+    case 'straight':
+      return (
+        <>
+          <rect x="0" y="7" width="24" height="10" fill={DIRT} opacity={0.55}/>
+          <line x1={0} y1={9+r1} x2={24} y2={9+r1} stroke={DIRT_DARK} strokeWidth={0.8} opacity={0.4} strokeDasharray="3 2"/>
+          <line x1={0} y1={14-r1} x2={24} y2={14-r1} stroke={DIRT_DARK} strokeWidth={0.8} opacity={0.4} strokeDasharray="3 2"/>
+          <circle cx={6+r1*4} cy={11} r={0.5} fill={PEBBLE} opacity={0.5}/>
+          <circle cx={18-r1*3} cy={13} r={0.5} fill={PEBBLE} opacity={0.5}/>
+        </>
+      );
+    case 'corner':
+      // N+E open: vertical band on top, horizontal band on right, joined at NE
+      return (
+        <>
+          <rect x="7" y="0"  width="10" height="14" fill={DIRT} opacity={0.55}/>
+          <rect x="10" y="7" width="14" height="10" fill={DIRT} opacity={0.55}/>
+          <circle cx={12} cy={12} r={5} fill={DIRT} opacity={0.55}/>
+        </>
+      );
+    case 'end':
+      // East-only connection: cap on west, road extends to east edge
+      return (
+        <>
+          <rect x="6" y="7" width="18" height="10" fill={DIRT} opacity={0.55}/>
+          <circle cx={8} cy={12} r={4.5} fill={DIRT} opacity={0.6}/>
+        </>
+      );
+    case 'single':
+      return <circle cx={12} cy={12} r={5} fill={DIRT} opacity={0.55}/>;
+  }
+}
+
+// Internal: stone-road body. Uses a crisper cobble look with darker mortar.
+function StoneRoadShape({ shape, seed }: { shape: AutoTileShape; seed: number }) {
+  const STONE = 'hsl(218 10% 60%)';
+  const STONE2 = 'hsl(212 10% 56%)';
+  const STONE3 = 'hsl(220 9% 64%)';
+
+  // Build a few cobbles inside a rectangle band.
+  const cobbleBand = (x: number, y: number, w: number, h: number) => (
+    <>
+      <rect x={x} y={y} width={w} height={h} fill={STONE} opacity={0.6}/>
+      <rect x={x+0.5} y={y+0.5} width={w/2 - 0.5} height={h/2 - 0.5} fill={STONE2} opacity={0.5} stroke={INK.faint} strokeWidth={0.25}/>
+      <rect x={x+w/2} y={y+h/2} width={w/2 - 0.5} height={h/2 - 0.5} fill={STONE3} opacity={0.5} stroke={INK.faint} strokeWidth={0.25}/>
+    </>
+  );
+
+  switch (shape) {
+    case 'cross':
+      return (
+        <>
+          {cobbleBand(0, 7, 24, 10)}
+          {cobbleBand(7, 0, 10, 24)}
+        </>
+      );
+    case 't':
+      return (
+        <>
+          {cobbleBand(0, 7, 24, 10)}
+          {cobbleBand(7, 12, 10, 12)}
+        </>
+      );
+    case 'straight':
+      return cobbleBand(0, 7, 24, 10);
+    case 'corner':
+      return (
+        <>
+          {cobbleBand(7, 0, 10, 14)}
+          {cobbleBand(10, 7, 14, 10)}
+        </>
+      );
+    case 'end':
+      return cobbleBand(6, 7, 18, 10);
+    case 'single':
+      return cobbleBand(7, 7, 10, 10);
+  }
 }
 
 // ─── Fog of war (unexplored) ───

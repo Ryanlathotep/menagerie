@@ -2,6 +2,7 @@
 // Phase 3 of the Overworld Expansion Plan
 
 import { ElementType } from './types';
+import type { OverworldState } from './overworld';
 
 // ============= BUILDING TYPES =============
 
@@ -247,4 +248,62 @@ export function processScoutTowerAttacks(
   }
 
   return events;
+}
+
+// ============= AUTO-TILING / GATE DETECTION =============
+
+// Look up the player building (if any) at a specific overworld coordinate.
+function buildingAt(state: OverworldState, x: number, y: number): PlayerBuilding | undefined {
+  return state.playerBuildings?.find(b => b.worldX === x && b.worldY === y);
+}
+
+function isRoadAt(state: OverworldState, x: number, y: number): boolean {
+  return !!state.roads?.[`${x},${y}`];
+}
+
+// True iff this wall sits between two roads on opposite sides (N+S or E+W).
+// A wall acting as a gate is passable by the player but still blocks enemies.
+// Centralizing this in one helper makes the future "tower controller settings"
+// pass trivial: that pass can override which players are allowed through.
+export function isWallActingAsGate(building: PlayerBuilding, state: OverworldState): boolean {
+  if (building.type !== 'wall') return false;
+  const { worldX: x, worldY: y } = building;
+  const horizontal = isRoadAt(state, x - 1, y) && isRoadAt(state, x + 1, y);
+  const vertical   = isRoadAt(state, x, y - 1) && isRoadAt(state, x, y + 1);
+  return horizontal || vertical;
+}
+
+// Returns the gate's road axis: true = horizontal (E-W), false = vertical (N-S).
+// Only meaningful when isWallActingAsGate() returns true.
+export function getGateAxis(building: PlayerBuilding, state: OverworldState): 'horizontal' | 'vertical' {
+  const { worldX: x, worldY: y } = building;
+  if (isRoadAt(state, x - 1, y) && isRoadAt(state, x + 1, y)) return 'horizontal';
+  return 'vertical';
+}
+
+// Wall connects to other walls AND to scout towers (towers anchor castle corners).
+export function wallConnectsTo(state: OverworldState, x: number, y: number): boolean {
+  const b = buildingAt(state, x, y);
+  if (!b) return false;
+  return b.type === 'wall' || b.type === 'scout_tower';
+}
+
+// Anything that should make a road auto-tile point at it:
+//   - other roads (any type connects to any type so dirt/stone meet cleanly)
+//   - any player building (campfire/cabin/town hall via home tile, plus walls,
+//     scout towers, farms — entrances/anchors)
+//   - the home base tile at (0,0) treated as a building hub
+export function roadConnectsTo(state: OverworldState, x: number, y: number): boolean {
+  if (isRoadAt(state, x, y)) return true;
+  if (buildingAt(state, x, y)) return true;
+  if (state.homeBase && state.homeBase.position.x === x && state.homeBase.position.y === y) return true;
+  return false;
+}
+
+// Hook for the future "tower controller / build permissions" pass.
+// Today: per-run only — dungeon-built structures never persist.
+// Future: consult the dungeon's controller (player with deepest cleared floor)
+// and their friend/guild/whitelist settings to decide.
+export function shouldPersistDungeonBuild(_dungeonId: string, _userId: string | null): boolean {
+  return false;
 }

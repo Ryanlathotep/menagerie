@@ -1163,6 +1163,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       onToggleHideMove={moveId => dispatch({ type: 'TOGGLE_HIDE_MOVE', moveId })}
       onOpenEquipment={() => setShowEquipment(true)}
       onPanelChange={setMenuOpen}
+      panelHostId="overworld-bottom-panel-host"
       party={state.run?.party || []}
       activePartyIndex={state.run?.activePartyIndex || 0}
       onPartySwitch={handlePartySwitch}
@@ -1312,22 +1313,30 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
               </div>
             </div>
 
-            {/* Full-width game log */}
-            <div className="flex-1 min-h-0 w-full p-3 bg-muted/30 rounded-lg border border-border/50 overflow-hidden">
-              <div className="flex items-center gap-1 mb-2">
-                <ScrollText className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-semibold text-muted-foreground">Game Log</span>
+            <div className="flex-1 min-h-0 flex flex-col sm:flex-row gap-2">
+              <div className={`${menuOpen ? 'sm:w-1/2' : 'w-full'} min-h-0 min-w-0 p-3 bg-muted/30 rounded-lg border border-border/50 overflow-hidden flex flex-col transition-[width] duration-200`}>
+                <div className="flex items-center gap-1 mb-2">
+                  <ScrollText className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-semibold text-muted-foreground">Game Log</span>
+                </div>
+                <div className="flex-1 overflow-y-auto scrollbar-none space-y-0.5">
+                  {[...gameLog].reverse().slice(0, 20).map((msg, i) => (
+                    <p key={msg.id} className={`text-sm ${i === 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                      {msg.text}
+                    </p>
+                  ))}
+                  {gameLog.length === 0 && (
+                    <p className="text-sm text-muted-foreground italic">No events yet...</p>
+                  )}
+                </div>
               </div>
-              <div className="h-[calc(100%-28px)] overflow-y-auto scrollbar-none space-y-0.5">
-                {[...gameLog].reverse().slice(0, 20).map((msg, i) => (
-                  <p key={msg.id} className={`text-sm ${i === 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
-                    {msg.text}
-                  </p>
-                ))}
-                {gameLog.length === 0 && (
-                  <p className="text-sm text-muted-foreground italic">No events yet...</p>
-                )}
-              </div>
+
+              {menuOpen && (
+                <div
+                  id="overworld-bottom-panel-host"
+                  className="min-h-0 flex-1 sm:w-1/2 rounded-lg border border-border/50 bg-muted/30 overflow-hidden"
+                />
+              )}
             </div>
           </div>
           </div>

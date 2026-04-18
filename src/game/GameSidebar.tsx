@@ -364,10 +364,17 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
         )}
       </div>
       
-      {/* Compact slide-up panels - resizable height. On desktop sits in the right half so the game log stays visible on the left. */}
+      {/* Menu panel - sits inside the bottom bar's right half so map / log / menu are all visible at once.
+          Position is computed from CSS vars set by the active view (--menagerie-bar-h / --menagerie-sidebar-h) so
+          every panel ends up exactly the same size as the log box. */}
       {activePanel && <div 
-        className="fixed bottom-16 sm:bottom-24 left-0 right-0 sm:left-auto sm:right-2 sm:w-[calc(50%-1rem)] bg-card border-2 border-primary/20 sm:rounded-lg shadow-xl z-40 animate-fade-in overflow-y-auto"
-        style={{ maxHeight: `${panelHeights[activePanel]}vh` }}
+        className="fixed left-0 right-0 sm:left-auto sm:right-2 sm:w-[calc(50%-1rem)] bg-card border-2 border-primary/20 sm:rounded-lg shadow-xl z-40 animate-fade-in overflow-y-auto"
+        style={{
+          // Mobile (no CSS vars set): keep legacy behavior just above the bottom bar
+          // Desktop: align exactly to the log box (bar height minus its resize handle and inner padding)
+          bottom: `calc(var(--menagerie-sidebar-h, ${isMobileView ? '64px' : '96px'}) + 0.25rem)`,
+          height: `calc(var(--menagerie-bar-h, ${isMobileView ? '160px' : '180px'}) - 1rem)`,
+        }}
       >
           {/* Resize drag handle */}
           <div 

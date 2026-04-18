@@ -88,6 +88,20 @@ export function BuildingContextMenu({
             </Button>
           )}
 
+          {isGate && onFlipGate && (
+            <Button
+              variant="secondary"
+              className="w-full justify-start"
+              onClick={onFlipGate}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              <span className="flex-1 text-left">Flip Gate Facing</span>
+              <span className="text-[11px] text-muted-foreground">
+                (banner side)
+              </span>
+            </Button>
+          )}
+
           <Button
             variant="secondary"
             className="w-full justify-start"

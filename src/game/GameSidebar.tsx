@@ -1,6 +1,6 @@
 // Game Sidebar - Always visible menu with panels (works in both dungeon and battle)
 
-import { useState, forwardRef } from 'react';
+import { useState, forwardRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 type PanelName = 'character' | 'inventory' | 'moves' | 'party';
@@ -121,9 +121,22 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   const isMobileView = typeof window !== 'undefined' && window.innerWidth < 640;
   const [activePanel, setActivePanel] = useState<PanelName | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const panelHost = panelHostId && typeof document !== 'undefined'
-    ? document.getElementById(panelHostId)
-    : null;
+  const [panelHost, setPanelHost] = useState<HTMLElement | null>(null);
+
+  // Resolve the portal host after the parent has rendered the slot for the
+  // active panel. Without this the first open lands in the fallback fixed
+  // overlay because the host element doesn't exist yet on the same tick.
+  useLayoutEffect(() => {
+    if (!panelHostId || !activePanel || typeof document === 'undefined') {
+      setPanelHost(null);
+      return;
+    }
+    const find = () => setPanelHost(document.getElementById(panelHostId));
+    find();
+    // Retry on the next frame in case the host mounts in a sibling effect.
+    const raf = requestAnimationFrame(find);
+    return () => cancelAnimationFrame(raf);
+  }, [panelHostId, activePanel]);
   
   const handlePanelChange = (panel: typeof activePanel) => {
     const newPanel = activePanel === panel ? null : panel;

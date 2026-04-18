@@ -161,11 +161,11 @@ export function DungeonListPanel({ dungeonEntrances, onLaunch }: DungeonListPane
 
       <ScrollArea className="h-[360px] pr-2">
         <div className="space-y-4">
-          <Section title="Home" items={home} onLaunch={onLaunch} />
-          <Section title="Elemental Towers" items={elementTowers} onLaunch={onLaunch} />
-          <Section title="Class Towers" items={classTowers} onLaunch={onLaunch} />
-          <Section title="Species Towers" items={speciesTowers} onLaunch={onLaunch} />
-          <Section title="Overworld Dungeons" items={overworldDungeons} onLaunch={onLaunch} />
+          <Section title="Home" items={home} onLaunch={safeLaunch} />
+          <Section title="Elemental Towers" items={elementTowers} onLaunch={safeLaunch} />
+          <Section title="Class Towers" items={classTowers} onLaunch={safeLaunch} />
+          <Section title="Species Towers" items={speciesTowers} onLaunch={safeLaunch} />
+          <Section title="Overworld Dungeons" items={overworldDungeons} onLaunch={safeLaunch} />
 
           {undiscoveredCount > 0 && (
             <div className="rounded-md border border-dashed border-muted-foreground/30 p-3 text-center text-xs text-muted-foreground">

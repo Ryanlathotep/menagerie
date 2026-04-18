@@ -1714,8 +1714,38 @@ function DungeonView({
     let enemiesHit: Monster[] = [];
     let newDungeon = { ...dungeon };
     
+    // Wall mining via attacks: melee/ranged moves with power > 0 chip mineable
+    // walls in their AoE, gated by pickaxe tier. Stronger moves chip more.
+    const pickaxeTier = state.saveData.tools?.pickaxe;
+    const wallHitsPerAttack = targetingMove.power > 0
+      ? Math.max(1, Math.floor(targetingMove.power / 20))
+      : 0;
+    let wallsMined = 0;
+    let wallsChipped = 0;
+    
     for (const tile of affected) {
-      const dungeonTile = dungeon.tiles[tile.y]?.[tile.x];
+      const dungeonTile = newDungeon.tiles[tile.y]?.[tile.x];
+      
+      // Mineable wall: chip with attack if pickaxe is strong enough
+      if (dungeonTile?.type === 'mineable_wall' && dungeonTile.wallTier && wallHitsPerAttack > 0) {
+        if (!pickaxeTier) continue;
+        const mineResult = mineWall(newDungeon, tile.x, tile.y, pickaxeTier, wallHitsPerAttack);
+        if (!mineResult) continue;
+        newDungeon = mineResult.dungeon;
+        if (mineResult.broken && mineResult.drop) {
+          dispatch({
+            type: 'ADD_MATERIAL',
+            materialId: mineResult.drop.materialId,
+            quantity: mineResult.drop.quantity,
+          });
+          addLog(`⛏️ ${targetingMove.name} broke ${mineableWallName(mineResult.tier)}! +${mineResult.drop.quantity}`, 'loot');
+          wallsMined++;
+        } else {
+          wallsChipped++;
+        }
+        continue;
+      }
+      
       if (dungeonTile?.type === 'enemy' && dungeonTile.enemyId) {
         const enemy = dungeon.enemies.find(e => e.id === dungeonTile.enemyId);
         if (enemy) {
@@ -1827,8 +1857,10 @@ function DungeonView({
       }
     }
     
-    if (enemiesHit.length === 0) {
+    if (enemiesHit.length === 0 && wallsMined === 0 && wallsChipped === 0) {
       addLog(`⚔️ ${targetingMove.name} missed! No enemies in range.`, 'info');
+    } else if (enemiesHit.length === 0 && wallsChipped > 0 && wallsMined === 0) {
+      addLog(`⛏️ ${targetingMove.name} chipped ${wallsChipped} wall${wallsChipped > 1 ? 's' : ''}.`, 'system');
     }
     
     // Update dungeon state

@@ -521,14 +521,14 @@ export function movePlayer(
 
   // Check bounds
   if (newX < 0 || newX >= dungeon.width || newY < 0 || newY >= dungeon.height) {
-    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null };
+    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null, runeBump: null };
   }
 
   const targetTile = tiles[newY][newX];
 
   // Bedrock walls — flat block, no mining possible
   if (targetTile.type === 'wall') {
-    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null };
+    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null, runeBump: null };
   }
 
   // Mineable walls — also block movement, but signal a "bump" so Index.tsx
@@ -539,6 +539,7 @@ export function movePlayer(
       terrain: null, shop: false, elevator: false, loot: null, blocked: true,
       plant: null,
       mineableBump: { x: newX, y: newY, tier: targetTile.wallTier },
+      runeBump: null,
     };
   }
 
@@ -606,6 +607,13 @@ export function movePlayer(
   const newPosition = { x: newX, y: newY };
   updateVisibility(newTiles, newPosition);
 
+  // Emit a runeBump alongside `terrain` whenever the player walks onto a rune.
+  // Index.tsx uses it to optionally dig the rune with a sufficient Shovel —
+  // mismatched diggers still take the rune backlash damage from `terrain`.
+  const runeBump = (targetTile.type === 'terrain' && targetTile.terrainType)
+    ? { x: newX, y: newY, terrainType: targetTile.terrainType }
+    : null;
+
   return {
     dungeon: {
       ...dungeon,
@@ -623,6 +631,7 @@ export function movePlayer(
     plant,
     blocked: false,
     mineableBump: null,
+    runeBump,
   };
 }
 

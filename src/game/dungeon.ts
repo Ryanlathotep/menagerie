@@ -467,6 +467,9 @@ export interface MoveResult {
   // Bumped into a mineable wall (player did NOT move). Index.tsx uses this
   // to apply a Pickaxe hit if the player owns one strong enough.
   mineableBump: { x: number; y: number; tier: MineableWallTier } | null;
+  // Bumped into a rune tile (terrain). The caller decides whether to dig
+  // (if a strong enough Shovel is held) or step onto it normally.
+  runeBump: { x: number; y: number; terrainType: TerrainType } | null;
 }
 
 // Check if a tile should stop auto-run
@@ -518,14 +521,14 @@ export function movePlayer(
 
   // Check bounds
   if (newX < 0 || newX >= dungeon.width || newY < 0 || newY >= dungeon.height) {
-    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null };
+    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null, runeBump: null };
   }
 
   const targetTile = tiles[newY][newX];
 
   // Bedrock walls — flat block, no mining possible
   if (targetTile.type === 'wall') {
-    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null };
+    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null, runeBump: null };
   }
 
   // Mineable walls — also block movement, but signal a "bump" so Index.tsx
@@ -536,6 +539,7 @@ export function movePlayer(
       terrain: null, shop: false, elevator: false, loot: null, blocked: true,
       plant: null,
       mineableBump: { x: newX, y: newY, tier: targetTile.wallTier },
+      runeBump: null,
     };
   }
 
@@ -603,6 +607,13 @@ export function movePlayer(
   const newPosition = { x: newX, y: newY };
   updateVisibility(newTiles, newPosition);
 
+  // Emit a runeBump alongside `terrain` whenever the player walks onto a rune.
+  // Index.tsx uses it to optionally dig the rune with a sufficient Shovel —
+  // mismatched diggers still take the rune backlash damage from `terrain`.
+  const runeBump = (targetTile.type === 'terrain' && targetTile.terrainType)
+    ? { x: newX, y: newY, terrainType: targetTile.terrainType }
+    : null;
+
   return {
     dungeon: {
       ...dungeon,
@@ -620,6 +631,7 @@ export function movePlayer(
     plant,
     blocked: false,
     mineableBump: null,
+    runeBump,
   };
 }
 
@@ -685,6 +697,29 @@ export function mineWall(
 // Convenience: pretty name for a mineable wall tier (for log messages).
 export function mineableWallName(tier: MineableWallTier): string {
   return MINEABLE_WALL_TIERS[tier].name;
+}
+
+// ============= RUNE DIGGING =============
+// Strip the rune (terrainType) from a tile, converting it back to floor.
+// Player-occupied tiles are handled too — the player keeps standing where
+// they are but no longer atop a rune. Returns the updated dungeon, or null
+// if the tile is not a rune.
+export function digRune(
+  dungeon: DungeonState,
+  x: number,
+  y: number,
+): DungeonState | null {
+  const tile = dungeon.tiles[y]?.[x];
+  if (!tile || !tile.terrainType) return null;
+  const newTiles = dungeon.tiles.map(row => row.map(t => ({ ...t })));
+  const target = newTiles[y][x];
+  target.terrainType = undefined;
+  // If the tile currently shows the player or an enemy, preserve that;
+  // otherwise it becomes a plain floor.
+  if (target.type === 'terrain') {
+    target.type = 'floor';
+  }
+  return { ...dungeon, tiles: newTiles };
 }
 
 // Remove enemy from dungeon after defeat

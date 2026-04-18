@@ -7,7 +7,7 @@
 // Tools are auto-applied — they don't occupy an equipment slot. Owning a
 // Pickaxe lets you mine matching wall tiers anywhere in any dungeon.
 
-export type ToolKind = 'pickaxe';
+export type ToolKind = 'pickaxe' | 'shovel';
 
 // Pickaxe tiers, lowest → highest. The numeric `power` is what matters for
 // gating: a Pickaxe of power N can mine any wall whose `tier <= N`.
@@ -146,10 +146,106 @@ export const MINEABLE_WALL_TIERS: Record<MineableWallTier, MineableWallTierData>
   },
 };
 
+// ----- Shovel tier ladder -----
+// Shovels harvest *surface* tiles (rune terrains, grass, dirt, plants) —
+// the complement to pickaxes (which mine walls). Tier gates which surface
+// tiles can be dug; speed reduces hits-to-break.
+export type ShovelTier =
+  | 'wooden'   // power 1: dirt, grass, basic rubble runes
+  | 'stone'    // power 2: water/lava/vents runes
+  | 'copper'   // power 3: spikes/lasers/acid runes
+  | 'iron'     // power 4: tendrils/psychic/shadow runes
+  | 'mithril'; // power 5: legendary runes (future)
+
+export const SHOVEL_TIER_ORDER: ShovelTier[] = [
+  'wooden', 'stone', 'copper', 'iron', 'mithril',
+];
+
+export interface ShovelTierData {
+  tier: ShovelTier;
+  power: number;
+  name: string;
+  icon: string;
+  description: string;
+  speed: number;
+  materials: { materialId: string; quantity: number }[];
+}
+
+export const SHOVEL_TIERS: Record<ShovelTier, ShovelTierData> = {
+  wooden: {
+    tier: 'wooden',
+    power: 1,
+    name: 'Wooden Shovel',
+    icon: '🪏',
+    description: 'A simple spade. Digs grass, dirt, and basic earth runes.',
+    speed: 1,
+    materials: [
+      { materialId: 'wood_log', quantity: 5 },
+    ],
+  },
+  stone: {
+    tier: 'stone',
+    power: 2,
+    name: 'Stone Shovel',
+    icon: '🪏',
+    description: 'Wedge-tipped. Pries up elemental runes (water, fire, air).',
+    speed: 2,
+    materials: [
+      { materialId: 'wood_log', quantity: 3 },
+      { materialId: 'cavestone', quantity: 6 },
+    ],
+  },
+  copper: {
+    tier: 'copper',
+    power: 3,
+    name: 'Copper Shovel',
+    icon: '🪏',
+    description: 'Sharper edge. Carves out kinetic, energy, and chemical runes.',
+    speed: 3,
+    materials: [
+      { materialId: 'copper_ore', quantity: 4 },
+      { materialId: 'deepstone', quantity: 5 },
+    ],
+  },
+  iron: {
+    tier: 'iron',
+    power: 4,
+    name: 'Iron Shovel',
+    icon: '🪏',
+    description: 'Heavy-duty. Uproots biological, political, and void runes.',
+    speed: 4,
+    materials: [
+      { materialId: 'iron_ore', quantity: 5 },
+      { materialId: 'coreshard', quantity: 3 },
+    ],
+  },
+  mithril: {
+    tier: 'mithril',
+    power: 5,
+    name: 'Mithril Shovel',
+    icon: '🪏',
+    description: 'Legendary. Reserved for the rarest sigils yet to be discovered.',
+    speed: 6,
+    materials: [
+      { materialId: 'mythril_ore', quantity: 3 },
+      { materialId: 'coreshard', quantity: 6 },
+      { materialId: 'iron_ore', quantity: 4 },
+    ],
+  },
+};
+
+export function nextShovelTier(current: ShovelTier | undefined): ShovelTier | null {
+  if (!current) return 'wooden';
+  const idx = SHOVEL_TIER_ORDER.indexOf(current);
+  if (idx === -1 || idx === SHOVEL_TIER_ORDER.length - 1) return null;
+  return SHOVEL_TIER_ORDER[idx + 1];
+}
+
 // Player's tool collection: at most one of each kind, with a current tier.
 // Persisted on SaveData under `tools`.
 export interface PlayerTools {
   pickaxe?: PickaxeTier; // undefined = not yet crafted
+  shovel?: ShovelTier;   // undefined = not yet crafted
 }
 
 // What tier of mineable wall does this dungeon floor produce?

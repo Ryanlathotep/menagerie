@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getComboId, UnlockedMonster, InventoryItem, MonsterStats, Monster, Position } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
-import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, hasVisibleEnemy, LOOT_TABLE, mineWall, mineableWallName } from '@/game/dungeon';
+import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, hasVisibleEnemy, LOOT_TABLE, mineWall, mineableWallName, digRune } from '@/game/dungeon';
 import { PICKAXE_TIERS, hitsToBreak } from '@/game/tools';
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -50,7 +50,7 @@ import { PartySwitchModal } from '@/game/PartySwitchModal';
 import { ReviveTargetModal } from '@/game/ReviveTargetModal';
 import { CombatSwitchPanel } from '@/game/CombatSwitchPanel';
 import { LogMessage, createLogMessage, parseLogMessage } from '@/game/GameLog';
-import { isMonsterFavoredOnTerrain, calculateTerrainDamage, TERRAIN_CONFIG } from '@/game/terrain';
+import { isMonsterFavoredOnTerrain, calculateTerrainDamage, TERRAIN_CONFIG, shovelHitsToBreak, rollRuneDrop } from '@/game/terrain';
 import { 
   RESPAWN_CONFIG, 
   spawnMonsterInHiddenRoom,
@@ -324,6 +324,13 @@ function MainMenu() {
             }
             dispatch({ type: 'SET_PICKAXE_TIER', tier });
             toast.success(`${tier.charAt(0).toUpperCase() + tier.slice(1)} Pickaxe ready!`);
+          }}
+          onUpgradeShovel={(tier, mats) => {
+            if (!isCreativeMode()) {
+              dispatch({ type: 'USE_MATERIALS', materials: mats });
+            }
+            dispatch({ type: 'SET_SHOVEL_TIER', tier });
+            toast.success(`${tier.charAt(0).toUpperCase() + tier.slice(1)} Shovel ready!`);
           }}
           onClose={() => setShowCrafting(false)}
         />
@@ -1039,7 +1046,31 @@ function DungeonView({
       });
       addLog(`🌿 Harvested ${result.plant.plantType.split('_').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}!`, 'loot');
     }
-    
+
+    // Shovel rune harvest: if the player walked onto a rune AND owns a strong
+    // enough shovel, instantly dig it up. Mismatched diggers still took the
+    // backlash damage above (handled in the terrain branch). Single-hit by
+    // design — runes are surface inscriptions, not bedrock.
+    if (result.runeBump) {
+      const shovelTier = state.saveData.tools?.shovel;
+      const runeType = result.runeBump.terrainType;
+      const needed = shovelHitsToBreak(runeType, shovelTier);
+      if (shovelTier && isFinite(needed)) {
+        const newDungeon = digRune(result.dungeon, result.runeBump.x, result.runeBump.y);
+        if (newDungeon) {
+          const drop = rollRuneDrop(runeType);
+          dispatch({ type: 'SET_DUNGEON', dungeon: newDungeon });
+          dispatch({
+            type: 'ADD_MATERIAL',
+            materialId: drop.materialId,
+            quantity: drop.quantity,
+          });
+          const cfg = TERRAIN_CONFIG[runeType];
+          addLog(`🪏 Dug up ${cfg.name}! +${drop.quantity} ${cfg.name} Stone`, 'loot');
+        }
+      }
+    }
+
     // Check for step-based respawn (only on successful moves)
     if (!result.blocked) {
       checkStepRespawn();

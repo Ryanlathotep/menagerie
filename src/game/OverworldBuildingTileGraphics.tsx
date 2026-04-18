@@ -181,7 +181,11 @@ export function OverworldBuildingTileGraphic({
 }) {
   switch (type) {
     case 'wall':
-      if (isGate) return <GateTile size={size} axisHorizontal={gateAxis !== 'vertical'} />;
+      // GateTile's default art (no rotation) has pillars on the LEFT/RIGHT edges,
+      // which is correct when the road runs N-S (vertical). For an E-W road we
+      // must rotate 90° so the pillars sit on TOP/BOTTOM and the opening lines
+      // up with the road. Hence axisHorizontal=true means "road is vertical".
+      if (isGate) return <GateTile size={size} axisHorizontal={gateAxis === 'vertical'} />;
       return <PlayerWallTile size={size} fit={wallFit} damaged={damaged} />;
     case 'spike_trap': return <TrapTile size={size} seed={seed} trapVariant="spike" />;
     case 'poison_trap': return <TrapTile size={size} seed={seed} trapVariant="poison" />;

@@ -56,6 +56,7 @@ import { CombatEffects } from './statusEffects';
 import { BuildingAssignModal } from './BuildingAssignModal';
 import { BuildingContextMenu } from './BuildingContextMenu';
 import { TileContextMenu } from './TileContextMenu';
+import { EnemyAttackMenu, EnemyAttackTarget } from './EnemyAttackMenu';
 import { FARM_OUTPUTS, FARM_GROWTH_STEPS } from './buildings';
 import { 
   NestState, tickNest, spawnNestMonster, findNestSpawnPosition, 
@@ -120,6 +121,8 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [contextMenuBuilding, setContextMenuBuilding] = useState<PlayerBuilding | null>(null);
   // Right-click context menu state for plain tiles (grass / harvested grass)
   const [tileContextMenu, setTileContextMenu] = useState<{ x: number; y: number } | null>(null);
+  // Right-click context menu state for enemy/nest tiles (attack picker)
+  const [attackMenuTarget, setAttackMenuTarget] = useState<EnemyAttackTarget | null>(null);
   
   // Targeting state
   const [targetingMove, setTargetingMove] = useState<Move | null>(null);

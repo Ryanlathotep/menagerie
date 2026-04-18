@@ -1349,15 +1349,21 @@ export function GameProvider({ children }: GameProviderProps) {
         }
         // Migration: ensure all themed towers (element/class/species) exist for legacy saves.
         // Preserves any deepestFloor progress already recorded under the same id.
+        // Also migrates legacy synthetic coords (-100000-...) onto the new on-map ring positions.
         const themedDefaults = createAllThemedTowers();
         for (const [id, def] of Object.entries(themedDefaults)) {
-          if (!saveData.dungeonEntrances[id]) {
+          const existing = saveData.dungeonEntrances[id];
+          if (!existing) {
             saveData.dungeonEntrances[id] = def;
           } else {
-            const existing = saveData.dungeonEntrances[id];
+            const hasLegacyCoords = existing.worldX <= -10000 || existing.worldY <= -10000;
             saveData.dungeonEntrances[id] = {
               ...def,
               ...existing,
+              // Force the canonical on-map position when the saved coords are the
+              // old synthetic placeholders.
+              worldX: hasLegacyCoords ? def.worldX : existing.worldX,
+              worldY: hasLegacyCoords ? def.worldY : existing.worldY,
               theme: existing.theme || def.theme,
               category: existing.category || def.category,
               name: existing.name || def.name,

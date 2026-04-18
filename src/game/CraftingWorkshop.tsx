@@ -194,13 +194,20 @@ export function CraftingWorkshop({
             isUnlocked={isUnlocked}
             handleCraftConsumable={handleCraftConsumable}
           />
-        ) : (
+        ) : activeTab === 'dismantle' ? (
           <DismantleTab
             storedEquipment={storedEquipment}
             selectedDismantle={selectedDismantle}
             setSelectedDismantle={setSelectedDismantle}
             handleDismantle={handleDismantle}
             materials={materials}
+          />
+        ) : (
+          <ToolsTab
+            tools={tools}
+            materials={materials}
+            creative={creative}
+            onUpgradePickaxe={onUpgradePickaxe}
           />
         )}
       </Card>

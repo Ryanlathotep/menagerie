@@ -503,17 +503,31 @@ const SPECIES_TOWER_NAMES: Record<SpeciesType, string> = {
   jellyfish: 'Drifting Bell Spire',
 };
 
-// All themed towers live at synthetic coordinates so they don't collide with the overworld grid.
-// They are not placed on the overworld map; they are accessible from the main menu list.
-function syntheticCoord(seed: number): { x: number; y: number } {
-  // Far-out negative coordinates that no normal play would reach.
-  return { x: -100000 - seed, y: -100000 - seed };
+// Themed towers are placed at deterministic positions on the overworld so the
+// player can physically walk to them. We arrange them in concentric rings around
+// the home base: element towers close in, then class towers, then the long
+// species ring far out. Angles are evenly spaced and offset between tiers so
+// arrows on the compass don't all point the same direction.
+function ringCoord(radius: number, slot: number, totalSlots: number, angleOffset: number = 0): { x: number; y: number } {
+  const angle = (slot / totalSlots) * Math.PI * 2 + angleOffset;
+  return {
+    x: Math.round(Math.cos(angle) * radius),
+    y: Math.round(Math.sin(angle) * radius),
+  };
 }
+
+// Public so the overworld chunk generator can know which world coords carry a themed tower.
+export const ELEMENT_TOWER_RING_RADIUS = 28;
+export const CLASS_TOWER_RING_RADIUS = 70;
+export const SPECIES_TOWER_RING_RADIUS = 140;
+// Tower of the Infinite sits a couple tiles north of home so it's always findable.
+export const HOME_TOWER_WORLD_POS = { x: 0, y: -3 };
 
 export function createElementTowerEntrance(element: ElementType, index: number): DungeonEntrance {
   const id = `tower_element_${element}`;
   const seed = 200000 + index * 7919;
-  const { x, y } = syntheticCoord(seed);
+  // Total = ELEMENT_TOWER_ORDER.length (6). Angle offset rotates the ring slightly.
+  const { x, y } = ringCoord(ELEMENT_TOWER_RING_RADIUS, index, 6, Math.PI / 6);
   return {
     id,
     worldX: x,
@@ -533,7 +547,7 @@ export function createElementTowerEntrance(element: ElementType, index: number):
 export function createClassTowerEntrance(classType: ClassType, index: number): DungeonEntrance {
   const id = `tower_class_${classType}`;
   const seed = 300000 + index * 7919;
-  const { x, y } = syntheticCoord(seed);
+  const { x, y } = ringCoord(CLASS_TOWER_RING_RADIUS, index, 6, Math.PI / 12);
   return {
     id,
     worldX: x,
@@ -552,7 +566,8 @@ export function createClassTowerEntrance(classType: ClassType, index: number): D
 export function createSpeciesTowerEntrance(species: SpeciesType, index: number): DungeonEntrance {
   const id = `tower_species_${species}`;
   const seed = 400000 + index * 7919;
-  const { x, y } = syntheticCoord(seed);
+  // 20 species spread around the long outer ring.
+  const { x, y } = ringCoord(SPECIES_TOWER_RING_RADIUS, index, 20);
   return {
     id,
     worldX: x,

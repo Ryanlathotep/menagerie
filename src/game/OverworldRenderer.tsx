@@ -103,7 +103,26 @@ function renderTileGraphic(
           />
         );
       }
-      return <OverworldBuildingTileGraphic type={playerBuilding.type} size={tileSize} seed={seed} harvestReady={playerBuilding.harvestReady} />;
+      // For scout towers, compute which sides have a wall (or another tower) so we can
+      // render short stone stubs that visually merge tower + wall into one structure.
+      let wallAttachments: { n: boolean; e: boolean; s: boolean; w: boolean } | undefined;
+      if (playerBuilding.type === 'scout_tower') {
+        wallAttachments = {
+          n: wallConnectsTo(state, worldX, worldY - 1),
+          e: wallConnectsTo(state, worldX + 1, worldY),
+          s: wallConnectsTo(state, worldX, worldY + 1),
+          w: wallConnectsTo(state, worldX - 1, worldY),
+        };
+      }
+      return (
+        <OverworldBuildingTileGraphic
+          type={playerBuilding.type}
+          size={tileSize}
+          seed={seed}
+          harvestReady={playerBuilding.harvestReady}
+          wallAttachments={wallAttachments}
+        />
+      );
     }
     case 'nest': return nest
       ? <OverworldNestTile size={tileSize} seed={seed} element={nest.element} hpPercent={Math.floor((nest.hp / nest.maxHp) * 100)} />

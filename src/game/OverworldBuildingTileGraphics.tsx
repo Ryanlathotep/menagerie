@@ -78,23 +78,48 @@ export function TrapTile({ size, seed = 0, trapVariant = 'spike' }: BuildingTile
 }
 
 // ─── Scout Tower ───
-export function ScoutTowerTile({ size, seed = 0 }: BuildingTileProps) {
+// `wallAttachments` indicates which neighboring tiles contain a wall (or another tower).
+// On those sides we draw a short sandstone stub so the wall visually merges into the tower.
+export function ScoutTowerTile({
+  size,
+  wallAttachments,
+}: BuildingTileProps & { wallAttachments?: { n: boolean; e: boolean; s: boolean; w: boolean } }) {
+  const STUB = 'hsl(35 25% 55%)';
+  const STUB_LIGHT = 'hsl(40 30% 65%)';
+  const a = wallAttachments;
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className="block">
       <rect width="24" height="24" fill="hsl(40 30% 50%)" opacity={0.15}/>
+      {/* Wall-merge stubs (drawn UNDER the tower body so the tower sits on top) */}
+      {a?.n && <>
+        <rect x="7" y="0"  width="10" height="8" fill={STUB} opacity={0.75}/>
+        <rect x="7" y="0"  width="5"  height="8" fill={STUB_LIGHT} opacity={0.4} stroke={INK.medium} strokeWidth={0.3}/>
+      </>}
+      {a?.s && <>
+        <rect x="7" y="16" width="10" height="8" fill={STUB} opacity={0.75}/>
+        <rect x="12" y="16" width="5" height="8" fill={STUB_LIGHT} opacity={0.4} stroke={INK.medium} strokeWidth={0.3}/>
+      </>}
+      {a?.e && <>
+        <rect x="16" y="7" width="8" height="10" fill={STUB} opacity={0.75}/>
+        <rect x="16" y="7" width="8" height="5"  fill={STUB_LIGHT} opacity={0.4} stroke={INK.medium} strokeWidth={0.3}/>
+      </>}
+      {a?.w && <>
+        <rect x="0" y="7"  width="8" height="10" fill={STUB} opacity={0.75}/>
+        <rect x="0" y="12" width="8" height="5"  fill={STUB_LIGHT} opacity={0.4} stroke={INK.medium} strokeWidth={0.3}/>
+      </>}
       {/* Tower base */}
-      <rect x="8" y="14" width="8" height="8" fill="hsl(25 40% 40%)" opacity={0.7}/>
+      <rect x="6" y="14" width="12" height="9" fill="hsl(35 25% 45%)" opacity={0.85}/>
       {/* Tower body */}
-      <rect x="9" y="6" width="6" height="10" fill="hsl(25 35% 45%)" opacity={0.7}/>
-      {/* Battlement top */}
-      <rect x="7" y="4" width="2" height="3" fill="hsl(220 10% 45%)" opacity={0.7}/>
-      <rect x="11" y="4" width="2" height="3" fill="hsl(220 10% 45%)" opacity={0.7}/>
-      <rect x="15" y="4" width="2" height="3" fill="hsl(220 10% 45%)" opacity={0.7}/>
-      <rect x="7" y="3" width="10" height="2" fill="hsl(220 10% 50%)" opacity={0.6}/>
+      <rect x="8" y="6" width="8" height="10" fill="hsl(35 25% 55%)" opacity={0.9}/>
+      {/* Battlement top — match wall sandstone tones */}
+      <rect x="6"  y="3" width="2" height="3" fill="hsl(35 20% 45%)" opacity={0.85}/>
+      <rect x="11" y="3" width="2" height="3" fill="hsl(35 20% 45%)" opacity={0.85}/>
+      <rect x="16" y="3" width="2" height="3" fill="hsl(35 20% 45%)" opacity={0.85}/>
+      <rect x="6"  y="5" width="12" height="2" fill="hsl(35 25% 50%)" opacity={0.8}/>
       {/* Window */}
-      <rect x="10.5" y="8" width="3" height="3" fill="hsl(50 60% 65%)" opacity={0.6} stroke={INK.medium} strokeWidth={0.3}/>
+      <rect x="10.5" y="9" width="3" height="3" fill="hsl(50 60% 65%)" opacity={0.7} stroke={INK.medium} strokeWidth={0.3}/>
       {/* Outline */}
-      <rect x="8" y="6" width="8" height="16" stroke={INK.medium} strokeWidth={0.4} fill="none" opacity={0.4}/>
+      <rect x="6" y="6" width="12" height="17" stroke={INK.medium} strokeWidth={0.4} fill="none" opacity={0.5}/>
       <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
       <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
     </svg>
@@ -140,7 +165,7 @@ export function FarmTile({ size, seed = 0, harvestReady = false }: BuildingTileP
 
 // Dispatcher component
 export function OverworldBuildingTileGraphic({
-  type, size, seed = 0, harvestReady, wallFit, isGate, gateAxis, damaged,
+  type, size, seed = 0, harvestReady, wallFit, isGate, gateAxis, damaged, wallAttachments,
 }: {
   type: PlayerBuildingType;
   size: number;
@@ -151,6 +176,8 @@ export function OverworldBuildingTileGraphic({
   isGate?: boolean;
   gateAxis?: 'horizontal' | 'vertical';
   damaged?: boolean;
+  // Wall-merge props (only scout towers use this)
+  wallAttachments?: { n: boolean; e: boolean; s: boolean; w: boolean };
 }) {
   switch (type) {
     case 'wall':
@@ -160,7 +187,7 @@ export function OverworldBuildingTileGraphic({
     case 'poison_trap': return <TrapTile size={size} seed={seed} trapVariant="poison" />;
     case 'fire_trap': return <TrapTile size={size} seed={seed} trapVariant="fire" />;
     case 'ice_trap': return <TrapTile size={size} seed={seed} trapVariant="ice" />;
-    case 'scout_tower': return <ScoutTowerTile size={size} seed={seed} />;
+    case 'scout_tower': return <ScoutTowerTile size={size} seed={seed} wallAttachments={wallAttachments} />;
     case 'farm': return <FarmTile size={size} seed={seed} harvestReady={harvestReady} />;
   }
 }

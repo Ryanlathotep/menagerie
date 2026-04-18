@@ -410,7 +410,86 @@ export function setOverworldTile(state: OverworldState, worldX: number, worldY: 
   }
 }
 
-export function updateVisibility(state: OverworldState): void {
+// ─── Resource spreading ───
+// Mature trees and rocks slowly seed adjacent grass tiles, growing groves
+// and outcrops over time. Called every 500 player steps.
+//   - Considers tiles within an 8-tile box of the player so off-screen worlds
+//     don't churn (and unloaded chunks are simply skipped).
+//   - Only spreads onto plain grass (not harvested, no road, no building).
+//   - Only mature (Maple/Elder, or Copper+) tiles are fertile, so brand-new
+//     Oaks/Stones don't immediately propagate.
+//   - 10% chance per fertile tile, then a single random adjacent grass cell
+//     becomes a brand-new Oak / Stone (entry-tier).
+function spreadResources(state: OverworldState, centerX: number, centerY: number): void {
+  const RANGE = 8;
+  const SPREAD_CHANCE = 0.10;
+  const seedBase = state.totalSteps * 31;
+
+  for (let dy = -RANGE; dy <= RANGE; dy++) {
+    for (let dx = -RANGE; dx <= RANGE; dx++) {
+      const wx = centerX + dx;
+      const wy = centerY + dy;
+      const tile = getOverworldTile(state, wx, wy);
+      if (!tile) continue;
+
+      const isFertileTree = tile.type === 'tree' && tile.treeTier && tile.treeTier !== 'oak';
+      const isFertileRock = tile.type === 'rock' && tile.stoneTier && tile.stoneTier !== 'stone';
+      if (!isFertileTree && !isFertileRock) continue;
+
+      const roll = seededRandom(seedBase + wx * 73 + wy * 131);
+      if (roll > SPREAD_CHANCE) continue;
+
+      // Pick one of the 4 cardinal neighbors that is plain grass and free.
+      const dirs: Array<[number, number]> = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+      const pick = Math.floor(seededRandom(seedBase + wx * 17 + wy * 53 + 7) * 4);
+      for (let i = 0; i < 4; i++) {
+        const [ddx, ddy] = dirs[(pick + i) % 4];
+        const nx = wx + ddx;
+        const ny = wy + ddy;
+        const nTile = getOverworldTile(state, nx, ny);
+        if (!nTile) continue;
+        // Don't overwrite roads, buildings, water, enemies, harvested patches, etc.
+        if (nTile.type !== 'grass' || nTile.harvested) continue;
+        if (state.roads?.[`${nx},${ny}`]) continue;
+        // Don't seed on top of the player (avoid surprise blocking).
+        if (nx === state.playerPosition.x && ny === state.playerPosition.y) continue;
+
+        if (isFertileTree) {
+          const newTier: TreeTier = 'oak';
+          setOverworldTile(state, nx, ny, {
+            ...nTile,
+            type: 'tree',
+            treeTier: newTier,
+            resourceAmount: TREE_TIER_DATA[newTier].totalHits,
+            harvested: false,
+          });
+          if (TREE_TIER_DATA[newTier].upgradeSteps) {
+            state.resourceUpgrades[`${nx},${ny}`] = {
+              treeTier: newTier,
+              stepsUntilUpgrade: TREE_TIER_DATA[newTier].upgradeSteps!,
+            };
+          }
+        } else if (isFertileRock) {
+          const newTier: StoneTier = 'stone';
+          setOverworldTile(state, nx, ny, {
+            ...nTile,
+            type: 'rock',
+            stoneTier: newTier,
+            resourceAmount: STONE_TIER_DATA[newTier].totalHits,
+            harvested: false,
+          });
+          if (STONE_TIER_DATA[newTier].upgradeSteps) {
+            state.resourceUpgrades[`${nx},${ny}`] = {
+              stoneTier: newTier,
+              stepsUntilUpgrade: STONE_TIER_DATA[newTier].upgradeSteps!,
+            };
+          }
+        }
+        break; // Spread to at most one neighbor per fertile tile per tick.
+      }
+    }
+  }
+}
   const { x: px, y: py } = state.playerPosition;
   
   // First pass: hide all visible tiles in loaded chunks

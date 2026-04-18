@@ -220,25 +220,26 @@ export function UnifiedMovePanel({
     return false;
   };
 
-  // Handle move click
+  // Handle move click - uses highest available tier by default (single target)
   const handleMoveClick = (move: Move) => {
     if (!onUseMove) return;
-    
     const mastery = monster.moveMastery?.[move.id];
-    const hasTierOptions = move.power > 0 && (
-      getAvailableTiers(mastery, monster.level).length > 1 ||
-      hasAoEUnlocked(mastery)
-    );
-    
-    if (hasTierOptions) {
-      setSelectedMoveForTier(move);
-    } else {
-      // Use the best available tier
-      const evolvedMove = mastery 
-        ? createEvolvedMove(move, getHighestTier(mastery, monster.level), 'single', monster.level)
-        : move;
-      onUseMove(evolvedMove);
-    }
+    const evolvedMove = move.power > 0
+      ? createEvolvedMove(move, getHighestTier(mastery, monster.level), 'single', monster.level)
+      : move;
+    onUseMove(evolvedMove);
+  };
+
+  // Handle tier pill click - uses selected tier/variant directly
+  const handleTierPillClick = (move: Move, tier: import('./moveMastery').MoveTier, variant: import('./moveMastery').MoveVariant) => {
+    if (!onUseMove) return;
+    const evolved = createEvolvedMove(move, tier, variant, monster.level);
+    onUseMove(evolved);
+  };
+
+  // Open the full tier modal (kept for "more options" affordance)
+  const handleOpenTierSelector = (move: Move) => {
+    setSelectedMoveForTier(move);
   };
 
   // Handle tier selection

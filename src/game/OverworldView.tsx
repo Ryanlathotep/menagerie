@@ -2,7 +2,7 @@
 // Uses the same GameSidebar and bottom bar layout as DungeonView
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useGame } from './state';
+import { buildProgressSnapshot, useGame } from './state';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Position, Monster, MonsterStats, InventoryItem, DungeonEntrance } from './types';
@@ -228,10 +228,8 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   // to lock in built structures, harvested tiles, monster assignments, etc. on
   // demand instead of waiting for the 5s/30s autosave.
   const handleManualSave = useCallback(async () => {
-    // Always flush overworld → saveData first; the reducer also slims it for storage.
-    dispatch({ type: 'UPDATE_OVERWORLD', overworld });
-    // Wait one tick so the reducer can run before we read state.saveData.
-    await new Promise(r => setTimeout(r, 0));
+    const snapshot = buildProgressSnapshot(state.saveData, state.run, overworld);
+    dispatch({ type: 'SNAPSHOT_RUN_PROGRESS', overworld });
 
     if (!isAuthenticated) {
       // Local-only save still happens via the saveData→localStorage effect.
@@ -240,8 +238,6 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       return;
     }
 
-    // Build a fresh snapshot that includes the just-flushed overworld.
-    const snapshot = { ...state.saveData, overworldState: overworld };
     const result = await saveToCloud(snapshot);
     if (result.success) {
       toast.success('☁️ Saved to cloud');
@@ -1127,8 +1123,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     if (selectedDungeon) {
       localStorage.setItem('menagerie_active_dungeon_id', selectedDungeon.id);
     }
-    // Save overworld state before leaving
-    saveOverworld(overworld);
+    dispatch({ type: 'SNAPSHOT_RUN_PROGRESS', overworld });
     // Route through party select + equipment flow, same as main menu
     localStorage.setItem('menagerie_run_destination', 'dungeon');
     localStorage.setItem('menagerie_run_origin', 'overworld');
@@ -1605,7 +1600,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           )}
           {(overworld.homeBase.buildingType === 'log_cabin' || overworld.homeBase.buildingType === 'town_hall') && (
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1" onClick={() => { setShowBuildingMenu(false); dispatch({ type: 'SET_PHASE', phase: 'main_menu' }); }}>
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => { setShowBuildingMenu(false); handleReturnToMainMenu(); }}>
                 🏪 Town Hub
               </Button>
               <Button variant="outline" size="sm" className="flex-1" onClick={() => { setShowBuildingMenu(false); setShowBuildPanel(true); }}>

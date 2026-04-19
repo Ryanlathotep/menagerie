@@ -20,7 +20,7 @@ import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot, d
 import type { PickaxeTier, ShovelTier } from './tools';
 import { xpToNextLevel } from './combat';
 import { calculateStats } from './utils';
-import { findNearestEmptyOverworldTile, slimOverworldForSave, expandOverworldFromSave } from './overworld';
+import { findNearestEmptyOverworldTile, slimOverworldForSave } from './overworld';
 
 // Starting monster - Normal Normal Slime
 const STARTER_MONSTER = {
@@ -327,7 +327,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const allSeenEquipment: EquipmentItem[] = [...equipmentToStore];
       if (state.run?.partyEquipment) {
         for (const memberEquipment of state.run.partyEquipment) {
-          for (const slot of slots) {
+          for (const slot of EQUIPMENT_SLOTS) {
             const item = memberEquipment[slot];
             if (item) allSeenEquipment.push(item);
           }

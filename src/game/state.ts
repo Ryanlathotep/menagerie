@@ -20,7 +20,7 @@ import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot, d
 import type { PickaxeTier, ShovelTier } from './tools';
 import { xpToNextLevel } from './combat';
 import { calculateStats } from './utils';
-import { findNearestEmptyOverworldTile, slimOverworldForSave, expandOverworldFromSave } from './overworld';
+import { findNearestEmptyOverworldTile, slimOverworldForSave } from './overworld';
 
 // Starting monster - Normal Normal Slime
 const STARTER_MONSTER = {
@@ -54,6 +54,90 @@ const INITIAL_STATE: GameState = {
   run: null,
   saveData: DEFAULT_SAVE_DATA,
 };
+
+const EQUIPMENT_SLOTS: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory', 'back'];
+
+function stripBoundEquipment(equipment?: MonsterEquipment): MonsterEquipment | undefined {
+  if (!equipment) return undefined;
+
+  return Object.fromEntries(
+    Object.entries(equipment).map(([slot, item]) => [
+      slot,
+      item ? { ...item, bound: undefined } : null,
+    ])
+  ) as MonsterEquipment;
+}
+
+function persistRunPartyProgress(saveData: SaveData, run: GameState['run']): SaveData['unlockedMonsters'] {
+  if (!run) return saveData.unlockedMonsters;
+
+  const updatedUnlockedMonsters = [...saveData.unlockedMonsters];
+
+  run.party.forEach((partyMember, idx) => {
+    const comboId = `${partyMember.species}_${partyMember.element}_${partyMember.class}`;
+    const cleanedEquipment = stripBoundEquipment(run.partyEquipment[idx]);
+    const existingIdx = updatedUnlockedMonsters.findIndex(m => m.comboId === comboId);
+
+    if (existingIdx !== -1) {
+      updatedUnlockedMonsters[existingIdx] = {
+        ...updatedUnlockedMonsters[existingIdx],
+        level: Math.max(updatedUnlockedMonsters[existingIdx].level, partyMember.level),
+        experience: partyMember.experience ?? 0,
+        moveMastery: partyMember.moveMastery,
+        equipment: cleanedEquipment,
+      };
+      return;
+    }
+
+    updatedUnlockedMonsters.push({
+      comboId,
+      species: partyMember.species,
+      element: partyMember.element,
+      classType: partyMember.class,
+      level: partyMember.level,
+      experience: partyMember.experience ?? 0,
+      moveMastery: partyMember.moveMastery,
+      equipment: cleanedEquipment,
+    });
+  });
+
+  return updatedUnlockedMonsters;
+}
+
+export function buildProgressSnapshot(
+  saveData: SaveData,
+  run: GameState['run'],
+  overworld?: import('./overworld').OverworldState,
+): SaveData {
+  const nextSaveData: SaveData = {
+    ...saveData,
+    unlockedMonsters: persistRunPartyProgress(saveData, run),
+  };
+
+  if (run?.dungeon) {
+    nextSaveData.highestFloor = Math.max(saveData.highestFloor, run.dungeon.floor);
+    const activeDungeonId = typeof window !== 'undefined' ? localStorage.getItem('menagerie_active_dungeon_id') : null;
+    if (activeDungeonId && nextSaveData.dungeonEntrances[activeDungeonId]) {
+      nextSaveData.dungeonEntrances = {
+        ...nextSaveData.dungeonEntrances,
+        [activeDungeonId]: {
+          ...nextSaveData.dungeonEntrances[activeDungeonId],
+          deepestFloor: Math.max(nextSaveData.dungeonEntrances[activeDungeonId].deepestFloor || 0, run.dungeon.floor),
+        },
+      };
+    }
+  }
+
+  if (overworld) {
+    nextSaveData.overworldState = overworld;
+    nextSaveData.dungeonEntrances = {
+      ...nextSaveData.dungeonEntrances,
+      ...(overworld.dungeonEntrances || {}),
+    };
+  }
+
+  return nextSaveData;
+}
 
 // Action types
 type GameAction =
@@ -93,6 +177,7 @@ type GameAction =
   | { type: 'ADD_TOWN_GOLD'; amount: number }        // Add gold to town storage
   | { type: 'SPEND_TOWN_GOLD'; amount: number }      // Spend town gold
   | { type: 'STORE_ITEM'; item: InventoryItem }      // Store item in town
+  | { type: 'SNAPSHOT_RUN_PROGRESS'; overworld?: import('./overworld').OverworldState }
   | { type: 'LOAD_SAVE'; saveData: SaveData }
   | { type: 'RESET_SAVE' }
   // Party management
@@ -121,6 +206,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'SET_PHASE':
       return { ...state, phase: action.phase };
+
+    case 'SNAPSHOT_RUN_PROGRESS':
+      return {
+        ...state,
+        saveData: buildProgressSnapshot(state.saveData, state.run, action.overworld),
+      };
       
     case 'START_RUN': {
       // Remove withdrawn equipment from storage and mark as bound
@@ -224,7 +315,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       // loot picked up during the run (equipmentInventory) is sent to town
       // storage — equipped gear is persisted onto each monster's UnlockedMonster
       // record so it's still equipped at the next pre-run screen.
-      const slots: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory', 'back'];
       const equipmentToStore: EquipmentItem[] = [];
       if (state.run?.equipmentInventory) {
         for (const item of state.run.equipmentInventory) {
@@ -237,7 +327,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const allSeenEquipment: EquipmentItem[] = [...equipmentToStore];
       if (state.run?.partyEquipment) {
         for (const memberEquipment of state.run.partyEquipment) {
-          for (const slot of slots) {
+          for (const slot of EQUIPMENT_SLOTS) {
             const item = memberEquipment[slot];
             if (item) allSeenEquipment.push(item);
           }
@@ -251,35 +341,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       }
       
       // Update unlocked monsters: persist level AND equipment for each party member.
-      let updatedUnlockedMonsters = [...state.saveData.unlockedMonsters];
-      if (state.run) {
-        state.run.party.forEach((partyMember, idx) => {
-          const comboId = `${partyMember.species}_${partyMember.element}_${partyMember.class}`;
-          const memberEquipment = state.run!.partyEquipment[idx];
-          // Strip bound flag from persisted equipment (no longer needed once tied to monster)
-          const cleanedEquipment: MonsterEquipment | undefined = memberEquipment
-            ? Object.fromEntries(
-                Object.entries(memberEquipment).map(([slot, item]) => [
-                  slot,
-                  item ? { ...item, bound: undefined } : null,
-                ])
-              ) as MonsterEquipment
-            : undefined;
-          
-          const existingIdx = updatedUnlockedMonsters.findIndex(m => m.comboId === comboId);
-          if (existingIdx !== -1) {
-            updatedUnlockedMonsters[existingIdx] = {
-              ...updatedUnlockedMonsters[existingIdx],
-              level: Math.max(updatedUnlockedMonsters[existingIdx].level, partyMember.level),
-              // Persist banked XP and move-mastery progress so partial
-              // progression earned this run survives the run ending.
-              experience: partyMember.experience ?? 0,
-              moveMastery: partyMember.moveMastery,
-              equipment: cleanedEquipment,
-            };
-          }
-        });
-      }
+      const updatedUnlockedMonsters = persistRunPartyProgress(state.saveData, state.run);
       
       // Update dungeon entrance depth tracking
       const activeDungeonId = typeof window !== 'undefined' ? localStorage.getItem('menagerie_active_dungeon_id') : null;

@@ -26,7 +26,16 @@ interface PreRunEquipmentProps {
   monster?: Monster;
   storedEquipment: EquipmentItem[];
   storedItems: InventoryItem[];
-  onStart: (partyEquipment: MonsterEquipment[], withdrawnIds: string[], selectedItems: InventoryItem[]) => void;
+  /** Dungeon's base starting floor (from the entrance). When provided, a floor selector appears. */
+  entranceFloor?: number;
+  /** Maximum floor the player may skip to (e.g. entranceFloor + floor(highestLevel/2)). */
+  maxStartFloor?: number;
+  onStart: (
+    partyEquipment: MonsterEquipment[],
+    withdrawnIds: string[],
+    selectedItems: InventoryItem[],
+    selectedStartFloor?: number,
+  ) => void;
   onBack: () => void;
 }
 
@@ -35,6 +44,8 @@ export function PreRunEquipment({
   monster: legacyMonster,
   storedEquipment,
   storedItems,
+  entranceFloor,
+  maxStartFloor,
   onStart,
   onBack,
 }: PreRunEquipmentProps) {

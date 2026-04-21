@@ -803,25 +803,24 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
   if (!tile) return { type: 'blocked', reason: 'Edge of the world' };
 
   // ─── Z-transition gate ───
-  // The player can only change elevation at known connectors (ramps, stairs,
-  // ladders) or by walking laterally at the same z. Drops/climbs anywhere
-  // else are blocked. We check this BEFORE the per-tile-type switch so the
-  // existing per-type logic doesn't have to repeat the rule.
+  // Only enforce strict z-parity when a WALL-TOP is involved (player-built
+  // elevated platforms). Natural ground elevation can vary tile-to-tile from
+  // the noise field, but actual cliff drops are already separately blocked
+  // by the 'cliff'/'waterfall' tile types. Cross-elevation walking on plain
+  // grass should "just work" the way it always did.
   const fromTile = getOverworldTile(state, state.playerPosition.x, state.playerPosition.y);
-  const fromZ = state.playerPosition.z ?? getTileEffectiveZ(state, state.playerPosition.x, state.playerPosition.y, fromTile);
+  const fromZ = getTileEffectiveZ(state, state.playerPosition.x, state.playerPosition.y, fromTile);
   const toZ = getTileEffectiveZ(state, newX, newY, tile);
-  if (fromZ !== toZ) {
-    // Allowed if EITHER tile is a connector that bridges the two z values,
-    // OR either tile is a ramp (natural cliff connector) at the right z.
+  const fromIsWallTop = !!fromTile && fromTile.type === 'player_building' && isWalkableWallTop(state, state.playerPosition.x, state.playerPosition.y);
+  const toIsWallTop = tile.type === 'player_building' && isWalkableWallTop(state, newX, newY);
+  if ((fromIsWallTop || toIsWallTop) && fromZ !== toZ) {
     const fromIsConnector = !!fromTile && fromTile.type === 'player_building'
       && isElevationConnectorAt(state, state.playerPosition.x, state.playerPosition.y);
     const toIsConnector = tile.type === 'player_building'
       && isElevationConnectorAt(state, newX, newY);
-    const fromIsRamp = !!fromTile?.isRamp;
-    const toIsRamp = !!tile.isRamp;
-    if (!fromIsConnector && !toIsConnector && !fromIsRamp && !toIsRamp) {
+    if (!fromIsConnector && !toIsConnector) {
       if (toZ > fromZ) return { type: 'blocked', reason: 'You need stairs or a ladder to climb up here' };
-      return { type: 'blocked', reason: 'Too far to drop down — find stairs or a ladder' };
+      return { type: 'blocked', reason: 'Step down via stairs or a ladder' };
     }
   }
 

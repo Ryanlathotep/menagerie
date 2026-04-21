@@ -1,6 +1,6 @@
 // Overworld Renderer - Renders the chunk-based overworld with tile graphics
 
-import { useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react';
 import { OverworldState, OverworldTile, getOverworldTile } from './overworld';
 import { Position, Monster, UnlockedMonster } from './types';
 import { MonsterSprite } from './sprites';
@@ -185,10 +185,23 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
   const containerRef = useRef<HTMLDivElement>(null);
   const lastTapRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const { x: px, y: py } = overworld.playerPosition;
-  
+
+  // Touch devices: skip HoverCard wrappers entirely. Hover-cards open on
+  // touch and have no clean dismiss gesture there, so they end up covering
+  // the map. Mobile users still get the same info via double-tap → context
+  // menu (which routes to the dedicated tooltip/menu UI).
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia('(hover: none), (pointer: coarse)');
+    const update = () => setIsTouch(mql.matches);
+    update();
+    mql.addEventListener('change', update);
+    return () => mql.removeEventListener('change', update);
+  }, []);
+
   const scale = zoom / 100;
   const tileSize = Math.floor(TILE_SIZE * scale);
-  
+
   useImperativeHandle(ref, () => ({
     scrollToPlayer: () => {
       // No-op: player is always centered via CSS transform
@@ -370,6 +383,12 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
           const suppressTooltip = tile.type === 'grass';
 
           if (suppressTooltip) {
+            return <div key={`${worldX},${worldY}`}>{tileContent}</div>;
+          }
+
+          // Touch devices: skip the hover-card. They open on tap and obscure
+          // the map; mobile users open the same info via double-tap → context menu.
+          if (isTouch) {
             return <div key={`${worldX},${worldY}`}>{tileContent}</div>;
           }
 

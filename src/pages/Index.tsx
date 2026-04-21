@@ -1425,7 +1425,7 @@ function DungeonView({
   // Resizable bottom bar
   const isMobileLayout = typeof window !== 'undefined' && window.innerWidth < 640;
   const sidebarHeight = isMobileLayout ? 64 : 96;
-  const defaultBarHeight = isMobileLayout ? 160 : 180;
+  const defaultBarHeight = isMobileLayout ? 240 : 180;
   const [controlsBarHeight, setControlsBarHeight] = useState(() => {
     const saved = localStorage.getItem('menagerie-dungeon-bar-height');
     return saved ? parseInt(saved) : defaultBarHeight;

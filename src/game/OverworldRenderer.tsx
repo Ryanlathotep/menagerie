@@ -386,6 +386,12 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
             return <div key={`${worldX},${worldY}`}>{tileContent}</div>;
           }
 
+          // Touch devices: skip the hover-card. They open on tap and obscure
+          // the map; mobile users open the same info via double-tap → context menu.
+          if (isTouch) {
+            return <div key={`${worldX},${worldY}`}>{tileContent}</div>;
+          }
+
           const tooltipBody = tile.type === 'player_building' && playerBuilding
             ? <BuildingTooltipContent building={playerBuilding} party={party} />
             : <OverworldTooltipContent

@@ -778,6 +778,7 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
         delete state.resourceUpgrades[resKey];
         tile.type = 'grass';
         tile.harvested = true;
+        tile.lastHarvestType = 'tree';
         tile.treeTier = undefined;
       }
       state.woodCollected += amount;
@@ -802,6 +803,7 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
         delete state.resourceUpgrades[resKey];
         tile.type = 'grass';
         tile.harvested = true;
+        tile.lastHarvestType = 'rock';
         tile.stoneTier = undefined;
       }
       state.stoneCollected += amount;

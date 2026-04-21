@@ -2299,7 +2299,7 @@ function DungeonView({
                 id: recipe.resultId,
                 name: recipe.name,
                 type: 'potion',
-                value: recipe.value || 0,
+                value: 0,
                 effect: recipe.effect,
                 quantity: 1,
               },

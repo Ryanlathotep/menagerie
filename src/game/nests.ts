@@ -48,8 +48,8 @@ export function isNestAt(worldX: number, worldY: number): boolean {
   const regionY = Math.floor((worldY + 4) / regionSize);
   const hash = seededRandom(regionX * 54321 + regionY * 12345 + 77777);
 
-  // Only ~40% of regions get a nest
-  if (hash > 0.4) return false;
+  // Only ~20% of regions get a nest (reduced from 40% to lower clutter)
+  if (hash > 0.2) return false;
 
   const nestLocalX = Math.floor(seededRandom(hash * 99991 + 11111) * regionSize);
   const nestLocalY = Math.floor(seededRandom(hash * 88883 + 22222) * regionSize);

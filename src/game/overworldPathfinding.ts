@@ -84,7 +84,7 @@ export function findOverworldPath(
     goalTile.type === 'dungeon_entrance' ||
     goalTile.type === 'building' ||
     goalTile.type === 'player_building';
-  if (!isTraversable(goalTile, state) && !goalIsInteractable) return null;
+  if (!isTraversable(goalTile, state, goal.x, goal.y) && !goalIsInteractable) return null;
 
   const open: PathNode[] = [];
   const closed = new Set<string>();
@@ -132,8 +132,23 @@ export function findOverworldPath(
       // We don't path through fog — only through known terrain. This keeps
       // tap-to-move from blindly marching into hazards.
       if (!tile.explored) continue;
-      if (!isGoal && !isTraversable(tile, state)) continue;
-      if (isGoal && !isTraversable(tile, state) && !goalIsInteractable) continue;
+      if (!isGoal && !isTraversable(tile, state, nb.x, nb.y)) continue;
+      if (isGoal && !isTraversable(tile, state, nb.x, nb.y) && !goalIsInteractable) continue;
+
+      // Z-transition gate (mirrors movePlayer): can only change z via a
+      // ramp or a stair/ladder connector on either side.
+      const fromTile = getOverworldTile(state, current.x, current.y);
+      const fromZ = getTileEffectiveZ(state, current.x, current.y, fromTile);
+      const toZ = getTileEffectiveZ(state, nb.x, nb.y, tile);
+      if (fromZ !== toZ) {
+        const fromIsConnector = !!fromTile && fromTile.type === 'player_building'
+          && isElevationConnectorAt(state, current.x, current.y);
+        const toIsConnector = tile.type === 'player_building'
+          && isElevationConnectorAt(state, nb.x, nb.y);
+        const fromIsRamp = !!fromTile?.isRamp;
+        const toIsRamp = !!tile.isRamp;
+        if (!fromIsConnector && !toIsConnector && !fromIsRamp && !toIsRamp) continue;
+      }
 
       const g = current.g + 1;
       const h = heuristic(nb, goal);

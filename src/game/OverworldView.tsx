@@ -35,6 +35,7 @@ import {
 } from './buildings';
 import { isCreativeMode } from './creativeMode';
 import { OverworldRenderer, OverworldRendererHandle } from './OverworldRenderer';
+import { findOverworldPath } from './overworldPathfinding';
 import { OverworldDirectionArrows } from './OverworldDirectionArrows';
 import { DungeonWaypointMenu } from './DungeonWaypointMenu';
 import { WaterTileContextMenu } from './WaterTileContextMenu';

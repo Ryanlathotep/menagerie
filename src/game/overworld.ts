@@ -16,7 +16,7 @@ const ALL_SPECIES = Object.keys(SPECIES_DATA) as SpeciesType[];
 
 // ============= TYPES =============
 
-export type OverworldTileType = 'grass' | 'tree' | 'rock' | 'water' | 'building' | 'enemy' | 'player' | 'dungeon_entrance' | 'player_building' | 'nest' | 'dirt_road' | 'stone_road';
+export type OverworldTileType = 'grass' | 'tree' | 'rock' | 'water' | 'building' | 'enemy' | 'player' | 'dungeon_entrance' | 'player_building' | 'nest' | 'dirt_road' | 'stone_road' | 'cliff' | 'waterfall';
 
 export type BuildingType = 'campfire' | 'log_cabin' | 'town_hall';
 
@@ -34,6 +34,13 @@ export interface OverworldTile {
   nestId?: string; // For nest tiles
   treeTier?: TreeTier;   // Resource hierarchy tier for trees
   stoneTier?: StoneTier; // Resource hierarchy tier for rocks
+  // ─── Elevation system ───
+  elevation?: number;             // 0-5; undefined treated as 0 (legacy saves)
+  cliffDrops?: { n: boolean; e: boolean; s: boolean; w: boolean }; // sides that drop down
+  isRamp?: boolean;               // Passable cliff opening — connects two elevation levels
+  rampDirection?: 'n' | 's' | 'e' | 'w'; // direction the ramp climbs UP toward
+  hasStairs?: boolean;            // Stair-style stone road laid on a ramp
+  waterfallDir?: 'n' | 's' | 'e' | 'w'; // direction water cascades toward (for waterfall tiles)
 }
 
 export interface OverworldChunk {

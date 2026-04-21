@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { getComboId, UnlockedMonster, InventoryItem, MonsterStats, Monster, Position } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
 import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, hasVisibleEnemy, LOOT_TABLE, mineWall, mineableWallName, digRune } from '@/game/dungeon';
+import { expandDungeonIfNeeded, findStairsPosition } from '@/game/dungeonExpansion';
 import { PICKAXE_TIERS, hitsToBreak } from '@/game/tools';
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -701,6 +702,9 @@ function DungeonView({
   const [showShop, setShowShop] = useState(false);
   const [showEquipment, setShowEquipment] = useState(false);
   const [showElevator, setShowElevator] = useState(false);
+  // Workshop modal — opened by walking onto a workshop tile (rare) or by
+  // consuming a Portable Workstation item from inventory.
+  const [showWorkshop, setShowWorkshop] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAutoRunning, setIsAutoRunning] = useState(false);
   const autoRunDirection = useRef<'up' | 'down' | 'left' | 'right' | null>(null);
@@ -958,9 +962,12 @@ function DungeonView({
       }
     }
     
+    // Stream new dungeon strips on whichever sides the player is now near.
+    // expandDungeonIfNeeded is a no-op when no edge is close, so this is cheap.
+    const expandedDungeon = expandDungeonIfNeeded(result.dungeon);
     dispatch({
       type: 'SET_DUNGEON',
-      dungeon: result.dungeon
+      dungeon: expandedDungeon,
     });
     if (result.encounter) {
       dispatch({
@@ -1523,6 +1530,28 @@ function DungeonView({
       message = `Restored ${restored} Stamina!`;
     } else if (item.effect === 'cure_poison' || item.effect === 'cure_burn' || item.effect === 'cure_freeze' || item.effect === 'cure_all') {
       message = `Used ${item.name}!`;
+    } else if (item.effect === 'reveal_stairs') {
+      // Dungeon Compass: pin a waypoint to the current floor's stairs tile.
+      const stairsPos = findStairsPosition(dungeon!);
+      if (!stairsPos) {
+        addLog('🧭 The compass spins wildly — no stairs on this floor!', 'info');
+        return;
+      }
+      dispatch({
+        type: 'UPDATE_DUNGEON',
+        dungeon: { compassWaypoint: stairsPos },
+      });
+      dispatch({ type: 'USE_ITEM', itemId: item.id });
+      addLog(`🧭 The compass needle locks onto the exit (${stairsPos.x}, ${stairsPos.y})!`, 'system');
+      toast.success('Compass waypoint set!');
+      return;
+    } else if (item.effect === 'open_workshop') {
+      // Portable Workstation: open the crafting modal in the dungeon and
+      // consume the item.
+      setShowWorkshop(true);
+      dispatch({ type: 'USE_ITEM', itemId: item.id });
+      addLog(`🛠️ You unfold a portable workshop.`, 'system');
+      return;
     } else if (item.effect === 'revive' || item.effect === 'revive_full') {
       // Check if there are fainted party members
       const hasFainted = state.run!.party.some(m => m.stats.currentHp <= 0);
@@ -2242,6 +2271,61 @@ function DungeonView({
             }
           }}
           onClose={() => setShowElevator(false)}
+        />
+      )}
+
+      {/* Portable Workstation: same crafting modal as town, opened mid-dungeon */}
+      {showWorkshop && (
+        <CraftingWorkshop
+          materials={state.saveData.materials || {}}
+          playerLevel={state.run?.currentMonster?.level || 1}
+          storedEquipment={state.saveData.storedEquipment || []}
+          unlockedRecipes={state.saveData.unlockedRecipes || []}
+          tools={state.saveData.tools}
+          onCraft={(recipe, result) => {
+            if (!isCreativeMode()) {
+              dispatch({ type: 'USE_MATERIALS', materials: recipe.materials });
+            }
+            dispatch({ type: 'STORE_EQUIPMENT', item: result });
+            toast.success(`Crafted ${result.name}!`);
+          }}
+          onCraftConsumable={(recipe) => {
+            if (!isCreativeMode()) {
+              dispatch({ type: 'USE_MATERIALS', materials: recipe.materials });
+            }
+            dispatch({
+              type: 'ADD_ITEM',
+              item: {
+                id: recipe.resultId,
+                name: recipe.name,
+                type: 'potion',
+                value: 0,
+                effect: recipe.effect,
+                quantity: 1,
+              },
+            });
+            toast.success(`Crafted ${recipe.name}!`);
+          }}
+          onDismantle={(itemId, materialsGained) => {
+            dispatch({ type: 'DISMANTLE_EQUIPMENT', itemId });
+            const names = materialsGained.map(m => `${m.quantity}x ${m.materialId}`).join(', ');
+            toast.success(`Dismantled — gained ${names}`);
+          }}
+          onUpgradePickaxe={(tier, mats) => {
+            if (!isCreativeMode()) {
+              dispatch({ type: 'USE_MATERIALS', materials: mats });
+            }
+            dispatch({ type: 'SET_PICKAXE_TIER', tier });
+            toast.success(`${tier.charAt(0).toUpperCase() + tier.slice(1)} Pickaxe ready!`);
+          }}
+          onUpgradeShovel={(tier, mats) => {
+            if (!isCreativeMode()) {
+              dispatch({ type: 'USE_MATERIALS', materials: mats });
+            }
+            dispatch({ type: 'SET_SHOVEL_TIER', tier });
+            toast.success(`${tier.charAt(0).toUpperCase() + tier.slice(1)} Shovel ready!`);
+          }}
+          onClose={() => setShowWorkshop(false)}
         />
       )}
       

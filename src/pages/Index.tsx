@@ -809,14 +809,34 @@ function DungeonView({
         ? localStorage.getItem('menagerie_active_dungeon_id')
         : null;
       const entrance = activeId ? state.saveData.dungeonEntrances?.[activeId] : undefined;
-      const startingFloor = Math.max(1, entrance?.difficulty ?? 1);
+      const baseFloor = Math.max(1, entrance?.difficulty ?? 1);
+
+      // Honour the player's chosen start floor from the pre-run prep, clamped
+      // to the legal range [baseFloor, baseFloor + floor(highestLevel / 2)].
+      const rawSelected = typeof window !== 'undefined'
+        ? Number(localStorage.getItem('menagerie_selected_start_floor') || '0')
+        : 0;
+      const highestLevelEver = state.saveData.unlockedMonsters.reduce(
+        (max, m) => Math.max(max, m.level ?? 1),
+        1,
+      );
+      const maxAllowed = baseFloor + Math.floor(highestLevelEver / 2);
+      const startingFloor = rawSelected > 0
+        ? Math.min(maxAllowed, Math.max(baseFloor, rawSelected))
+        : baseFloor;
+
+      // Consume the choice so subsequent floors / fresh runs aren't affected.
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('menagerie_selected_start_floor');
+      }
+
       const newDungeon = generateDungeon(startingFloor, entrance?.theme, startingFloor);
       dispatch({
         type: 'SET_DUNGEON',
         dungeon: newDungeon
       });
     }
-  }, [dungeon, dispatch, state.saveData.dungeonEntrances]);
+  }, [dungeon, dispatch, state.saveData.dungeonEntrances, state.saveData.unlockedMonsters]);
   
   // ─── Manual save for admins: flush in-memory dungeon/run into saveData ───
   const handleManualSave = useCallback(async () => {

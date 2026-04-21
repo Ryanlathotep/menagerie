@@ -319,40 +319,58 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
       // Biome-influenced terrain generation
       const biome = getBiomeElement(worldX, worldY);
       let type: OverworldTileType = 'grass';
-      
-      // Bias terrain by biome
-      let waterChance = 0.04;
+
+      // ---- Elevation-driven water & stone (Genesis-Forge style) ----
+      // The elevation noise field drives BOTH water and stone, on opposite ends.
+      // Low elevation = water (lakes / ponds / ocean); high elevation = stone
+      // outcrops. Because they share the same field, water naturally forms
+      // away from rocky peaks, and rivers (ridged noise) follow valleys.
+      const elevation = getElevation(worldX, worldY);
+      // Don't drown the spawn area — push elevation up near (0,0) so home
+      // base is reliably surrounded by walkable land.
+      const distFromHome = Math.sqrt(worldX * worldX + worldY * worldY);
+      const homeLandBias = distFromHome < 6 ? (6 - distFromHome) * 0.12 : 0;
+      const adjElev = Math.min(1, elevation + homeLandBias);
+
+      // Biome tweaks the thresholds slightly so a "water" biome has more lakes,
+      // an "earth" biome has more crags, etc. — but the core anti-correlation
+      // between water and stone is preserved.
+      let waterCutoff = 0.34; // adjElev below this -> water (lake)
+      let stoneCutoff = 0.72; // adjElev above this -> rock (outcrop)
+      if (biome === 'water') { waterCutoff = 0.42; stoneCutoff = 0.78; }
+      else if (biome === 'earth') { waterCutoff = 0.26; stoneCutoff = 0.62; }
+      else if (biome === 'fire') { waterCutoff = 0.20; stoneCutoff = 0.66; }
+      else if (biome === 'air') { waterCutoff = 0.30; stoneCutoff = 0.74; }
+      else if (biome === 'void') { waterCutoff = 0.30; stoneCutoff = 0.70; }
+
+      const isLake = adjElev < waterCutoff && distFromHome > 4;
+      const isStone = adjElev > stoneCutoff;
+      // Rivers carve thin meandering water through mid-elevation valleys.
+      // They don't run through high stone (the noise rejects elev > 0.55),
+      // so rivers naturally flow AWAY from rocky terrain.
+      const isRiver = !isStone && distFromHome > 5 && isRiverTile(worldX, worldY);
+
+      // Trees are governed by classic random + biome bias (independent system).
       let treeChance = 0.12;
-      let rockChance = 0.06;
-      
-      if (biome === 'water') { waterChance = 0.15; treeChance = 0.06; }
-      else if (biome === 'earth') { rockChance = 0.15; treeChance = 0.08; }
-      else if (biome === 'fire') { rockChance = 0.10; waterChance = 0.01; treeChance = 0.04; }
-      else if (biome === 'air') { treeChance = 0.05; waterChance = 0.02; }
-      else if (biome === 'void') { rockChance = 0.08; treeChance = 0.06; }
+      if (biome === 'water') treeChance = 0.06;
+      else if (biome === 'fire') treeChance = 0.04;
+      else if (biome === 'air') treeChance = 0.05;
+      else if (biome === 'earth') treeChance = 0.08;
 
-      // Cluster bias: separate low-frequency noise fields for forests and
-      // outcrops. Where the field is high, we boost the spawn chance so trees
-      // and rocks form loose groves instead of scattered single tiles.
-      // Scale 0.18 → ~5-7 tile blob radius.
+      // Cluster bias for trees (forests). Stone clustering already comes from
+      // the elevation field, so we no longer need a separate outcrop noise.
       const forestNoise = biomeNoise(worldX, worldY, 0.18);
-      const outcropNoise = biomeNoise(worldX + 1000, worldY - 1000, 0.22);
-      if (forestNoise > 0.55) treeChance += (forestNoise - 0.55) * 0.9; // up to +0.4
-      if (outcropNoise > 0.6) rockChance += (outcropNoise - 0.6) * 0.8; // up to +0.32
+      if (forestNoise > 0.55) treeChance += (forestNoise - 0.55) * 0.9;
 
-      // Reduce enemy spawns near roads (check 2-tile radius)
-      let enemyChanceMultiplier = 1.0;
-      if (typeof dungeonEntrances === 'object') {
-        // We'll check road proximity during movement instead
-      }
-      
-      if (r < treeChance) {
-        type = 'tree';
-      } else if (r < treeChance + rockChance) {
-        type = 'rock';
-      } else if (r < treeChance + rockChance + waterChance) {
+      // Decide tile type. Order matters:
+      //   water (lake or river)  >  stone  >  tree  >  enemy  >  grass
+      if (isLake || isRiver) {
         type = 'water';
-      } else if (r < treeChance + rockChance + waterChance + Math.min(0.06, Math.max(0, (difficulty - 1) * 0.012))) {
+      } else if (isStone) {
+        type = 'rock';
+      } else if (r < treeChance) {
+        type = 'tree';
+      } else if (r < treeChance + Math.min(0.06, Math.max(0, (difficulty - 1) * 0.012))) {
         type = 'enemy';
       }
       

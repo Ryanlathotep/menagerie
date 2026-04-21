@@ -923,19 +923,19 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
       }
       // Stale enemy tile (enemy was removed but tile not cleared) — self-heal and walk through.
       setOverworldTile(state, newX, newY, { ...tile, type: 'grass', enemyId: undefined });
-      state.playerPosition = { x: newX, y: newY };
+      state.playerPosition = { x: newX, y: newY, z: toZ };
       updateVisibility(state);
       return { type: 'moved' };
     }
     
     case 'building': {
-      state.playerPosition = { x: newX, y: newY };
+      state.playerPosition = { x: newX, y: newY, z: toZ };
       updateVisibility(state);
       return { type: 'building', buildingType: tile.buildingType || 'campfire' };
     }
     
     case 'dungeon_entrance': {
-      state.playerPosition = { x: newX, y: newY };
+      state.playerPosition = { x: newX, y: newY, z: toZ };
       updateVisibility(state);
       return { type: 'dungeon_entrance', dungeonId: tile.dungeonId };
     }
@@ -962,14 +962,14 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
       if (nest && !nest.destroyed) {
         return { type: 'nest', nest };
       }
-      state.playerPosition = { x: newX, y: newY };
+      state.playerPosition = { x: newX, y: newY, z: toZ };
       updateVisibility(state);
       return { type: 'moved' };
     }
 
     case 'dirt_road':
     case 'stone_road': {
-      state.playerPosition = { x: newX, y: newY };
+      state.playerPosition = { x: newX, y: newY, z: toZ };
       updateVisibility(state);
       // Stone roads grant a bonus move (player moves 2 tiles)
       const bonusMove = tile.type === 'stone_road';
@@ -977,7 +977,7 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
     }
     
     default: {
-      state.playerPosition = { x: newX, y: newY };
+      state.playerPosition = { x: newX, y: newY, z: toZ };
       updateVisibility(state);
       // Check if this grass tile has a road overlay
       if (isRoad) {

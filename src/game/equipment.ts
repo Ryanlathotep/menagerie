@@ -1708,7 +1708,7 @@ export const CONSUMABLE_RECIPES: ConsumableRecipe[] = [
     rarity: 'rare',
     materials: [
       { materialId: 'iron_ore', quantity: 4 },
-      { materialId: 'oak_wood', quantity: 4 },
+      { materialId: 'wood_log', quantity: 4 },
       { materialId: 'silk', quantity: 2 },
     ],
     icon: '🛠️',

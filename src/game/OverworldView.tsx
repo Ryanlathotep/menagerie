@@ -435,12 +435,6 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     });
   }, [addLog, saveOverworld, state.run, dispatch, processEnemyTurns]);
   
-  // ─── Directional movement wrapper for keyboard ───
-  const handleDirectionMove = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
-    const dx = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
-    const dy = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
-    handleMove(dx, dy);
-  }, [handleMove]);
   
   // ─── Attack targeting ───
   const handleUseMoveOnMap = useCallback((move: Move | EvolvedMove) => {

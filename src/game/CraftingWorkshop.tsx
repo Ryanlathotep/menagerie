@@ -249,9 +249,9 @@ function CraftingTab({
   handleCraft: () => void;
 }) {
   return (
-    <div className="flex-1 overflow-hidden flex min-h-0">
+    <div className="flex-1 overflow-hidden flex flex-col sm:flex-row min-h-0">
       {/* Recipe List */}
-      <div className="w-1/2 border-r flex flex-col min-h-0">
+      <div className="w-full sm:w-1/2 border-b sm:border-b-0 sm:border-r flex flex-col min-h-0 max-h-[45vh] sm:max-h-none">
         <Tabs defaultValue="common" className="flex-1 flex flex-col min-h-0">
           <TabsList className="w-full grid grid-cols-5 mx-1 my-1 shrink-0">
             <TabsTrigger value="common" className="text-[10px] h-6">Common</TabsTrigger>

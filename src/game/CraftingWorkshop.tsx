@@ -26,7 +26,7 @@ import {
   ConsumableRecipe,
 } from './equipment';
 import { isCreativeMode, onCreativeModeChange } from './creativeMode';
-import { PICKAXE_TIERS, PICKAXE_TIER_ORDER, nextPickaxeTier, SHOVEL_TIERS, SHOVEL_TIER_ORDER, nextShovelTier, type PickaxeTier, type ShovelTier, type PlayerTools } from './tools';
+import { PICKAXE_TIERS, PICKAXE_TIER_ORDER, nextPickaxeTier, SHOVEL_TIERS, SHOVEL_TIER_ORDER, nextShovelTier, WORKSTATION, type PickaxeTier, type ShovelTier, type PlayerTools } from './tools';
 import { useEffect } from 'react';
 
 interface MaterialInventory {
@@ -44,6 +44,7 @@ interface CraftingWorkshopProps {
   onDismantle: (itemId: string, materialsGained: { materialId: string; quantity: number }[]) => void;
   onUpgradePickaxe?: (tier: PickaxeTier, materials: { materialId: string; quantity: number }[]) => void;
   onUpgradeShovel?: (tier: ShovelTier, materials: { materialId: string; quantity: number }[]) => void;
+  onCraftWorkstation?: (materials: { materialId: string; quantity: number }[]) => void;
   onClose: () => void;
 }
 
@@ -58,6 +59,7 @@ export function CraftingWorkshop({
   onDismantle,
   onUpgradePickaxe,
   onUpgradeShovel,
+  onCraftWorkstation,
   onClose,
 }: CraftingWorkshopProps) {
   const [selectedRecipe, setSelectedRecipe] = useState<CraftingRecipe | null>(null);

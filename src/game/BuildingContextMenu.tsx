@@ -106,6 +106,20 @@ export function BuildingContextMenu({
             </Button>
           )}
 
+          {isConnector && onRotateConnector && (
+            <Button
+              variant="secondary"
+              className="w-full justify-start"
+              onClick={onRotateConnector}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              <span className="flex-1 text-left">Rotate Facing</span>
+              <span className="text-[11px] text-muted-foreground">
+                (now: {(building.connectorDir ?? 'auto').toUpperCase()})
+              </span>
+            </Button>
+          )}
+
           <Button
             variant="secondary"
             className="w-full justify-start"

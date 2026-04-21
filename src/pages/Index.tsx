@@ -1,4 +1,4 @@
-import { GameProvider, useGame } from '@/game/state';
+import { GameProvider, useGame, buildProgressSnapshot } from '@/game/state';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getComboId, UnlockedMonster, InventoryItem, MonsterStats, Monster, Position } from '@/game/types';

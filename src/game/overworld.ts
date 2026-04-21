@@ -1028,9 +1028,22 @@ export function canPlaceRoad(
 
   const tile = getOverworldTile(state, worldX, worldY);
   if (!tile) return { canPlace: false, reason: 'Invalid location' };
-  if (tile.type !== 'grass' || tile.harvested) {
-    // Allow building on harvested grass too
-    if (tile.type !== 'grass') return { canPlace: false, reason: 'Can only place roads on open ground' };
+
+  // Cliffs/waterfalls reject all roads.
+  if (tile.type === 'cliff')     return { canPlace: false, reason: 'Cannot lay a road on a cliff face' };
+  if (tile.type === 'waterfall') return { canPlace: false, reason: 'Cannot lay a road on a waterfall' };
+
+  // Ramps accept ONLY stone roads — they become "stairs" matching the road
+  // aesthetic. Dirt roads on a slope wouldn't make sense.
+  if (tile.isRamp) {
+    if (roadType !== 'stone_road') {
+      return { canPlace: false, reason: 'Ramps only accept stone-road stairs' };
+    }
+    return { canPlace: true };
+  }
+
+  if (tile.type !== 'grass') {
+    return { canPlace: false, reason: 'Can only place roads on open ground' };
   }
 
   return { canPlace: true };
@@ -1049,6 +1062,19 @@ export function placeRoad(state: OverworldState, worldX: number, worldY: number,
   const key = `${worldX},${worldY}`;
   if (!state.roads) state.roads = {};
   state.roads[key] = roadType;
+
+  // Stair-on-ramp: keep the ramp tile (renders as ramp+stairs), don't
+  // overwrite the elevation metadata.
+  const existing = getOverworldTile(state, worldX, worldY);
+  if (existing?.isRamp) {
+    setOverworldTile(state, worldX, worldY, {
+      ...existing,
+      hasStairs: true,
+      explored: true,
+      visible: true,
+    });
+    return true;
+  }
 
   // Update the tile type so the renderer picks it up
   setOverworldTile(state, worldX, worldY, {

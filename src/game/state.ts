@@ -199,7 +199,8 @@ type GameAction =
   | { type: 'UPDATE_OVERWORLD'; overworld: import('./overworld').OverworldState }
   // Tools (singleton, upgradeable in place — sets pickaxe/shovel to a specific tier)
   | { type: 'SET_PICKAXE_TIER'; tier: PickaxeTier }
-  | { type: 'SET_SHOVEL_TIER'; tier: ShovelTier };
+  | { type: 'SET_SHOVEL_TIER'; tier: ShovelTier }
+  | { type: 'SET_WORKSTATION_OWNED' };
 
 // Reducer
 function gameReducer(state: GameState, action: GameAction): GameState {
@@ -951,6 +952,19 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           tools: {
             ...(state.saveData.tools || {}),
             shovel: action.tier,
+          },
+        },
+      };
+
+    // Portable Workstation — singleton, no tier ladder. Just owned/not owned.
+    case 'SET_WORKSTATION_OWNED':
+      return {
+        ...state,
+        saveData: {
+          ...state.saveData,
+          tools: {
+            ...(state.saveData.tools || {}),
+            workstation: true,
           },
         },
       };

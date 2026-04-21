@@ -28,6 +28,7 @@ export interface OverworldTile {
   buildingType?: BuildingType;
   resourceAmount?: number; // For trees/rocks - how much resource is left
   harvested?: boolean;
+  lastHarvestType?: 'tree' | 'rock'; // What was harvested here — used by regrowth pass
   dungeonId?: string; // For dungeon_entrance tiles - links to DungeonEntrance
   playerBuildingId?: string; // For player_building tiles
   nestId?: string; // For nest tiles

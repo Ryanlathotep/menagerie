@@ -185,10 +185,23 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
   const containerRef = useRef<HTMLDivElement>(null);
   const lastTapRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const { x: px, y: py } = overworld.playerPosition;
-  
+
+  // Touch devices: skip HoverCard wrappers entirely. Hover-cards open on
+  // touch and have no clean dismiss gesture there, so they end up covering
+  // the map. Mobile users still get the same info via double-tap → context
+  // menu (which routes to the dedicated tooltip/menu UI).
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia('(hover: none), (pointer: coarse)');
+    const update = () => setIsTouch(mql.matches);
+    update();
+    mql.addEventListener('change', update);
+    return () => mql.removeEventListener('change', update);
+  }, []);
+
   const scale = zoom / 100;
   const tileSize = Math.floor(TILE_SIZE * scale);
-  
+
   useImperativeHandle(ref, () => ({
     scrollToPlayer: () => {
       // No-op: player is always centered via CSS transform

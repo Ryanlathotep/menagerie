@@ -2218,7 +2218,8 @@ function DungeonView({
         hiddenMoves={state.run?.hiddenMoves || []} 
         experience={state.run?.experience || 0} 
         experienceToNext={xpToNextLevel(state.run?.currentMonster?.level || 1)} 
-        onFlee={handleFlee} 
+        onFlee={handleFlee}
+        onOpenWorkshop={state.saveData.tools?.workstation ? () => setShowWorkshop(true) : undefined}
         onDropItem={handleDropItem} 
         onUseItem={handleUseItemOutOfCombat}
         onUseMove={handleUseMoveOutOfCombat}

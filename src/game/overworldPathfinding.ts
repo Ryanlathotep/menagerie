@@ -23,7 +23,7 @@ function heuristic(a: Position, b: Position): number {
 }
 
 // Tiles a path can step *through*. Goal tile uses a looser check.
-function isTraversable(tile: OverworldTile | null, state: OverworldState): boolean {
+function isTraversable(tile: OverworldTile | null, state: OverworldState, x: number, y: number): boolean {
   if (!tile) return false;
   switch (tile.type) {
     case 'grass':
@@ -37,8 +37,11 @@ function isTraversable(tile: OverworldTile | null, state: OverworldState): boole
       if (!id) return true;
       const b = state.playerBuildings?.find(pb => pb.id === id);
       if (!b) return true;
-      // Walls block unless acting as a gate. Towers/farms are walkable.
-      if (b.type === 'wall') return isWallActingAsGate(b, state);
+      // Walls are only traversable when they're a gate OR when this is a
+      // walkable wall-top (interior of a 3×3+ wall block).
+      if (b.type === 'wall') {
+        return isWallActingAsGate(b, state) || isWalkableWallTop(state, x, y);
+      }
       return true;
     }
     case 'water':

@@ -702,6 +702,9 @@ function DungeonView({
   const [showShop, setShowShop] = useState(false);
   const [showEquipment, setShowEquipment] = useState(false);
   const [showElevator, setShowElevator] = useState(false);
+  // Workshop modal — opened by walking onto a workshop tile (rare) or by
+  // consuming a Portable Workstation item from inventory.
+  const [showWorkshop, setShowWorkshop] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAutoRunning, setIsAutoRunning] = useState(false);
   const autoRunDirection = useRef<'up' | 'down' | 'left' | 'right' | null>(null);
@@ -1527,6 +1530,28 @@ function DungeonView({
       message = `Restored ${restored} Stamina!`;
     } else if (item.effect === 'cure_poison' || item.effect === 'cure_burn' || item.effect === 'cure_freeze' || item.effect === 'cure_all') {
       message = `Used ${item.name}!`;
+    } else if (item.effect === 'reveal_stairs') {
+      // Dungeon Compass: pin a waypoint to the current floor's stairs tile.
+      const stairsPos = findStairsPosition(dungeon!);
+      if (!stairsPos) {
+        addLog('🧭 The compass spins wildly — no stairs on this floor!', 'info');
+        return;
+      }
+      dispatch({
+        type: 'UPDATE_DUNGEON',
+        dungeon: { compassWaypoint: stairsPos },
+      });
+      dispatch({ type: 'USE_ITEM', itemId: item.id });
+      addLog(`🧭 The compass needle locks onto the exit (${stairsPos.x}, ${stairsPos.y})!`, 'system');
+      toast.success('Compass waypoint set!');
+      return;
+    } else if (item.effect === 'open_workshop') {
+      // Portable Workstation: open the crafting modal in the dungeon and
+      // consume the item.
+      setShowWorkshop(true);
+      dispatch({ type: 'USE_ITEM', itemId: item.id });
+      addLog(`🛠️ You unfold a portable workshop.`, 'system');
+      return;
     } else if (item.effect === 'revive' || item.effect === 'revive_full') {
       // Check if there are fainted party members
       const hasFainted = state.run!.party.some(m => m.stats.currentHp <= 0);

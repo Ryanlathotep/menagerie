@@ -326,7 +326,7 @@ function CraftingTab({
       </div>
       
       {/* Recipe Details & Crafting */}
-      <div className="w-1/2 p-2 flex flex-col min-h-0">
+      <div className="w-full sm:w-1/2 p-2 flex flex-col min-h-0 flex-1">
         <ScrollArea className="flex-1">
           {selectedRecipe ? (
             <div className="space-y-3 pr-2">

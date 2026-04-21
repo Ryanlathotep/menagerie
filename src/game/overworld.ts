@@ -119,6 +119,81 @@ export function getBiomeElement(worldX: number, worldY: number): ElementType | n
   return BIOME_ELEMENTS[idx];
 }
 
+// ============= ELEVATION / RIVER NOISE (rivers, ponds, lakes, islands) =============
+//
+// Inspired by the Genesis Forge worldgen approach: a single elevation field
+// drives BOTH water and stone placement on opposite ends of the same scalar.
+// This naturally makes rivers/ponds form away from rocky outcrops because they
+// sit at opposite extremes of the same noise.
+//
+//   elevation < WATER_LEVEL  -> water (rivers, ponds, lakes, ocean cells)
+//   elevation > STONE_LEVEL  -> rock outcrop bias
+//
+// A second "river" noise (ridged) carves thin meandering water channels into
+// any tile whose elevation is just barely above water level. The result is a
+// mix of fat lakes (deep elevation valleys) and skinny rivers (ridged carve).
+
+// Multi-octave value-noise approximation built on the existing seededRandom.
+// Smooth bilinear interpolation between integer lattice samples.
+function smoothNoise(x: number, y: number, salt: number): number {
+  const ix = Math.floor(x);
+  const iy = Math.floor(y);
+  const fx = x - ix;
+  const fy = y - iy;
+  const v00 = seededRandom(ix * 73856093 + iy * 19349663 + salt);
+  const v10 = seededRandom((ix + 1) * 73856093 + iy * 19349663 + salt);
+  const v01 = seededRandom(ix * 73856093 + (iy + 1) * 19349663 + salt);
+  const v11 = seededRandom((ix + 1) * 73856093 + (iy + 1) * 19349663 + salt);
+  // Smoothstep weights for nicer (less blocky) interpolation.
+  const sx = fx * fx * (3 - 2 * fx);
+  const sy = fy * fy * (3 - 2 * fy);
+  const a = v00 + (v10 - v00) * sx;
+  const b = v01 + (v11 - v01) * sx;
+  return a + (b - a) * sy;
+}
+
+function fbm(x: number, y: number, salt: number, octaves: number = 3): number {
+  let amp = 0.5;
+  let freq = 1;
+  let sum = 0;
+  let norm = 0;
+  for (let i = 0; i < octaves; i++) {
+    sum += smoothNoise(x * freq, y * freq, salt + i * 1013) * amp;
+    norm += amp;
+    amp *= 0.5;
+    freq *= 2;
+  }
+  return sum / norm; // 0..1
+}
+
+// Elevation field. Returns 0 (deep water) → 1 (high stone).
+// Scale ~0.04 gives blob radii of roughly 6-10 tiles, matching pond/lake size.
+export function getElevation(worldX: number, worldY: number): number {
+  return fbm(worldX * 0.04, worldY * 0.04, 31337, 3);
+}
+
+// Ridged "river" noise — peaks on long thin lines through the elevation field.
+// 1 - |2*n - 1| turns smooth noise into a ridge value (high along the ridges).
+function ridgedNoise(x: number, y: number, salt: number): number {
+  const n = fbm(x, y, salt, 2);
+  return 1 - Math.abs(2 * n - 1);
+}
+
+// Returns true if this tile sits on a thin meandering river channel.
+// Rivers prefer low-elevation valleys (so they "flow away" from stone peaks).
+export function isRiverTile(worldX: number, worldY: number): boolean {
+  const elev = getElevation(worldX, worldY);
+  // Anything already a lake/pond elevation is handled by the elevation pass.
+  if (elev < 0.34) return false;
+  // Don't carve rivers through high terrain — they should follow valleys.
+  if (elev > 0.55) return false;
+  const ridge = ridgedNoise(worldX * 0.06 + 100, worldY * 0.06 - 50, 91173);
+  // Tight threshold → narrow river. Loosen near elevation lows so rivers
+  // widen into ponds where they pool.
+  const threshold = 0.93 - (0.55 - elev) * 0.4; // 0.85..0.93
+  return ridge > threshold;
+}
+
 // Determines if a dungeon entrance should exist at a given world coordinate
 // Uses deterministic hashing so entrances are stable across chunk loads
 function isDungeonEntranceAt(worldX: number, worldY: number): boolean {

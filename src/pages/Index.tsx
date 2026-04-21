@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { getComboId, UnlockedMonster, InventoryItem, MonsterStats, Monster, Position } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
 import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, hasVisibleEnemy, LOOT_TABLE, mineWall, mineableWallName, digRune } from '@/game/dungeon';
+import { expandDungeonIfNeeded, findStairsPosition } from '@/game/dungeonExpansion';
 import { PICKAXE_TIERS, hitsToBreak } from '@/game/tools';
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -958,9 +959,12 @@ function DungeonView({
       }
     }
     
+    // Stream new dungeon strips on whichever sides the player is now near.
+    // expandDungeonIfNeeded is a no-op when no edge is close, so this is cheap.
+    const expandedDungeon = expandDungeonIfNeeded(result.dungeon);
     dispatch({
       type: 'SET_DUNGEON',
-      dungeon: result.dungeon
+      dungeon: expandedDungeon,
     });
     if (result.encounter) {
       dispatch({

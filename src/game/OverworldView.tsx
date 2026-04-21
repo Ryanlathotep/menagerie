@@ -1914,6 +1914,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         onRepair={handleRepairBuilding}
         onDisassemble={handleDisassembleBuilding}
         onFlipGate={handleFlipGate}
+        onRotateConnector={handleRotateConnector}
         onClose={() => setContextMenuBuilding(null)}
       />
     )}

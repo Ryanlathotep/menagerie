@@ -850,6 +850,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           newOw.stoneCollected -= def.cost.stone;
         }
         const building = createBuilding(selectedBuildType, worldX, worldY);
+        // For elevation connectors, lock orientation onto the adjacent
+        // wall/cliff at placement time so it visually "snaps" to its anchor.
+        if (selectedBuildType === 'stone_staircase' || selectedBuildType === 'ladder') {
+          building.connectorDir = detectConnectorDir(newOw, worldX, worldY);
+        }
         if (!newOw.playerBuildings) newOw.playerBuildings = [];
         newOw.playerBuildings.push(building);
         setOverworldTile(newOw, worldX, worldY, {

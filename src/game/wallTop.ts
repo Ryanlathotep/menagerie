@@ -137,3 +137,14 @@ export function canPlaceConnectorAt(state: OverworldState, sx: number, sy: numbe
 // might be on a wall-top, surrounded building, or just standing on the ground.
 // Equivalent to getTileEffectiveZ but renamed for call-site clarity.
 export const playerZAt = getTileEffectiveZ;
+
+// For a stair/ladder at (x,y), figure out which cardinal side has the
+// wall/cliff it's leaning against. Used purely for rendering rotation.
+// Returns 'n' if no neighbor matches (safe default).
+export function connectorDirFor(state: OverworldState, x: number, y: number): 'n' | 's' | 'e' | 'w' {
+  if (isWallAt(state, x, y - 1) || isCliffAt(state, x, y - 1)) return 'n';
+  if (isWallAt(state, x, y + 1) || isCliffAt(state, x, y + 1)) return 's';
+  if (isWallAt(state, x + 1, y) || isCliffAt(state, x + 1, y)) return 'e';
+  if (isWallAt(state, x - 1, y) || isCliffAt(state, x - 1, y)) return 'w';
+  return 'n';
+}

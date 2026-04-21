@@ -7,6 +7,7 @@
 import { OverworldState, OverworldTile, getOverworldTile, ensureChunksLoaded } from './overworld';
 import { Position } from './types';
 import { isWallActingAsGate } from './buildings';
+import { getTileEffectiveZ, isWalkableWallTop, isElevationConnectorAt } from './wallTop';
 
 interface PathNode {
   x: number;

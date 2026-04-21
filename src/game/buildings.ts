@@ -204,6 +204,21 @@ export function canPlaceBuilding(
     return { canPlace: false, reason: 'Already a building here' };
   }
 
+  // Stair / ladder: must be adjacent to a wall (any orientation) or a cliff
+  // face. Bypasses the build-radius rule because they have to attach to the
+  // existing wall/cliff anyway, which is itself the anchor.
+  if (buildingType === 'stone_staircase' || buildingType === 'ladder') {
+    const dirs: Array<[number, number]> = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+    const adjacentWall = dirs.some(([dx, dy]) =>
+      existingBuildings.some(b => b.type === 'wall' && b.worldX === worldX + dx && b.worldY === worldY + dy)
+    );
+    const adjacentCliff = !!tileInfo && (tileInfo as any).adjacentCliff === true;
+    if (!adjacentWall && !adjacentCliff) {
+      return { canPlace: false, reason: 'Must be placed touching a wall or cliff face' };
+    }
+    return { canPlace: true };
+  }
+
   // Must be within MAX_BUILD_RADIUS Manhattan steps of the home base or any existing building.
   const distToHome = Math.abs(worldX - homePosition.x) + Math.abs(worldY - homePosition.y);
   const nearHome = distToHome <= MAX_BUILD_RADIUS;

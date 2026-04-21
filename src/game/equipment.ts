@@ -1462,7 +1462,7 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
 ];
 
 // ============= CONSUMABLE/POTION RECIPES =============
-export type ConsumableEffect = 'heal_hp' | 'heal_stamina' | 'heal_full' | 'cure_poison' | 'cure_burn' | 'cure_freeze' | 'cure_all' | 'boost_attack' | 'boost_defense' | 'boost_speed' | 'revive' | 'revive_full';
+export type ConsumableEffect = 'heal_hp' | 'heal_stamina' | 'heal_full' | 'cure_poison' | 'cure_burn' | 'cure_freeze' | 'cure_all' | 'boost_attack' | 'boost_defense' | 'boost_speed' | 'revive' | 'revive_full' | 'reveal_stairs' | 'open_workshop';
 
 export interface ConsumableRecipe {
   id: string;
@@ -1685,6 +1685,35 @@ export const CONSUMABLE_RECIPES: ConsumableRecipe[] = [
     icon: '⭐',
     description: 'Revives a fainted party member with full HP.',
     effect: 'revive_full',
+  },
+
+  // ============= UTILITY ITEMS =============
+  {
+    id: 'craft_dungeon_compass',
+    name: 'Dungeon Compass',
+    resultId: 'dungeon_compass',
+    rarity: 'uncommon',
+    materials: [
+      { materialId: 'iron_ore', quantity: 2 },
+      { materialId: 'mana_blossom', quantity: 1 },
+    ],
+    icon: '🧭',
+    description: 'Single use. Pins a waypoint to this floor\'s exit stairs.',
+    effect: 'reveal_stairs',
+  },
+  {
+    id: 'craft_portable_workstation',
+    name: 'Portable Workstation',
+    resultId: 'portable_workstation',
+    rarity: 'rare',
+    materials: [
+      { materialId: 'iron_ore', quantity: 4 },
+      { materialId: 'oak_wood', quantity: 4 },
+      { materialId: 'silk', quantity: 2 },
+    ],
+    icon: '🛠️',
+    description: 'Single use. Opens the crafting workshop anywhere.',
+    effect: 'open_workshop',
   },
 ];
 

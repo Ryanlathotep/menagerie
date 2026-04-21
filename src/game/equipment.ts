@@ -1712,7 +1712,7 @@ export const CONSUMABLE_RECIPES: ConsumableRecipe[] = [
       { materialId: 'silk', quantity: 2 },
     ],
     icon: '🛠️',
-    description: 'Single use. Opens the crafting workshop anywhere.',
+    description: 'Reusable. Opens the crafting workshop anywhere.',
     effect: 'open_workshop',
   },
 ];

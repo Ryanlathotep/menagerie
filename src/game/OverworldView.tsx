@@ -1487,33 +1487,18 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           <div className="flex flex-col h-full gap-2">
             {/* Top row: Controls and info */}
             <div className="flex justify-center items-center flex-shrink-0">
-              {/* Mobile controls */}
-              <div className="flex sm:hidden items-center gap-3 w-full">
-                <div className="grid grid-cols-3 gap-1 w-36 flex-shrink-0">
-                  <div />
-                  <Button size="sm" className="h-11 text-lg font-bold active:scale-95" onClick={() => handleDirectionMove('up')}>↑</Button>
-                  <div />
-                  <Button size="sm" className="h-11 text-lg font-bold active:scale-95" onClick={() => handleDirectionMove('left')}>←</Button>
-                  <div />
-                  <Button size="sm" className="h-11 text-lg font-bold active:scale-95" onClick={() => handleDirectionMove('right')}>→</Button>
-                  <div />
-                  <Button size="sm" className="h-11 text-lg font-bold active:scale-95" onClick={() => handleDirectionMove('down')}>↓</Button>
-                  <div />
-                </div>
-                <div className="flex flex-col gap-1 text-[10px] text-muted-foreground">
-                  <span>🗺️ ({overworld.playerPosition.x}, {overworld.playerPosition.y})</span>
-                  <span>🪵 {overworld.woodCollected} • 🪨 {overworld.stoneCollected}</span>
-                  <span>Tap enemy to attack</span>
-                  <div className="flex gap-2">
-                    <button className="text-primary hover:underline text-left" onClick={() => setShowBuildPanel(true)}>🏗️ Build</button>
-                    <button
-                      className="text-primary hover:underline text-left disabled:opacity-50"
-                      onClick={handleManualSave}
-                      disabled={syncing}
-                    >
-                      {syncing ? '⏳ Saving…' : '💾 Save'}
-                    </button>
-                  </div>
+              {/* Mobile info strip — d-pad removed; tap a tile to move */}
+              <div className="flex sm:hidden items-center justify-between gap-2 w-full text-[10px] text-muted-foreground">
+                <span className="truncate">🗺️ ({overworld.playerPosition.x}, {overworld.playerPosition.y}) • 🪵 {overworld.woodCollected} • 🪨 {overworld.stoneCollected}</span>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button className="text-primary hover:underline" onClick={() => setShowBuildPanel(true)}>🏗️ Build</button>
+                  <button
+                    className="text-primary hover:underline disabled:opacity-50"
+                    onClick={handleManualSave}
+                    disabled={syncing}
+                  >
+                    {syncing ? '⏳' : '💾'}
+                  </button>
                 </div>
               </div>
               <div className="hidden sm:flex flex-col items-center">
@@ -1540,20 +1525,23 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
               </div>
             </div>
 
-            <div className="flex-1 min-h-0 flex flex-col sm:flex-row gap-2">
-              <div className={`${menuOpen ? 'sm:w-1/3' : 'w-full'} min-h-0 min-w-0 p-3 bg-muted/30 rounded-lg border border-border/50 overflow-hidden flex flex-col transition-[width] duration-200`}>
-                <div className="flex items-center gap-1 mb-2">
-                  <ScrollText className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-semibold text-muted-foreground">Game Log</span>
+            {/* Log + open menu panel sit side-by-side at every breakpoint so
+                mobile players can see the map (above), log, and the open
+                attack/inventory panel without scrolling between them. */}
+            <div className="flex-1 min-h-0 flex flex-row gap-2">
+              <div className={`${menuOpen ? 'w-1/3 sm:w-1/3' : 'w-full'} min-h-0 min-w-0 p-2 sm:p-3 bg-muted/30 rounded-lg border border-border/50 overflow-hidden flex flex-col transition-[width] duration-200`}>
+                <div className="flex items-center gap-1 mb-1 sm:mb-2">
+                  <ScrollText className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
+                  <span className="text-xs sm:text-sm font-semibold text-muted-foreground">Log</span>
                 </div>
                 <div className="flex-1 overflow-y-auto scrollbar-none space-y-0.5">
                   {[...gameLog].reverse().slice(0, 20).map((msg, i) => (
-                    <p key={msg.id} className={`text-sm ${i === 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                    <p key={msg.id} className={`text-xs sm:text-sm ${i === 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
                       {msg.text}
                     </p>
                   ))}
                   {gameLog.length === 0 && (
-                    <p className="text-sm text-muted-foreground italic">No events yet...</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground italic">No events yet...</p>
                   )}
                 </div>
               </div>

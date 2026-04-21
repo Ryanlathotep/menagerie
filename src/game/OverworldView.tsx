@@ -1023,7 +1023,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         case 'ArrowLeft': case 'a': case 'A':
           e.preventDefault(); cancelAutoWalk(); handleMove(-1, 0); break;
         case 'ArrowRight': case 'd': case 'D':
-          e.preventDefault(); handleMove(1, 0); break;
+          e.preventDefault(); cancelAutoWalk(); handleMove(1, 0); break;
         case 'b': case 'B':
           if (!targetingMove && !buildMode) {
             e.preventDefault();
@@ -1035,7 +1035,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleMove, showBuildingMenu, showDungeonPrompt, showRecruitment, targetingMove, cancelTargeting, levelUpQueue.length, buildMode, roadBuildMode, showBuildPanel]);
+  }, [handleMove, cancelAutoWalk, showBuildingMenu, showDungeonPrompt, showRecruitment, targetingMove, cancelTargeting, levelUpQueue.length, buildMode, roadBuildMode, showBuildPanel]);
   
   // Keybind shortcuts for moves
   const keybindDataRef = useRef(loadKeybinds());

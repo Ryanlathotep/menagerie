@@ -394,7 +394,7 @@ export function UnifiedMovePanel({
       
       {/* Visible Moves */}
       <div 
-        className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 min-h-[60px] p-1 rounded-lg transition-colors ${
+        className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 min-h-[60px] p-1 rounded-lg transition-colors ${
           dragOverSection === 'visible' && dragOverId === null ? 'bg-primary/10 ring-2 ring-primary/30' : ''
         }`}
         onDragOver={(e) => { e.preventDefault(); setDragOverSection('visible'); }}
@@ -452,7 +452,7 @@ export function UnifiedMovePanel({
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div 
-            className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mt-2 min-h-[40px] p-1 rounded-lg border border-dashed border-border/50 transition-colors ${
+            className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mt-2 min-h-[40px] p-1 rounded-lg border border-dashed border-border/50 transition-colors ${
               dragOverSection === 'hidden' && dragOverId === null ? 'bg-muted/50 ring-2 ring-muted-foreground/30' : ''
             }`}
             onDragOver={(e) => { e.preventDefault(); setDragOverSection('hidden'); }}

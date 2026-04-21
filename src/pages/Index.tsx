@@ -2460,24 +2460,12 @@ function DungeonView({
               <div className="w-12 h-1 rounded-full bg-border" />
             </div>
             <div className="flex-1 min-h-0 px-2 pb-2">
+            {/* Log + open menu panel always sit side-by-side, including on
+                mobile, so the player can see the map (above), the log, and
+                the open attack/inventory panel without it falling below the
+                fold. The d-pad has been removed — tap a tile to move. */}
             <div className="flex h-full gap-2">
-              {/* Left: Mobile d-pad only (desktop has no separate map key here anymore) */}
-              <div className="flex-shrink-0 flex sm:hidden items-center">
-                <div className="grid grid-cols-3 gap-0.5 w-28">
-                  <div />
-                  <Button size="sm" className="h-9 text-base font-bold active:scale-95 p-0" onClick={() => handleMove('up')}>↑</Button>
-                  <div />
-                  <Button size="sm" className="h-9 text-base font-bold active:scale-95 p-0" onClick={() => handleMove('left')}>←</Button>
-                  <div />
-                  <Button size="sm" className="h-9 text-base font-bold active:scale-95 p-0" onClick={() => handleMove('right')}>→</Button>
-                  <div />
-                  <Button size="sm" className="h-9 text-base font-bold active:scale-95 p-0" onClick={() => handleMove('down')}>↓</Button>
-                  <div />
-                </div>
-              </div>
-
-              {/* Game log - shares this bottom box with the open menu panel */}
-              <div className={`${menuOpen ? 'sm:w-1/3' : 'flex-1'} min-w-0 p-2 bg-muted/30 rounded-lg border border-border/50 overflow-hidden flex flex-col transition-[width] duration-200`}>
+              <div className={`${menuOpen ? 'w-1/3 sm:w-1/3' : 'flex-1'} min-w-0 p-2 bg-muted/30 rounded-lg border border-border/50 overflow-hidden flex flex-col transition-[width] duration-200`}>
                 <div className="flex items-center justify-between gap-1 mb-1 flex-shrink-0">
                   <div className="flex items-center gap-1">
                     <ScrollText className="w-3 h-3 text-muted-foreground" />
@@ -2491,7 +2479,7 @@ function DungeonView({
                       disabled={cloudSyncing}
                       title={isAuthenticated ? 'Save progress to cloud' : 'Save progress locally'}
                     >
-                      {cloudSyncing ? '⏳ Saving…' : `💾 Save${isAuthenticated ? '' : ' (local)'}`}
+                      {cloudSyncing ? '⏳' : `💾`}
                     </button>
                   )}
                 </div>

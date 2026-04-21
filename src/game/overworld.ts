@@ -428,6 +428,66 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
         tile.enemyId = enemy.id;
       }
       
+      // ─── Elevation pass ───
+      // Compute elevation for this tile and decide whether it should become a
+      // cliff face, ramp, or waterfall. Cliffs/waterfalls override tree/rock
+      // (so a high-elevation crag becomes a sheer cliff instead of a rock
+      // outcrop). Ramps stay walkable grass underneath but carry directional
+      // metadata for the renderer.
+      const tileElev = getTileElevation(worldX, worldY, biome);
+      tile.elevation = tileElev;
+      // Use a chunk-local biome lookup that doesn't trigger recursive
+      // chunk-load: if a neighbor is in this chunk we read its elevation
+      // directly from biome noise, never from state.
+      const getBiomeAtLocal = (qx: number, qy: number) => getBiomeElement(qx, qy);
+      const drops = getCliffDrops(worldX, worldY, biome, getBiomeAtLocal);
+
+      if (drops.any) {
+        tile.cliffDrops = { n: drops.n, e: drops.e, s: drops.s, w: drops.w };
+
+        // Waterfall takes priority: a water tile dropping to a lower neighbor
+        // becomes a passable-looking but movement-blocking cascade.
+        if (shouldBeWaterfall(worldX, worldY, biome, (qx, qy) => {
+          // Approximate "is water" using the same logic as the main pass
+          // (lake or river). Cheap & deterministic.
+          const e = getTileElevation(qx, qy, getBiomeElement(qx, qy));
+          if (e === 0) return true;
+          return false;
+        }, getBiomeAtLocal)) {
+          tile.type = 'waterfall';
+          tile.waterfallDir = drops.s ? 's' : drops.e ? 'e' : drops.w ? 'w' : 'n';
+          // Strip resource metadata from the overridden tile.
+          tile.treeTier = undefined;
+          tile.stoneTier = undefined;
+          tile.resourceAmount = undefined;
+          if (resourceUpgrades) delete resourceUpgrades[`${worldX},${worldY}`];
+        } else {
+          // Decide between cliff and ramp. Ramps are rarer — exactly one per
+          // small ring of cliff tiles at the same elevation step.
+          const ramp = pickRampHere(worldX, worldY, biome, getBiomeAtLocal);
+          if (ramp) {
+            // Ramp = passable grass with directional metadata. Strip any
+            // tree/rock that would have spawned here.
+            tile.type = 'grass';
+            tile.isRamp = true;
+            tile.rampDirection = ramp;
+            tile.harvested = false;
+            tile.lastHarvestType = undefined;
+            tile.treeTier = undefined;
+            tile.stoneTier = undefined;
+            tile.resourceAmount = undefined;
+            if (resourceUpgrades) delete resourceUpgrades[`${worldX},${worldY}`];
+          } else {
+            // Cliff face — impassable, no resources.
+            tile.type = 'cliff';
+            tile.treeTier = undefined;
+            tile.stoneTier = undefined;
+            tile.resourceAmount = undefined;
+            if (resourceUpgrades) delete resourceUpgrades[`${worldX},${worldY}`];
+          }
+        }
+      }
+
       row.push(tile);
     }
     tiles.push(row);

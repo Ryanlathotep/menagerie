@@ -540,6 +540,8 @@ function ConsumablesTab({
       
       {/* Recipe Details & Crafting */}
       <div className="w-full sm:w-1/2 p-2 flex flex-col min-h-0 flex-1">
+        <ScrollArea className="flex-1">
+          {selectedConsumable ? (
             <div className="space-y-3 pr-2">
               {/* Recipe header */}
               <div className="flex items-center gap-2">

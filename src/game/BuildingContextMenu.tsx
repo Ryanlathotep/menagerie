@@ -24,6 +24,8 @@ interface BuildingContextMenuProps {
   onDisassemble: () => void;
   /** Toggle the gate's banner-side / outward-side. Only used when isGate is true. */
   onFlipGate?: () => void;
+  /** Cycle a stair/ladder's facing direction (n → e → s → w). */
+  onRotateConnector?: () => void;
   onClose: () => void;
 }
 
@@ -37,9 +39,11 @@ export function BuildingContextMenu({
   onRepair,
   onDisassemble,
   onFlipGate,
+  onRotateConnector,
   onClose,
 }: BuildingContextMenuProps) {
   const def = BUILDING_DEFINITIONS[building.type];
+  const isConnector = building.type === 'stone_staircase' || building.type === 'ladder';
   const assigned = building.assignedMonsterId
     ? party.find(m => m.id === building.assignedMonsterId)
     : null;
@@ -98,6 +102,20 @@ export function BuildingContextMenu({
               <span className="flex-1 text-left">Flip Gate Facing</span>
               <span className="text-[11px] text-muted-foreground">
                 (banner side)
+              </span>
+            </Button>
+          )}
+
+          {isConnector && onRotateConnector && (
+            <Button
+              variant="secondary"
+              className="w-full justify-start"
+              onClick={onRotateConnector}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              <span className="flex-1 text-left">Rotate Facing</span>
+              <span className="text-[11px] text-muted-foreground">
+                (now: {(building.connectorDir ?? 'auto').toUpperCase()})
               </span>
             </Button>
           )}

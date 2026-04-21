@@ -34,6 +34,7 @@ import {
   processScoutTowerAttacks, PlayerBuilding, getDisassembleRefund, getRepairCost, isWallActingAsGate,
 } from './buildings';
 import { isCreativeMode } from './creativeMode';
+import { detectConnectorDir, nextConnectorDir } from './wallTop';
 import { OverworldRenderer, OverworldRendererHandle } from './OverworldRenderer';
 import { findOverworldPath } from './overworldPathfinding';
 import { OverworldDirectionArrows } from './OverworldDirectionArrows';
@@ -850,6 +851,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           newOw.stoneCollected -= def.cost.stone;
         }
         const building = createBuilding(selectedBuildType, worldX, worldY);
+        // For elevation connectors, lock orientation onto the adjacent
+        // wall/cliff at placement time so it visually "snaps" to its anchor.
+        if (selectedBuildType === 'stone_staircase' || selectedBuildType === 'ladder') {
+          building.connectorDir = detectConnectorDir(newOw, worldX, worldY);
+        }
         if (!newOw.playerBuildings) newOw.playerBuildings = [];
         newOw.playerBuildings.push(building);
         setOverworldTile(newOw, worldX, worldY, {
@@ -1375,8 +1381,23 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       return newOw;
     });
   }, [contextMenuBuilding, addLog, saveOverworld]);
-  
-  // Resizable bottom bar
+
+  // Rotate a stair/ladder: cycles n → e → s → w. Useful when auto-detect
+  // picks the "wrong" cliff side (e.g., placed at an inside corner).
+  const handleRotateConnector = useCallback(() => {
+    if (!contextMenuBuilding) return;
+    setOverworld(prev => {
+      const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
+      const b = newOw.playerBuildings?.find(pb => pb.id === contextMenuBuilding.id);
+      if (!b) return prev;
+      const current = b.connectorDir ?? detectConnectorDir(newOw, b.worldX, b.worldY);
+      b.connectorDir = nextConnectorDir(current);
+      addLog(`🔄 Rotated ${b.type === 'ladder' ? 'ladder' : 'staircase'} to face ${b.connectorDir.toUpperCase()}.`, 'system');
+      saveOverworld(newOw);
+      setContextMenuBuilding({ ...b });
+      return newOw;
+    });
+  }, [contextMenuBuilding, addLog, saveOverworld]);
   const isMobileLayout = typeof window !== 'undefined' && window.innerWidth < 640;
   const sidebarHeight = isMobileLayout ? 64 : 96;
   const defaultBarHeight = isMobileLayout ? 280 : 260;
@@ -1893,6 +1914,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         onRepair={handleRepairBuilding}
         onDisassemble={handleDisassembleBuilding}
         onFlipGate={handleFlipGate}
+        onRotateConnector={handleRotateConnector}
         onClose={() => setContextMenuBuilding(null)}
       />
     )}

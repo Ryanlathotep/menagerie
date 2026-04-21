@@ -103,7 +103,7 @@ export function CraftingWorkshop({
     status: CONSUMABLE_RECIPES.filter(r => r.effect.startsWith('cure_')),
     buffs: CONSUMABLE_RECIPES.filter(r => r.effect.startsWith('boost_')),
     revive: CONSUMABLE_RECIPES.filter(r => r.effect.startsWith('revive')),
-    utility: CONSUMABLE_RECIPES.filter(r => r.effect === 'reveal_stairs' || r.effect === 'open_workshop'),
+    utility: CONSUMABLE_RECIPES.filter(r => r.effect === 'reveal_stairs'),
   };
   
   const handleCraft = () => {

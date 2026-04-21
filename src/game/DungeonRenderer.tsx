@@ -785,6 +785,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                     onContextMenu={(e) => {
                       if (!onTileRightClick || !tile.explored) return;
                       e.preventDefault();
+                      lastTapRef.current = null;
                       onTileRightClick(x, y);
                     }}
                   >
@@ -804,7 +805,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                       unlockedMonsters={unlockedMonsters}
                       isOnPath={targetPath.some(p => p.x === x && p.y === y)}
                       onDisarmTrap={onDisarmTrap}
-                      onClick={tile.explored && tile.type !== 'wall' ? () => onTileClick?.(x, y) : undefined}
+                      onClick={tile.explored && tile.type !== 'wall' ? () => handleTileTap(x, y) : undefined}
                       playerPickaxeTier={playerPickaxeTier}
                     />
                     {/* Targeting overlay */}

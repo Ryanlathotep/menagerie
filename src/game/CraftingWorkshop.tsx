@@ -103,6 +103,7 @@ export function CraftingWorkshop({
     status: CONSUMABLE_RECIPES.filter(r => r.effect.startsWith('cure_')),
     buffs: CONSUMABLE_RECIPES.filter(r => r.effect.startsWith('boost_')),
     revive: CONSUMABLE_RECIPES.filter(r => r.effect.startsWith('revive')),
+    utility: CONSUMABLE_RECIPES.filter(r => r.effect === 'reveal_stairs' || r.effect === 'open_workshop'),
   };
   
   const handleCraft = () => {
@@ -470,9 +471,10 @@ function ConsumablesTab({
 }) {
   const typeLabels: Record<string, { label: string; icon: string }> = {
     healing: { label: 'Healing', icon: '❤️' },
-    status: { label: 'Status Cures', icon: '💊' },
+    status: { label: 'Cures', icon: '💊' },
     buffs: { label: 'Buffs', icon: '⚡' },
     revive: { label: 'Revives', icon: '✨' },
+    utility: { label: 'Utility', icon: '🛠️' },
   };
 
   return (
@@ -480,7 +482,7 @@ function ConsumablesTab({
       {/* Recipe List */}
       <div className="w-full sm:w-1/2 border-b sm:border-b-0 sm:border-r flex flex-col min-h-0 max-h-[45vh] sm:max-h-none">
         <Tabs defaultValue="healing" className="flex-1 flex flex-col min-h-0">
-          <TabsList className="w-full grid grid-cols-4 mx-1 my-1 shrink-0">
+          <TabsList className="w-full grid grid-cols-5 mx-1 my-1 shrink-0">
             {Object.entries(typeLabels).map(([type, { label, icon }]) => (
               <TabsTrigger key={type} value={type} className="text-[10px] h-6">
                 {icon} {label}

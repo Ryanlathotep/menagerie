@@ -75,6 +75,7 @@ import { loadKeybinds, getMonsterKeybinds as getMonsterKeybindsImport } from '@/
 import { useAuth } from '@/hooks/useAuth';
 import { useCloudSave } from '@/hooks/useCloudSave';
 import { useCloudAutosave } from '@/hooks/useCloudAutosave';
+import { useAdminRole } from '@/hooks/useAdminRole';
 
 // Main Menu Component
 function MainMenu() {

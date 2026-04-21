@@ -161,32 +161,35 @@ export function EquipmentView({
   }, [inventory, monster.class, monster.level, onBulkEquip, onLog, selectedPartyIndex]);
   
   return (
-    <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="p-4 border-b flex items-center justify-between">
-          <h2 className="text-xl font-bold bg-gradient-to-r from-primary to-amber-500 bg-clip-text text-transparent">
-            ⚔️ Equipment
-          </h2>
-          <Button variant="ghost" size="sm" onClick={onClose}>✕</Button>
+    <div
+      className="fixed top-0 right-0 bottom-0 z-40 w-full sm:w-[460px] md:w-[500px] bg-background/95 backdrop-blur-sm border-l border-border shadow-2xl flex flex-col pointer-events-auto"
+      onClick={e => e.stopPropagation()}
+    >
+      {/* Header */}
+      <div className="p-3 border-b flex items-center justify-between flex-shrink-0">
+        <h2 className="text-lg font-bold bg-gradient-to-r from-primary to-amber-500 bg-clip-text text-transparent">
+          ⚔️ Equipment
+        </h2>
+        <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close equipment">✕</Button>
+      </div>
+
+      {/* Party member selector - only show if party has more than 1 member */}
+      {party.length > 1 && (
+        <div className="px-3 pt-3 flex-shrink-0">
+          <PartyMemberSelector
+            party={party}
+            partyEquipment={partyEquipment}
+            selectedIndex={selectedPartyIndex}
+            onSelect={setSelectedPartyIndex}
+          />
         </div>
-        
-        {/* Party member selector - only show if party has more than 1 member */}
-        {party.length > 1 && (
-          <div className="px-4 pt-4">
-            <PartyMemberSelector
-              party={party}
-              partyEquipment={partyEquipment}
-              selectedIndex={selectedPartyIndex}
-              onSelect={setSelectedPartyIndex}
-            />
-          </div>
-        )}
-        
-        <div className="flex-1 overflow-hidden flex">
+      )}
+
+      <ScrollArea className="flex-1">
+        <div className="flex flex-col">
           {/* Paper Doll Section */}
-          <div className="w-1/2 p-4 border-r flex flex-col">
-            <div className="flex-1 flex flex-col items-center justify-center gap-4">
+          <div className="p-3 border-b flex flex-col">
+            <div className="flex flex-col items-center justify-center gap-3">
               {/* Top row: Helmet */}
               <div className="flex justify-center">
                 <EquippedSlotDisplay 

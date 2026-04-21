@@ -384,7 +384,10 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
         if (resourceUpgrades && TREE_TIER_DATA[treeTier].upgradeSteps) {
           const resKey = `${worldX},${worldY}`;
           if (!resourceUpgrades[resKey]) {
-            resourceUpgrades[resKey] = { treeTier, stepsUntilUpgrade: TREE_TIER_DATA[treeTier].upgradeSteps! };
+            resourceUpgrades[resKey] = {
+              treeTier,
+              stepsUntilUpgrade: jitterUpgradeSteps(TREE_TIER_DATA[treeTier].upgradeSteps!, worldX, worldY, 1),
+            };
           }
         }
       }
@@ -395,7 +398,10 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
         if (resourceUpgrades && STONE_TIER_DATA[stoneTier].upgradeSteps) {
           const resKey = `${worldX},${worldY}`;
           if (!resourceUpgrades[resKey]) {
-            resourceUpgrades[resKey] = { stoneTier, stepsUntilUpgrade: STONE_TIER_DATA[stoneTier].upgradeSteps! };
+            resourceUpgrades[resKey] = {
+              stoneTier,
+              stepsUntilUpgrade: jitterUpgradeSteps(STONE_TIER_DATA[stoneTier].upgradeSteps!, worldX, worldY, 2),
+            };
           }
         }
       }

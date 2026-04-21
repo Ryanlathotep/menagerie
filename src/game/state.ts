@@ -232,31 +232,14 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           ) as MonsterEquipment
         : createEmptyEquipment();
       
-      // Build starting inventory from pre-selected items (if any) or default items
-      let startingInventory: InventoryItem[] = action.preSelectedItems && action.preSelectedItems.length > 0
-        ? [...action.preSelectedItems]
-        : [
-            { id: 'small_potion', name: 'Small Potion', type: 'potion', value: 30, effect: 'heal_hp', quantity: 2 },
-            { id: 'stamina_tonic', name: 'Stamina Tonic', type: 'potion', value: 20, effect: 'heal_stamina', quantity: 1 },
-          ];
-      
-      // Remove selected items from town storage (merge quantities for matching ids)
-      let remainingStoredItems = [...(state.saveData.storedItems || [])];
-      if (action.preSelectedItems && action.preSelectedItems.length > 0) {
-        for (const selectedItem of action.preSelectedItems) {
-          // Find the item in stored items and reduce quantity
-          const storedIndex = remainingStoredItems.findIndex(si => si.id === selectedItem.id);
-          if (storedIndex !== -1) {
-            const storedItem = remainingStoredItems[storedIndex];
-            const newQty = (storedItem.quantity || 1) - (selectedItem.quantity || 1);
-            if (newQty <= 0) {
-              remainingStoredItems.splice(storedIndex, 1);
-            } else {
-              remainingStoredItems[storedIndex] = { ...storedItem, quantity: newQty };
-            }
-          }
-        }
-      }
+      // Unified inventory: the run inventory is a live view of town storage.
+      // Anything the player picks up in the dungeon is also added to town
+      // storage (and vice versa). On run start we just mirror whatever's in
+      // storedItems so the player has access to everything they own. The old
+      // pre-selection flow is preserved as a no-op (items aren't removed from
+      // town anymore).
+      const startingInventory: InventoryItem[] = (state.saveData.storedItems || []).map(i => ({ ...i }));
+      const remainingStoredItems = state.saveData.storedItems || [];
       
       // Build full party
       const fullParty = action.party && action.party.length > 0

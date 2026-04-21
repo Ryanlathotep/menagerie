@@ -246,7 +246,29 @@ export function nextShovelTier(current: ShovelTier | undefined): ShovelTier | nu
 export interface PlayerTools {
   pickaxe?: PickaxeTier; // undefined = not yet crafted
   shovel?: ShovelTier;   // undefined = not yet crafted
+  workstation?: boolean; // true = owns Portable Workstation (singleton, no tiers)
 }
+
+// ----- Workstation -----
+// Singleton tool with no tier ladder. Once crafted, the player can open the
+// crafting workshop anywhere (dungeon or overworld) via a sidebar button.
+export interface WorkstationData {
+  name: string;
+  icon: string;
+  description: string;
+  materials: { materialId: string; quantity: number }[];
+}
+
+export const WORKSTATION: WorkstationData = {
+  name: 'Portable Workstation',
+  icon: '🛠️',
+  description: 'A folding bench, anvil, and alchemy kit. Lets you open the crafting workshop anywhere.',
+  materials: [
+    { materialId: 'iron_ore', quantity: 4 },
+    { materialId: 'wood_log', quantity: 4 },
+    { materialId: 'silk', quantity: 2 },
+  ],
+};
 
 // What tier of mineable wall does this dungeon floor produce?
 // Floors 1-3 = tier 1, 4-7 = mix of 1 & 2, 8+ = mix of all three.

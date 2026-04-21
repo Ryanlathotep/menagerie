@@ -140,11 +140,29 @@ export const playerZAt = getTileEffectiveZ;
 
 // For a stair/ladder at (x,y), figure out which cardinal side has the
 // wall/cliff it's leaning against. Used purely for rendering rotation.
-// Returns 'n' if no neighbor matches (safe default).
+// If the building has a stored `connectorDir` (set at placement or via the
+// Rotate action), that wins. Otherwise auto-detect from neighbors. Returns
+// 'n' if no neighbor matches (safe default).
 export function connectorDirFor(state: OverworldState, x: number, y: number): 'n' | 's' | 'e' | 'w' {
+  const b = buildingAt(state, x, y);
+  if (b?.connectorDir) return b.connectorDir;
+  return detectConnectorDir(state, x, y);
+}
+
+// Pure auto-detect (used at placement time): scans the 4 cardinal neighbors
+// for a wall or cliff and returns the first match in N → E → S → W order.
+export function detectConnectorDir(
+  state: OverworldState,
+  x: number, y: number,
+): 'n' | 's' | 'e' | 'w' {
   if (isWallAt(state, x, y - 1) || isCliffAt(state, x, y - 1)) return 'n';
-  if (isWallAt(state, x, y + 1) || isCliffAt(state, x, y + 1)) return 's';
   if (isWallAt(state, x + 1, y) || isCliffAt(state, x + 1, y)) return 'e';
+  if (isWallAt(state, x, y + 1) || isCliffAt(state, x, y + 1)) return 's';
   if (isWallAt(state, x - 1, y) || isCliffAt(state, x - 1, y)) return 'w';
   return 'n';
+}
+
+// Cycle the connector dir clockwise: n → e → s → w → n.
+export function nextConnectorDir(d: 'n' | 's' | 'e' | 'w'): 'n' | 's' | 'e' | 'w' {
+  return d === 'n' ? 'e' : d === 'e' ? 's' : d === 's' ? 'w' : 'n';
 }

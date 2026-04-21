@@ -2273,6 +2273,61 @@ function DungeonView({
           onClose={() => setShowElevator(false)}
         />
       )}
+
+      {/* Portable Workstation: same crafting modal as town, opened mid-dungeon */}
+      {showWorkshop && (
+        <CraftingWorkshop
+          materials={state.saveData.materials || {}}
+          playerLevel={state.run?.currentMonster?.level || 1}
+          storedEquipment={state.saveData.storedEquipment || []}
+          unlockedRecipes={state.saveData.unlockedRecipes || []}
+          tools={state.saveData.tools}
+          onCraft={(recipe, result) => {
+            if (!isCreativeMode()) {
+              dispatch({ type: 'USE_MATERIALS', materials: recipe.materials });
+            }
+            dispatch({ type: 'STORE_EQUIPMENT', item: result });
+            toast.success(`Crafted ${result.name}!`);
+          }}
+          onCraftConsumable={(recipe) => {
+            if (!isCreativeMode()) {
+              dispatch({ type: 'USE_MATERIALS', materials: recipe.materials });
+            }
+            dispatch({
+              type: 'ADD_ITEM',
+              item: {
+                id: recipe.resultId,
+                name: recipe.name,
+                type: 'potion',
+                value: recipe.value || 0,
+                effect: recipe.effect,
+                quantity: 1,
+              },
+            });
+            toast.success(`Crafted ${recipe.name}!`);
+          }}
+          onDismantle={(itemId, materialsGained) => {
+            dispatch({ type: 'DISMANTLE_EQUIPMENT', itemId });
+            const names = materialsGained.map(m => `${m.quantity}x ${m.materialId}`).join(', ');
+            toast.success(`Dismantled — gained ${names}`);
+          }}
+          onUpgradePickaxe={(tier, mats) => {
+            if (!isCreativeMode()) {
+              dispatch({ type: 'USE_MATERIALS', materials: mats });
+            }
+            dispatch({ type: 'SET_PICKAXE_TIER', tier });
+            toast.success(`${tier.charAt(0).toUpperCase() + tier.slice(1)} Pickaxe ready!`);
+          }}
+          onUpgradeShovel={(tier, mats) => {
+            if (!isCreativeMode()) {
+              dispatch({ type: 'USE_MATERIALS', materials: mats });
+            }
+            dispatch({ type: 'SET_SHOVEL_TIER', tier });
+            toast.success(`${tier.charAt(0).toUpperCase() + tier.slice(1)} Shovel ready!`);
+          }}
+          onClose={() => setShowWorkshop(false)}
+        />
+      )}
       
       {showEquipment && state.run && (
         <EquipmentView

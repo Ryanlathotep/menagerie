@@ -135,19 +135,19 @@ export function findOverworldPath(
       if (!isGoal && !isTraversable(tile, state, nb.x, nb.y)) continue;
       if (isGoal && !isTraversable(tile, state, nb.x, nb.y) && !goalIsInteractable) continue;
 
-      // Z-transition gate (mirrors movePlayer): can only change z via a
-      // ramp or a stair/ladder connector on either side.
+      // Z-transition gate (mirrors movePlayer): only enforced when a wall-top
+      // is involved. Natural ground elevation differences are walkable.
       const fromTile = getOverworldTile(state, current.x, current.y);
       const fromZ = getTileEffectiveZ(state, current.x, current.y, fromTile);
       const toZ = getTileEffectiveZ(state, nb.x, nb.y, tile);
-      if (fromZ !== toZ) {
+      const fromIsWallTop = !!fromTile && fromTile.type === 'player_building' && isWalkableWallTop(state, current.x, current.y);
+      const toIsWallTop = tile.type === 'player_building' && isWalkableWallTop(state, nb.x, nb.y);
+      if ((fromIsWallTop || toIsWallTop) && fromZ !== toZ) {
         const fromIsConnector = !!fromTile && fromTile.type === 'player_building'
           && isElevationConnectorAt(state, current.x, current.y);
         const toIsConnector = tile.type === 'player_building'
           && isElevationConnectorAt(state, nb.x, nb.y);
-        const fromIsRamp = !!fromTile?.isRamp;
-        const toIsRamp = !!tile.isRamp;
-        if (!fromIsConnector && !toIsConnector && !fromIsRamp && !toIsRamp) continue;
+        if (!fromIsConnector && !toIsConnector) continue;
       }
 
       const g = current.g + 1;

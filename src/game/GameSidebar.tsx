@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-import { User, Backpack, Map, DoorOpen, Home, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, Shirt, Gem, Users, LogOut } from 'lucide-react';
+import { User, Backpack, Map, DoorOpen, Home, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, Shirt, Gem, Users, LogOut, Hammer } from 'lucide-react';
 import { Monster, InventoryItem, MaterialInventory, SPECIES_DATA, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED } from './types';
 import { CombatEffects } from './statusEffects';
 import { MonsterSprite } from './sprites';
@@ -82,6 +82,9 @@ interface GameSidebarProps {
   activePartyIndex?: number;
   onPartySwitch?: (index: number) => void;
   partyEffects?: CombatEffects[];
+  // Portable Workstation: shows a hammer button that opens the crafting modal
+  // when the player owns the singleton workstation tool.
+  onOpenWorkshop?: () => void;
 }
 export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   monster,
@@ -117,6 +120,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   activePartyIndex = 0,
   onPartySwitch,
   partyEffects = [],
+  onOpenWorkshop,
 }, ref) => {
   const isMobileView = typeof window !== 'undefined' && window.innerWidth < 640;
   const [activePanel, setActivePanel] = useState<PanelName | null>(null);

@@ -362,16 +362,17 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
       const isRiver = !isStone && distFromHome > 5 && isRiverTile(worldX, worldY);
 
       // Trees are governed by classic random + biome bias (independent system).
-      let treeChance = 0.12;
-      if (biome === 'water') treeChance = 0.06;
-      else if (biome === 'fire') treeChance = 0.04;
-      else if (biome === 'air') treeChance = 0.05;
-      else if (biome === 'earth') treeChance = 0.08;
+      // Density reduced for less visual clutter; forests still cluster via noise.
+      let treeChance = 0.06;
+      if (biome === 'water') treeChance = 0.03;
+      else if (biome === 'fire') treeChance = 0.02;
+      else if (biome === 'air') treeChance = 0.025;
+      else if (biome === 'earth') treeChance = 0.04;
 
       // Cluster bias for trees (forests). Stone clustering already comes from
       // the elevation field, so we no longer need a separate outcrop noise.
       const forestNoise = biomeNoise(worldX, worldY, 0.18);
-      if (forestNoise > 0.55) treeChance += (forestNoise - 0.55) * 0.9;
+      if (forestNoise > 0.6) treeChance += (forestNoise - 0.6) * 0.6;
 
       // Decide tile type. Order matters:
       //   water (lake or river)  >  stone  >  tree  >  enemy  >  grass

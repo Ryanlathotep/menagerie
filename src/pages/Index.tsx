@@ -1,4 +1,4 @@
-import { GameProvider, useGame } from '@/game/state';
+import { GameProvider, useGame, buildProgressSnapshot } from '@/game/state';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getComboId, UnlockedMonster, InventoryItem, MonsterStats, Monster, Position } from '@/game/types';
@@ -75,6 +75,7 @@ import { loadKeybinds, getMonsterKeybinds as getMonsterKeybindsImport } from '@/
 import { useAuth } from '@/hooks/useAuth';
 import { useCloudSave } from '@/hooks/useCloudSave';
 import { useCloudAutosave } from '@/hooks/useCloudAutosave';
+import { useAdminRole } from '@/hooks/useAdminRole';
 
 // Main Menu Component
 function MainMenu() {
@@ -702,8 +703,12 @@ function DungeonView({
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAutoRunning, setIsAutoRunning] = useState(false);
   const autoRunDirection = useRef<'up' | 'down' | 'left' | 'right' | null>(null);
- const stopAutoRun = useRef(false); // Immediate stop flag for auto-run
+  const stopAutoRun = useRef(false); // Immediate stop flag for auto-run
   const lastKeyPress = useRef<{ key: string; time: number } | null>(null);
+  
+  // Cloud save hook for admin save button
+  const { saveToCloud, syncing: cloudSyncing, isAuthenticated } = useCloudSave();
+  const { isAdmin } = useAdminRole();
   
   // Click-to-move state
   const [targetPath, setTargetPath] = useState<Position[]>([]);
@@ -766,6 +771,29 @@ function DungeonView({
       });
     }
   }, [dungeon, dispatch, state.saveData.dungeonEntrances]);
+  
+  // ─── Manual save for admins: flush in-memory dungeon/run into saveData ───
+  const handleManualSave = useCallback(async () => {
+    if (!isAdmin) return; // Only admins can manual save from dungeon
+    
+    // Build snapshot from current run (dungeon state is in state.run)
+    const snapshot = buildProgressSnapshot(state.saveData, state.run, null);
+    dispatch({ type: 'SNAPSHOT_RUN_PROGRESS', overworld: null });
+    
+    if (!isAuthenticated) {
+      toast.success('💾 Saved locally (sign in to back up to cloud)');
+      addLog('💾 Game saved locally', 'system');
+      return;
+    }
+    
+    const result = await saveToCloud(snapshot);
+    if (result.success) {
+      toast.success('☁️ Saved to cloud');
+      addLog('☁️ Game saved to cloud', 'system');
+    } else {
+      toast.error(`Save failed: ${result.error || 'unknown error'}`);
+    }
+  }, [dispatch, state.saveData, state.run, isAdmin, isAuthenticated, saveToCloud, addLog]);
   
   // Reset respawn counter when floor changes
   useEffect(() => {
@@ -2448,9 +2476,22 @@ function DungeonView({
 
               {/* Game log - shares this bottom box with the open menu panel */}
               <div className={`${menuOpen ? 'sm:w-1/3' : 'flex-1'} min-w-0 p-2 bg-muted/30 rounded-lg border border-border/50 overflow-hidden flex flex-col transition-[width] duration-200`}>
-                <div className="flex items-center gap-1 mb-1 flex-shrink-0">
-                  <ScrollText className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-xs font-semibold text-muted-foreground">Log</span>
+                <div className="flex items-center justify-between gap-1 mb-1 flex-shrink-0">
+                  <div className="flex items-center gap-1">
+                    <ScrollText className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-xs font-semibold text-muted-foreground">Log</span>
+                  </div>
+                  {/* Admin save button - always visible for admins during development */}
+                  {isAdmin && (
+                    <button
+                      className="text-[10px] text-primary hover:underline disabled:opacity-50"
+                      onClick={handleManualSave}
+                      disabled={cloudSyncing}
+                      title={isAuthenticated ? 'Save progress to cloud' : 'Save progress locally'}
+                    >
+                      {cloudSyncing ? '⏳ Saving…' : `💾 Save${isAuthenticated ? '' : ' (local)'}`}
+                    </button>
+                  )}
                 </div>
                 <div className="flex-1 overflow-y-auto scrollbar-none space-y-0.5">
                   {[...gameLog].reverse().slice(0, 20).map((msg, i) => (
@@ -2493,6 +2534,27 @@ function BattleView({
   const battle = state.run?.battle;
   const experience = state.run?.experience || 0;
   const [menuOpen, setMenuOpen] = useState(false);
+  
+  // Cloud save hook for admin save button
+  const { saveToCloud, syncing: cloudSyncing, isAuthenticated } = useCloudSave();
+  const { isAdmin } = useAdminRole();
+  
+  // ─── Manual save for admins: flush battle/run into saveData ───
+  const handleManualSave = useCallback(async () => {
+    if (!isAdmin) return;
+    const snapshot = buildProgressSnapshot(state.saveData, state.run, null);
+    dispatch({ type: 'SNAPSHOT_RUN_PROGRESS', overworld: null });
+    if (!isAuthenticated) {
+      toast.success('💾 Saved locally');
+      return;
+    }
+    const result = await saveToCloud(snapshot);
+    if (result.success) {
+      toast.success('☁️ Saved to cloud');
+    } else {
+      toast.error(`Save failed: ${result.error || 'unknown error'}`);
+    }
+  }, [dispatch, state.saveData, state.run, isAdmin, isAuthenticated, saveToCloud]);
   
   // Level up screen queue state - supports multiple level-ups (active + passive party members)
   interface LevelUpEntry {
@@ -3947,9 +4009,22 @@ function BattleView({
         
         {/* Unified Log - visible scrolling area */}
         <div className="mt-3 p-2 bg-muted/30 rounded-lg border border-border/50 max-h-24 overflow-y-auto">
-          <div className="flex items-center gap-1 mb-1">
-            <ScrollText className="w-3 h-3 text-muted-foreground" />
-            <span className="text-xs font-semibold text-muted-foreground">Log</span>
+          <div className="flex items-center justify-between gap-1 mb-1">
+            <div className="flex items-center gap-1">
+              <ScrollText className="w-3 h-3 text-muted-foreground" />
+              <span className="text-xs font-semibold text-muted-foreground">Log</span>
+            </div>
+            {/* Admin save button - always visible for admins during development */}
+            {isAdmin && (
+              <button
+                className="text-[10px] text-primary hover:underline disabled:opacity-50"
+                onClick={handleManualSave}
+                disabled={cloudSyncing}
+                title={isAuthenticated ? 'Save progress to cloud' : 'Save progress locally'}
+              >
+                {cloudSyncing ? '⏳ Saving…' : `💾 Save${isAuthenticated ? '' : ' (local)'}`}
+              </button>
+            )}
           </div>
           <div className="space-y-0.5">
             {[...gameLog].reverse().slice(0, 5).map((msg, i) => (

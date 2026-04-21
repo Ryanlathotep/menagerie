@@ -1546,11 +1546,10 @@ function DungeonView({
       toast.success('Compass waypoint set!');
       return;
     } else if (item.effect === 'open_workshop') {
-      // Portable Workstation: open the crafting modal in the dungeon and
-      // consume the item.
+      // Portable Workstation: open the crafting modal in the dungeon.
+      // Reusable — does NOT consume the item.
       setShowWorkshop(true);
-      dispatch({ type: 'USE_ITEM', itemId: item.id });
-      addLog(`🛠️ You unfold a portable workshop.`, 'system');
+      addLog(`🛠️ You unfold the portable workshop.`, 'system');
       return;
     } else if (item.effect === 'revive' || item.effect === 'revive_full') {
       // Check if there are fainted party members

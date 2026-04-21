@@ -822,6 +822,20 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                     {targetingMode && !isTargetable && tile.visible && tile.type !== 'wall' && (
                       <div className="absolute inset-0 pointer-events-none z-5 bg-muted/30" />
                     )}
+                    {/* Dungeon Compass waypoint: pulsing ring on the pinned tile.
+                        Visible even through fog so the player can chase the exit. */}
+                    {dungeon.compassWaypoint
+                      && dungeon.compassWaypoint.x === x
+                      && dungeon.compassWaypoint.y === y && (
+                        <div
+                          className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center"
+                          aria-label="Compass waypoint"
+                        >
+                          <div className="absolute inset-0 rounded-full border-2 border-amber-400 animate-ping opacity-70" />
+                          <div className="absolute inset-1 rounded-full border-2 border-amber-300 opacity-90" />
+                          <span className="relative text-base drop-shadow-[0_0_4px_rgba(251,191,36,0.9)]">🧭</span>
+                        </div>
+                    )}
                   </div>
                 );
               })}

@@ -553,6 +553,32 @@ function ConsumablesTab({
         <ScrollArea className="flex-1">
           {selectedConsumable ? (
             <div className="space-y-3 pr-2">
+              {/* Crafted consumable confirmation — shown at top so users see it immediately */}
+              {craftedConsumable && (
+                <div className={`p-2 rounded border-2 ${RARITY_COLORS[craftedConsumable.rarity].border} ${RARITY_COLORS[craftedConsumable.rarity].bg} animate-in fade-in slide-in-from-top-2`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[10px] text-muted-foreground">✨ Just Crafted!</p>
+                    <button
+                      onClick={() => setCraftedConsumable(null)}
+                      className="text-[10px] text-muted-foreground hover:text-foreground px-1"
+                      aria-label="Dismiss"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{craftedConsumable.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-semibold truncate ${RARITY_COLORS[craftedConsumable.rarity].text}`}>
+                        {craftedConsumable.name}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground truncate">{craftedConsumable.description}</p>
+                    </div>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-1 text-center">Sent to town storage</p>
+                </div>
+              )}
+              
               {/* Recipe header */}
               <div className="flex items-center gap-2">
                 <span className="text-2xl">{isUnlocked(selectedConsumable) ? selectedConsumable.icon : '❓'}</span>
@@ -600,22 +626,6 @@ function ConsumablesTab({
                     </div>
                   </div>
                 </>
-              )}
-              
-              {/* Crafted consumable confirmation */}
-              {craftedConsumable && (
-                <div className={`p-2 rounded border ${RARITY_COLORS[craftedConsumable.rarity].border} ${RARITY_COLORS[craftedConsumable.rarity].bg}`}>
-                  <p className="text-[10px] text-muted-foreground mb-1">Crafted:</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{craftedConsumable.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-semibold truncate ${RARITY_COLORS[craftedConsumable.rarity].text}`}>
-                        {craftedConsumable.name}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground truncate">{craftedConsumable.description}</p>
-                    </div>
-                  </div>
-                </div>
               )}
             </div>
           ) : (

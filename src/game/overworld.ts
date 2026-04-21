@@ -834,6 +834,12 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
   switch (tile.type) {
     case 'water':
       return { type: 'blocked', reason: 'Water blocks your path' };
+
+    case 'cliff':
+      return { type: 'blocked', reason: 'A sheer cliff face blocks your path' };
+
+    case 'waterfall':
+      return { type: 'blocked', reason: 'A waterfall crashes down — no way through' };
       
     case 'tree': {
       const treeTier = tile.treeTier || 'oak';

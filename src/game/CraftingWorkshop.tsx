@@ -222,6 +222,7 @@ export function CraftingWorkshop({
             creative={creative}
             onUpgradePickaxe={onUpgradePickaxe}
             onUpgradeShovel={onUpgradeShovel}
+            onCraftWorkstation={onCraftWorkstation}
           />
         )}
       </Card>

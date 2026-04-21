@@ -288,7 +288,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           ...state.saveData,
           totalRuns: state.saveData.totalRuns + 1,
           storedEquipment: remainingStorage,
-          storedItems: remainingStoredItems,
         },
       };
     }
@@ -307,8 +306,9 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         item => ({ ...item, bound: undefined })
       );
 
-      // Run inventory items merge back into town storage so nothing is lost.
-      const storedItems = [...(state.saveData.storedItems || []), ...state.run.inventory];
+      // Run inventory IS town storage now (kept in sync via ADD/USE/DROP_ITEM).
+      // Don't merge again or items will duplicate.
+      const storedItems = state.saveData.storedItems || [];
 
       // Merge run materials with saved materials.
       const mergedMaterials = { ...state.saveData.materials };

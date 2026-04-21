@@ -330,6 +330,43 @@ function CraftingTab({
         <ScrollArea className="flex-1">
           {selectedRecipe ? (
             <div className="space-y-3 pr-2">
+              {/* Crafted item preview with sprite — shown at top so users see it immediately */}
+              {craftedItem && (
+                <div className={`p-2 rounded border-2 ${RARITY_COLORS[craftedItem.rarity].border} ${RARITY_COLORS[craftedItem.rarity].bg} animate-in fade-in slide-in-from-top-2`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[10px] text-muted-foreground">✨ Just Crafted!</p>
+                    <button
+                      onClick={() => setCraftedItem(null)}
+                      className="text-[10px] text-muted-foreground hover:text-foreground px-1"
+                      aria-label="Dismiss"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <EquipmentIcon item={craftedItem} size={32} />
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-semibold truncate ${RARITY_COLORS[craftedItem.rarity].text}`}>
+                        {craftedItem.name}
+                      </p>
+                      <div className="flex flex-wrap gap-0.5 mt-0.5">
+                        {Object.entries(craftedItem.stats).map(([stat, value]) => (
+                          value !== 0 && (
+                            <span 
+                              key={stat} 
+                              className={`text-[9px] px-1 rounded ${value > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
+                            >
+                              {value > 0 ? '+' : ''}{value} {stat.slice(0, 3).toUpperCase()}
+                            </span>
+                          )
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-1 text-center">Sent to town storage</p>
+                </div>
+              )}
+              
               {/* Recipe header with sprite preview */}
               <div className="flex items-center gap-2">
                 <SlotIcon slot={selectedRecipe.resultSlot} size={36} />
@@ -378,33 +415,6 @@ function CraftingTab({
                     </div>
                   </div>
                 </>
-              )}
-              
-              {/* Crafted item preview with sprite */}
-              {craftedItem && (
-                <div className={`p-2 rounded border ${RARITY_COLORS[craftedItem.rarity].border} ${RARITY_COLORS[craftedItem.rarity].bg}`}>
-                  <p className="text-[10px] text-muted-foreground mb-1">Crafted:</p>
-                  <div className="flex items-center gap-2">
-                    <EquipmentIcon item={craftedItem} size={32} />
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-semibold truncate ${RARITY_COLORS[craftedItem.rarity].text}`}>
-                        {craftedItem.name}
-                      </p>
-                      <div className="flex flex-wrap gap-0.5 mt-0.5">
-                        {Object.entries(craftedItem.stats).map(([stat, value]) => (
-                          value !== 0 && (
-                            <span 
-                              key={stat} 
-                              className={`text-[9px] px-1 rounded ${value > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
-                            >
-                              {value > 0 ? '+' : ''}{value} {stat.slice(0, 3).toUpperCase()}
-                            </span>
-                          )
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
               )}
             </div>
           ) : (

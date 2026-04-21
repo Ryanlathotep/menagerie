@@ -214,6 +214,8 @@ import type { AutoTileFit, AutoTileShape } from './autoTiling';
 export function OverworldWaterTile({ size, seed = 0, fit }: TileGraphicProps & { fit?: AutoTileFit }) {
   const r1 = seededRandom(seed);
   const r2 = seededRandom(seed + 1);
+  const r3 = seededRandom(seed + 2);
+  const r4 = seededRandom(seed + 3);
 
   // Determine which sides have water neighbors. Defaults to "all open" so
   // legacy callers without auto-tiling still render the original look.
@@ -224,51 +226,101 @@ export function OverworldWaterTile({ size, seed = 0, fit }: TileGraphicProps & {
   }
   const isolated = !n && !e && !s && !w;
   const SHORE = 'hsl(40 55% 70%)';
+  const SHORE_DARK = 'hsl(35 50% 60%)';
   const WATER_DEEP = 'hsl(200 55% 45%)';
   const WATER_MID = 'hsl(195 60% 50%)';
 
-  // Inset the water rect on closed sides so a sandy shore appears there;
-  // on open sides, water bleeds all the way to the edge so it visually
-  // merges seamlessly with the neighboring water tile.
-  const left   = w ? 0 : 2.5;
-  const right  = e ? 24 : 21.5;
-  const top    = n ? 0 : 2.5;
-  const bottom = s ? 24 : 21.5;
-  const wWidth  = right - left;
-  const wHeight = bottom - top;
+  // Build a rounded water silhouette path. On closed sides we pull inward
+  // and use a wavy/scalloped curve to mimic a natural pond/river edge; on
+  // open sides we full-bleed to the tile edge so adjacent water seams
+  // perfectly. Corner radius is large when both adjacent sides are closed
+  // (an outer corner of the body) and 0 when at least one is open.
+  const inset = 3.2; // shore thickness on closed sides
+  const xL = w ? 0 : inset;
+  const xR = e ? 24 : 24 - inset;
+  const yT = n ? 0 : inset;
+  const yB = s ? 24 : 24 - inset;
+
+  // Per-corner radius: round only where BOTH sides meeting at that corner are closed.
+  const rTL = !n && !w ? 4 + r1 * 1.5 : 0;
+  const rTR = !n && !e ? 4 + r2 * 1.5 : 0;
+  const rBR = !s && !e ? 4 + r3 * 1.5 : 0;
+  const rBL = !s && !w ? 4 + r4 * 1.5 : 0;
+
+  // Closed-edge waviness — small sinusoidal bulge in the middle of the edge.
+  // Gives ponds/rivers a hand-drawn organic feel rather than a clean rect.
+  const wave = (open: boolean, amp: number) => (open ? 0 : amp);
+  const topWave = wave(n, 0.6 + r1 * 0.8);
+  const rightWave = wave(e, 0.6 + r2 * 0.8);
+  const botWave = wave(s, 0.6 + r3 * 0.8);
+  const leftWave = wave(w, 0.6 + r4 * 0.8);
+
+  // Compose the water silhouette as a single closed path with quadratic
+  // curves on closed edges and rounded corners between two closed edges.
+  // Coordinates are walked clockwise from top-left + rTL.
+  const cxMid = (xL + xR) / 2;
+  const cyMid = (yT + yB) / 2;
+  const path = [
+    `M ${xL + rTL} ${yT}`,
+    // Top edge → top-right corner
+    n
+      ? `L ${xR - rTR} ${yT}`
+      : `Q ${cxMid} ${yT - topWave} ${xR - rTR} ${yT}`,
+    rTR > 0 ? `Q ${xR} ${yT} ${xR} ${yT + rTR}` : '',
+    // Right edge → bottom-right
+    e
+      ? `L ${xR} ${yB - rBR}`
+      : `Q ${xR + rightWave} ${cyMid} ${xR} ${yB - rBR}`,
+    rBR > 0 ? `Q ${xR} ${yB} ${xR - rBR} ${yB}` : '',
+    // Bottom edge → bottom-left
+    s
+      ? `L ${xL + rBL} ${yB}`
+      : `Q ${cxMid} ${yB + botWave} ${xL + rBL} ${yB}`,
+    rBL > 0 ? `Q ${xL} ${yB} ${xL} ${yB - rBL}` : '',
+    // Left edge → close
+    w
+      ? `L ${xL} ${yT + rTL}`
+      : `Q ${xL - leftWave} ${cyMid} ${xL} ${yT + rTL}`,
+    rTL > 0 ? `Q ${xL} ${yT} ${xL + rTL} ${yT}` : '',
+    'Z',
+  ].filter(Boolean).join(' ');
 
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className="block">
-      {/* Sand base — only visible where the water rect is inset */}
-      <rect width="24" height="24" fill={SHORE} opacity={0.85}/>
-      {/* Deep water fill, full-bleed on open sides */}
-      <rect x={left} y={top} width={wWidth} height={wHeight} fill={WATER_DEEP} opacity={0.55}/>
-      <rect x={left} y={top} width={wWidth} height={wHeight} fill={WATER_MID} opacity={0.35}/>
+      {/* Sand base — only visible where the water shape is inset (closed sides) */}
+      <rect width="24" height="24" fill={SHORE} opacity={0.85} />
+      {/* Slightly darker shore band right against the water for depth */}
+      <path d={path} fill={SHORE_DARK} opacity={0.5} transform="scale(1.06) translate(-0.72 -0.72)" />
+      {/* Deep water fill */}
+      <path d={path} fill={WATER_DEEP} opacity={0.6} />
+      <path d={path} fill={WATER_MID} opacity={0.35} />
       {/* Soft inner ripple — only for isolated puddles, otherwise it segments connected bodies */}
-      {isolated && <ellipse cx="12" cy="12" rx="9" ry="9" fill={WATER_MID} opacity={0.2}/>}
+      {isolated && <ellipse cx="12" cy="12" rx="7" ry="6" fill={WATER_MID} opacity={0.25} />}
       {/* Wave lines — extend to edges on open sides so they flow into neighbors */}
       <path
-        d={`M${w ? -1 : 4} ${10+r1*3} Q7 ${8+r2*2} 12 ${10+r1*2} T${e ? 25 : 20} ${9+r2*3}`}
+        d={`M${w ? -1 : 4} ${10 + r1 * 3} Q7 ${8 + r2 * 2} 12 ${10 + r1 * 2} T${e ? 25 : 20} ${9 + r2 * 3}`}
         stroke="hsl(190 50% 70%)" strokeWidth={1.2} fill="none" opacity={0.6}
       />
       <path
-        d={`M${w ? -1 : 4} ${14+r2*2} Q8 ${12+r1*2} 13 ${14+r2} T${e ? 25 : 20} ${13+r1*2}`}
+        d={`M${w ? -1 : 4} ${14 + r2 * 2} Q8 ${12 + r1 * 2} 13 ${14 + r2} T${e ? 25 : 20} ${13 + r1 * 2}`}
         stroke="white" strokeWidth={0.7} fill="none" opacity={0.4}
       />
       {/* Vertical shimmer on N/S open sides for axis variety */}
       {(n || s) && (
         <path
-          d={`M${10+r1*2} ${n ? -1 : 4} Q${11+r2} 12 ${10+r2*2} ${s ? 25 : 20}`}
+          d={`M${10 + r1 * 2} ${n ? -1 : 4} Q${11 + r2} 12 ${10 + r2 * 2} ${s ? 25 : 20}`}
           stroke="hsl(190 50% 75%)" strokeWidth={0.6} fill="none" opacity={0.35}
         />
       )}
+      {/* Soft ink outline on the water silhouette to sell the hand-drawn look */}
+      <path d={path} stroke={INK.medium} strokeWidth={0.35} fill="none" opacity={0.45} />
       {/* Soft pebble specks on shores */}
-      {!n && <circle cx={6+r1*8} cy={1.5} r={0.5} fill={INK.medium} opacity={0.5}/>}
-      {!s && <circle cx={10+r2*8} cy={22.5} r={0.5} fill={INK.medium} opacity={0.5}/>}
-      {!w && <circle cx={1.5} cy={8+r1*8} r={0.5} fill={INK.medium} opacity={0.5}/>}
-      {!e && <circle cx={22.5} cy={12+r2*8} r={0.5} fill={INK.medium} opacity={0.5}/>}
-      <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
-      <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
+      {!n && <circle cx={6 + r1 * 8} cy={1.5} r={0.5} fill={INK.medium} opacity={0.5} />}
+      {!s && <circle cx={10 + r2 * 8} cy={22.5} r={0.5} fill={INK.medium} opacity={0.5} />}
+      {!w && <circle cx={1.5} cy={8 + r1 * 8} r={0.5} fill={INK.medium} opacity={0.5} />}
+      {!e && <circle cx={22.5} cy={12 + r2 * 8} r={0.5} fill={INK.medium} opacity={0.5} />}
+      <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.3} />
+      <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.3} />
     </svg>
   );
 }

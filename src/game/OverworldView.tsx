@@ -1017,11 +1017,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       
       switch (e.key) {
         case 'ArrowUp': case 'w': case 'W':
-          e.preventDefault(); handleMove(0, -1); break;
+          e.preventDefault(); cancelAutoWalk(); handleMove(0, -1); break;
         case 'ArrowDown': case 's': case 'S':
-          e.preventDefault(); handleMove(0, 1); break;
+          e.preventDefault(); cancelAutoWalk(); handleMove(0, 1); break;
         case 'ArrowLeft': case 'a': case 'A':
-          e.preventDefault(); handleMove(-1, 0); break;
+          e.preventDefault(); cancelAutoWalk(); handleMove(-1, 0); break;
         case 'ArrowRight': case 'd': case 'D':
           e.preventDefault(); handleMove(1, 0); break;
         case 'b': case 'B':

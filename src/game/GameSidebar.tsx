@@ -289,9 +289,9 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
           <div className="flex items-center gap-0.5 sm:gap-1 text-muted-foreground min-w-0" title={locationName}>
             <Map className="w-3 h-3 flex-shrink-0" />
             {locationName ? (
-              <span className="truncate max-w-[140px] sm:max-w-[200px]">
-                <span className="text-foreground font-semibold">{locationName}</span>
-                <span className="ml-1">· F{floor}</span>
+              <span className="truncate max-w-[80px] sm:max-w-[200px]">
+                <span className="text-foreground font-semibold hidden sm:inline">{locationName}</span>
+                <span className="sm:ml-1">F{floor}</span>
               </span>
             ) : (
               <span>F{floor}</span>

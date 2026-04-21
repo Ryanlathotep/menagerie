@@ -24,6 +24,8 @@ interface BuildingContextMenuProps {
   onDisassemble: () => void;
   /** Toggle the gate's banner-side / outward-side. Only used when isGate is true. */
   onFlipGate?: () => void;
+  /** Cycle a stair/ladder's facing direction (n → e → s → w). */
+  onRotateConnector?: () => void;
   onClose: () => void;
 }
 

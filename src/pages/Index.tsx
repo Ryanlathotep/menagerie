@@ -4009,9 +4009,22 @@ function BattleView({
         
         {/* Unified Log - visible scrolling area */}
         <div className="mt-3 p-2 bg-muted/30 rounded-lg border border-border/50 max-h-24 overflow-y-auto">
-          <div className="flex items-center gap-1 mb-1">
-            <ScrollText className="w-3 h-3 text-muted-foreground" />
-            <span className="text-xs font-semibold text-muted-foreground">Log</span>
+          <div className="flex items-center justify-between gap-1 mb-1">
+            <div className="flex items-center gap-1">
+              <ScrollText className="w-3 h-3 text-muted-foreground" />
+              <span className="text-xs font-semibold text-muted-foreground">Log</span>
+            </div>
+            {/* Admin save button - always visible for admins during development */}
+            {isAdmin && (
+              <button
+                className="text-[10px] text-primary hover:underline disabled:opacity-50"
+                onClick={handleManualSave}
+                disabled={cloudSyncing}
+                title={isAuthenticated ? 'Save progress to cloud' : 'Save progress locally'}
+              >
+                {cloudSyncing ? '⏳ Saving…' : `💾 Save${isAuthenticated ? '' : ' (local)'}`}
+              </button>
+            )}
           </div>
           <div className="space-y-0.5">
             {[...gameLog].reverse().slice(0, 5).map((msg, i) => (

@@ -795,12 +795,37 @@ export type MoveResult =
 export function movePlayer(state: OverworldState, dx: number, dy: number): MoveResult {
   const newX = state.playerPosition.x + dx;
   const newY = state.playerPosition.y + dy;
-  
+
   ensureChunksLoaded(state, newX, newY);
-  
+
   const tile = getOverworldTile(state, newX, newY);
   if (!tile) return { type: 'blocked', reason: 'Edge of the world' };
-  
+
+  // ─── Z-transition gate ───
+  // The player can only change elevation at known connectors (ramps, stairs,
+  // ladders) or by walking laterally at the same z. Drops/climbs anywhere
+  // else are blocked. We check this BEFORE the per-tile-type switch so the
+  // existing per-type logic doesn't have to repeat the rule.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const __wt = require('./wallTop') as typeof import('./wallTop');
+  const fromTile = getOverworldTile(state, state.playerPosition.x, state.playerPosition.y);
+  const fromZ = state.playerPosition.z ?? __wt.getTileEffectiveZ(state, state.playerPosition.x, state.playerPosition.y, fromTile);
+  const toZ = __wt.getTileEffectiveZ(state, newX, newY, tile);
+  if (fromZ !== toZ) {
+    // Allowed if EITHER tile is a connector that bridges the two z values,
+    // OR either tile is a ramp (natural cliff connector) at the right z.
+    const fromIsConnector = !!fromTile && fromTile.type === 'player_building'
+      && __wt.isElevationConnectorAt(state, state.playerPosition.x, state.playerPosition.y);
+    const toIsConnector = tile.type === 'player_building'
+      && __wt.isElevationConnectorAt(state, newX, newY);
+    const fromIsRamp = !!fromTile?.isRamp;
+    const toIsRamp = !!tile.isRamp;
+    if (!fromIsConnector && !toIsConnector && !fromIsRamp && !toIsRamp) {
+      if (toZ > fromZ) return { type: 'blocked', reason: 'You need stairs or a ladder to climb up here' };
+      return { type: 'blocked', reason: 'Too far to drop down — find stairs or a ladder' };
+    }
+  }
+
   // Increment total steps and tick resource upgrades
   state.totalSteps = (state.totalSteps || 0) + 1;
   if (!state.resourceUpgrades) state.resourceUpgrades = {};

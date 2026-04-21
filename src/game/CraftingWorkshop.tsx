@@ -129,13 +129,13 @@ export function CraftingWorkshop({
   
   return (
     <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex items-center justify-center p-2">
-      <Card className="w-full max-w-4xl h-[90vh] overflow-hidden flex flex-col">
+      <Card className="w-full max-w-4xl h-[95vh] sm:h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="p-2 border-b flex items-center justify-between shrink-0">
-          <h2 className="text-base font-bold bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
-            🔨 Crafting Workshop
+        <div className="p-2 border-b shrink-0 flex items-center gap-2">
+          <h2 className="text-sm sm:text-base font-bold bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent shrink-0">
+            🔨 <span className="hidden sm:inline">Crafting Workshop</span><span className="sm:hidden">Craft</span>
           </h2>
-          <div className="flex gap-1">
+          <div className="flex gap-1 flex-wrap flex-1 justify-end">
             <Button
               variant={activeTab === 'craft' ? 'default' : 'ghost'}
               size="sm"
@@ -168,8 +168,16 @@ export function CraftingWorkshop({
             >
               ⛏️ Tools
             </Button>
-            <Button variant="ghost" size="sm" className="h-7 px-2" onClick={onClose}>✕</Button>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 px-2 shrink-0"
+            onClick={onClose}
+            aria-label="Close crafting workshop"
+          >
+            ✕
+          </Button>
         </div>
         
         {activeTab === 'craft' ? (
@@ -241,9 +249,9 @@ function CraftingTab({
   handleCraft: () => void;
 }) {
   return (
-    <div className="flex-1 overflow-hidden flex min-h-0">
+    <div className="flex-1 overflow-hidden flex flex-col sm:flex-row min-h-0">
       {/* Recipe List */}
-      <div className="w-1/2 border-r flex flex-col min-h-0">
+      <div className="w-full sm:w-1/2 border-b sm:border-b-0 sm:border-r flex flex-col min-h-0 max-h-[45vh] sm:max-h-none">
         <Tabs defaultValue="common" className="flex-1 flex flex-col min-h-0">
           <TabsList className="w-full grid grid-cols-5 mx-1 my-1 shrink-0">
             <TabsTrigger value="common" className="text-[10px] h-6">Common</TabsTrigger>
@@ -318,10 +326,47 @@ function CraftingTab({
       </div>
       
       {/* Recipe Details & Crafting */}
-      <div className="w-1/2 p-2 flex flex-col min-h-0">
+      <div className="w-full sm:w-1/2 p-2 flex flex-col min-h-0 flex-1">
         <ScrollArea className="flex-1">
           {selectedRecipe ? (
             <div className="space-y-3 pr-2">
+              {/* Crafted item preview with sprite — shown at top so users see it immediately */}
+              {craftedItem && (
+                <div className={`p-2 rounded border-2 ${RARITY_COLORS[craftedItem.rarity].border} ${RARITY_COLORS[craftedItem.rarity].bg} animate-in fade-in slide-in-from-top-2`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[10px] text-muted-foreground">✨ Just Crafted!</p>
+                    <button
+                      onClick={() => setCraftedItem(null)}
+                      className="text-[10px] text-muted-foreground hover:text-foreground px-1"
+                      aria-label="Dismiss"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <EquipmentIcon item={craftedItem} size={32} />
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-semibold truncate ${RARITY_COLORS[craftedItem.rarity].text}`}>
+                        {craftedItem.name}
+                      </p>
+                      <div className="flex flex-wrap gap-0.5 mt-0.5">
+                        {Object.entries(craftedItem.stats).map(([stat, value]) => (
+                          value !== 0 && (
+                            <span 
+                              key={stat} 
+                              className={`text-[9px] px-1 rounded ${value > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
+                            >
+                              {value > 0 ? '+' : ''}{value} {stat.slice(0, 3).toUpperCase()}
+                            </span>
+                          )
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-1 text-center">Sent to town storage</p>
+                </div>
+              )}
+              
               {/* Recipe header with sprite preview */}
               <div className="flex items-center gap-2">
                 <SlotIcon slot={selectedRecipe.resultSlot} size={36} />
@@ -370,33 +415,6 @@ function CraftingTab({
                     </div>
                   </div>
                 </>
-              )}
-              
-              {/* Crafted item preview with sprite */}
-              {craftedItem && (
-                <div className={`p-2 rounded border ${RARITY_COLORS[craftedItem.rarity].border} ${RARITY_COLORS[craftedItem.rarity].bg}`}>
-                  <p className="text-[10px] text-muted-foreground mb-1">Crafted:</p>
-                  <div className="flex items-center gap-2">
-                    <EquipmentIcon item={craftedItem} size={32} />
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-semibold truncate ${RARITY_COLORS[craftedItem.rarity].text}`}>
-                        {craftedItem.name}
-                      </p>
-                      <div className="flex flex-wrap gap-0.5 mt-0.5">
-                        {Object.entries(craftedItem.stats).map(([stat, value]) => (
-                          value !== 0 && (
-                            <span 
-                              key={stat} 
-                              className={`text-[9px] px-1 rounded ${value > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
-                            >
-                              {value > 0 ? '+' : ''}{value} {stat.slice(0, 3).toUpperCase()}
-                            </span>
-                          )
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
               )}
             </div>
           ) : (
@@ -458,9 +476,9 @@ function ConsumablesTab({
   };
 
   return (
-    <div className="flex-1 overflow-hidden flex min-h-0">
+    <div className="flex-1 overflow-hidden flex flex-col sm:flex-row min-h-0">
       {/* Recipe List */}
-      <div className="w-1/2 border-r flex flex-col min-h-0">
+      <div className="w-full sm:w-1/2 border-b sm:border-b-0 sm:border-r flex flex-col min-h-0 max-h-[45vh] sm:max-h-none">
         <Tabs defaultValue="healing" className="flex-1 flex flex-col min-h-0">
           <TabsList className="w-full grid grid-cols-4 mx-1 my-1 shrink-0">
             {Object.entries(typeLabels).map(([type, { label, icon }]) => (
@@ -531,10 +549,36 @@ function ConsumablesTab({
       </div>
       
       {/* Recipe Details & Crafting */}
-      <div className="w-1/2 p-2 flex flex-col min-h-0">
+      <div className="w-full sm:w-1/2 p-2 flex flex-col min-h-0 flex-1">
         <ScrollArea className="flex-1">
           {selectedConsumable ? (
             <div className="space-y-3 pr-2">
+              {/* Crafted consumable confirmation — shown at top so users see it immediately */}
+              {craftedConsumable && (
+                <div className={`p-2 rounded border-2 ${RARITY_COLORS[craftedConsumable.rarity].border} ${RARITY_COLORS[craftedConsumable.rarity].bg} animate-in fade-in slide-in-from-top-2`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[10px] text-muted-foreground">✨ Just Crafted!</p>
+                    <button
+                      onClick={() => setCraftedConsumable(null)}
+                      className="text-[10px] text-muted-foreground hover:text-foreground px-1"
+                      aria-label="Dismiss"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{craftedConsumable.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-semibold truncate ${RARITY_COLORS[craftedConsumable.rarity].text}`}>
+                        {craftedConsumable.name}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground truncate">{craftedConsumable.description}</p>
+                    </div>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-1 text-center">Sent to town storage</p>
+                </div>
+              )}
+              
               {/* Recipe header */}
               <div className="flex items-center gap-2">
                 <span className="text-2xl">{isUnlocked(selectedConsumable) ? selectedConsumable.icon : '❓'}</span>
@@ -583,22 +627,6 @@ function ConsumablesTab({
                   </div>
                 </>
               )}
-              
-              {/* Crafted consumable confirmation */}
-              {craftedConsumable && (
-                <div className={`p-2 rounded border ${RARITY_COLORS[craftedConsumable.rarity].border} ${RARITY_COLORS[craftedConsumable.rarity].bg}`}>
-                  <p className="text-[10px] text-muted-foreground mb-1">Crafted:</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{craftedConsumable.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-semibold truncate ${RARITY_COLORS[craftedConsumable.rarity].text}`}>
-                        {craftedConsumable.name}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground truncate">{craftedConsumable.description}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           ) : (
             <div className="h-full flex items-center justify-center text-center py-8">
@@ -646,9 +674,9 @@ function DismantleTab({
   const previewResult = selectedDismantle ? dismantleEquipment(selectedDismantle) : null;
   
   return (
-    <div className="flex-1 overflow-hidden flex min-h-0">
+    <div className="flex-1 overflow-hidden flex flex-col sm:flex-row min-h-0">
       {/* Equipment List */}
-      <div className="w-1/2 border-r flex flex-col min-h-0">
+      <div className="w-full sm:w-1/2 border-b sm:border-b-0 sm:border-r flex flex-col min-h-0 max-h-[45vh] sm:max-h-none">
         <div className="p-1.5 border-b text-[10px] text-muted-foreground shrink-0">
           Select equipment to break down
         </div>
@@ -695,7 +723,7 @@ function DismantleTab({
       </div>
       
       {/* Dismantle Preview */}
-      <div className="w-1/2 p-2 flex flex-col min-h-0">
+      <div className="w-full sm:w-1/2 p-2 flex flex-col min-h-0 flex-1">
         <ScrollArea className="flex-1">
           {selectedDismantle ? (
             <div className="space-y-3 pr-2">

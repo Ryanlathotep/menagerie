@@ -66,6 +66,7 @@ import { BuildingAssignModal } from './BuildingAssignModal';
 import { BuildingContextMenu } from './BuildingContextMenu';
 import { TileContextMenu } from './TileContextMenu';
 import { EnemyAttackMenu, EnemyAttackTarget } from './EnemyAttackMenu';
+import { isAutoShovelEnabled, toggleAutoShovel, onAutoShovelChange } from './autoShovel';
 import { FARM_OUTPUTS, FARM_GROWTH_STEPS } from './buildings';
 import { 
   NestState, tickNest, spawnNestMonster, findNestSpawnPosition, 
@@ -196,6 +197,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [waterMenu, setWaterMenu] = useState<{ x: number; y: number } | null>(null);
   // Right-click context menu for road tiles (disassemble)
   const [roadMenu, setRoadMenu] = useState<{ x: number; y: number; roadType: 'dirt_road' | 'stone_road' } | null>(null);
+  // Session-only Auto-Shovel toggle (mirrored into local state for re-render).
+  const [autoShovelOn, setAutoShovelOn] = useState<boolean>(isAutoShovelEnabled());
+  useEffect(() => onAutoShovelChange(setAutoShovelOn), []);
   
   // Targeting state
   const [targetingMove, setTargetingMove] = useState<Move | null>(null);
@@ -1820,17 +1824,79 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     )}
 
     {/* Tile Right-Click Context Menu (grass / harvested grass) */}
-    {tileContextMenu && (
-      <TileContextMenu
-        worldX={tileContextMenu.x}
-        worldY={tileContextMenu.y}
-        onBuild={() => {
-          setTileContextMenu(null);
-          setShowBuildPanel(true);
-        }}
-        onClose={() => setTileContextMenu(null)}
-      />
-    )}
+    {tileContextMenu && (() => {
+      const tile = getOverworldTile(overworld, tileContextMenu.x, tileContextMenu.y);
+      const tileLabel = tile?.harvested ? 'Bare ground (dirt)' : 'Open ground';
+      const dist = Math.abs(tileContextMenu.x - overworld.playerPosition.x) + Math.abs(tileContextMenu.y - overworld.playerPosition.y);
+      const moveAvailable = dist === 1;
+
+      // Find the closest visible enemy or nest within Manhattan range 6 of
+      // *this* tile so the player can preview attack options "from here".
+      let nearestTarget: EnemyAttackTarget | null = null;
+      let bestDist = Infinity;
+      const SEARCH_R = 6;
+      for (let dy = -SEARCH_R; dy <= SEARCH_R; dy++) {
+        for (let dx = -SEARCH_R; dx <= SEARCH_R; dx++) {
+          const tx = tileContextMenu.x + dx;
+          const ty = tileContextMenu.y + dy;
+          const t = getOverworldTile(overworld, tx, ty);
+          if (!t || !t.visible) continue;
+          const d = Math.abs(dx) + Math.abs(dy);
+          if (d > SEARCH_R || d >= bestDist) continue;
+          if (t.type === 'enemy' && t.enemyId) {
+            const enemy = getOverworldEnemy(overworld, t.enemyId);
+            if (enemy) {
+              nearestTarget = { enemy, enemyPos: { x: tx, y: ty }, playerPos: overworld.playerPosition };
+              bestDist = d;
+            }
+          } else if (t.type === 'nest' && t.nestId && monster) {
+            const nest = overworld.nests?.[t.nestId];
+            if (nest) {
+              const nestAsMonster: Monster = {
+                ...monster,
+                id: nest.id,
+                name: `${nest.element[0].toUpperCase()}${nest.element.slice(1)} Nest`,
+                element: nest.element,
+                level: nest.level,
+                stats: { ...monster.stats, currentHp: nest.hp, maxHp: nest.maxHp },
+              };
+              nearestTarget = { enemy: nestAsMonster, enemyPos: { x: tx, y: ty }, playerPos: overworld.playerPosition };
+              bestDist = d;
+            }
+          }
+        }
+      }
+
+      return (
+        <TileContextMenu
+          worldX={tileContextMenu.x}
+          worldY={tileContextMenu.y}
+          tileLabel={tileLabel}
+          autoShovelEnabled={autoShovelOn}
+          attackAvailable={!!nearestTarget && !!monster}
+          moveAvailable={moveAvailable}
+          onAttack={nearestTarget ? () => {
+            setAttackMenuTarget(nearestTarget);
+            setTileContextMenu(null);
+          } : undefined}
+          onBuild={() => {
+            setTileContextMenu(null);
+            setShowBuildPanel(true);
+          }}
+          onMoveHere={moveAvailable ? () => {
+            const dx = tileContextMenu.x - overworld.playerPosition.x;
+            const dy = tileContextMenu.y - overworld.playerPosition.y;
+            setTileContextMenu(null);
+            handleMove(dx, dy);
+          } : undefined}
+          onToggleAutoShovel={() => {
+            const next = toggleAutoShovel();
+            toast.info(`Auto-Shovel ${next ? 'enabled' : 'disabled'}`);
+          }}
+          onClose={() => setTileContextMenu(null)}
+        />
+      );
+    })()}
 
     {/* Dungeon Right-Click Waypoint / Enter Menu */}
     {dungeonMenu && (

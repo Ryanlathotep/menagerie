@@ -51,6 +51,7 @@ import { ReviveTargetModal } from '@/game/ReviveTargetModal';
 import { CombatSwitchPanel } from '@/game/CombatSwitchPanel';
 import { LogMessage, createLogMessage, parseLogMessage } from '@/game/GameLog';
 import { isMonsterFavoredOnTerrain, calculateTerrainDamage, TERRAIN_CONFIG, shovelHitsToBreak, rollRuneDrop } from '@/game/terrain';
+import { isAutoShovelEnabled } from '@/game/autoShovel';
 import { 
   RESPAWN_CONFIG, 
   spawnMonsterInHiddenRoom,
@@ -1076,10 +1077,11 @@ function DungeonView({
     }
 
     // Shovel rune harvest: if the player walked onto a rune AND owns a strong
-    // enough shovel, instantly dig it up. Mismatched diggers still took the
-    // backlash damage above (handled in the terrain branch). Single-hit by
-    // design — runes are surface inscriptions, not bedrock.
-    if (result.runeBump) {
+    // enough shovel AND auto-shovel is enabled, instantly dig it up.
+    // Mismatched diggers still took the backlash damage above (handled in the
+    // terrain branch). Single-hit by design — runes are surface inscriptions,
+    // not bedrock.
+    if (result.runeBump && isAutoShovelEnabled()) {
       const shovelTier = state.saveData.tools?.shovel;
       const runeType = result.runeBump.terrainType;
       const needed = shovelHitsToBreak(runeType, shovelTier);

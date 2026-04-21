@@ -943,7 +943,7 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
       const building = state.playerBuildings.find(b => b.id === tile.playerBuildingId);
       if (building && building.type === 'wall') {
         const isGate = isWallActingAsGate(building, state);
-        const targetIsWalkableTop = __wt.isWalkableWallTop(state, newX, newY);
+        const targetIsWalkableTop = isWalkableWallTop(state, newX, newY);
         // Walls block unless they're a gate, OR a walkable wall-top reached
         // from the same z (the top-level z-gate above already vetted z parity).
         if (!isGate && !(targetIsWalkableTop && fromZ === toZ)) {

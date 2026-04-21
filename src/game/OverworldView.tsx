@@ -435,8 +435,60 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       return newState;
     });
   }, [addLog, saveOverworld, state.run, dispatch, processEnemyTurns]);
-  
-  
+
+  // ─── Auto-walk along a tap-to-move path ───
+  // Stores the remaining path as a ref so the interval ticker always sees the
+  // latest queue without re-creating the timer. We also stash handleMove +
+  // overworld in refs to dodge stale closures.
+  const autoWalkPathRef = useRef<Position[] | null>(null);
+  const autoWalkTimerRef = useRef<number | null>(null);
+  const handleMoveRef = useRef(handleMove);
+  const overworldRef = useRef(overworld);
+  useEffect(() => { handleMoveRef.current = handleMove; }, [handleMove]);
+  useEffect(() => { overworldRef.current = overworld; }, [overworld]);
+
+  const cancelAutoWalk = useCallback(() => {
+    if (autoWalkTimerRef.current !== null) {
+      window.clearInterval(autoWalkTimerRef.current);
+      autoWalkTimerRef.current = null;
+    }
+    autoWalkPathRef.current = null;
+  }, []);
+
+  const startAutoWalk = useCallback((path: Position[]) => {
+    cancelAutoWalk();
+    autoWalkPathRef.current = [...path];
+    const stepDelay = Math.max(80, settings.autoRunSpeed || 100);
+    autoWalkTimerRef.current = window.setInterval(() => {
+      const queue = autoWalkPathRef.current;
+      const ow = overworldRef.current;
+      if (!queue || queue.length === 0 || !ow) {
+        cancelAutoWalk();
+        return;
+      }
+      // Stop if a visible enemy is on the field — mirrors auto-run behaviour.
+      const enemiesNearby = getVisibleOverworldEnemies(ow, 6);
+      if (enemiesNearby.length > 0) {
+        cancelAutoWalk();
+        addLog('⚠️ Stopped — enemy spotted!', 'info');
+        return;
+      }
+      const next = queue.shift()!;
+      const dx = next.x - ow.playerPosition.x;
+      const dy = next.y - ow.playerPosition.y;
+      // If pathfinder result is no longer a single step from us, abort.
+      if (Math.abs(dx) + Math.abs(dy) !== 1) {
+        cancelAutoWalk();
+        return;
+      }
+      handleMoveRef.current(dx, dy);
+      if (queue.length === 0) cancelAutoWalk();
+    }, stepDelay);
+  }, [cancelAutoWalk, settings.autoRunSpeed, addLog]);
+
+  // Cancel auto-walk on unmount.
+  useEffect(() => () => cancelAutoWalk(), [cancelAutoWalk]);
+
   // ─── Attack targeting ───
   const handleUseMoveOnMap = useCallback((move: Move | EvolvedMove) => {
     if (!state.run || !monster) return;

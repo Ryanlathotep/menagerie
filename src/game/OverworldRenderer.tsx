@@ -290,9 +290,10 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
                 width: tileSize,
                 height: tileSize,
               }}
-              onClick={() => onTileClick?.(worldX, worldY)}
+              onClick={() => handleTileTap(worldX, worldY)}
               onContextMenu={(e) => {
                 e.preventDefault();
+                lastTapRef.current = null;
                 onTileRightClick?.(worldX, worldY);
               }}
               onMouseEnter={() => onTileHover?.(worldX, worldY)}

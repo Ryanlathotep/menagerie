@@ -333,16 +333,16 @@ export function EquipmentView({
               </Button>
             )}
           </div>
-          
+
           {/* Inventory Section */}
-          <div className="w-1/2 p-4 flex flex-col">
+          <div className="p-3 flex flex-col">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold">
+              <h3 className="font-semibold text-sm">
                 {selectedSlot ? `${SLOT_INFO[selectedSlot].label}s` : 'Inventory'}
               </h3>
               {selectedSlot && (
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="sm"
                   onClick={() => setSelectedSlot(null)}
                 >
@@ -350,7 +350,7 @@ export function EquipmentView({
                 </Button>
               )}
             </div>
-            
+
             {/* Sort controls */}
             <div className="mb-3">
               <EquipmentSortControls
@@ -359,38 +359,36 @@ export function EquipmentView({
                 onAutoEquip={handleAutoEquip}
               />
             </div>
-            
-            <ScrollArea className="flex-1">
-              <div className="space-y-2 pr-4">
-                {sortedInventory.length > 0 ? (
-                  sortedInventory.map(item => (
-                    <DraggableEquipmentItem
-                      key={item.id}
-                      item={item}
-                      currentLevel={monster.level}
-                      onEquip={() => onEquip(item, selectedPartyIndex)}
-                      onDrop={() => onDrop(item.id)}
-                      isDragging={draggedItem?.item.id === item.id}
-                      onDragStart={handleDragStart}
-                      onDragEnd={handleDragEnd}
-                    />
-                  ))
-                ) : (
-                  <div className="text-center text-muted-foreground py-8">
-                    <p className="text-4xl mb-2">📦</p>
-                    <p className="text-sm">
-                      {selectedSlot 
-                        ? `No ${SLOT_INFO[selectedSlot].label.toLowerCase()}s in inventory`
-                        : 'No equipment in inventory'
-                      }
-                    </p>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
+
+            <div className="space-y-2">
+              {sortedInventory.length > 0 ? (
+                sortedInventory.map(item => (
+                  <DraggableEquipmentItem
+                    key={item.id}
+                    item={item}
+                    currentLevel={monster.level}
+                    onEquip={() => onEquip(item, selectedPartyIndex)}
+                    onDrop={() => onDrop(item.id)}
+                    isDragging={draggedItem?.item.id === item.id}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                  />
+                ))
+              ) : (
+                <div className="text-center text-muted-foreground py-8">
+                  <p className="text-4xl mb-2">📦</p>
+                  <p className="text-sm">
+                    {selectedSlot
+                      ? `No ${SLOT_INFO[selectedSlot].label.toLowerCase()}s in inventory`
+                      : 'No equipment in inventory'
+                    }
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </Card>
+      </ScrollArea>
     </div>
   );
 }

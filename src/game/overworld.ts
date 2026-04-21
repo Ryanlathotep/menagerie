@@ -8,7 +8,7 @@ import {
   TreeTier, StoneTier, ResourceUpgradeState,
   TREE_TIER_DATA, STONE_TIER_DATA,
   getInitialTreeTier, getInitialStoneTier,
-  tickResourceUpgrades,
+  tickResourceUpgrades, jitterUpgradeSteps,
 } from './resourceHierarchy';
 import { isCreativeMode } from './creativeMode';
 
@@ -28,6 +28,7 @@ export interface OverworldTile {
   buildingType?: BuildingType;
   resourceAmount?: number; // For trees/rocks - how much resource is left
   harvested?: boolean;
+  lastHarvestType?: 'tree' | 'rock'; // What was harvested here — used by regrowth pass
   dungeonId?: string; // For dungeon_entrance tiles - links to DungeonEntrance
   playerBuildingId?: string; // For player_building tiles
   nestId?: string; // For nest tiles
@@ -384,7 +385,10 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
         if (resourceUpgrades && TREE_TIER_DATA[treeTier].upgradeSteps) {
           const resKey = `${worldX},${worldY}`;
           if (!resourceUpgrades[resKey]) {
-            resourceUpgrades[resKey] = { treeTier, stepsUntilUpgrade: TREE_TIER_DATA[treeTier].upgradeSteps! };
+            resourceUpgrades[resKey] = {
+              treeTier,
+              stepsUntilUpgrade: jitterUpgradeSteps(TREE_TIER_DATA[treeTier].upgradeSteps!, worldX, worldY, 1),
+            };
           }
         }
       }
@@ -395,7 +399,10 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
         if (resourceUpgrades && STONE_TIER_DATA[stoneTier].upgradeSteps) {
           const resKey = `${worldX},${worldY}`;
           if (!resourceUpgrades[resKey]) {
-            resourceUpgrades[resKey] = { stoneTier, stepsUntilUpgrade: STONE_TIER_DATA[stoneTier].upgradeSteps! };
+            resourceUpgrades[resKey] = {
+              stoneTier,
+              stepsUntilUpgrade: jitterUpgradeSteps(STONE_TIER_DATA[stoneTier].upgradeSteps!, worldX, worldY, 2),
+            };
           }
         }
       }
@@ -504,21 +511,77 @@ export function setOverworldTile(state: OverworldState, worldX: number, worldY: 
   }
 }
 
-// ─── Resource spreading ───
-// Mature trees and rocks slowly seed adjacent grass tiles, growing groves
-// and outcrops over time. Called every 500 player steps.
+// ─── Resource spreading & regrowth ───
+// Mature trees and rocks slowly seed nearby grass tiles, growing groves and
+// outcrops over time. Harvested patches also have a small independent chance
+// to regrow into an entry-tier resource so the world never strip-mines bare.
+// Called every 500 player steps.
 //   - Considers tiles within an 8-tile box of the player so off-screen worlds
 //     don't churn (and unloaded chunks are simply skipped).
-//   - Only spreads onto plain grass (not harvested, no road, no building).
-//   - Only mature (Maple/Elder, or Copper+) tiles are fertile, so brand-new
-//     Oaks/Stones don't immediately propagate.
-//   - 10% chance per fertile tile, then a single random adjacent grass cell
-//     becomes a brand-new Oak / Stone (entry-tier).
+//   - Spread: only mature (Maple/Elder, or Copper+) tiles are fertile.
+//     10% chance per fertile tile, then a single random adjacent grass cell
+//     (plain OR harvested, no road/building) becomes a brand-new Oak / Stone.
+//   - Regrowth: every harvested grass tile rolls 4% per pass to spontaneously
+//     grow back as an Oak (or Stone if its neighbors are mostly rocky).
 function spreadResources(state: OverworldState, centerX: number, centerY: number): void {
   const RANGE = 8;
   const SPREAD_CHANCE = 0.10;
+  const REGROW_CHANCE = 0.04;
   const seedBase = state.totalSteps * 31;
 
+  // Pass 1: harvested-tile regrowth (independent of mature neighbors)
+  for (let dy = -RANGE; dy <= RANGE; dy++) {
+    for (let dx = -RANGE; dx <= RANGE; dx++) {
+      const wx = centerX + dx;
+      const wy = centerY + dy;
+      const tile = getOverworldTile(state, wx, wy);
+      if (!tile || tile.type !== 'grass' || !tile.harvested) continue;
+      if (state.roads?.[`${wx},${wy}`]) continue;
+      if (wx === state.playerPosition.x && wy === state.playerPosition.y) continue;
+
+      const roll = seededRandom(seedBase + wx * 197 + wy * 311 + 5);
+      if (roll > REGROW_CHANCE) continue;
+
+      // Decide tree vs rock based on what type was harvested last (stored in
+      // tile.lastHarvestType if present), else weighted toward trees on grass.
+      const wantsRock = tile.lastHarvestType === 'rock'
+        || (!tile.lastHarvestType && seededRandom(seedBase + wx * 41 + wy * 67) < 0.25);
+
+      if (wantsRock) {
+        const newTier: StoneTier = 'stone';
+        setOverworldTile(state, wx, wy, {
+          ...tile,
+          type: 'rock',
+          stoneTier: newTier,
+          resourceAmount: STONE_TIER_DATA[newTier].totalHits,
+          harvested: false,
+        });
+        if (STONE_TIER_DATA[newTier].upgradeSteps) {
+          state.resourceUpgrades[`${wx},${wy}`] = {
+            stoneTier: newTier,
+            stepsUntilUpgrade: jitterUpgradeSteps(STONE_TIER_DATA[newTier].upgradeSteps!, wx, wy, state.totalSteps),
+          };
+        }
+      } else {
+        const newTier: TreeTier = 'oak';
+        setOverworldTile(state, wx, wy, {
+          ...tile,
+          type: 'tree',
+          treeTier: newTier,
+          resourceAmount: TREE_TIER_DATA[newTier].totalHits,
+          harvested: false,
+        });
+        if (TREE_TIER_DATA[newTier].upgradeSteps) {
+          state.resourceUpgrades[`${wx},${wy}`] = {
+            treeTier: newTier,
+            stepsUntilUpgrade: jitterUpgradeSteps(TREE_TIER_DATA[newTier].upgradeSteps!, wx, wy, state.totalSteps),
+          };
+        }
+      }
+    }
+  }
+
+  // Pass 2: mature-tile spread to adjacent grass
   for (let dy = -RANGE; dy <= RANGE; dy++) {
     for (let dx = -RANGE; dx <= RANGE; dx++) {
       const wx = centerX + dx;
@@ -533,7 +596,7 @@ function spreadResources(state: OverworldState, centerX: number, centerY: number
       const roll = seededRandom(seedBase + wx * 73 + wy * 131);
       if (roll > SPREAD_CHANCE) continue;
 
-      // Pick one of the 4 cardinal neighbors that is plain grass and free.
+      // Pick one of the 4 cardinal neighbors that is grass and free.
       const dirs: Array<[number, number]> = [[0, -1], [1, 0], [0, 1], [-1, 0]];
       const pick = Math.floor(seededRandom(seedBase + wx * 17 + wy * 53 + 7) * 4);
       for (let i = 0; i < 4; i++) {
@@ -542,10 +605,9 @@ function spreadResources(state: OverworldState, centerX: number, centerY: number
         const ny = wy + ddy;
         const nTile = getOverworldTile(state, nx, ny);
         if (!nTile) continue;
-        // Don't overwrite roads, buildings, water, enemies, harvested patches, etc.
-        if (nTile.type !== 'grass' || nTile.harvested) continue;
+        // Allow seeding onto plain OR harvested grass (regrowing the dirt patch).
+        if (nTile.type !== 'grass') continue;
         if (state.roads?.[`${nx},${ny}`]) continue;
-        // Don't seed on top of the player (avoid surprise blocking).
         if (nx === state.playerPosition.x && ny === state.playerPosition.y) continue;
 
         if (isFertileTree) {
@@ -560,7 +622,7 @@ function spreadResources(state: OverworldState, centerX: number, centerY: number
           if (TREE_TIER_DATA[newTier].upgradeSteps) {
             state.resourceUpgrades[`${nx},${ny}`] = {
               treeTier: newTier,
-              stepsUntilUpgrade: TREE_TIER_DATA[newTier].upgradeSteps!,
+              stepsUntilUpgrade: jitterUpgradeSteps(TREE_TIER_DATA[newTier].upgradeSteps!, nx, ny, state.totalSteps),
             };
           }
         } else if (isFertileRock) {
@@ -575,7 +637,7 @@ function spreadResources(state: OverworldState, centerX: number, centerY: number
           if (STONE_TIER_DATA[newTier].upgradeSteps) {
             state.resourceUpgrades[`${nx},${ny}`] = {
               stoneTier: newTier,
-              stepsUntilUpgrade: STONE_TIER_DATA[newTier].upgradeSteps!,
+              stepsUntilUpgrade: jitterUpgradeSteps(STONE_TIER_DATA[newTier].upgradeSteps!, nx, ny, state.totalSteps),
             };
           }
         }
@@ -716,6 +778,7 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
         delete state.resourceUpgrades[resKey];
         tile.type = 'grass';
         tile.harvested = true;
+        tile.lastHarvestType = 'tree';
         tile.treeTier = undefined;
       }
       state.woodCollected += amount;
@@ -740,6 +803,7 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
         delete state.resourceUpgrades[resKey];
         tile.type = 'grass';
         tile.harvested = true;
+        tile.lastHarvestType = 'rock';
         tile.stoneTier = undefined;
       }
       state.stoneCollected += amount;

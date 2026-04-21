@@ -152,6 +152,15 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
+// Apply ±40% jitter to a base step count so a freshly-generated cluster of
+// trees/stones doesn't all upgrade on the same tick. Deterministic per tile.
+export function jitterUpgradeSteps(baseSteps: number, worldX: number, worldY: number, salt = 0): number {
+  if (baseSteps <= 0) return baseSteps;
+  const r = seededRandom(worldX * 374761393 + worldY * 668265263 + salt + 9173);
+  const factor = 0.6 + r * 0.8; // 0.6x — 1.4x
+  return Math.max(1, Math.round(baseSteps * factor));
+}
+
 // ============= RESOURCE UPGRADE TRACKING =============
 // Stored in OverworldState, keyed by "x,y"
 
@@ -173,12 +182,16 @@ export function tickResourceUpgrades(
 
     res.stepsUntilUpgrade -= 1;
     if (res.stepsUntilUpgrade <= 0) {
+      const [kx, ky] = key.split(',').map(Number);
       if (res.treeTier) {
         const next = getNextTreeTier(res.treeTier);
         if (next) {
           res.treeTier = next;
           const tierData = TREE_TIER_DATA[next];
-          res.stepsUntilUpgrade = tierData.upgradeSteps ?? 0;
+          // Jitter the next-tier countdown so siblings don't re-sync.
+          res.stepsUntilUpgrade = tierData.upgradeSteps
+            ? jitterUpgradeSteps(tierData.upgradeSteps, kx, ky, 1)
+            : 0;
           upgrades.push({ key, type: 'tree', newTier: next });
         }
       } else if (res.stoneTier) {
@@ -186,7 +199,9 @@ export function tickResourceUpgrades(
         if (next) {
           res.stoneTier = next;
           const tierData = STONE_TIER_DATA[next];
-          res.stepsUntilUpgrade = tierData.upgradeSteps ?? 0;
+          res.stepsUntilUpgrade = tierData.upgradeSteps
+            ? jitterUpgradeSteps(tierData.upgradeSteps, kx, ky, 2)
+            : 0;
           upgrades.push({ key, type: 'stone', newTier: next });
         }
       }

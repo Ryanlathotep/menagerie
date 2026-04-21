@@ -654,9 +654,9 @@ function DismantleTab({
   const previewResult = selectedDismantle ? dismantleEquipment(selectedDismantle) : null;
   
   return (
-    <div className="flex-1 overflow-hidden flex min-h-0">
+    <div className="flex-1 overflow-hidden flex flex-col sm:flex-row min-h-0">
       {/* Equipment List */}
-      <div className="w-1/2 border-r flex flex-col min-h-0">
+      <div className="w-full sm:w-1/2 border-b sm:border-b-0 sm:border-r flex flex-col min-h-0 max-h-[45vh] sm:max-h-none">
         <div className="p-1.5 border-b text-[10px] text-muted-foreground shrink-0">
           Select equipment to break down
         </div>

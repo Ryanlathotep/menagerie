@@ -8,7 +8,7 @@ import {
   TreeTier, StoneTier, ResourceUpgradeState,
   TREE_TIER_DATA, STONE_TIER_DATA,
   getInitialTreeTier, getInitialStoneTier,
-  tickResourceUpgrades,
+  tickResourceUpgrades, jitterUpgradeSteps,
 } from './resourceHierarchy';
 import { isCreativeMode } from './creativeMode';
 

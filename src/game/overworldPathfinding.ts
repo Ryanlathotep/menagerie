@@ -45,6 +45,8 @@ function isTraversable(tile: OverworldTile | null, state: OverworldState): boole
     case 'rock':
     case 'enemy':
     case 'nest':
+    case 'cliff':
+    case 'waterfall':
       return false;
     default:
       return false;

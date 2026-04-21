@@ -642,3 +642,225 @@ export function OverworldFogTile({ size }: { size: number }) {
     </svg>
   );
 }
+
+// ─── Cliff face ───
+// A vertical hatched stone face. Rendered taller than its tile so the south
+// face spills over into the lower neighbor and creates the elevation illusion.
+// `drops` tells us which sides drop down — that's where shadows go.
+// `elevation` (0-5) adjusts the colour: higher = darker, more dramatic.
+export function OverworldCliffTile({
+  size,
+  seed = 0,
+  drops,
+  elevation = 1,
+}: TileGraphicProps & {
+  drops?: { n: boolean; e: boolean; s: boolean; w: boolean };
+  elevation?: number;
+}) {
+  const r1 = seededRandom(seed);
+  const r2 = seededRandom(seed + 1);
+  const r3 = seededRandom(seed + 2);
+  // Higher elevations get progressively cooler/darker tones.
+  const lightness = Math.max(35, 60 - elevation * 5);
+  const baseFill = `hsl(30 12% ${lightness}%)`;
+  const shadow   = `hsl(30 18% ${Math.max(20, lightness - 18)}%)`;
+  const highlight = `hsl(40 20% ${Math.min(78, lightness + 18)}%)`;
+  const dropS = drops?.s;
+  const dropE = drops?.e;
+  const dropW = drops?.w;
+  const dropN = drops?.n;
+
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className="block" style={{ overflow: 'visible' }}>
+      {/* Base stone fill */}
+      <rect width="24" height="24" fill={baseFill} opacity={0.95}/>
+      {/* Vertical hatching — ink strokes suggesting a sheer face */}
+      <line x1={4 + r1 * 2} y1={2} x2={4 + r1 * 2} y2={22} stroke={INK.dark} strokeWidth={0.7} opacity={0.55}/>
+      <line x1={9 + r2 * 2} y1={2} x2={9 + r2 * 2} y2={22} stroke={INK.dark} strokeWidth={0.6} opacity={0.5}/>
+      <line x1={14 + r3 * 2} y1={2} x2={14 + r3 * 2} y2={22} stroke={INK.dark} strokeWidth={0.7} opacity={0.55}/>
+      <line x1={19 + r1 * 2} y1={2} x2={19 + r1 * 2} y2={22} stroke={INK.dark} strokeWidth={0.6} opacity={0.5}/>
+      {/* Cracks */}
+      <path d={`M${6 + r1 * 3} ${4 + r2 * 3} L${8 + r2 * 2} ${10 + r3 * 3} L${5 + r3 * 2} ${16 + r1 * 3}`}
+            stroke={INK.dark} strokeWidth={0.4} fill="none" opacity={0.6}/>
+      <path d={`M${15 + r2 * 3} ${5 + r1 * 3} L${17 + r3 * 2} ${12 + r2 * 3} L${14 + r1 * 2} ${18 + r3 * 3}`}
+            stroke={INK.dark} strokeWidth={0.4} fill="none" opacity={0.5}/>
+      {/* Edge highlights along the dropping sides — catches light from above */}
+      {dropN && <line x1="0" y1="1" x2="24" y2="1" stroke={highlight} strokeWidth={1.2} opacity={0.8}/>}
+      {dropS && (
+        <>
+          {/* Drop shadow spilling down into the lower neighbor */}
+          <rect x="0" y="22" width="24" height="6" fill={shadow} opacity={0.55}/>
+          <line x1="0" y1="23" x2="24" y2="23" stroke={INK.dark} strokeWidth={0.8} opacity={0.85}/>
+        </>
+      )}
+      {dropE && (
+        <>
+          <rect x="22" y="0" width="6" height="24" fill={shadow} opacity={0.4}/>
+          <line x1="23" y1="0" x2="23" y2="24" stroke={INK.dark} strokeWidth={0.7} opacity={0.75}/>
+        </>
+      )}
+      {dropW && <line x1="1" y1="0" x2="1" y2="24" stroke={INK.dark} strokeWidth={0.7} opacity={0.75}/>}
+      {/* Tile grid lines — lighter than usual so they don't dominate */}
+      <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.2}/>
+      <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.2}/>
+    </svg>
+  );
+}
+
+// ─── Ramp ───
+// Walkable diagonal slope. Direction is which way it climbs UP (so a 's'
+// ramp climbs up toward the south = its south edge is the high side).
+// `hasStairs` overlays a stone-road style stair pattern.
+export function OverworldRampTile({
+  size,
+  seed = 0,
+  direction = 's',
+  hasStairs,
+}: TileGraphicProps & {
+  direction?: 'n' | 's' | 'e' | 'w';
+  hasStairs?: boolean;
+}) {
+  const r1 = seededRandom(seed);
+  // Gradient runs from the LOW edge (lighter, sunlit) to the HIGH edge (darker, in shadow).
+  // We draw a diagonal slope band using a linear gradient.
+  const gradId = `ramp-grad-${seed}`;
+  // Direction → from/to coordinates of the gradient.
+  const grad = (() => {
+    switch (direction) {
+      case 'n': return { x1: '50%', y1: '100%', x2: '50%', y2: '0%' };  // climbs up = north
+      case 's': return { x1: '50%', y1: '0%',   x2: '50%', y2: '100%' };
+      case 'e': return { x1: '0%',  y1: '50%',  x2: '100%', y2: '50%' };
+      case 'w': return { x1: '100%', y1: '50%', x2: '0%',  y2: '50%' };
+    }
+  })();
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className="block">
+      <defs>
+        <linearGradient id={gradId} x1={grad.x1} y1={grad.y1} x2={grad.x2} y2={grad.y2}>
+          <stop offset="0%" stopColor="hsl(40 25% 65%)" stopOpacity={0.85}/>
+          <stop offset="100%" stopColor="hsl(30 18% 38%)" stopOpacity={0.9}/>
+        </linearGradient>
+      </defs>
+      {/* Slope band */}
+      <rect width="24" height="24" fill={`url(#${gradId})`}/>
+      {/* Subtle edge stones along both flanks */}
+      <circle cx={3} cy={4 + r1 * 2} r={1.2} fill={INK.medium} opacity={0.45}/>
+      <circle cx={21} cy={20 - r1 * 2} r={1.0} fill={INK.medium} opacity={0.4}/>
+      {/* Chevrons pointing UP the slope so the player can read the direction */}
+      {(() => {
+        const chev = (cx: number, cy: number) => {
+          // Chevron rotated to point in `direction`.
+          const rot =
+            direction === 'n' ? 0 :
+            direction === 'e' ? 90 :
+            direction === 's' ? 180 :
+            270;
+          return (
+            <g transform={`translate(${cx} ${cy}) rotate(${rot})`}>
+              <path d="M-3 1 L0 -2 L3 1" stroke={INK.dark} strokeWidth={0.9} fill="none"
+                    strokeLinecap="round" strokeLinejoin="round" opacity={0.7}/>
+            </g>
+          );
+        };
+        return (
+          <>
+            {chev(12, 8)}
+            {chev(12, 14)}
+          </>
+        );
+      })()}
+      {/* Stair overlay (when the player has laid a stair-road on this ramp) */}
+      {hasStairs && (() => {
+        // Horizontal lines stepping up the slope. Aligns with road aesthetic.
+        const lines: React.ReactNode[] = [];
+        const isVertical = direction === 'n' || direction === 's';
+        for (let i = 1; i < 6; i++) {
+          if (isVertical) {
+            lines.push(<line key={i} x1={3} y1={i * 4} x2={21} y2={i * 4}
+              stroke="hsl(30 18% 28%)" strokeWidth={0.8} opacity={0.85}/>);
+          } else {
+            lines.push(<line key={i} x1={i * 4} y1={3} x2={i * 4} y2={21}
+              stroke="hsl(30 18% 28%)" strokeWidth={0.8} opacity={0.85}/>);
+          }
+        }
+        return <>{lines}</>;
+      })()}
+      {/* Grid lines */}
+      <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
+      <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
+    </svg>
+  );
+}
+
+// ─── Waterfall ───
+// Animated cascading water. Direction is the side it cascades TOWARD (down
+// to the lower neighbor). Uses CSS keyframes for the flow animation —
+// reusing the same approach as the ambient water shimmer.
+export function OverworldWaterfallTile({
+  size,
+  seed = 0,
+  direction = 's',
+}: TileGraphicProps & { direction?: 'n' | 's' | 'e' | 'w' }) {
+  const r1 = seededRandom(seed);
+  const animId = `waterfall-flow-${seed}`;
+  // Flow goes from the HIGH side (top of cascade) to the LOW side (bottom).
+  // For a 's' waterfall the water flows downward, so streaks animate top→bottom.
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className="block">
+      <defs>
+        <style>{`
+          @keyframes ${animId} {
+            0%   { transform: translateY(0); opacity: 0.85; }
+            50%  { opacity: 1; }
+            100% { transform: translateY(${direction === 's' ? 6 : direction === 'n' ? -6 : 0}px)
+                              translateX(${direction === 'e' ? 6 : direction === 'w' ? -6 : 0}px);
+                   opacity: 0.85; }
+          }
+          .wf-streak-${seed} { animation: ${animId} 0.8s ease-in-out infinite alternate; }
+        `}</style>
+      </defs>
+      {/* Background water tone */}
+      <rect width="24" height="24" fill="hsl(200 55% 68%)" opacity={0.55}/>
+      {/* Cascading streaks — vertical for n/s, horizontal for e/w */}
+      <g className={`wf-streak-${seed}`}>
+        {(direction === 's' || direction === 'n') ? (
+          <>
+            <line x1={5 + r1 * 2}  y1={1} x2={5 + r1 * 2}  y2={23}
+                  stroke="hsl(195 80% 90%)" strokeWidth={1.6} opacity={0.85} strokeLinecap="round"/>
+            <line x1={11 + r1}     y1={2} x2={11 + r1}     y2={22}
+                  stroke="hsl(200 90% 95%)" strokeWidth={2.0} opacity={0.95} strokeLinecap="round"/>
+            <line x1={17 - r1 * 2} y1={1} x2={17 - r1 * 2} y2={23}
+                  stroke="hsl(195 80% 90%)" strokeWidth={1.4} opacity={0.8} strokeLinecap="round"/>
+            <line x1={20 - r1}     y1={3} x2={20 - r1}     y2={21}
+                  stroke="hsl(200 75% 85%)" strokeWidth={1.2} opacity={0.7} strokeLinecap="round"/>
+          </>
+        ) : (
+          <>
+            <line x1={1} y1={5 + r1 * 2}  x2={23} y2={5 + r1 * 2}
+                  stroke="hsl(195 80% 90%)" strokeWidth={1.6} opacity={0.85} strokeLinecap="round"/>
+            <line x1={2} y1={11 + r1}     x2={22} y2={11 + r1}
+                  stroke="hsl(200 90% 95%)" strokeWidth={2.0} opacity={0.95} strokeLinecap="round"/>
+            <line x1={1} y1={17 - r1 * 2} x2={23} y2={17 - r1 * 2}
+                  stroke="hsl(195 80% 90%)" strokeWidth={1.4} opacity={0.8} strokeLinecap="round"/>
+          </>
+        )}
+      </g>
+      {/* Foam at the impact edge */}
+      {direction === 's' && (
+        <ellipse cx={12} cy={22} rx={9} ry={1.6} fill="hsl(200 60% 96%)" opacity={0.85}/>
+      )}
+      {direction === 'n' && (
+        <ellipse cx={12} cy={2} rx={9} ry={1.6} fill="hsl(200 60% 96%)" opacity={0.85}/>
+      )}
+      {direction === 'e' && (
+        <ellipse cx={22} cy={12} rx={1.6} ry={9} fill="hsl(200 60% 96%)" opacity={0.85}/>
+      )}
+      {direction === 'w' && (
+        <ellipse cx={2} cy={12} rx={1.6} ry={9} fill="hsl(200 60% 96%)" opacity={0.85}/>
+      )}
+      {/* Grid lines */}
+      <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
+      <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
+    </svg>
+  );
+}

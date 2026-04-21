@@ -9,6 +9,7 @@ import {
   OverworldRockTile, OverworldWaterTile, OverworldBuildingTile,
   OverworldDungeonTile, OverworldFogTile, OverworldNestTile,
   OverworldDirtRoadTile, OverworldStoneRoadTile,
+  OverworldCliffTile, OverworldRampTile, OverworldWaterfallTile,
 } from './OverworldTileGraphics';
 import { OverworldBuildingTileGraphic } from './OverworldBuildingTileGraphics';
 import { PlayerBuilding, isWallActingAsGate, getGateAxis, getGateInsideDirection, wallConnectsTo, roadConnectsTo } from './buildings';
@@ -62,9 +63,21 @@ function renderTileGraphic(
     return <OverworldFogTile size={tileSize} />;
   }
   switch (tile.type) {
-    case 'grass': return tile.harvested
-      ? <OverworldHarvestedTile size={tileSize} seed={seed} />
-      : <OverworldGrassTile size={tileSize} seed={seed} />;
+    case 'grass': {
+      // Ramps are walkable grass with a slope graphic.
+      if (tile.isRamp) {
+        return <OverworldRampTile size={tileSize} seed={seed}
+                  direction={tile.rampDirection} hasStairs={tile.hasStairs} />;
+      }
+      return tile.harvested
+        ? <OverworldHarvestedTile size={tileSize} seed={seed} />
+        : <OverworldGrassTile size={tileSize} seed={seed} />;
+    }
+    case 'cliff':
+      return <OverworldCliffTile size={tileSize} seed={seed}
+                drops={tile.cliffDrops} elevation={tile.elevation} />;
+    case 'waterfall':
+      return <OverworldWaterfallTile size={tileSize} seed={seed} direction={tile.waterfallDir} />;
     case 'tree': {
       const isTree = (x: number, y: number) => getOverworldTile(state, x, y)?.type === 'tree';
       const fit = fitFromNeighbors(

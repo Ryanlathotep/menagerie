@@ -11,12 +11,13 @@ import {
   tickResourceUpgrades, jitterUpgradeSteps,
 } from './resourceHierarchy';
 import { isCreativeMode } from './creativeMode';
+import { getTileElevation, getCliffDrops, pickRampHere, shouldBeWaterfall } from './elevation';
 
 const ALL_SPECIES = Object.keys(SPECIES_DATA) as SpeciesType[];
 
 // ============= TYPES =============
 
-export type OverworldTileType = 'grass' | 'tree' | 'rock' | 'water' | 'building' | 'enemy' | 'player' | 'dungeon_entrance' | 'player_building' | 'nest' | 'dirt_road' | 'stone_road';
+export type OverworldTileType = 'grass' | 'tree' | 'rock' | 'water' | 'building' | 'enemy' | 'player' | 'dungeon_entrance' | 'player_building' | 'nest' | 'dirt_road' | 'stone_road' | 'cliff' | 'waterfall';
 
 export type BuildingType = 'campfire' | 'log_cabin' | 'town_hall';
 
@@ -34,6 +35,13 @@ export interface OverworldTile {
   nestId?: string; // For nest tiles
   treeTier?: TreeTier;   // Resource hierarchy tier for trees
   stoneTier?: StoneTier; // Resource hierarchy tier for rocks
+  // ─── Elevation system ───
+  elevation?: number;             // 0-5; undefined treated as 0 (legacy saves)
+  cliffDrops?: { n: boolean; e: boolean; s: boolean; w: boolean }; // sides that drop down
+  isRamp?: boolean;               // Passable cliff opening — connects two elevation levels
+  rampDirection?: 'n' | 's' | 'e' | 'w'; // direction the ramp climbs UP toward
+  hasStairs?: boolean;            // Stair-style stone road laid on a ramp
+  waterfallDir?: 'n' | 's' | 'e' | 'w'; // direction water cascades toward (for waterfall tiles)
 }
 
 export interface OverworldChunk {
@@ -420,6 +428,66 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
         tile.enemyId = enemy.id;
       }
       
+      // ─── Elevation pass ───
+      // Compute elevation for this tile and decide whether it should become a
+      // cliff face, ramp, or waterfall. Cliffs/waterfalls override tree/rock
+      // (so a high-elevation crag becomes a sheer cliff instead of a rock
+      // outcrop). Ramps stay walkable grass underneath but carry directional
+      // metadata for the renderer.
+      const tileElev = getTileElevation(worldX, worldY, biome);
+      tile.elevation = tileElev;
+      // Use a chunk-local biome lookup that doesn't trigger recursive
+      // chunk-load: if a neighbor is in this chunk we read its elevation
+      // directly from biome noise, never from state.
+      const getBiomeAtLocal = (qx: number, qy: number) => getBiomeElement(qx, qy);
+      const drops = getCliffDrops(worldX, worldY, biome, getBiomeAtLocal);
+
+      if (drops.any) {
+        tile.cliffDrops = { n: drops.n, e: drops.e, s: drops.s, w: drops.w };
+
+        // Waterfall takes priority: a water tile dropping to a lower neighbor
+        // becomes a passable-looking but movement-blocking cascade.
+        if (shouldBeWaterfall(worldX, worldY, biome, (qx, qy) => {
+          // Approximate "is water" using the same logic as the main pass
+          // (lake or river). Cheap & deterministic.
+          const e = getTileElevation(qx, qy, getBiomeElement(qx, qy));
+          if (e === 0) return true;
+          return false;
+        }, getBiomeAtLocal)) {
+          tile.type = 'waterfall';
+          tile.waterfallDir = drops.s ? 's' : drops.e ? 'e' : drops.w ? 'w' : 'n';
+          // Strip resource metadata from the overridden tile.
+          tile.treeTier = undefined;
+          tile.stoneTier = undefined;
+          tile.resourceAmount = undefined;
+          if (resourceUpgrades) delete resourceUpgrades[`${worldX},${worldY}`];
+        } else {
+          // Decide between cliff and ramp. Ramps are rarer — exactly one per
+          // small ring of cliff tiles at the same elevation step.
+          const ramp = pickRampHere(worldX, worldY, biome, getBiomeAtLocal);
+          if (ramp) {
+            // Ramp = passable grass with directional metadata. Strip any
+            // tree/rock that would have spawned here.
+            tile.type = 'grass';
+            tile.isRamp = true;
+            tile.rampDirection = ramp;
+            tile.harvested = false;
+            tile.lastHarvestType = undefined;
+            tile.treeTier = undefined;
+            tile.stoneTier = undefined;
+            tile.resourceAmount = undefined;
+            if (resourceUpgrades) delete resourceUpgrades[`${worldX},${worldY}`];
+          } else {
+            // Cliff face — impassable, no resources.
+            tile.type = 'cliff';
+            tile.treeTier = undefined;
+            tile.stoneTier = undefined;
+            tile.resourceAmount = undefined;
+            if (resourceUpgrades) delete resourceUpgrades[`${worldX},${worldY}`];
+          }
+        }
+      }
+
       row.push(tile);
     }
     tiles.push(row);
@@ -766,6 +834,12 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
   switch (tile.type) {
     case 'water':
       return { type: 'blocked', reason: 'Water blocks your path' };
+
+    case 'cliff':
+      return { type: 'blocked', reason: 'A sheer cliff face blocks your path' };
+
+    case 'waterfall':
+      return { type: 'blocked', reason: 'A waterfall crashes down — no way through' };
       
     case 'tree': {
       const treeTier = tile.treeTier || 'oak';
@@ -954,9 +1028,22 @@ export function canPlaceRoad(
 
   const tile = getOverworldTile(state, worldX, worldY);
   if (!tile) return { canPlace: false, reason: 'Invalid location' };
-  if (tile.type !== 'grass' || tile.harvested) {
-    // Allow building on harvested grass too
-    if (tile.type !== 'grass') return { canPlace: false, reason: 'Can only place roads on open ground' };
+
+  // Cliffs/waterfalls reject all roads.
+  if (tile.type === 'cliff')     return { canPlace: false, reason: 'Cannot lay a road on a cliff face' };
+  if (tile.type === 'waterfall') return { canPlace: false, reason: 'Cannot lay a road on a waterfall' };
+
+  // Ramps accept ONLY stone roads — they become "stairs" matching the road
+  // aesthetic. Dirt roads on a slope wouldn't make sense.
+  if (tile.isRamp) {
+    if (roadType !== 'stone_road') {
+      return { canPlace: false, reason: 'Ramps only accept stone-road stairs' };
+    }
+    return { canPlace: true };
+  }
+
+  if (tile.type !== 'grass') {
+    return { canPlace: false, reason: 'Can only place roads on open ground' };
   }
 
   return { canPlace: true };
@@ -975,6 +1062,19 @@ export function placeRoad(state: OverworldState, worldX: number, worldY: number,
   const key = `${worldX},${worldY}`;
   if (!state.roads) state.roads = {};
   state.roads[key] = roadType;
+
+  // Stair-on-ramp: keep the ramp tile (renders as ramp+stairs), don't
+  // overwrite the elevation metadata.
+  const existing = getOverworldTile(state, worldX, worldY);
+  if (existing?.isRamp) {
+    setOverworldTile(state, worldX, worldY, {
+      ...existing,
+      hasStairs: true,
+      explored: true,
+      visible: true,
+    });
+    return true;
+  }
 
   // Update the tile type so the renderer picks it up
   setOverworldTile(state, worldX, worldY, {

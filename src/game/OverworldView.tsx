@@ -804,7 +804,24 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       setOverworld(prev => {
         const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
         const tile = getOverworldTile(newOw, worldX, worldY);
-        if (!tile || (tile.type !== 'grass' && tile.type !== 'dirt_road' && tile.type !== 'stone_road')) {
+        if (!tile) {
+          toast.error('Can only build on open ground!');
+          return prev;
+        }
+        // Reject elevation features up front with helpful messages.
+        if (tile.type === 'cliff') {
+          toast.error('Cannot build on a cliff face');
+          return prev;
+        }
+        if (tile.type === 'waterfall') {
+          toast.error('Cannot build on a waterfall');
+          return prev;
+        }
+        if (tile.isRamp) {
+          toast.error('Ramps only accept stair-style stone roads — use the road tool');
+          return prev;
+        }
+        if (tile.type !== 'grass' && tile.type !== 'dirt_road' && tile.type !== 'stone_road') {
           toast.error('Can only build on open ground!');
           return prev;
         }
@@ -814,6 +831,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           newOw.homeBase.position,
           newOw.woodCollected, newOw.stoneCollected,
           selectedBuildType,
+          { isCliff: false, isWaterfall: false, isRamp: false },
         );
         if (!check.canPlace) {
           toast.error(check.reason || 'Cannot build here');

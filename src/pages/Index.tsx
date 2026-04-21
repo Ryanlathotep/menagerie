@@ -2535,6 +2535,27 @@ function BattleView({
   const experience = state.run?.experience || 0;
   const [menuOpen, setMenuOpen] = useState(false);
   
+  // Cloud save hook for admin save button
+  const { saveToCloud, syncing: cloudSyncing, isAuthenticated } = useCloudSave();
+  const { isAdmin } = useAdminRole();
+  
+  // ─── Manual save for admins: flush battle/run into saveData ───
+  const handleManualSave = useCallback(async () => {
+    if (!isAdmin) return;
+    const snapshot = buildProgressSnapshot(state.saveData, state.run, null);
+    dispatch({ type: 'SNAPSHOT_RUN_PROGRESS', overworld: null });
+    if (!isAuthenticated) {
+      toast.success('💾 Saved locally');
+      return;
+    }
+    const result = await saveToCloud(snapshot);
+    if (result.success) {
+      toast.success('☁️ Saved to cloud');
+    } else {
+      toast.error(`Save failed: ${result.error || 'unknown error'}`);
+    }
+  }, [dispatch, state.saveData, state.run, isAdmin, isAuthenticated, saveToCloud]);
+  
   // Level up screen queue state - supports multiple level-ups (active + passive party members)
   interface LevelUpEntry {
     previousStats: MonsterStats;

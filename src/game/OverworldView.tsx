@@ -221,6 +221,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   // Revive modal
   const [showReviveModal, setShowReviveModal] = useState(false);
   const [pendingReviveItem, setPendingReviveItem] = useState<InventoryItem | null>(null);
+
+  // Portable Workstation modal — opens crafting workshop on overworld when owned
+  const [showWorkshop, setShowWorkshop] = useState(false);
   
   const monster = state.run?.currentMonster;
   
@@ -1457,6 +1460,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       experience={state.run?.experience || 0} 
       experienceToNext={xpToNextLevel(state.run?.currentMonster?.level || 1)} 
       onFlee={handleReturnToTown}
+      onOpenWorkshop={state.saveData.tools?.workstation ? () => setShowWorkshop(true) : undefined}
       fleeTitle="Return to town"
       fleeVariant="home"
       onMainMenu={handleReturnToMainMenu}

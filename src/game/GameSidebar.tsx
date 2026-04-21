@@ -282,6 +282,19 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             </Button>
           )}
           
+          {/* Portable Workstation — opens crafting modal anywhere when owned */}
+          {onOpenWorkshop && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-9 h-9 sm:w-8 sm:h-8"
+              onClick={onOpenWorkshop}
+              title="Open Portable Workstation (crafting)"
+            >
+              <Hammer className="w-5 h-5 sm:w-4 sm:h-4" />
+            </Button>
+          )}
+
           {/* Settings button */}
           <Button variant="ghost" size="icon" className="w-9 h-9 sm:w-8 sm:h-8 hidden sm:flex" onClick={() => setShowSettings(true)} title="Settings">
             <Settings className="w-5 h-5 sm:w-4 sm:h-4" />

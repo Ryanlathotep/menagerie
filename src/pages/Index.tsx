@@ -335,6 +335,13 @@ function MainMenu() {
             dispatch({ type: 'SET_SHOVEL_TIER', tier });
             toast.success(`${tier.charAt(0).toUpperCase() + tier.slice(1)} Shovel ready!`);
           }}
+          onCraftWorkstation={(mats) => {
+            if (!isCreativeMode()) {
+              dispatch({ type: 'USE_MATERIALS', materials: mats });
+            }
+            dispatch({ type: 'SET_WORKSTATION_OWNED' });
+            toast.success('🛠️ Portable Workstation ready! Use it from the dungeon HUD.');
+          }}
           onClose={() => setShowCrafting(false)}
         />
       )}
@@ -2323,6 +2330,13 @@ function DungeonView({
             }
             dispatch({ type: 'SET_SHOVEL_TIER', tier });
             toast.success(`${tier.charAt(0).toUpperCase() + tier.slice(1)} Shovel ready!`);
+          }}
+          onCraftWorkstation={(mats) => {
+            if (!isCreativeMode()) {
+              dispatch({ type: 'USE_MATERIALS', materials: mats });
+            }
+            dispatch({ type: 'SET_WORKSTATION_OWNED' });
+            toast.success('🛠️ Portable Workstation ready!');
           }}
           onClose={() => setShowWorkshop(false)}
         />

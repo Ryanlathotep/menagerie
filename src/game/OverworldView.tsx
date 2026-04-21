@@ -34,6 +34,7 @@ import {
   processScoutTowerAttacks, PlayerBuilding, getDisassembleRefund, getRepairCost, isWallActingAsGate,
 } from './buildings';
 import { isCreativeMode } from './creativeMode';
+import { detectConnectorDir, nextConnectorDir } from './wallTop';
 import { OverworldRenderer, OverworldRendererHandle } from './OverworldRenderer';
 import { findOverworldPath } from './overworldPathfinding';
 import { OverworldDirectionArrows } from './OverworldDirectionArrows';

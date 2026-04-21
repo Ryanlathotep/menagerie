@@ -119,6 +119,81 @@ export function getBiomeElement(worldX: number, worldY: number): ElementType | n
   return BIOME_ELEMENTS[idx];
 }
 
+// ============= ELEVATION / RIVER NOISE (rivers, ponds, lakes, islands) =============
+//
+// Inspired by the Genesis Forge worldgen approach: a single elevation field
+// drives BOTH water and stone placement on opposite ends of the same scalar.
+// This naturally makes rivers/ponds form away from rocky outcrops because they
+// sit at opposite extremes of the same noise.
+//
+//   elevation < WATER_LEVEL  -> water (rivers, ponds, lakes, ocean cells)
+//   elevation > STONE_LEVEL  -> rock outcrop bias
+//
+// A second "river" noise (ridged) carves thin meandering water channels into
+// any tile whose elevation is just barely above water level. The result is a
+// mix of fat lakes (deep elevation valleys) and skinny rivers (ridged carve).
+
+// Multi-octave value-noise approximation built on the existing seededRandom.
+// Smooth bilinear interpolation between integer lattice samples.
+function smoothNoise(x: number, y: number, salt: number): number {
+  const ix = Math.floor(x);
+  const iy = Math.floor(y);
+  const fx = x - ix;
+  const fy = y - iy;
+  const v00 = seededRandom(ix * 73856093 + iy * 19349663 + salt);
+  const v10 = seededRandom((ix + 1) * 73856093 + iy * 19349663 + salt);
+  const v01 = seededRandom(ix * 73856093 + (iy + 1) * 19349663 + salt);
+  const v11 = seededRandom((ix + 1) * 73856093 + (iy + 1) * 19349663 + salt);
+  // Smoothstep weights for nicer (less blocky) interpolation.
+  const sx = fx * fx * (3 - 2 * fx);
+  const sy = fy * fy * (3 - 2 * fy);
+  const a = v00 + (v10 - v00) * sx;
+  const b = v01 + (v11 - v01) * sx;
+  return a + (b - a) * sy;
+}
+
+function fbm(x: number, y: number, salt: number, octaves: number = 3): number {
+  let amp = 0.5;
+  let freq = 1;
+  let sum = 0;
+  let norm = 0;
+  for (let i = 0; i < octaves; i++) {
+    sum += smoothNoise(x * freq, y * freq, salt + i * 1013) * amp;
+    norm += amp;
+    amp *= 0.5;
+    freq *= 2;
+  }
+  return sum / norm; // 0..1
+}
+
+// Elevation field. Returns 0 (deep water) → 1 (high stone).
+// Scale ~0.04 gives blob radii of roughly 6-10 tiles, matching pond/lake size.
+export function getElevation(worldX: number, worldY: number): number {
+  return fbm(worldX * 0.04, worldY * 0.04, 31337, 3);
+}
+
+// Ridged "river" noise — peaks on long thin lines through the elevation field.
+// 1 - |2*n - 1| turns smooth noise into a ridge value (high along the ridges).
+function ridgedNoise(x: number, y: number, salt: number): number {
+  const n = fbm(x, y, salt, 2);
+  return 1 - Math.abs(2 * n - 1);
+}
+
+// Returns true if this tile sits on a thin meandering river channel.
+// Rivers prefer low-elevation valleys (so they "flow away" from stone peaks).
+export function isRiverTile(worldX: number, worldY: number): boolean {
+  const elev = getElevation(worldX, worldY);
+  // Anything already a lake/pond elevation is handled by the elevation pass.
+  if (elev < 0.34) return false;
+  // Don't carve rivers through high terrain — they should follow valleys.
+  if (elev > 0.55) return false;
+  const ridge = ridgedNoise(worldX * 0.06 + 100, worldY * 0.06 - 50, 91173);
+  // Tight threshold → narrow river. Loosen near elevation lows so rivers
+  // widen into ponds where they pool.
+  const threshold = 0.93 - (0.55 - elev) * 0.4; // 0.85..0.93
+  return ridge > threshold;
+}
+
 // Determines if a dungeon entrance should exist at a given world coordinate
 // Uses deterministic hashing so entrances are stable across chunk loads
 function isDungeonEntranceAt(worldX: number, worldY: number): boolean {
@@ -244,40 +319,58 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
       // Biome-influenced terrain generation
       const biome = getBiomeElement(worldX, worldY);
       let type: OverworldTileType = 'grass';
-      
-      // Bias terrain by biome
-      let waterChance = 0.04;
+
+      // ---- Elevation-driven water & stone (Genesis-Forge style) ----
+      // The elevation noise field drives BOTH water and stone, on opposite ends.
+      // Low elevation = water (lakes / ponds / ocean); high elevation = stone
+      // outcrops. Because they share the same field, water naturally forms
+      // away from rocky peaks, and rivers (ridged noise) follow valleys.
+      const elevation = getElevation(worldX, worldY);
+      // Don't drown the spawn area — push elevation up near (0,0) so home
+      // base is reliably surrounded by walkable land.
+      const distFromHome = Math.sqrt(worldX * worldX + worldY * worldY);
+      const homeLandBias = distFromHome < 6 ? (6 - distFromHome) * 0.12 : 0;
+      const adjElev = Math.min(1, elevation + homeLandBias);
+
+      // Biome tweaks the thresholds slightly so a "water" biome has more lakes,
+      // an "earth" biome has more crags, etc. — but the core anti-correlation
+      // between water and stone is preserved.
+      let waterCutoff = 0.34; // adjElev below this -> water (lake)
+      let stoneCutoff = 0.72; // adjElev above this -> rock (outcrop)
+      if (biome === 'water') { waterCutoff = 0.42; stoneCutoff = 0.78; }
+      else if (biome === 'earth') { waterCutoff = 0.26; stoneCutoff = 0.62; }
+      else if (biome === 'fire') { waterCutoff = 0.20; stoneCutoff = 0.66; }
+      else if (biome === 'air') { waterCutoff = 0.30; stoneCutoff = 0.74; }
+      else if (biome === 'void') { waterCutoff = 0.30; stoneCutoff = 0.70; }
+
+      const isLake = adjElev < waterCutoff && distFromHome > 4;
+      const isStone = adjElev > stoneCutoff;
+      // Rivers carve thin meandering water through mid-elevation valleys.
+      // They don't run through high stone (the noise rejects elev > 0.55),
+      // so rivers naturally flow AWAY from rocky terrain.
+      const isRiver = !isStone && distFromHome > 5 && isRiverTile(worldX, worldY);
+
+      // Trees are governed by classic random + biome bias (independent system).
       let treeChance = 0.12;
-      let rockChance = 0.06;
-      
-      if (biome === 'water') { waterChance = 0.15; treeChance = 0.06; }
-      else if (biome === 'earth') { rockChance = 0.15; treeChance = 0.08; }
-      else if (biome === 'fire') { rockChance = 0.10; waterChance = 0.01; treeChance = 0.04; }
-      else if (biome === 'air') { treeChance = 0.05; waterChance = 0.02; }
-      else if (biome === 'void') { rockChance = 0.08; treeChance = 0.06; }
+      if (biome === 'water') treeChance = 0.06;
+      else if (biome === 'fire') treeChance = 0.04;
+      else if (biome === 'air') treeChance = 0.05;
+      else if (biome === 'earth') treeChance = 0.08;
 
-      // Cluster bias: separate low-frequency noise fields for forests and
-      // outcrops. Where the field is high, we boost the spawn chance so trees
-      // and rocks form loose groves instead of scattered single tiles.
-      // Scale 0.18 → ~5-7 tile blob radius.
+      // Cluster bias for trees (forests). Stone clustering already comes from
+      // the elevation field, so we no longer need a separate outcrop noise.
       const forestNoise = biomeNoise(worldX, worldY, 0.18);
-      const outcropNoise = biomeNoise(worldX + 1000, worldY - 1000, 0.22);
-      if (forestNoise > 0.55) treeChance += (forestNoise - 0.55) * 0.9; // up to +0.4
-      if (outcropNoise > 0.6) rockChance += (outcropNoise - 0.6) * 0.8; // up to +0.32
+      if (forestNoise > 0.55) treeChance += (forestNoise - 0.55) * 0.9;
 
-      // Reduce enemy spawns near roads (check 2-tile radius)
-      let enemyChanceMultiplier = 1.0;
-      if (typeof dungeonEntrances === 'object') {
-        // We'll check road proximity during movement instead
-      }
-      
-      if (r < treeChance) {
-        type = 'tree';
-      } else if (r < treeChance + rockChance) {
-        type = 'rock';
-      } else if (r < treeChance + rockChance + waterChance) {
+      // Decide tile type. Order matters:
+      //   water (lake or river)  >  stone  >  tree  >  enemy  >  grass
+      if (isLake || isRiver) {
         type = 'water';
-      } else if (r < treeChance + rockChance + waterChance + Math.min(0.06, Math.max(0, (difficulty - 1) * 0.012))) {
+      } else if (isStone) {
+        type = 'rock';
+      } else if (r < treeChance) {
+        type = 'tree';
+      } else if (r < treeChance + Math.min(0.06, Math.max(0, (difficulty - 1) * 0.012))) {
         type = 'enemy';
       }
       

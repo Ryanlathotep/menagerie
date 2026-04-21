@@ -345,13 +345,14 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
       // Biome tweaks the thresholds slightly so a "water" biome has more lakes,
       // an "earth" biome has more crags, etc. — but the core anti-correlation
       // between water and stone is preserved.
-      let waterCutoff = 0.34; // adjElev below this -> water (lake)
-      let stoneCutoff = 0.72; // adjElev above this -> rock (outcrop)
-      if (biome === 'water') { waterCutoff = 0.42; stoneCutoff = 0.78; }
-      else if (biome === 'earth') { waterCutoff = 0.26; stoneCutoff = 0.62; }
-      else if (biome === 'fire') { waterCutoff = 0.20; stoneCutoff = 0.66; }
-      else if (biome === 'air') { waterCutoff = 0.30; stoneCutoff = 0.74; }
-      else if (biome === 'void') { waterCutoff = 0.30; stoneCutoff = 0.70; }
+      // Density tuned down for solo play — fewer rocks/lakes feel less cluttered.
+      let waterCutoff = 0.30; // adjElev below this -> water (lake)
+      let stoneCutoff = 0.80; // adjElev above this -> rock (outcrop)
+      if (biome === 'water') { waterCutoff = 0.38; stoneCutoff = 0.84; }
+      else if (biome === 'earth') { waterCutoff = 0.22; stoneCutoff = 0.72; }
+      else if (biome === 'fire') { waterCutoff = 0.18; stoneCutoff = 0.76; }
+      else if (biome === 'air') { waterCutoff = 0.26; stoneCutoff = 0.82; }
+      else if (biome === 'void') { waterCutoff = 0.26; stoneCutoff = 0.78; }
 
       const isLake = adjElev < waterCutoff && distFromHome > 4;
       const isStone = adjElev > stoneCutoff;

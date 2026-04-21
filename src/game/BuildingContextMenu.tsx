@@ -39,9 +39,11 @@ export function BuildingContextMenu({
   onRepair,
   onDisassemble,
   onFlipGate,
+  onRotateConnector,
   onClose,
 }: BuildingContextMenuProps) {
   const def = BUILDING_DEFINITIONS[building.type];
+  const isConnector = building.type === 'stone_staircase' || building.type === 'ladder';
   const assigned = building.assignedMonsterId
     ? party.find(m => m.id === building.assignedMonsterId)
     : null;

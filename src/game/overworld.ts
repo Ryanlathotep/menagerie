@@ -12,6 +12,7 @@ import {
 } from './resourceHierarchy';
 import { isCreativeMode } from './creativeMode';
 import { getTileElevation, getCliffDrops, pickRampHere, shouldBeWaterfall } from './elevation';
+import { getTileEffectiveZ, isElevationConnectorAt, isWalkableWallTop } from './wallTop';
 
 const ALL_SPECIES = Object.keys(SPECIES_DATA) as SpeciesType[];
 
@@ -806,18 +807,16 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
   // ladders) or by walking laterally at the same z. Drops/climbs anywhere
   // else are blocked. We check this BEFORE the per-tile-type switch so the
   // existing per-type logic doesn't have to repeat the rule.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const __wt = require('./wallTop') as typeof import('./wallTop');
   const fromTile = getOverworldTile(state, state.playerPosition.x, state.playerPosition.y);
-  const fromZ = state.playerPosition.z ?? __wt.getTileEffectiveZ(state, state.playerPosition.x, state.playerPosition.y, fromTile);
-  const toZ = __wt.getTileEffectiveZ(state, newX, newY, tile);
+  const fromZ = state.playerPosition.z ?? getTileEffectiveZ(state, state.playerPosition.x, state.playerPosition.y, fromTile);
+  const toZ = getTileEffectiveZ(state, newX, newY, tile);
   if (fromZ !== toZ) {
     // Allowed if EITHER tile is a connector that bridges the two z values,
     // OR either tile is a ramp (natural cliff connector) at the right z.
     const fromIsConnector = !!fromTile && fromTile.type === 'player_building'
-      && __wt.isElevationConnectorAt(state, state.playerPosition.x, state.playerPosition.y);
+      && isElevationConnectorAt(state, state.playerPosition.x, state.playerPosition.y);
     const toIsConnector = tile.type === 'player_building'
-      && __wt.isElevationConnectorAt(state, newX, newY);
+      && isElevationConnectorAt(state, newX, newY);
     const fromIsRamp = !!fromTile?.isRamp;
     const toIsRamp = !!tile.isRamp;
     if (!fromIsConnector && !toIsConnector && !fromIsRamp && !toIsRamp) {

@@ -340,6 +340,9 @@ export interface DungeonState {
   height: number;
   theme?: DungeonTheme;       // Inherited from the DungeonEntrance that started this run
   startingFloor?: number;     // The floor the run started on (difficulty offset)
+  // Dungeon Compass: one-shot waypoint pinned to the floor's stairs. Renderer
+  // overlays an arrow on this tile so the player can find the exit.
+  compassWaypoint?: Position;
 }
 
 export interface InventoryItem {

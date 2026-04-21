@@ -197,6 +197,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [waterMenu, setWaterMenu] = useState<{ x: number; y: number } | null>(null);
   // Right-click context menu for road tiles (disassemble)
   const [roadMenu, setRoadMenu] = useState<{ x: number; y: number; roadType: 'dirt_road' | 'stone_road' } | null>(null);
+  // Session-only Auto-Shovel toggle (mirrored into local state for re-render).
+  const [autoShovelOn, setAutoShovelOn] = useState<boolean>(isAutoShovelEnabled());
+  useEffect(() => onAutoShovelChange(setAutoShovelOn), []);
   
   // Targeting state
   const [targetingMove, setTargetingMove] = useState<Move | null>(null);

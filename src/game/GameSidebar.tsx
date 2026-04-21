@@ -236,7 +236,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             <User className="w-5 h-5 sm:w-4 sm:h-4" />
           </Button>
           
-          <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8" onClick={() => handlePanelChange('moves')} title="Moves">
+          <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 hidden sm:flex" onClick={() => handlePanelChange('moves')} title="Moves">
             <Swords className="w-5 h-5 sm:w-4 sm:h-4" />
           </Button>
           
@@ -249,7 +249,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             <Button 
               variant="ghost" 
               size="icon" 
-              className="w-9 h-9 sm:w-8 sm:h-8 relative" 
+              className="w-9 h-9 sm:w-8 sm:h-8 relative hidden sm:flex" 
               onClick={onOpenEquipment}
               title="Equipment"
             >
@@ -267,7 +267,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             <Button 
               variant={activePanel === 'party' ? 'default' : 'ghost'} 
               size="icon" 
-              className="w-9 h-9 sm:w-8 sm:h-8 relative" 
+              className="w-9 h-9 sm:w-8 sm:h-8 relative hidden sm:flex" 
               onClick={() => handlePanelChange('party')} 
               title="Party"
             >
@@ -279,7 +279,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
           )}
           
           {/* Settings button */}
-          <Button variant="ghost" size="icon" className="w-9 h-9 sm:w-8 sm:h-8" onClick={() => setShowSettings(true)} title="Settings">
+          <Button variant="ghost" size="icon" className="w-9 h-9 sm:w-8 sm:h-8 hidden sm:flex" onClick={() => setShowSettings(true)} title="Settings">
             <Settings className="w-5 h-5 sm:w-4 sm:h-4" />
           </Button>
         </div>
@@ -289,9 +289,9 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
           <div className="flex items-center gap-0.5 sm:gap-1 text-muted-foreground min-w-0" title={locationName}>
             <Map className="w-3 h-3 flex-shrink-0" />
             {locationName ? (
-              <span className="truncate max-w-[140px] sm:max-w-[200px]">
-                <span className="text-foreground font-semibold">{locationName}</span>
-                <span className="ml-1">· F{floor}</span>
+              <span className="truncate max-w-[80px] sm:max-w-[200px]">
+                <span className="text-foreground font-semibold hidden sm:inline">{locationName}</span>
+                <span className="sm:ml-1">F{floor}</span>
               </span>
             ) : (
               <span>F{floor}</span>

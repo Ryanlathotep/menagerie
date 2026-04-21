@@ -919,11 +919,31 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
       const building = state.playerBuildings.find(b => b.id === tile.playerBuildingId);
       if (building && building.type === 'wall') {
         // Walls acting as gates are passable for the player (but not for enemies — see overworldCombat).
-        if (!isWallActingAsGate(building, state)) {
-          return { type: 'blocked', reason: 'A wall blocks your path' };
+        // Walls that form a walkable wall-top are passable IF the player is
+        // already on the same wall-top (z+1) — otherwise blocked.
+        const isGate = isWallActingAsGate(building, state);
+        if (!isGate) {
+          // Lazy import to avoid a circular dep at module load.
+          // (overworld → wallTop → overworld would loop.)
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const { isWalkableWallTop, getTileEffectiveZ } = require('./wallTop') as typeof import('./wallTop');
+          const fromTile = getOverworldTile(state, state.playerPosition.x, state.playerPosition.y);
+          const fromZ = getTileEffectiveZ(state, state.playerPosition.x, state.playerPosition.y, fromTile);
+          const targetIsWalkableTop = isWalkableWallTop(state, newX, newY);
+          const targetGroundZ = tile.elevation ?? 0;
+          const targetTopZ = targetGroundZ + 1;
+          if (!(targetIsWalkableTop && fromZ === targetTopZ)) {
+            return { type: 'blocked', reason: 'A wall blocks your path' };
+          }
         }
       }
+      // Connector / surrounded-building / wall-top step:
+      // Update player's z based on where they end up.
       state.playerPosition = { x: newX, y: newY };
+      // Refresh z derived from new tile.
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { getTileEffectiveZ: gtez } = require('./wallTop') as typeof import('./wallTop');
+      state.playerPosition.z = gtez(state, newX, newY, tile);
       updateVisibility(state);
       if (building) return { type: 'player_building', building };
       return { type: 'moved' };

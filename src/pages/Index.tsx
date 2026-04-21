@@ -772,6 +772,29 @@ function DungeonView({
     }
   }, [dungeon, dispatch, state.saveData.dungeonEntrances]);
   
+  // ─── Manual save for admins: flush in-memory dungeon/run into saveData ───
+  const handleManualSave = useCallback(async () => {
+    if (!isAdmin) return; // Only admins can manual save from dungeon
+    
+    // Build snapshot from current run (dungeon state is in state.run)
+    const snapshot = buildProgressSnapshot(state.saveData, state.run, null);
+    dispatch({ type: 'SNAPSHOT_RUN_PROGRESS', overworld: null });
+    
+    if (!isAuthenticated) {
+      toast.success('💾 Saved locally (sign in to back up to cloud)');
+      addLog('💾 Game saved locally', 'system');
+      return;
+    }
+    
+    const result = await saveToCloud(snapshot);
+    if (result.success) {
+      toast.success('☁️ Saved to cloud');
+      addLog('☁️ Game saved to cloud', 'system');
+    } else {
+      toast.error(`Save failed: ${result.error || 'unknown error'}`);
+    }
+  }, [dispatch, state.saveData, state.run, isAdmin, isAuthenticated, saveToCloud, addLog]);
+  
   // Reset respawn counter when floor changes
   useEffect(() => {
     if (dungeon && dungeon.floor !== lastFloorRef.current) {

@@ -1,7 +1,7 @@
 // Hover tooltip content for player buildings on the overworld
 
-import { PlayerBuilding, BUILDING_DEFINITIONS, FARM_GROWTH_STEPS, getDisassembleRefund, getRepairCost } from './buildings';
-import { Monster } from './types';
+import { PlayerBuilding, BUILDING_DEFINITIONS, FARM_GROWTH_STEPS, getDisassembleRefund, getRepairCost, SCOUT_TOWER_ATTACK_RADIUS, SCOUT_TOWER_VISION_RADIUS, SCOUT_TOWER_DAMAGE } from './buildings';
+import { Monster, SPECIES_DATA } from './types';
 
 interface BuildingTooltipProps {
   building: PlayerBuilding;
@@ -51,14 +51,28 @@ export function BuildingTooltipContent({ building, party }: BuildingTooltipProps
 
       {/* Assigned monster */}
       {def.requiresMonster && (
-        <div className="flex items-center justify-between gap-2 bg-muted/40 px-2 py-1 rounded">
-          <span className="text-muted-foreground">Assigned:</span>
-          {assigned ? (
-            <span className="capitalize font-medium">
-              Lv.{assigned.level} {assigned.name}
-            </span>
-          ) : (
-            <span className="text-amber-600 dark:text-amber-400">⚠ None</span>
+        <div className="bg-muted/40 px-2 py-1 rounded space-y-0.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground">Assigned:</span>
+            {assigned ? (
+              <span className="capitalize font-medium">
+                Lv.{assigned.level} {assigned.name}
+              </span>
+            ) : (
+              <span className="text-amber-600 dark:text-amber-400">⚠ None</span>
+            )}
+          </div>
+          {assigned && (
+            <p className="text-[10px] text-muted-foreground capitalize">
+              {assigned.element} {SPECIES_DATA[assigned.species]?.name ?? assigned.species}
+              {' • '}
+              ❤ {assigned.stats.currentHp}/{assigned.stats.maxHp}
+            </p>
+          )}
+          {building.type === 'scout_tower' && assigned && (
+            <p className="text-[10px] text-muted-foreground">
+              👁 Vision r{SCOUT_TOWER_VISION_RADIUS} • ⚔ Attack r{SCOUT_TOWER_ATTACK_RADIUS} ({SCOUT_TOWER_DAMAGE} dmg)
+            </p>
           )}
         </div>
       )}

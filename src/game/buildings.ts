@@ -39,6 +39,11 @@ export interface PlayerBuilding {
   // true → "inside" face is flipped to the opposite side of the road axis.
   // Defaults to auto-orientation toward the home base when undefined.
   gateFlipped?: boolean;
+  // Connector-specific (stone_staircase / ladder): the cardinal side the
+  // stair "leans against" (a wall block or natural cliff face). Set at
+  // placement time and editable via the right-click "Rotate" action.
+  // When undefined, renderer falls back to auto-detection.
+  connectorDir?: 'n' | 's' | 'e' | 'w';
 }
 
 // ============= BUILDING DEFINITIONS =============

@@ -1,6 +1,6 @@
 // Enhanced Dungeon Renderer with hand-drawn ink/watercolor tile graphics
 
-import { forwardRef, useImperativeHandle } from 'react';
+import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { DungeonState, DungeonTile, TileType, ElementType, ClassType, Monster, SpeciesType, SPECIES_DATA, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED, TrapType, PlantType, UnlockedMonster, DungeonEntrance } from './types';
 import { CRAFTING_MATERIALS } from './equipment';
 import { MonsterSprite } from './sprites';

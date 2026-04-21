@@ -702,8 +702,12 @@ function DungeonView({
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAutoRunning, setIsAutoRunning] = useState(false);
   const autoRunDirection = useRef<'up' | 'down' | 'left' | 'right' | null>(null);
- const stopAutoRun = useRef(false); // Immediate stop flag for auto-run
+  const stopAutoRun = useRef(false); // Immediate stop flag for auto-run
   const lastKeyPress = useRef<{ key: string; time: number } | null>(null);
+  
+  // Cloud save hook for admin save button
+  const { saveToCloud, syncing: cloudSyncing, isAuthenticated } = useCloudSave();
+  const { isAdmin } = useAdminRole();
   
   // Click-to-move state
   const [targetPath, setTargetPath] = useState<Position[]>([]);

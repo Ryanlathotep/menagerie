@@ -1381,8 +1381,23 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       return newOw;
     });
   }, [contextMenuBuilding, addLog, saveOverworld]);
-  
-  // Resizable bottom bar
+
+  // Rotate a stair/ladder: cycles n → e → s → w. Useful when auto-detect
+  // picks the "wrong" cliff side (e.g., placed at an inside corner).
+  const handleRotateConnector = useCallback(() => {
+    if (!contextMenuBuilding) return;
+    setOverworld(prev => {
+      const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
+      const b = newOw.playerBuildings?.find(pb => pb.id === contextMenuBuilding.id);
+      if (!b) return prev;
+      const current = b.connectorDir ?? detectConnectorDir(newOw, b.worldX, b.worldY);
+      b.connectorDir = nextConnectorDir(current);
+      addLog(`🔄 Rotated ${b.type === 'ladder' ? 'ladder' : 'staircase'} to face ${b.connectorDir.toUpperCase()}.`, 'system');
+      saveOverworld(newOw);
+      setContextMenuBuilding({ ...b });
+      return newOw;
+    });
+  }, [contextMenuBuilding, addLog, saveOverworld]);
   const isMobileLayout = typeof window !== 'undefined' && window.innerWidth < 640;
   const sidebarHeight = isMobileLayout ? 64 : 96;
   const defaultBarHeight = isMobileLayout ? 280 : 260;

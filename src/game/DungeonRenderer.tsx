@@ -1,6 +1,6 @@
 // Enhanced Dungeon Renderer with hand-drawn ink/watercolor tile graphics
 
-import { forwardRef, useImperativeHandle } from 'react';
+import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { DungeonState, DungeonTile, TileType, ElementType, ClassType, Monster, SpeciesType, SPECIES_DATA, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED, TrapType, PlantType, UnlockedMonster, DungeonEntrance } from './types';
 import { CRAFTING_MATERIALS } from './equipment';
 import { MonsterSprite } from './sprites';
@@ -654,6 +654,21 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   const gridWidth = dungeon.width;
   const gridHeight = dungeon.height;
 
+  // Mobile double-tap → treat as right-click. A second tap on the SAME tile
+  // within 300ms calls onTileRightClick instead of onTileClick.
+  const lastTapRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const handleTileTap = (x: number, y: number) => {
+    const now = Date.now();
+    const last = lastTapRef.current;
+    if (last && last.x === x && last.y === y && now - last.time < 300) {
+      lastTapRef.current = null;
+      onTileRightClick?.(x, y);
+      return;
+    }
+    lastTapRef.current = { x, y, time: now };
+    onTileClick?.(x, y);
+  };
+
   // No-op: player is always centered via CSS transform (matches OverworldRenderer behavior)
   useImperativeHandle(ref, () => ({
     scrollToPlayer: () => {},
@@ -770,6 +785,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                     onContextMenu={(e) => {
                       if (!onTileRightClick || !tile.explored) return;
                       e.preventDefault();
+                      lastTapRef.current = null;
                       onTileRightClick(x, y);
                     }}
                   >
@@ -789,7 +805,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                       unlockedMonsters={unlockedMonsters}
                       isOnPath={targetPath.some(p => p.x === x && p.y === y)}
                       onDisarmTrap={onDisarmTrap}
-                      onClick={tile.explored && tile.type !== 'wall' ? () => onTileClick?.(x, y) : undefined}
+                      onClick={tile.explored && tile.type !== 'wall' ? () => handleTileTap(x, y) : undefined}
                       playerPickaxeTier={playerPickaxeTier}
                     />
                     {/* Targeting overlay */}

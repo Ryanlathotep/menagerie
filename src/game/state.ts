@@ -411,9 +411,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       
       // Add run gold to town gold
       const newTownGold = (state.saveData.gold || 0) + state.run.gold;
-      
-      // Store run items in town
-      const storedItems = [...(state.saveData.storedItems || []), ...state.run.inventory];
+
+      // Unified inventory: run.inventory IS already mirrored into storedItems
+      // by ADD/USE/DROP_ITEM. Don't merge again or items will duplicate.
+      const storedItems = state.saveData.storedItems || [];
       
       // Update unlocked monsters: persist level AND equipment for each party member.
       let updatedUnlockedMonsters = [...state.saveData.unlockedMonsters];
@@ -697,72 +698,87 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         run: { ...state.run, experience: state.run.experience + action.amount },
       };
     
-    case 'ADD_ITEM':
+    // Unified inventory: every mutation to run.inventory is mirrored into
+    // saveData.storedItems so the run inventory and town storage are always
+    // the same list. Picking up an item in a dungeon means it's also in town.
+    case 'ADD_ITEM': {
       if (!state.run) return state;
-      const existingItemIndex = state.run.inventory.findIndex(i => i.id === action.item.id);
-      if (existingItemIndex !== -1) {
-        // Stack existing item
-        const newInventory = [...state.run.inventory];
-        newInventory[existingItemIndex] = {
-          ...newInventory[existingItemIndex],
-          quantity: newInventory[existingItemIndex].quantity + (action.item.quantity || 1),
-        };
-        return {
-          ...state,
-          run: { ...state.run, inventory: newInventory },
-        };
-      }
+      const addQty = action.item.quantity || 1;
+      const incoming = { ...action.item, quantity: addQty };
+
+      const stackInto = (list: InventoryItem[]): InventoryItem[] => {
+        const idx = list.findIndex(i => i.id === incoming.id);
+        if (idx !== -1) {
+          const next = [...list];
+          next[idx] = { ...next[idx], quantity: next[idx].quantity + addQty };
+          return next;
+        }
+        return [...list, { ...incoming }];
+      };
+
       return {
         ...state,
-        run: { ...state.run, inventory: [...state.run.inventory, action.item] },
+        run: { ...state.run, inventory: stackInto(state.run.inventory) },
+        saveData: {
+          ...state.saveData,
+          storedItems: stackInto(state.saveData.storedItems || []),
+        },
       };
-    
-    case 'USE_ITEM':
+    }
+
+    case 'USE_ITEM': {
       if (!state.run) return state;
       const itemIndex = state.run.inventory.findIndex(i => i.id === action.itemId);
       if (itemIndex === -1) return state;
       const item = state.run.inventory[itemIndex];
-      if (item.quantity <= 1) {
-        // Remove item
-        return {
-          ...state,
-          run: { 
-            ...state.run, 
-            inventory: state.run.inventory.filter((_, i) => i !== itemIndex),
-          },
-        };
-      }
-      // Reduce quantity
-      const updatedInventory = [...state.run.inventory];
-      updatedInventory[itemIndex] = { ...item, quantity: item.quantity - 1 };
+
+      const decrement = (list: InventoryItem[]): InventoryItem[] => {
+        const idx = list.findIndex(i => i.id === action.itemId);
+        if (idx === -1) return list;
+        const cur = list[idx];
+        if (cur.quantity <= 1) return list.filter((_, i) => i !== idx);
+        const next = [...list];
+        next[idx] = { ...cur, quantity: cur.quantity - 1 };
+        return next;
+      };
+
+      void item;
       return {
         ...state,
-        run: { ...state.run, inventory: updatedInventory },
+        run: { ...state.run, inventory: decrement(state.run.inventory) },
+        saveData: {
+          ...state.saveData,
+          storedItems: decrement(state.saveData.storedItems || []),
+        },
       };
-    
-    case 'DROP_ITEM':
+    }
+
+    case 'DROP_ITEM': {
       if (!state.run) return state;
       const dropIndex = state.run.inventory.findIndex(i => i.id === action.itemId);
       if (dropIndex === -1) return state;
       const dropItem = state.run.inventory[dropIndex];
-      const dropQuantity = action.quantity ?? dropItem.quantity; // Drop all by default
-      if (dropQuantity >= dropItem.quantity) {
-        // Remove entire item
-        return {
-          ...state,
-          run: { 
-            ...state.run, 
-            inventory: state.run.inventory.filter((_, i) => i !== dropIndex),
-          },
-        };
-      }
-      // Reduce quantity
-      const droppedInventory = [...state.run.inventory];
-      droppedInventory[dropIndex] = { ...dropItem, quantity: dropItem.quantity - dropQuantity };
+      const dropQuantity = action.quantity ?? dropItem.quantity;
+
+      const removeQty = (list: InventoryItem[]): InventoryItem[] => {
+        const idx = list.findIndex(i => i.id === action.itemId);
+        if (idx === -1) return list;
+        const cur = list[idx];
+        if (dropQuantity >= cur.quantity) return list.filter((_, i) => i !== idx);
+        const next = [...list];
+        next[idx] = { ...cur, quantity: cur.quantity - dropQuantity };
+        return next;
+      };
+
       return {
         ...state,
-        run: { ...state.run, inventory: droppedInventory },
+        run: { ...state.run, inventory: removeQty(state.run.inventory) },
+        saveData: {
+          ...state.saveData,
+          storedItems: removeQty(state.saveData.storedItems || []),
+        },
       };
+    }
     
     case 'SET_MOVE_ORDER':
       if (!state.run) return state;

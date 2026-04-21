@@ -2476,9 +2476,22 @@ function DungeonView({
 
               {/* Game log - shares this bottom box with the open menu panel */}
               <div className={`${menuOpen ? 'sm:w-1/3' : 'flex-1'} min-w-0 p-2 bg-muted/30 rounded-lg border border-border/50 overflow-hidden flex flex-col transition-[width] duration-200`}>
-                <div className="flex items-center gap-1 mb-1 flex-shrink-0">
-                  <ScrollText className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-xs font-semibold text-muted-foreground">Log</span>
+                <div className="flex items-center justify-between gap-1 mb-1 flex-shrink-0">
+                  <div className="flex items-center gap-1">
+                    <ScrollText className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-xs font-semibold text-muted-foreground">Log</span>
+                  </div>
+                  {/* Admin save button - always visible for admins during development */}
+                  {isAdmin && (
+                    <button
+                      className="text-[10px] text-primary hover:underline disabled:opacity-50"
+                      onClick={handleManualSave}
+                      disabled={cloudSyncing}
+                      title={isAuthenticated ? 'Save progress to cloud' : 'Save progress locally'}
+                    >
+                      {cloudSyncing ? '⏳ Saving…' : `💾 Save${isAuthenticated ? '' : ' (local)'}`}
+                    </button>
+                  )}
                 </div>
                 <div className="flex-1 overflow-y-auto scrollbar-none space-y-0.5">
                   {[...gameLog].reverse().slice(0, 20).map((msg, i) => (

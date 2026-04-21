@@ -311,21 +311,35 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
       
     case 'END_RUN': {
-      // Equipment stays equipped to each party member across runs. Only loose
-      // loot picked up during the run (equipmentInventory) is sent to town
-      // storage — equipped gear is persisted onto each monster's UnlockedMonster
-      // record so it's still equipped at the next pre-run screen.
-      const equipmentToStore: EquipmentItem[] = [];
-      if (state.run?.equipmentInventory) {
-        for (const item of state.run.equipmentInventory) {
-          equipmentToStore.push({ ...item, bound: undefined });
-        }
+      // Death no longer causes losses. Treat END_RUN like FLEE_DUNGEON:
+      // preserve gold, materials, items, equipped gear, and unlocked recipes.
+      // The only difference is the next phase ('run_summary' / 'defeat' instead
+      // of 'overworld') and that the player is teleported back to (0,0).
+      if (!state.run) {
+        return { ...state, phase: 'run_summary' };
       }
-      
+
+      // Loose run loot returns to town storage (unbound so it can be re-used).
+      const equipmentToStore: EquipmentItem[] = state.run.equipmentInventory.map(
+        item => ({ ...item, bound: undefined })
+      );
+
+      // Run inventory items merge back into town storage so nothing is lost.
+      const storedItems = [...(state.saveData.storedItems || []), ...state.run.inventory];
+
+      // Merge run materials with saved materials.
+      const mergedMaterials = { ...state.saveData.materials };
+      for (const [materialId, quantity] of Object.entries(state.run.runMaterials)) {
+        mergedMaterials[materialId] = (mergedMaterials[materialId] || 0) + quantity;
+      }
+
+      // Run gold is added to town gold (no loss on death).
+      const newTownGold = (state.saveData.gold || 0) + state.run.gold;
+
       // Recipes unlock from any equipment seen this run (equipped + loose loot).
       const newUnlockedRecipes = [...(state.saveData.unlockedRecipes || [])];
       const allSeenEquipment: EquipmentItem[] = [...equipmentToStore];
-      if (state.run?.partyEquipment) {
+      if (state.run.partyEquipment) {
         for (const memberEquipment of state.run.partyEquipment) {
           for (const slot of EQUIPMENT_SLOTS) {
             const item = memberEquipment[slot];
@@ -339,14 +353,23 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           newUnlockedRecipes.push(matchingRecipe.id);
         }
       }
-      
-      // Update unlocked monsters: persist level AND equipment for each party member.
+      // Also unlock consumable recipes for items returned to town.
+      for (const item of state.run.inventory) {
+        if (item.type === 'potion') {
+          const matchingRecipe = getConsumableRecipeFromItem(item);
+          if (matchingRecipe && !newUnlockedRecipes.includes(matchingRecipe.id)) {
+            newUnlockedRecipes.push(matchingRecipe.id);
+          }
+        }
+      }
+
+      // Persist level + XP + mastery + equipment for each party member.
       const updatedUnlockedMonsters = persistRunPartyProgress(state.saveData, state.run);
-      
+
       // Update dungeon entrance depth tracking
       const activeDungeonId = typeof window !== 'undefined' ? localStorage.getItem('menagerie_active_dungeon_id') : null;
       let updatedDungeonEntrances = { ...(state.saveData.dungeonEntrances || {}) };
-      if (activeDungeonId && updatedDungeonEntrances[activeDungeonId] && state.run?.dungeon) {
+      if (activeDungeonId && updatedDungeonEntrances[activeDungeonId] && state.run.dungeon) {
         const currentFloor = state.run.dungeon.floor;
         if (currentFloor > (updatedDungeonEntrances[activeDungeonId].deepestFloor || 0)) {
           updatedDungeonEntrances[activeDungeonId] = {
@@ -355,7 +378,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           };
         }
       }
-      
+
       // Respawn the overworld player at the nearest empty tile to the town (0,0)
       // so a wiped party reappears at home rather than where they fell.
       let updatedOverworld = state.saveData.overworldState;
@@ -366,18 +389,20 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           playerPosition: respawn,
         };
       }
-      
+
       return {
         ...state,
         phase: 'run_summary',
         saveData: {
           ...state.saveData,
-          highestFloor: state.run?.dungeon 
+          highestFloor: state.run.dungeon
             ? Math.max(state.saveData.highestFloor, state.run.dungeon.floor)
             : state.saveData.highestFloor,
-          totalEnemiesDefeated: state.saveData.totalEnemiesDefeated + (state.run?.enemiesDefeated || 0),
-          // Only loose run loot goes to storage; equipped gear stays on monsters.
+          totalEnemiesDefeated: state.saveData.totalEnemiesDefeated + state.run.enemiesDefeated,
+          gold: newTownGold,
+          materials: mergedMaterials,
           storedEquipment: [...state.saveData.storedEquipment, ...equipmentToStore],
+          storedItems,
           unlockedMonsters: updatedUnlockedMonsters,
           unlockedRecipes: newUnlockedRecipes,
           dungeonEntrances: updatedDungeonEntrances,

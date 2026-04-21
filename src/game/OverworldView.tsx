@@ -35,6 +35,7 @@ import {
 } from './buildings';
 import { isCreativeMode } from './creativeMode';
 import { OverworldRenderer, OverworldRendererHandle } from './OverworldRenderer';
+import { findOverworldPath } from './overworldPathfinding';
 import { OverworldDirectionArrows } from './OverworldDirectionArrows';
 import { DungeonWaypointMenu } from './DungeonWaypointMenu';
 import { WaterTileContextMenu } from './WaterTileContextMenu';
@@ -434,8 +435,60 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       return newState;
     });
   }, [addLog, saveOverworld, state.run, dispatch, processEnemyTurns]);
-  
-  
+
+  // ─── Auto-walk along a tap-to-move path ───
+  // Stores the remaining path as a ref so the interval ticker always sees the
+  // latest queue without re-creating the timer. We also stash handleMove +
+  // overworld in refs to dodge stale closures.
+  const autoWalkPathRef = useRef<Position[] | null>(null);
+  const autoWalkTimerRef = useRef<number | null>(null);
+  const handleMoveRef = useRef(handleMove);
+  const overworldRef = useRef(overworld);
+  useEffect(() => { handleMoveRef.current = handleMove; }, [handleMove]);
+  useEffect(() => { overworldRef.current = overworld; }, [overworld]);
+
+  const cancelAutoWalk = useCallback(() => {
+    if (autoWalkTimerRef.current !== null) {
+      window.clearInterval(autoWalkTimerRef.current);
+      autoWalkTimerRef.current = null;
+    }
+    autoWalkPathRef.current = null;
+  }, []);
+
+  const startAutoWalk = useCallback((path: Position[]) => {
+    cancelAutoWalk();
+    autoWalkPathRef.current = [...path];
+    const stepDelay = Math.max(80, settings.autoRunSpeed || 100);
+    autoWalkTimerRef.current = window.setInterval(() => {
+      const queue = autoWalkPathRef.current;
+      const ow = overworldRef.current;
+      if (!queue || queue.length === 0 || !ow) {
+        cancelAutoWalk();
+        return;
+      }
+      // Stop if a visible enemy is on the field — mirrors auto-run behaviour.
+      const enemiesNearby = getVisibleOverworldEnemies(ow, 6);
+      if (enemiesNearby.length > 0) {
+        cancelAutoWalk();
+        addLog('⚠️ Stopped — enemy spotted!', 'info');
+        return;
+      }
+      const next = queue.shift()!;
+      const dx = next.x - ow.playerPosition.x;
+      const dy = next.y - ow.playerPosition.y;
+      // If pathfinder result is no longer a single step from us, abort.
+      if (Math.abs(dx) + Math.abs(dy) !== 1) {
+        cancelAutoWalk();
+        return;
+      }
+      handleMoveRef.current(dx, dy);
+      if (queue.length === 0) cancelAutoWalk();
+    }, stepDelay);
+  }, [cancelAutoWalk, settings.autoRunSpeed, addLog]);
+
+  // Cancel auto-walk on unmount.
+  useEffect(() => () => cancelAutoWalk(), [cancelAutoWalk]);
+
   // ─── Attack targeting ───
   const handleUseMoveOnMap = useCallback((move: Move | EvolvedMove) => {
     if (!state.run || !monster) return;
@@ -827,12 +880,28 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
     }
     
-    // Normal movement to adjacent tile
+    // Normal movement.
     const dx = worldX - overworld.playerPosition.x;
     const dy = worldY - overworld.playerPosition.y;
-    if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 && (dx !== 0 || dy !== 0)) {
+    if (dx === 0 && dy === 0) return;
+    // Adjacent tap → step directly.
+    if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) {
+      cancelAutoWalk();
       handleMove(dx, dy);
+      return;
     }
+    // Far tap → A* path to destination and walk it step-by-step. This is what
+    // makes mobile tap-to-move actually usable when the target isn't right
+    // next to you.
+    const path = findOverworldPath(overworld, overworld.playerPosition, { x: worldX, y: worldY });
+    if (!path || path.length === 0) {
+      toast.info('No path to that tile.');
+      return;
+    }
+    // If the destination is an interactable (tree/rock/enemy/nest/building/dungeon),
+    // stop one step before so the final move triggers the interaction via
+    // movePlayer (which already handles harvest/enter/attack logic).
+    startAutoWalk(path);
   }, [overworld, monster, targetingMove, handleTargetingClick, handleMove, addLog, buildMode, selectedBuildType, roadBuildMode, selectedRoadType, saveOverworld]);
   
   // Right-click → context menu for player buildings, or auto-attack for enemies/nests
@@ -948,13 +1017,13 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       
       switch (e.key) {
         case 'ArrowUp': case 'w': case 'W':
-          e.preventDefault(); handleMove(0, -1); break;
+          e.preventDefault(); cancelAutoWalk(); handleMove(0, -1); break;
         case 'ArrowDown': case 's': case 'S':
-          e.preventDefault(); handleMove(0, 1); break;
+          e.preventDefault(); cancelAutoWalk(); handleMove(0, 1); break;
         case 'ArrowLeft': case 'a': case 'A':
-          e.preventDefault(); handleMove(-1, 0); break;
+          e.preventDefault(); cancelAutoWalk(); handleMove(-1, 0); break;
         case 'ArrowRight': case 'd': case 'D':
-          e.preventDefault(); handleMove(1, 0); break;
+          e.preventDefault(); cancelAutoWalk(); handleMove(1, 0); break;
         case 'b': case 'B':
           if (!targetingMove && !buildMode) {
             e.preventDefault();
@@ -966,7 +1035,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleMove, showBuildingMenu, showDungeonPrompt, showRecruitment, targetingMove, cancelTargeting, levelUpQueue.length, buildMode, roadBuildMode, showBuildPanel]);
+  }, [handleMove, cancelAutoWalk, showBuildingMenu, showDungeonPrompt, showRecruitment, targetingMove, cancelTargeting, levelUpQueue.length, buildMode, roadBuildMode, showBuildPanel]);
   
   // Keybind shortcuts for moves
   const keybindDataRef = useRef(loadKeybinds());

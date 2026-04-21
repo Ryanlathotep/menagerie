@@ -183,6 +183,7 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
   onTileHoverEnd,
 }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastTapRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const { x: px, y: py } = overworld.playerPosition;
   
   const scale = zoom / 100;
@@ -193,6 +194,20 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
       // No-op: player is always centered via CSS transform
     },
   }));
+
+  // Mobile double-tap → fire the right-click handler (context menu).
+  // A second tap on the SAME tile within 300ms is treated as right-click.
+  const handleTileTap = (worldX: number, worldY: number) => {
+    const now = Date.now();
+    const last = lastTapRef.current;
+    if (last && last.x === worldX && last.y === worldY && now - last.time < 300) {
+      lastTapRef.current = null;
+      onTileRightClick?.(worldX, worldY);
+      return;
+    }
+    lastTapRef.current = { x: worldX, y: worldY, time: now };
+    onTileClick?.(worldX, worldY);
+  };
   
   // Build visible tile array
   const tiles: { worldX: number; worldY: number; tile: OverworldTile; relX: number; relY: number }[] = [];

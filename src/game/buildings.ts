@@ -150,6 +150,7 @@ export function canPlaceBuilding(
   woodAvailable: number,
   stoneAvailable: number,
   buildingType: PlayerBuildingType,
+  tileInfo?: { isCliff?: boolean; isWaterfall?: boolean; isRamp?: boolean },
 ): { canPlace: boolean; reason?: string } {
   const def = BUILDING_DEFINITIONS[buildingType];
   // Creative mode bypasses ONLY the cost check — placement rules (no overlap,
@@ -166,6 +167,12 @@ export function canPlaceBuilding(
   if (worldX === homePosition.x && worldY === homePosition.y) {
     return { canPlace: false, reason: 'Cannot build on home tile' };
   }
+
+  // Elevation rules: cliffs and waterfalls reject everything; ramps reject all
+  // buildings (stairs are placed via the road tool, not as a building).
+  if (tileInfo?.isCliff)     return { canPlace: false, reason: 'Cannot build on a cliff face' };
+  if (tileInfo?.isWaterfall) return { canPlace: false, reason: 'Cannot build on a waterfall' };
+  if (tileInfo?.isRamp)      return { canPlace: false, reason: 'Ramps only accept stair-style stone roads' };
 
   // Check if tile already has a building
   if (existingBuildings.some(b => b.worldX === worldX && b.worldY === worldY)) {

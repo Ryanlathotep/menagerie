@@ -13,6 +13,7 @@ import {
 } from './OverworldTileGraphics';
 import { OverworldBuildingTileGraphic } from './OverworldBuildingTileGraphics';
 import { PlayerBuilding, isWallActingAsGate, getGateAxis, getGateInsideDirection, wallConnectsTo, roadConnectsTo } from './buildings';
+import { connectorDirFor } from './wallTop';
 import { fitFromNeighbors } from './autoTiling';
 import { NestState } from './nests';
 import { MatchupIndicator } from './MatchupIndicator';
@@ -147,6 +148,11 @@ function renderTileGraphic(
           w: wallConnectsTo(state, worldX - 1, worldY),
         };
       }
+      // For stair/ladder, figure out which side has the wall/cliff so the
+      // tile rotates to face it.
+      const connectorDir = (playerBuilding.type === 'stone_staircase' || playerBuilding.type === 'ladder')
+        ? connectorDirFor(state, worldX, worldY)
+        : undefined;
       return (
         <OverworldBuildingTileGraphic
           type={playerBuilding.type}
@@ -154,6 +160,7 @@ function renderTileGraphic(
           seed={seed}
           harvestReady={playerBuilding.harvestReady}
           wallAttachments={wallAttachments}
+          connectorDir={connectorDir}
         />
       );
     }

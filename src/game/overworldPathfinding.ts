@@ -7,6 +7,7 @@
 import { OverworldState, OverworldTile, getOverworldTile, ensureChunksLoaded } from './overworld';
 import { Position } from './types';
 import { isWallActingAsGate } from './buildings';
+import { getTileEffectiveZ, isWalkableWallTop, isElevationConnectorAt } from './wallTop';
 
 interface PathNode {
   x: number;
@@ -22,7 +23,7 @@ function heuristic(a: Position, b: Position): number {
 }
 
 // Tiles a path can step *through*. Goal tile uses a looser check.
-function isTraversable(tile: OverworldTile | null, state: OverworldState): boolean {
+function isTraversable(tile: OverworldTile | null, state: OverworldState, x: number, y: number): boolean {
   if (!tile) return false;
   switch (tile.type) {
     case 'grass':
@@ -36,8 +37,11 @@ function isTraversable(tile: OverworldTile | null, state: OverworldState): boole
       if (!id) return true;
       const b = state.playerBuildings?.find(pb => pb.id === id);
       if (!b) return true;
-      // Walls block unless acting as a gate. Towers/farms are walkable.
-      if (b.type === 'wall') return isWallActingAsGate(b, state);
+      // Walls are only traversable when they're a gate OR when this is a
+      // walkable wall-top (interior of a 3×3+ wall block).
+      if (b.type === 'wall') {
+        return isWallActingAsGate(b, state) || isWalkableWallTop(state, x, y);
+      }
       return true;
     }
     case 'water':
@@ -80,7 +84,7 @@ export function findOverworldPath(
     goalTile.type === 'dungeon_entrance' ||
     goalTile.type === 'building' ||
     goalTile.type === 'player_building';
-  if (!isTraversable(goalTile, state) && !goalIsInteractable) return null;
+  if (!isTraversable(goalTile, state, goal.x, goal.y) && !goalIsInteractable) return null;
 
   const open: PathNode[] = [];
   const closed = new Set<string>();
@@ -128,8 +132,23 @@ export function findOverworldPath(
       // We don't path through fog — only through known terrain. This keeps
       // tap-to-move from blindly marching into hazards.
       if (!tile.explored) continue;
-      if (!isGoal && !isTraversable(tile, state)) continue;
-      if (isGoal && !isTraversable(tile, state) && !goalIsInteractable) continue;
+      if (!isGoal && !isTraversable(tile, state, nb.x, nb.y)) continue;
+      if (isGoal && !isTraversable(tile, state, nb.x, nb.y) && !goalIsInteractable) continue;
+
+      // Z-transition gate (mirrors movePlayer): can only change z via a
+      // ramp or a stair/ladder connector on either side.
+      const fromTile = getOverworldTile(state, current.x, current.y);
+      const fromZ = getTileEffectiveZ(state, current.x, current.y, fromTile);
+      const toZ = getTileEffectiveZ(state, nb.x, nb.y, tile);
+      if (fromZ !== toZ) {
+        const fromIsConnector = !!fromTile && fromTile.type === 'player_building'
+          && isElevationConnectorAt(state, current.x, current.y);
+        const toIsConnector = tile.type === 'player_building'
+          && isElevationConnectorAt(state, nb.x, nb.y);
+        const fromIsRamp = !!fromTile?.isRamp;
+        const toIsRamp = !!tile.isRamp;
+        if (!fromIsConnector && !toIsConnector && !fromIsRamp && !toIsRamp) continue;
+      }
 
       const g = current.g + 1;
       const h = heuristic(nb, goal);

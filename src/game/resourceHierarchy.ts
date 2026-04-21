@@ -152,6 +152,15 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
+// Apply ±40% jitter to a base step count so a freshly-generated cluster of
+// trees/stones doesn't all upgrade on the same tick. Deterministic per tile.
+export function jitterUpgradeSteps(baseSteps: number, worldX: number, worldY: number, salt = 0): number {
+  if (baseSteps <= 0) return baseSteps;
+  const r = seededRandom(worldX * 374761393 + worldY * 668265263 + salt + 9173);
+  const factor = 0.6 + r * 0.8; // 0.6x — 1.4x
+  return Math.max(1, Math.round(baseSteps * factor));
+}
+
 // ============= RESOURCE UPGRADE TRACKING =============
 // Stored in OverworldState, keyed by "x,y"
 

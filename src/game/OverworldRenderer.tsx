@@ -1,6 +1,6 @@
 // Overworld Renderer - Renders the chunk-based overworld with tile graphics
 
-import { useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react';
 import { OverworldState, OverworldTile, getOverworldTile } from './overworld';
 import { Position, Monster, UnlockedMonster } from './types';
 import { MonsterSprite } from './sprites';

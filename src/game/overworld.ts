@@ -11,6 +11,7 @@ import {
   tickResourceUpgrades, jitterUpgradeSteps,
 } from './resourceHierarchy';
 import { isCreativeMode } from './creativeMode';
+import { getTileElevation, getCliffDrops, pickRampHere, shouldBeWaterfall } from './elevation';
 
 const ALL_SPECIES = Object.keys(SPECIES_DATA) as SpeciesType[];
 

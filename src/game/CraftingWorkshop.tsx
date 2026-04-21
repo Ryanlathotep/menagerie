@@ -129,13 +129,13 @@ export function CraftingWorkshop({
   
   return (
     <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex items-center justify-center p-2">
-      <Card className="w-full max-w-4xl h-[90vh] overflow-hidden flex flex-col">
+      <Card className="w-full max-w-4xl h-[95vh] sm:h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="p-2 border-b flex items-center justify-between shrink-0">
-          <h2 className="text-base font-bold bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
-            🔨 Crafting Workshop
+        <div className="p-2 border-b shrink-0 flex items-center gap-2">
+          <h2 className="text-sm sm:text-base font-bold bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent shrink-0">
+            🔨 <span className="hidden sm:inline">Crafting Workshop</span><span className="sm:hidden">Craft</span>
           </h2>
-          <div className="flex gap-1">
+          <div className="flex gap-1 flex-wrap flex-1 justify-end">
             <Button
               variant={activeTab === 'craft' ? 'default' : 'ghost'}
               size="sm"
@@ -168,8 +168,16 @@ export function CraftingWorkshop({
             >
               ⛏️ Tools
             </Button>
-            <Button variant="ghost" size="sm" className="h-7 px-2" onClick={onClose}>✕</Button>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 px-2 shrink-0"
+            onClick={onClose}
+            aria-label="Close crafting workshop"
+          >
+            ✕
+          </Button>
         </div>
         
         {activeTab === 'craft' ? (

@@ -43,6 +43,7 @@ import { WaterTileContextMenu } from './WaterTileContextMenu';
 import { RoadContextMenu } from './RoadContextMenu';
 import { useSettings } from './Settings';
 import { GameSidebar } from './GameSidebar';
+import { CraftingWorkshop } from './CraftingWorkshop';
 import { getMonsterMoves, Move, getNewMovesAtLevel } from './moves';
 import { getAttackConfig } from './dungeonCombat';
 import { xpToNextLevel, calculateXpReward } from './combat';
@@ -1502,6 +1503,42 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         onBulkEquip={(partyIndex, equipment, usedIds) => dispatch({ type: 'BULK_EQUIP', partyIndex, equipment, usedIds })}
         onLog={(text) => addLog(text, 'system')}
         onClose={() => setShowEquipment(false)}
+      />
+    )}
+
+    {/* Portable Workstation: opens the crafting workshop on the overworld */}
+    {showWorkshop && (
+      <CraftingWorkshop
+        materials={state.saveData.materials || {}}
+        playerLevel={state.run?.currentMonster?.level || 1}
+        storedEquipment={state.saveData.storedEquipment || []}
+        unlockedRecipes={state.saveData.unlockedRecipes || []}
+        tools={state.saveData.tools}
+        onCraft={(recipe, result) => {
+          if (!isCreativeMode()) dispatch({ type: 'USE_MATERIALS', materials: recipe.materials });
+          dispatch({ type: 'STORE_EQUIPMENT', item: result });
+        }}
+        onCraftConsumable={(recipe) => {
+          if (!isCreativeMode()) dispatch({ type: 'USE_MATERIALS', materials: recipe.materials });
+          dispatch({
+            type: 'ADD_ITEM',
+            item: { id: recipe.resultId, name: recipe.name, type: 'potion', value: 0, effect: recipe.effect, quantity: 1 },
+          });
+        }}
+        onDismantle={(itemId) => dispatch({ type: 'DISMANTLE_EQUIPMENT', itemId })}
+        onUpgradePickaxe={(tier, mats) => {
+          if (!isCreativeMode()) dispatch({ type: 'USE_MATERIALS', materials: mats });
+          dispatch({ type: 'SET_PICKAXE_TIER', tier });
+        }}
+        onUpgradeShovel={(tier, mats) => {
+          if (!isCreativeMode()) dispatch({ type: 'USE_MATERIALS', materials: mats });
+          dispatch({ type: 'SET_SHOVEL_TIER', tier });
+        }}
+        onCraftWorkstation={(mats) => {
+          if (!isCreativeMode()) dispatch({ type: 'USE_MATERIALS', materials: mats });
+          dispatch({ type: 'SET_WORKSTATION_OWNED' });
+        }}
+        onClose={() => setShowWorkshop(false)}
       />
     )}
     

@@ -8,7 +8,7 @@
 // 1 tick of rune backlash damage when they shovel it.
 
 import { ElementType, ClassType, Monster } from './types';
-import type { ShovelTier } from './tools';
+import { SHOVEL_TIERS, type ShovelTier } from './tools';
 
 // Rune types — keep the same string keys so existing save data stays valid.
 export type TerrainType =
@@ -241,8 +241,6 @@ export function shovelHitsToBreak(
   shovelTier: ShovelTier | undefined,
 ): number {
   if (!shovelTier) return Infinity;
-  // Lazy import to avoid circular dep at module load.
-  const { SHOVEL_TIERS } = require('./tools') as typeof import('./tools');
   const data = TERRAIN_CONFIG[terrainType];
   const power = SHOVEL_TIERS[shovelTier].power;
   if (power < data.shovelTier) return Infinity;

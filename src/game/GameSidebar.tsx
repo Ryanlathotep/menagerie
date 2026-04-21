@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-import { User, Backpack, Map, DoorOpen, Home, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, Shirt, Gem, Users, LogOut } from 'lucide-react';
+import { User, Backpack, Map, DoorOpen, Home, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, Shirt, Gem, Users, LogOut, Hammer } from 'lucide-react';
 import { Monster, InventoryItem, MaterialInventory, SPECIES_DATA, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED } from './types';
 import { CombatEffects } from './statusEffects';
 import { MonsterSprite } from './sprites';
@@ -82,6 +82,9 @@ interface GameSidebarProps {
   activePartyIndex?: number;
   onPartySwitch?: (index: number) => void;
   partyEffects?: CombatEffects[];
+  // Portable Workstation: shows a hammer button that opens the crafting modal
+  // when the player owns the singleton workstation tool.
+  onOpenWorkshop?: () => void;
 }
 export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   monster,
@@ -117,6 +120,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   activePartyIndex = 0,
   onPartySwitch,
   partyEffects = [],
+  onOpenWorkshop,
 }, ref) => {
   const isMobileView = typeof window !== 'undefined' && window.innerWidth < 640;
   const [activePanel, setActivePanel] = useState<PanelName | null>(null);
@@ -278,6 +282,19 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             </Button>
           )}
           
+          {/* Portable Workstation — opens crafting modal anywhere when owned */}
+          {onOpenWorkshop && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-9 h-9 sm:w-8 sm:h-8"
+              onClick={onOpenWorkshop}
+              title="Open Portable Workstation (crafting)"
+            >
+              <Hammer className="w-5 h-5 sm:w-4 sm:h-4" />
+            </Button>
+          )}
+
           {/* Settings button */}
           <Button variant="ghost" size="icon" className="w-9 h-9 sm:w-8 sm:h-8 hidden sm:flex" onClick={() => setShowSettings(true)} title="Settings">
             <Settings className="w-5 h-5 sm:w-4 sm:h-4" />

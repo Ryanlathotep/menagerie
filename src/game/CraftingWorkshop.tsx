@@ -26,7 +26,7 @@ import {
   ConsumableRecipe,
 } from './equipment';
 import { isCreativeMode, onCreativeModeChange } from './creativeMode';
-import { PICKAXE_TIERS, PICKAXE_TIER_ORDER, nextPickaxeTier, SHOVEL_TIERS, SHOVEL_TIER_ORDER, nextShovelTier, type PickaxeTier, type ShovelTier, type PlayerTools } from './tools';
+import { PICKAXE_TIERS, PICKAXE_TIER_ORDER, nextPickaxeTier, SHOVEL_TIERS, SHOVEL_TIER_ORDER, nextShovelTier, WORKSTATION, type PickaxeTier, type ShovelTier, type PlayerTools } from './tools';
 import { useEffect } from 'react';
 
 interface MaterialInventory {
@@ -44,6 +44,7 @@ interface CraftingWorkshopProps {
   onDismantle: (itemId: string, materialsGained: { materialId: string; quantity: number }[]) => void;
   onUpgradePickaxe?: (tier: PickaxeTier, materials: { materialId: string; quantity: number }[]) => void;
   onUpgradeShovel?: (tier: ShovelTier, materials: { materialId: string; quantity: number }[]) => void;
+  onCraftWorkstation?: (materials: { materialId: string; quantity: number }[]) => void;
   onClose: () => void;
 }
 
@@ -58,6 +59,7 @@ export function CraftingWorkshop({
   onDismantle,
   onUpgradePickaxe,
   onUpgradeShovel,
+  onCraftWorkstation,
   onClose,
 }: CraftingWorkshopProps) {
   const [selectedRecipe, setSelectedRecipe] = useState<CraftingRecipe | null>(null);
@@ -103,7 +105,7 @@ export function CraftingWorkshop({
     status: CONSUMABLE_RECIPES.filter(r => r.effect.startsWith('cure_')),
     buffs: CONSUMABLE_RECIPES.filter(r => r.effect.startsWith('boost_')),
     revive: CONSUMABLE_RECIPES.filter(r => r.effect.startsWith('revive')),
-    utility: CONSUMABLE_RECIPES.filter(r => r.effect === 'reveal_stairs' || r.effect === 'open_workshop'),
+    utility: CONSUMABLE_RECIPES.filter(r => r.effect === 'reveal_stairs'),
   };
   
   const handleCraft = () => {
@@ -220,6 +222,7 @@ export function CraftingWorkshop({
             creative={creative}
             onUpgradePickaxe={onUpgradePickaxe}
             onUpgradeShovel={onUpgradeShovel}
+            onCraftWorkstation={onCraftWorkstation}
           />
         )}
       </Card>
@@ -853,12 +856,14 @@ function ToolsTab({
   creative,
   onUpgradePickaxe,
   onUpgradeShovel,
+  onCraftWorkstation,
 }: {
   tools?: PlayerTools;
   materials: MaterialInventory;
   creative: boolean;
   onUpgradePickaxe?: (tier: PickaxeTier, materials: { materialId: string; quantity: number }[]) => void;
   onUpgradeShovel?: (tier: ShovelTier, materials: { materialId: string; quantity: number }[]) => void;
+  onCraftWorkstation?: (materials: { materialId: string; quantity: number }[]) => void;
 }) {
   const canAfford = (mats: { materialId: string; quantity: number }[]): boolean => {
     if (creative) return true;
@@ -887,6 +892,14 @@ function ToolsTab({
     if (!nextShovTier || !nextShovData) return;
     if (!canAfford(nextShovData.materials)) return;
     onUpgradeShovel?.(nextShovTier, nextShovData.materials);
+  };
+
+  // ----- Workstation (singleton, no tier ladder) -----
+  const ownsWorkstation = !!tools?.workstation;
+  const workstationAffordable = canAfford(WORKSTATION.materials);
+  const handleCraftWorkstation = () => {
+    if (ownsWorkstation || !workstationAffordable) return;
+    onCraftWorkstation?.(WORKSTATION.materials);
   };
 
   return (
@@ -926,6 +939,59 @@ function ToolsTab({
             onUpgrade={handleUpgradeShovel}
             maxLabel="✨ Mithril Shovel — max tier reached!"
           />
+
+          {/* Workstation section — singleton, no tiers */}
+          <div className="space-y-2">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <span className="text-lg">{WORKSTATION.icon}</span>
+              Workstation
+              {ownsWorkstation && (
+                <span className="text-[10px] text-muted-foreground font-normal">(owned)</span>
+              )}
+            </h3>
+            <p className="text-[11px] text-muted-foreground">{WORKSTATION.description}</p>
+
+            <div
+              className={`
+                p-2 rounded border flex items-center gap-2 transition-all
+                ${ownsWorkstation ? 'border-green-500/50 bg-green-500/5' : 'border-primary ring-1 ring-primary/40'}
+              `}
+            >
+              <span className="text-lg shrink-0">{WORKSTATION.icon}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold">{WORKSTATION.name}</span>
+                  {ownsWorkstation && <span className="text-[10px] text-green-500">✓ Owned</span>}
+                </div>
+                {!ownsWorkstation && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {WORKSTATION.materials.map(m => {
+                      const have = materials[m.materialId] || 0;
+                      const ok = creative || have >= m.quantity;
+                      return (
+                        <span
+                          key={m.materialId}
+                          className={`text-[10px] px-1 rounded ${ok ? 'text-muted-foreground' : 'text-destructive'}`}
+                        >
+                          {m.quantity}× {m.materialId} ({have})
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              {!ownsWorkstation && (
+                <Button
+                  size="sm"
+                  className="h-7 text-xs shrink-0"
+                  disabled={!workstationAffordable}
+                  onClick={handleCraftWorkstation}
+                >
+                  Craft
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
       </ScrollArea>
 

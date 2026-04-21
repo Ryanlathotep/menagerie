@@ -14,7 +14,8 @@ import {
 } from './equipment';
 import { Monster, InventoryItem } from './types';
 import { MonsterSprite } from './sprites';
-import { ArrowLeft, Play, Shirt } from 'lucide-react';
+import { ArrowLeft, Play, Shirt, Layers } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
 import { EquippedSlotDisplay, DraggableEquipmentItem, DragData } from './DraggableEquipmentItem';
 import { EquipmentSortControls } from './EquipmentSortControls';
 import { sortEquipment, autoEquip, SortConfig } from './equipmentUtils';
@@ -26,7 +27,16 @@ interface PreRunEquipmentProps {
   monster?: Monster;
   storedEquipment: EquipmentItem[];
   storedItems: InventoryItem[];
-  onStart: (partyEquipment: MonsterEquipment[], withdrawnIds: string[], selectedItems: InventoryItem[]) => void;
+  /** Dungeon's base starting floor (from the entrance). When provided, a floor selector appears. */
+  entranceFloor?: number;
+  /** Maximum floor the player may skip to (e.g. entranceFloor + floor(highestLevel/2)). */
+  maxStartFloor?: number;
+  onStart: (
+    partyEquipment: MonsterEquipment[],
+    withdrawnIds: string[],
+    selectedItems: InventoryItem[],
+    selectedStartFloor?: number,
+  ) => void;
   onBack: () => void;
 }
 
@@ -35,6 +45,8 @@ export function PreRunEquipment({
   monster: legacyMonster,
   storedEquipment,
   storedItems,
+  entranceFloor,
+  maxStartFloor,
   onStart,
   onBack,
 }: PreRunEquipmentProps) {
@@ -63,6 +75,12 @@ export function PreRunEquipment({
   
   // Selected consumables to bring into the run
   const [selectedItems, setSelectedItems] = useState<InventoryItem[]>([]);
+
+  // Floor-skip selector. Defaults to the entrance's base floor (no skip).
+  const minFloor = Math.max(1, entranceFloor ?? 1);
+  const maxFloor = Math.max(minFloor, maxStartFloor ?? minFloor);
+  const [selectedStartFloor, setSelectedStartFloor] = useState<number>(minFloor);
+  const showFloorSelector = entranceFloor !== undefined && maxFloor > minFloor;
   
   // Track which items have been withdrawn from storage (across ALL party members)
   const allEquippedIds = partyEquipment.flatMap(eq => Object.values(eq).filter(Boolean).map(item => item!.id));
@@ -154,7 +172,7 @@ export function PreRunEquipment({
   }, [activeIndex]);
   
   const handleStart = () => {
-    onStart(partyEquipment, equippedIds, selectedItems);
+    onStart(partyEquipment, equippedIds, selectedItems, showFloorSelector ? selectedStartFloor : undefined);
   };
   
   // Drag handlers
@@ -223,7 +241,37 @@ export function PreRunEquipment({
         <p className="text-center text-muted-foreground text-xs">
           Equip gear and select consumables from your storage before starting the run.
         </p>
-        
+
+        {/* Floor skip selector — only shown for dungeon runs when the player has earned the right to skip ahead. */}
+        {showFloorSelector && (
+          <Card className="p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Layers className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-semibold">Starting Floor</h3>
+              <span className="ml-auto text-xs text-muted-foreground">
+                F{minFloor} – F{maxFloor}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground w-8 text-right">F{minFloor}</span>
+              <Slider
+                value={[selectedStartFloor]}
+                min={minFloor}
+                max={maxFloor}
+                step={1}
+                onValueChange={(v) => setSelectedStartFloor(v[0] ?? minFloor)}
+                className="flex-1"
+              />
+              <span className="text-xs text-muted-foreground w-8">F{maxFloor}</span>
+              <span className="text-base font-bold tabular-nums w-14 text-center bg-primary/10 rounded px-2 py-1">
+                F{selectedStartFloor}
+              </span>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-2 text-center">
+              Begin deeper to face tougher enemies and richer loot. Max floor scales with your strongest monster.
+            </p>
+          </Card>
+        )}
         {/* Party member tabs */}
         {monsters.length > 1 && (
           <div className="flex gap-1 justify-center flex-wrap">

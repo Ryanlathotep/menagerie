@@ -451,8 +451,21 @@ function CharacterSelect() {
   
   const runDestination = (localStorage.getItem('menagerie_run_destination') || 'dungeon') as 'dungeon' | 'overworld';
   
-  const startRun = (partyEquipment: MonsterEquipment[], withdrawnIds: string[], selectedItems: import('@/game/types').InventoryItem[]) => {
+  const startRun = (
+    partyEquipment: MonsterEquipment[],
+    withdrawnIds: string[],
+    selectedItems: import('@/game/types').InventoryItem[],
+    selectedStartFloor?: number,
+  ) => {
     if (partyForRun.length === 0) return;
+    // Persist the player's chosen starting floor so the dungeon-init effect picks it up.
+    if (typeof window !== 'undefined') {
+      if (selectedStartFloor && selectedStartFloor > 0) {
+        localStorage.setItem('menagerie_selected_start_floor', String(selectedStartFloor));
+      } else {
+        localStorage.removeItem('menagerie_selected_start_floor');
+      }
+    }
     dispatch({
       type: 'START_RUN',
       monster: partyForRun[0],
@@ -464,6 +477,25 @@ function CharacterSelect() {
     });
   };
   
+  // Resolve the active dungeon entrance + max selectable floor (formula:
+  // entrance.difficulty + floor(highestPartyLevelEverReached / 2)).
+  const activeDungeonIdForPrep = typeof window !== 'undefined'
+    ? localStorage.getItem('menagerie_active_dungeon_id')
+    : null;
+  const activeEntranceForPrep = activeDungeonIdForPrep
+    ? state.saveData.dungeonEntrances?.[activeDungeonIdForPrep]
+    : undefined;
+  const entranceFloorForPrep = runDestination === 'dungeon'
+    ? Math.max(1, activeEntranceForPrep?.difficulty ?? 1)
+    : undefined;
+  const highestMonsterLevelEver = state.saveData.unlockedMonsters.reduce(
+    (max, m) => Math.max(max, m.level ?? 1),
+    1,
+  );
+  const maxStartFloorForPrep = entranceFloorForPrep !== undefined
+    ? entranceFloorForPrep + Math.floor(highestMonsterLevelEver / 2)
+    : undefined;
+  
   // Show equipment selection screen
   if (showEquipmentSelect && partyForRun.length > 0) {
     return (
@@ -471,6 +503,8 @@ function CharacterSelect() {
         party={partyForRun}
         storedEquipment={state.saveData.storedEquipment || []}
         storedItems={state.saveData.storedItems || []}
+        entranceFloor={entranceFloorForPrep}
+        maxStartFloor={maxStartFloorForPrep}
         onStart={startRun}
         onBack={() => setShowEquipmentSelect(false)}
       />
@@ -775,14 +809,34 @@ function DungeonView({
         ? localStorage.getItem('menagerie_active_dungeon_id')
         : null;
       const entrance = activeId ? state.saveData.dungeonEntrances?.[activeId] : undefined;
-      const startingFloor = Math.max(1, entrance?.difficulty ?? 1);
+      const baseFloor = Math.max(1, entrance?.difficulty ?? 1);
+
+      // Honour the player's chosen start floor from the pre-run prep, clamped
+      // to the legal range [baseFloor, baseFloor + floor(highestLevel / 2)].
+      const rawSelected = typeof window !== 'undefined'
+        ? Number(localStorage.getItem('menagerie_selected_start_floor') || '0')
+        : 0;
+      const highestLevelEver = state.saveData.unlockedMonsters.reduce(
+        (max, m) => Math.max(max, m.level ?? 1),
+        1,
+      );
+      const maxAllowed = baseFloor + Math.floor(highestLevelEver / 2);
+      const startingFloor = rawSelected > 0
+        ? Math.min(maxAllowed, Math.max(baseFloor, rawSelected))
+        : baseFloor;
+
+      // Consume the choice so subsequent floors / fresh runs aren't affected.
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('menagerie_selected_start_floor');
+      }
+
       const newDungeon = generateDungeon(startingFloor, entrance?.theme, startingFloor);
       dispatch({
         type: 'SET_DUNGEON',
         dungeon: newDungeon
       });
     }
-  }, [dungeon, dispatch, state.saveData.dungeonEntrances]);
+  }, [dungeon, dispatch, state.saveData.dungeonEntrances, state.saveData.unlockedMonsters]);
   
   // ─── Manual save for admins: flush in-memory dungeon/run into saveData ───
   const handleManualSave = useCallback(async () => {

@@ -74,6 +74,12 @@ export function PreRunEquipment({
   
   // Selected consumables to bring into the run
   const [selectedItems, setSelectedItems] = useState<InventoryItem[]>([]);
+
+  // Floor-skip selector. Defaults to the entrance's base floor (no skip).
+  const minFloor = Math.max(1, entranceFloor ?? 1);
+  const maxFloor = Math.max(minFloor, maxStartFloor ?? minFloor);
+  const [selectedStartFloor, setSelectedStartFloor] = useState<number>(minFloor);
+  const showFloorSelector = entranceFloor !== undefined && maxFloor > minFloor;
   
   // Track which items have been withdrawn from storage (across ALL party members)
   const allEquippedIds = partyEquipment.flatMap(eq => Object.values(eq).filter(Boolean).map(item => item!.id));

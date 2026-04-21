@@ -7,7 +7,14 @@ import { isCreativeMode } from './creativeMode';
 
 // ============= BUILDING TYPES =============
 
-export type PlayerBuildingType = 'wall' | 'spike_trap' | 'poison_trap' | 'fire_trap' | 'ice_trap' | 'scout_tower' | 'farm';
+export type PlayerBuildingType =
+  | 'wall'
+  | 'spike_trap' | 'poison_trap' | 'fire_trap' | 'ice_trap'
+  | 'scout_tower' | 'farm'
+  // Elevation connectors — let the player climb onto wall-tops & cliffs.
+  // Both are functionally identical; cost & art differ.
+  | 'stone_staircase'
+  | 'ladder';
 
 export interface BuildingCost {
   wood: number;
@@ -112,6 +119,24 @@ export const BUILDING_DEFINITIONS: Record<PlayerBuildingType, BuildingDefinition
     maxHp: 30,
     category: 'utility',
     requiresMonster: true,
+  },
+  stone_staircase: {
+    type: 'stone_staircase',
+    name: 'Stone Staircase',
+    emoji: '🪜',
+    description: 'Climb onto an adjacent wall block or cliff. Must be placed touching a wall or cliff face.',
+    cost: { wood: 0, stone: 6 },
+    maxHp: 40,
+    category: 'utility',
+  },
+  ladder: {
+    type: 'ladder',
+    name: 'Wooden Ladder',
+    emoji: '🪜',
+    description: 'Climb onto an adjacent wall block or cliff. Cheaper than stairs, identical function.',
+    cost: { wood: 4, stone: 0 },
+    maxHp: 20,
+    category: 'utility',
   },
 };
 

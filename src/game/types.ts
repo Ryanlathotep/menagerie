@@ -303,6 +303,9 @@ export interface DungeonTile {
 export interface Position {
   x: number;
   y: number;
+  // Optional Z (vertical elevation). Undefined = derive from tile (ground level).
+  // Wall-tops sit at ground_z + 1; stacked walls/cliffs can reach ground_z + 2, etc.
+  z?: number;
 }
 
 // ============= GAME STATE =============

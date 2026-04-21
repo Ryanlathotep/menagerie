@@ -825,13 +825,18 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           toast.error('Can only build on open ground!');
           return prev;
         }
+        // Compute "adjacent cliff" so stair/ladder placement can attach to natural cliff faces.
+        const adjacentCliff = [[0,-1],[0,1],[-1,0],[1,0]].some(([dx,dy]) => {
+          const nb = getOverworldTile(newOw, worldX + dx, worldY + dy);
+          return nb?.type === 'cliff';
+        });
         const check = canPlaceBuilding(
           worldX, worldY,
           newOw.playerBuildings || [],
           newOw.homeBase.position,
           newOw.woodCollected, newOw.stoneCollected,
           selectedBuildType,
-          { isCliff: false, isWaterfall: false, isRamp: false },
+          { isCliff: false, isWaterfall: false, isRamp: false, adjacentCliff } as any,
         );
         if (!check.canPlace) {
           toast.error(check.reason || 'Cannot build here');

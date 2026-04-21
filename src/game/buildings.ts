@@ -7,7 +7,14 @@ import { isCreativeMode } from './creativeMode';
 
 // ============= BUILDING TYPES =============
 
-export type PlayerBuildingType = 'wall' | 'spike_trap' | 'poison_trap' | 'fire_trap' | 'ice_trap' | 'scout_tower' | 'farm';
+export type PlayerBuildingType =
+  | 'wall'
+  | 'spike_trap' | 'poison_trap' | 'fire_trap' | 'ice_trap'
+  | 'scout_tower' | 'farm'
+  // Elevation connectors — let the player climb onto wall-tops & cliffs.
+  // Both are functionally identical; cost & art differ.
+  | 'stone_staircase'
+  | 'ladder';
 
 export interface BuildingCost {
   wood: number;
@@ -113,6 +120,24 @@ export const BUILDING_DEFINITIONS: Record<PlayerBuildingType, BuildingDefinition
     category: 'utility',
     requiresMonster: true,
   },
+  stone_staircase: {
+    type: 'stone_staircase',
+    name: 'Stone Staircase',
+    emoji: '🪜',
+    description: 'Climb onto an adjacent wall block or cliff. Must be placed touching a wall or cliff face.',
+    cost: { wood: 0, stone: 6 },
+    maxHp: 40,
+    category: 'utility',
+  },
+  ladder: {
+    type: 'ladder',
+    name: 'Wooden Ladder',
+    emoji: '🪜',
+    description: 'Climb onto an adjacent wall block or cliff. Cheaper than stairs, identical function.',
+    cost: { wood: 4, stone: 0 },
+    maxHp: 20,
+    category: 'utility',
+  },
 };
 
 // ============= FARM OUTPUT =============
@@ -177,6 +202,21 @@ export function canPlaceBuilding(
   // Check if tile already has a building
   if (existingBuildings.some(b => b.worldX === worldX && b.worldY === worldY)) {
     return { canPlace: false, reason: 'Already a building here' };
+  }
+
+  // Stair / ladder: must be adjacent to a wall (any orientation) or a cliff
+  // face. Bypasses the build-radius rule because they have to attach to the
+  // existing wall/cliff anyway, which is itself the anchor.
+  if (buildingType === 'stone_staircase' || buildingType === 'ladder') {
+    const dirs: Array<[number, number]> = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+    const adjacentWall = dirs.some(([dx, dy]) =>
+      existingBuildings.some(b => b.type === 'wall' && b.worldX === worldX + dx && b.worldY === worldY + dy)
+    );
+    const adjacentCliff = !!tileInfo && (tileInfo as any).adjacentCliff === true;
+    if (!adjacentWall && !adjacentCliff) {
+      return { canPlace: false, reason: 'Must be placed touching a wall or cliff face' };
+    }
+    return { canPlace: true };
   }
 
   // Must be within MAX_BUILD_RADIUS Manhattan steps of the home base or any existing building.

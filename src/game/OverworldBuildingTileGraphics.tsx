@@ -163,9 +163,61 @@ export function FarmTile({ size, seed = 0, harvestReady = false }: BuildingTileP
   );
 }
 
+// ─── Stone Staircase ───
+// A masonry climb attached to a wall/cliff. `attachDir` indicates the side
+// the stairs LEAD UP to (i.e. the wall is north → stairs ascend north).
+export function StoneStaircaseTile({
+  size,
+  attachDir = 'n',
+}: BuildingTileProps & { attachDir?: 'n' | 's' | 'e' | 'w' }) {
+  // Always draw base art as ascending NORTH, then rotate to match attachDir.
+  const rot = attachDir === 'n' ? 0 : attachDir === 'e' ? 90 : attachDir === 's' ? 180 : 270;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className="block">
+      <rect width="24" height="24" fill="hsl(35 22% 45%)" opacity={0.2}/>
+      <g transform={`rotate(${rot} 12 12)`}>
+        {/* Slope shadow under the steps */}
+        <path d="M3 22 L21 22 L18 4 L6 4 Z" fill="hsl(30 18% 35%)" opacity={0.55}/>
+        {/* 5 stone steps, narrowing as they ascend (forced perspective) */}
+        <rect x="3"   y="19" width="18" height="3" fill="hsl(35 25% 60%)" stroke={INK.medium} strokeWidth={0.4} opacity={0.95}/>
+        <rect x="4"   y="15" width="16" height="3" fill="hsl(35 25% 58%)" stroke={INK.medium} strokeWidth={0.4} opacity={0.92}/>
+        <rect x="5"   y="11" width="14" height="3" fill="hsl(35 25% 56%)" stroke={INK.medium} strokeWidth={0.4} opacity={0.9}/>
+        <rect x="6"   y="7"  width="12" height="3" fill="hsl(35 25% 54%)" stroke={INK.medium} strokeWidth={0.4} opacity={0.88}/>
+        <rect x="7"   y="3"  width="10" height="3" fill="hsl(35 25% 50%)" stroke={INK.medium} strokeWidth={0.4} opacity={0.85}/>
+      </g>
+      <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
+      <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
+    </svg>
+  );
+}
+
+// ─── Wooden Ladder ───
+export function LadderTile({
+  size,
+  attachDir = 'n',
+}: BuildingTileProps & { attachDir?: 'n' | 's' | 'e' | 'w' }) {
+  const rot = attachDir === 'n' ? 0 : attachDir === 'e' ? 90 : attachDir === 's' ? 180 : 270;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className="block">
+      <rect width="24" height="24" fill="hsl(90 30% 50%)" opacity={0.15}/>
+      <g transform={`rotate(${rot} 12 12)`}>
+        {/* Two long rails — wooden brown */}
+        <rect x="7"  y="2" width="2" height="20" rx={0.5} fill="hsl(25 50% 35%)" opacity={0.95} stroke={INK.dark} strokeWidth={0.3}/>
+        <rect x="15" y="2" width="2" height="20" rx={0.5} fill="hsl(25 50% 35%)" opacity={0.95} stroke={INK.dark} strokeWidth={0.3}/>
+        {/* Rungs */}
+        {[4, 8, 12, 16, 20].map((y, i) => (
+          <rect key={i} x="7" y={y} width="10" height="1.4" fill="hsl(25 55% 40%)" stroke={INK.dark} strokeWidth={0.25} opacity={0.9}/>
+        ))}
+      </g>
+      <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
+      <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
+    </svg>
+  );
+}
+
 // Dispatcher component
 export function OverworldBuildingTileGraphic({
-  type, size, seed = 0, harvestReady, wallFit, isGate, gateAxis, gateInsideDir, damaged, wallAttachments,
+  type, size, seed = 0, harvestReady, wallFit, isGate, gateAxis, gateInsideDir, damaged, wallAttachments, connectorDir,
 }: {
   type: PlayerBuildingType;
   size: number;
@@ -179,6 +231,8 @@ export function OverworldBuildingTileGraphic({
   damaged?: boolean;
   // Wall-merge props (only scout towers use this)
   wallAttachments?: { n: boolean; e: boolean; s: boolean; w: boolean };
+  // Direction the stair/ladder ascends (the side with the wall/cliff).
+  connectorDir?: 'n' | 's' | 'e' | 'w';
 }) {
   switch (type) {
     case 'wall':
@@ -192,5 +246,7 @@ export function OverworldBuildingTileGraphic({
     case 'ice_trap': return <TrapTile size={size} seed={seed} trapVariant="ice" />;
     case 'scout_tower': return <ScoutTowerTile size={size} seed={seed} wallAttachments={wallAttachments} />;
     case 'farm': return <FarmTile size={size} seed={seed} harvestReady={harvestReady} />;
+    case 'stone_staircase': return <StoneStaircaseTile size={size} attachDir={connectorDir} />;
+    case 'ladder': return <LadderTile size={size} attachDir={connectorDir} />;
   }
 }

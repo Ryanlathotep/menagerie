@@ -795,12 +795,37 @@ export type MoveResult =
 export function movePlayer(state: OverworldState, dx: number, dy: number): MoveResult {
   const newX = state.playerPosition.x + dx;
   const newY = state.playerPosition.y + dy;
-  
+
   ensureChunksLoaded(state, newX, newY);
-  
+
   const tile = getOverworldTile(state, newX, newY);
   if (!tile) return { type: 'blocked', reason: 'Edge of the world' };
-  
+
+  // ─── Z-transition gate ───
+  // The player can only change elevation at known connectors (ramps, stairs,
+  // ladders) or by walking laterally at the same z. Drops/climbs anywhere
+  // else are blocked. We check this BEFORE the per-tile-type switch so the
+  // existing per-type logic doesn't have to repeat the rule.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const __wt = require('./wallTop') as typeof import('./wallTop');
+  const fromTile = getOverworldTile(state, state.playerPosition.x, state.playerPosition.y);
+  const fromZ = state.playerPosition.z ?? __wt.getTileEffectiveZ(state, state.playerPosition.x, state.playerPosition.y, fromTile);
+  const toZ = __wt.getTileEffectiveZ(state, newX, newY, tile);
+  if (fromZ !== toZ) {
+    // Allowed if EITHER tile is a connector that bridges the two z values,
+    // OR either tile is a ramp (natural cliff connector) at the right z.
+    const fromIsConnector = !!fromTile && fromTile.type === 'player_building'
+      && __wt.isElevationConnectorAt(state, state.playerPosition.x, state.playerPosition.y);
+    const toIsConnector = tile.type === 'player_building'
+      && __wt.isElevationConnectorAt(state, newX, newY);
+    const fromIsRamp = !!fromTile?.isRamp;
+    const toIsRamp = !!tile.isRamp;
+    if (!fromIsConnector && !toIsConnector && !fromIsRamp && !toIsRamp) {
+      if (toZ > fromZ) return { type: 'blocked', reason: 'You need stairs or a ladder to climb up here' };
+      return { type: 'blocked', reason: 'Too far to drop down — find stairs or a ladder' };
+    }
+  }
+
   // Increment total steps and tick resource upgrades
   state.totalSteps = (state.totalSteps || 0) + 1;
   if (!state.resourceUpgrades) state.resourceUpgrades = {};
@@ -898,19 +923,19 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
       }
       // Stale enemy tile (enemy was removed but tile not cleared) — self-heal and walk through.
       setOverworldTile(state, newX, newY, { ...tile, type: 'grass', enemyId: undefined });
-      state.playerPosition = { x: newX, y: newY };
+      state.playerPosition = { x: newX, y: newY, z: toZ };
       updateVisibility(state);
       return { type: 'moved' };
     }
     
     case 'building': {
-      state.playerPosition = { x: newX, y: newY };
+      state.playerPosition = { x: newX, y: newY, z: toZ };
       updateVisibility(state);
       return { type: 'building', buildingType: tile.buildingType || 'campfire' };
     }
     
     case 'dungeon_entrance': {
-      state.playerPosition = { x: newX, y: newY };
+      state.playerPosition = { x: newX, y: newY, z: toZ };
       updateVisibility(state);
       return { type: 'dungeon_entrance', dungeonId: tile.dungeonId };
     }
@@ -918,12 +943,15 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
     case 'player_building': {
       const building = state.playerBuildings.find(b => b.id === tile.playerBuildingId);
       if (building && building.type === 'wall') {
-        // Walls acting as gates are passable for the player (but not for enemies — see overworldCombat).
-        if (!isWallActingAsGate(building, state)) {
+        const isGate = isWallActingAsGate(building, state);
+        const targetIsWalkableTop = __wt.isWalkableWallTop(state, newX, newY);
+        // Walls block unless they're a gate, OR a walkable wall-top reached
+        // from the same z (the top-level z-gate above already vetted z parity).
+        if (!isGate && !(targetIsWalkableTop && fromZ === toZ)) {
           return { type: 'blocked', reason: 'A wall blocks your path' };
         }
       }
-      state.playerPosition = { x: newX, y: newY };
+      state.playerPosition = { x: newX, y: newY, z: toZ };
       updateVisibility(state);
       if (building) return { type: 'player_building', building };
       return { type: 'moved' };
@@ -934,14 +962,14 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
       if (nest && !nest.destroyed) {
         return { type: 'nest', nest };
       }
-      state.playerPosition = { x: newX, y: newY };
+      state.playerPosition = { x: newX, y: newY, z: toZ };
       updateVisibility(state);
       return { type: 'moved' };
     }
 
     case 'dirt_road':
     case 'stone_road': {
-      state.playerPosition = { x: newX, y: newY };
+      state.playerPosition = { x: newX, y: newY, z: toZ };
       updateVisibility(state);
       // Stone roads grant a bonus move (player moves 2 tiles)
       const bonusMove = tile.type === 'stone_road';
@@ -949,7 +977,7 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
     }
     
     default: {
-      state.playerPosition = { x: newX, y: newY };
+      state.playerPosition = { x: newX, y: newY, z: toZ };
       updateVisibility(state);
       // Check if this grass tile has a road overlay
       if (isRoad) {

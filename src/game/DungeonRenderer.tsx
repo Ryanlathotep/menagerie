@@ -654,6 +654,21 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   const gridWidth = dungeon.width;
   const gridHeight = dungeon.height;
 
+  // Mobile double-tap → treat as right-click. A second tap on the SAME tile
+  // within 300ms calls onTileRightClick instead of onTileClick.
+  const lastTapRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const handleTileTap = (x: number, y: number) => {
+    const now = Date.now();
+    const last = lastTapRef.current;
+    if (last && last.x === x && last.y === y && now - last.time < 300) {
+      lastTapRef.current = null;
+      onTileRightClick?.(x, y);
+      return;
+    }
+    lastTapRef.current = { x, y, time: now };
+    onTileClick?.(x, y);
+  };
+
   // No-op: player is always centered via CSS transform (matches OverworldRenderer behavior)
   useImperativeHandle(ref, () => ({
     scrollToPlayer: () => {},

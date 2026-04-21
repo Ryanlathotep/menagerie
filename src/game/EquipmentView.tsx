@@ -3,15 +3,13 @@
 
 import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  EquipmentItem, 
+import {
+  EquipmentItem,
   EquipmentSlot,
-  MonsterEquipment, 
-  SLOT_INFO, 
+  MonsterEquipment,
+  SLOT_INFO,
   calculateEquipmentBonuses,
-  calculateSetBonusStats,
   createEmptyEquipment,
 } from './equipment';
 import { Monster } from './types';
@@ -161,32 +159,35 @@ export function EquipmentView({
   }, [inventory, monster.class, monster.level, onBulkEquip, onLog, selectedPartyIndex]);
   
   return (
-    <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="p-4 border-b flex items-center justify-between">
-          <h2 className="text-xl font-bold bg-gradient-to-r from-primary to-amber-500 bg-clip-text text-transparent">
-            ⚔️ Equipment
-          </h2>
-          <Button variant="ghost" size="sm" onClick={onClose}>✕</Button>
+    <div
+      className="fixed top-0 right-0 bottom-0 z-40 w-full sm:w-[460px] md:w-[500px] bg-background/95 backdrop-blur-sm border-l border-border shadow-2xl flex flex-col pointer-events-auto"
+      onClick={e => e.stopPropagation()}
+    >
+      {/* Header */}
+      <div className="p-3 border-b flex items-center justify-between flex-shrink-0">
+        <h2 className="text-lg font-bold bg-gradient-to-r from-primary to-amber-500 bg-clip-text text-transparent">
+          ⚔️ Equipment
+        </h2>
+        <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close equipment">✕</Button>
+      </div>
+
+      {/* Party member selector - only show if party has more than 1 member */}
+      {party.length > 1 && (
+        <div className="px-3 pt-3 flex-shrink-0">
+          <PartyMemberSelector
+            party={party}
+            partyEquipment={partyEquipment}
+            selectedIndex={selectedPartyIndex}
+            onSelect={setSelectedPartyIndex}
+          />
         </div>
-        
-        {/* Party member selector - only show if party has more than 1 member */}
-        {party.length > 1 && (
-          <div className="px-4 pt-4">
-            <PartyMemberSelector
-              party={party}
-              partyEquipment={partyEquipment}
-              selectedIndex={selectedPartyIndex}
-              onSelect={setSelectedPartyIndex}
-            />
-          </div>
-        )}
-        
-        <div className="flex-1 overflow-hidden flex">
+      )}
+
+      <ScrollArea className="flex-1">
+        <div className="flex flex-col">
           {/* Paper Doll Section */}
-          <div className="w-1/2 p-4 border-r flex flex-col">
-            <div className="flex-1 flex flex-col items-center justify-center gap-4">
+          <div className="p-3 border-b flex flex-col">
+            <div className="flex flex-col items-center justify-center gap-3">
               {/* Top row: Helmet */}
               <div className="flex justify-center">
                 <EquippedSlotDisplay 
@@ -330,16 +331,16 @@ export function EquipmentView({
               </Button>
             )}
           </div>
-          
+
           {/* Inventory Section */}
-          <div className="w-1/2 p-4 flex flex-col">
+          <div className="p-3 flex flex-col">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold">
+              <h3 className="font-semibold text-sm">
                 {selectedSlot ? `${SLOT_INFO[selectedSlot].label}s` : 'Inventory'}
               </h3>
               {selectedSlot && (
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="sm"
                   onClick={() => setSelectedSlot(null)}
                 >
@@ -347,7 +348,7 @@ export function EquipmentView({
                 </Button>
               )}
             </div>
-            
+
             {/* Sort controls */}
             <div className="mb-3">
               <EquipmentSortControls
@@ -356,38 +357,36 @@ export function EquipmentView({
                 onAutoEquip={handleAutoEquip}
               />
             </div>
-            
-            <ScrollArea className="flex-1">
-              <div className="space-y-2 pr-4">
-                {sortedInventory.length > 0 ? (
-                  sortedInventory.map(item => (
-                    <DraggableEquipmentItem
-                      key={item.id}
-                      item={item}
-                      currentLevel={monster.level}
-                      onEquip={() => onEquip(item, selectedPartyIndex)}
-                      onDrop={() => onDrop(item.id)}
-                      isDragging={draggedItem?.item.id === item.id}
-                      onDragStart={handleDragStart}
-                      onDragEnd={handleDragEnd}
-                    />
-                  ))
-                ) : (
-                  <div className="text-center text-muted-foreground py-8">
-                    <p className="text-4xl mb-2">📦</p>
-                    <p className="text-sm">
-                      {selectedSlot 
-                        ? `No ${SLOT_INFO[selectedSlot].label.toLowerCase()}s in inventory`
-                        : 'No equipment in inventory'
-                      }
-                    </p>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
+
+            <div className="space-y-2">
+              {sortedInventory.length > 0 ? (
+                sortedInventory.map(item => (
+                  <DraggableEquipmentItem
+                    key={item.id}
+                    item={item}
+                    currentLevel={monster.level}
+                    onEquip={() => onEquip(item, selectedPartyIndex)}
+                    onDrop={() => onDrop(item.id)}
+                    isDragging={draggedItem?.item.id === item.id}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                  />
+                ))
+              ) : (
+                <div className="text-center text-muted-foreground py-8">
+                  <p className="text-4xl mb-2">📦</p>
+                  <p className="text-sm">
+                    {selectedSlot
+                      ? `No ${SLOT_INFO[selectedSlot].label.toLowerCase()}s in inventory`
+                      : 'No equipment in inventory'
+                    }
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </Card>
+      </ScrollArea>
     </div>
   );
 }

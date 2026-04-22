@@ -1392,6 +1392,12 @@ function DungeonView({
 
     let lastMoveTime = 0;
     let animationFrameId: number;
+    // Track dungeon dimensions to detect coordinate shifts caused by
+    // expandDungeonIfNeeded prepending rows/columns at the west/north edges.
+    // When dimensions change, both the player position AND the goal position
+    // get shifted by the same offset, so we recompute the path.
+    let lastWidth = dungeonRef.current?.width ?? 0;
+    let lastHeight = dungeonRef.current?.height ?? 0;
 
     const walkStep = (timestamp: number) => {
       const currentDungeon = dungeonRef.current;
@@ -1403,6 +1409,47 @@ function DungeonView({
         return;
       }
 
+      // Detect dungeon expansion. West/north prepends shift coordinates by
+      // STRIP_WIDTH (12). The player position is shifted automatically inside
+      // expandDungeonIfNeeded; we just need to shift the stored goal and
+      // re-pathfind so the stale path doesn't send us in the wrong direction.
+      if (currentDungeon.width !== lastWidth || currentDungeon.height !== lastHeight) {
+        const dx = currentDungeon.width - lastWidth;   // columns added (west prepend if x shifted)
+        const dy = currentDungeon.height - lastHeight; // rows added (north prepend if y shifted)
+        // Heuristic: if a strip was prepended on west/north, the player x/y
+        // jumped by STRIP_WIDTH. We shift the goal by the same delta only when
+        // a prepend likely happened. We can detect prepend by checking whether
+        // the player is now near the *opposite* edge or not — but simpler:
+        // just re-pathfind from current player to goal (translated by the same
+        // delta if the prepend happened on that axis).
+        if (pathGoalRef.current) {
+          // Try goal as-is first; if no path, try shifted goal (covers prepend).
+          let goal = pathGoalRef.current;
+          let repath = findPath(currentDungeon, currentDungeon.playerPosition, goal);
+          if (!repath || repath.length === 0) {
+            const shifted = { x: goal.x + dx, y: goal.y + dy };
+            repath = findPath(currentDungeon, currentDungeon.playerPosition, shifted);
+            if (repath && repath.length > 0) {
+              goal = shifted;
+              pathGoalRef.current = shifted;
+            }
+          }
+          if (repath && repath.length > 0) {
+            pathWalkRef.current = repath;
+            setTargetPath(repath);
+            currentPath = repath;
+          } else {
+            pathWalkRef.current = [];
+            setIsPathWalking(false);
+            setTargetPath([]);
+            pathGoalRef.current = null;
+            return;
+          }
+        }
+        lastWidth = currentDungeon.width;
+        lastHeight = currentDungeon.height;
+      }
+
       const playerPos = currentDungeon.playerPosition;
 
       // Trim any path nodes the player has already reached. Handles the case
@@ -1410,11 +1457,13 @@ function DungeonView({
       while (currentPath.length > 0 && currentPath[0].x === playerPos.x && currentPath[0].y === playerPos.y) {
         currentPath = currentPath.slice(1);
       }
+      pathWalkRef.current = currentPath;
 
       if (currentPath.length === 0) {
         pathWalkRef.current = [];
         setIsPathWalking(false);
         setTargetPath([]);
+        pathGoalRef.current = null;
         return;
       }
 
@@ -1429,19 +1478,11 @@ function DungeonView({
         const nextPos = currentPath[0];
         const direction = getDirection(playerPos, nextPos);
 
-        // Not adjacent — likely state hasn't caught up yet, or we got bumped
-        // off course by an enemy/swap. Re-pathfind from the live position.
+        // Not adjacent — wait one frame for the dungeon ref to catch up. If
+        // it's still not adjacent next tick, the trim loop will eventually
+        // resolve it (or expansion-handling above will repath).
         if (!direction) {
-          const repath = findPath(currentDungeon, playerPos, currentPath[currentPath.length - 1]);
-          if (repath && repath.length > 0) {
-            pathWalkRef.current = repath;
-            setTargetPath(repath);
-            animationFrameId = requestAnimationFrame(walkStep);
-            return;
-          }
-          setIsPathWalking(false);
-          setTargetPath([]);
-          pathWalkRef.current = [];
+          animationFrameId = requestAnimationFrame(walkStep);
           return;
         }
 
@@ -1463,6 +1504,7 @@ function DungeonView({
           pathWalkRef.current = [];
           setIsPathWalking(false);
           setTargetPath([]);
+          pathGoalRef.current = null;
           return;
         }
       }

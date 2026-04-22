@@ -183,10 +183,11 @@ function smoothNoise(x: number, y: number, salt: number): number {
   const iy = Math.floor(y);
   const fx = x - ix;
   const fy = y - iy;
-  const v00 = seededRandom(ix * 73856093 + iy * 19349663 + salt);
-  const v10 = seededRandom((ix + 1) * 73856093 + iy * 19349663 + salt);
-  const v01 = seededRandom(ix * 73856093 + (iy + 1) * 19349663 + salt);
-  const v11 = seededRandom((ix + 1) * 73856093 + (iy + 1) * 19349663 + salt);
+  const ws = _worldSeed;
+  const v00 = seededRandom(ix * 73856093 + iy * 19349663 + salt + ws);
+  const v10 = seededRandom((ix + 1) * 73856093 + iy * 19349663 + salt + ws);
+  const v01 = seededRandom(ix * 73856093 + (iy + 1) * 19349663 + salt + ws);
+  const v11 = seededRandom((ix + 1) * 73856093 + (iy + 1) * 19349663 + salt + ws);
   // Smoothstep weights for nicer (less blocky) interpolation.
   const sx = fx * fx * (3 - 2 * fx);
   const sy = fy * fy * (3 - 2 * fy);

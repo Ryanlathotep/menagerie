@@ -46,13 +46,14 @@ export function isNestAt(worldX: number, worldY: number): boolean {
   const regionSize = 8;
   const regionX = Math.floor((worldX + 4) / regionSize); // Offset so nests don't overlap dungeons
   const regionY = Math.floor((worldY + 4) / regionSize);
-  const hash = seededRandom(regionX * 54321 + regionY * 12345 + 77777);
+  const ws = getWorldSeed();
+  const hash = seededRandom(regionX * 54321 + regionY * 12345 + 77777 + ws);
 
   // Only ~20% of regions get a nest (reduced from 40% to lower clutter)
   if (hash > 0.2) return false;
 
-  const nestLocalX = Math.floor(seededRandom(hash * 99991 + 11111) * regionSize);
-  const nestLocalY = Math.floor(seededRandom(hash * 88883 + 22222) * regionSize);
+  const nestLocalX = Math.floor(seededRandom(hash * 99991 + 11111 + ws) * regionSize);
+  const nestLocalY = Math.floor(seededRandom(hash * 88883 + 22222 + ws) * regionSize);
   const nestWorldX = (regionX * regionSize - 4) + nestLocalX;
   const nestWorldY = (regionY * regionSize - 4) + nestLocalY;
 

@@ -490,6 +490,61 @@ function AdminPanelTrigger({ onOpenAdmin }: { onOpenAdmin: () => void }) {
   );
 }
 
+// ─── Return to Main Menu ───
+// Suspends the active run (no progress lost) and switches phases. Saves to
+// cloud first when signed in. Hidden when no run is in progress, since the
+// user is already on the main menu.
+function ReturnToMainMenuSection({ onClose }: { onClose: () => void }) {
+  const { state, dispatch } = useGame();
+  const { saveToCloud } = useCloudSave();
+  const [saving, setSaving] = useState(false);
+
+  if (!state.run) return null;
+
+  const handleReturn = async () => {
+    setSaving(true);
+    const snapshot = buildProgressSnapshot(state.saveData, state.run, null);
+    dispatch({ type: 'SNAPSHOT_RUN_PROGRESS', overworld: null });
+    try {
+      const result = await saveToCloud(snapshot);
+      if (result.success) {
+        sonnerToast.success('☁️ Saved — returning to menu');
+      } else {
+        // Not signed in or cloud failed — local autosave still applies.
+        sonnerToast.success('💾 Saved locally — returning to menu');
+      }
+    } catch {
+      sonnerToast.success('💾 Saved locally — returning to menu');
+    }
+    setSaving(false);
+    onClose();
+    dispatch({ type: 'SET_PHASE', phase: 'main_menu' });
+  };
+
+  return (
+    <div className="space-y-2 pt-4 border-t">
+      <Label className="text-base flex items-center gap-2">
+        <Home className="w-4 h-4 text-primary" />
+        Main Menu
+      </Label>
+      <p className="text-xs text-muted-foreground">
+        Save your progress and return to the main menu. You can resume right
+        where you left off from the menu.
+      </p>
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full"
+        onClick={handleReturn}
+        disabled={saving}
+      >
+        <Home className="w-4 h-4 mr-1" />
+        {saving ? 'Saving…' : 'Return to Main Menu'}
+      </Button>
+    </div>
+  );
+}
+
 // Standalone Admin Panel Dialog - lives outside settings
 function AdminPanelDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   return (

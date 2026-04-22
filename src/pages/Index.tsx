@@ -1356,6 +1356,7 @@ function DungeonView({
      setIsPathWalking(false);
      setTargetPath([]);
      pathWalkRef.current = [];
+     pathGoalRef.current = null;
    }
     
     // Don't path to current position
@@ -1365,6 +1366,7 @@ function DungeonView({
     if (path && path.length > 0) {
       setTargetPath(path);
       pathWalkRef.current = path;
+      pathGoalRef.current = { x, y };
       setIsPathWalking(true);
     } else {
       addLog("❌ Can't reach that tile!", 'info');

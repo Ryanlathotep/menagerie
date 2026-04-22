@@ -143,9 +143,11 @@ const BIOME_ELEMENTS: ElementType[] = ['fire', 'water', 'earth', 'air', 'void'];
 
 // Simple 2D value noise for biome assignment
 function biomeNoise(worldX: number, worldY: number, scale: number = 0.04): number {
-  // Use multiple octaves of seeded noise for organic regions
-  const s1 = seededRandom(Math.floor(worldX * scale) * 73856093 + Math.floor(worldY * scale) * 19349663);
-  const s2 = seededRandom(Math.floor(worldX * scale * 0.5) * 83492791 + Math.floor(worldY * scale * 0.5) * 47302831);
+  // Use multiple octaves of seeded noise for organic regions.
+  // Mix the global world seed in so re-seeding produces different biomes.
+  const ws = _worldSeed;
+  const s1 = seededRandom(Math.floor(worldX * scale) * 73856093 + Math.floor(worldY * scale) * 19349663 + ws);
+  const s2 = seededRandom(Math.floor(worldX * scale * 0.5) * 83492791 + Math.floor(worldY * scale * 0.5) * 47302831 + ws * 7);
   return s1 * 0.6 + s2 * 0.4;
 }
 

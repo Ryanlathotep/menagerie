@@ -329,6 +329,41 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
                 lastTapRef.current = null;
                 onTileRightClick?.(worldX, worldY);
               }}
+              onTouchStart={(e) => {
+                const el = e.currentTarget;
+                const timer = setTimeout(() => {
+                  el.dataset.longPressFired = '1';
+                  lastTapRef.current = null;
+                  onTileRightClick?.(worldX, worldY);
+                }, 450);
+                el.dataset.longPressTimer = String(timer);
+              }}
+              onTouchMove={(e) => {
+                const el = e.currentTarget;
+                if (el.dataset.longPressTimer) {
+                  clearTimeout(Number(el.dataset.longPressTimer));
+                  delete el.dataset.longPressTimer;
+                }
+              }}
+              onTouchEnd={(e) => {
+                const el = e.currentTarget;
+                if (el.dataset.longPressTimer) {
+                  clearTimeout(Number(el.dataset.longPressTimer));
+                  delete el.dataset.longPressTimer;
+                }
+                if (el.dataset.longPressFired) {
+                  delete el.dataset.longPressFired;
+                  e.preventDefault();
+                  e.stopPropagation();
+                }
+              }}
+              onTouchCancel={(e) => {
+                const el = e.currentTarget;
+                if (el.dataset.longPressTimer) {
+                  clearTimeout(Number(el.dataset.longPressTimer));
+                  delete el.dataset.longPressTimer;
+                }
+              }}
               onMouseEnter={() => onTileHover?.(worldX, worldY)}
               onMouseLeave={() => onTileHoverEnd?.()}
             >

@@ -280,6 +280,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           {/* Overworld Rebuild Section */}
           <RebuildOverworldSection />
 
+          {/* Return to Main Menu — only shown when a run is active. Suspends
+              the run (no progress lost) and switches to the main menu. */}
+          <ReturnToMainMenuSection onClose={onClose} />
+
 
           <div className="space-y-3 pt-4 border-t">
             <Label className="text-base">Save Data</Label>

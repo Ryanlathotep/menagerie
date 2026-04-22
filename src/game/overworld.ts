@@ -1361,6 +1361,10 @@ export function expandOverworldFromSave(state: OverworldState): OverworldState {
   if (!state.roads) state.roads = {};
   if (!state.resourceUpgrades) state.resourceUpgrades = {};
 
+  // Restore the procedural world seed BEFORE regenerating chunks so freshly
+  // generated tiles match the seed this world was originally built with.
+  setWorldSeed(state.worldSeed ?? 0);
+
   // Generate the chunk around the player so getOverworldTile/setOverworldTile work.
   ensureChunksLoaded(state, state.playerPosition.x, state.playerPosition.y);
 

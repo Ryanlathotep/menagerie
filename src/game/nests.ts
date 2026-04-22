@@ -4,7 +4,7 @@
 import { ElementType, Monster, SpeciesType, SPECIES_DATA, Position } from './types';
 import { generateRandomMonster } from './utils';
 import { CraftingMaterial, CRAFTING_MATERIALS } from './equipment';
-import { getBiomeElement } from './overworld';
+import { getBiomeElement, getWorldSeed } from './overworld';
 
 // ============= TYPES =============
 

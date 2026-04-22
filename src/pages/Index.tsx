@@ -1367,7 +1367,14 @@ function DungeonView({
     }
  }, [dungeon, isPathWalking, isAutoRunning, setIsPathWalking, setIsAutoRunning]);
   
-  // Path walking effect - uses requestAnimationFrame for smooth timing
+  // Path walking effect — position-driven so it stays in sync with React state
+  // updates even on slower mobile devices. Each tick:
+  //   1. Read the live player position from dungeonRef
+  //   2. Drop any leading path nodes the player is already standing on
+  //   3. Only step when adjacent to path[0]; otherwise wait for state to catch up
+  // This prevents the "weird zig-zag" bug where the path advanced before the
+  // player's tile actually moved, causing direction to be computed from a stale
+  // position to a non-adjacent goal.
   useEffect(() => {
     if (!isPathWalking || pathWalkRef.current.length === 0) {
       if (isPathWalking) {
@@ -1376,66 +1383,91 @@ function DungeonView({
       }
       return;
     }
-    
+
     let lastMoveTime = 0;
     let animationFrameId: number;
-    
+
     const walkStep = (timestamp: number) => {
       const currentDungeon = dungeonRef.current;
-      const currentPath = pathWalkRef.current;
-      
+      let currentPath = pathWalkRef.current;
+
       if (currentPath.length === 0 || !currentDungeon) {
         setIsPathWalking(false);
         setTargetPath([]);
         return;
       }
-      
+
+      const playerPos = currentDungeon.playerPosition;
+
+      // Trim any path nodes the player has already reached. Handles the case
+      // where dungeonRef catches up across multiple frames in one go.
+      while (currentPath.length > 0 && currentPath[0].x === playerPos.x && currentPath[0].y === playerPos.y) {
+        currentPath = currentPath.slice(1);
+      }
+
+      if (currentPath.length === 0) {
+        pathWalkRef.current = [];
+        setIsPathWalking(false);
+        setTargetPath([]);
+        return;
+      }
+
       // Skip if a move is still being processed
       if (isMovingRef.current) {
         animationFrameId = requestAnimationFrame(walkStep);
         return;
       }
-      
+
       // Only move after enough time has passed
       if (timestamp - lastMoveTime >= settings.autoRunSpeed) {
         const nextPos = currentPath[0];
-        const direction = getDirection(currentDungeon.playerPosition, nextPos);
-        
+        const direction = getDirection(playerPos, nextPos);
+
+        // Not adjacent — likely state hasn't caught up yet, or we got bumped
+        // off course by an enemy/swap. Re-pathfind from the live position.
         if (!direction) {
+          const repath = findPath(currentDungeon, playerPos, currentPath[currentPath.length - 1]);
+          if (repath && repath.length > 0) {
+            pathWalkRef.current = repath;
+            setTargetPath(repath);
+            animationFrameId = requestAnimationFrame(walkStep);
+            return;
+          }
           setIsPathWalking(false);
           setTargetPath([]);
           pathWalkRef.current = [];
           return;
         }
-        
+
         // Check if we should stop (enemy, trap, etc.)
         const shouldStop = shouldStopAutoRun(currentDungeon.tiles, nextPos.x, nextPos.y, currentDungeon.width, currentDungeon.height);
-        
+
         isMovingRef.current = true;
         handleMoveRef.current(direction);
-        requestAnimationFrame(() => {
+        // Hold the move-lock for two frames so React commits the dungeon update
+        // before the next direction is computed.
+        requestAnimationFrame(() => requestAnimationFrame(() => {
           isMovingRef.current = false;
-        });
+        }));
         lastMoveTime = timestamp;
-        
-        pathWalkRef.current = currentPath.slice(1);
-        setTargetPath(pathWalkRef.current);
-        
-        if (shouldStop || pathWalkRef.current.length === 0) {
+
+        // Don't slice the path here — the next tick trims based on actual
+        // player position, which is the source of truth.
+        if (shouldStop) {
+          pathWalkRef.current = [];
           setIsPathWalking(false);
           setTargetPath([]);
-          pathWalkRef.current = [];
           return;
         }
       }
-      
+
       // Continue the loop
       animationFrameId = requestAnimationFrame(walkStep);
     };
-    
+
     // Start the animation loop
     animationFrameId = requestAnimationFrame(walkStep);
-    
+
     return () => {
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);

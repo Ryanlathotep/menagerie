@@ -813,16 +813,26 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         },
       };
     
-    // Equipment management
-    case 'ADD_EQUIPMENT':
+    // Equipment management.
+    // Unified equipment inventory: run.equipmentInventory and saveData.storedEquipment
+    // are kept in sync — they are the same shared list, just exposed under two names so
+    // existing callers (run UI vs town UI) keep working. Equipped items
+    // (state.run.partyEquipment[*]) are bound to monsters and intentionally NOT in
+    // either list while equipped.
+    case 'ADD_EQUIPMENT': {
       if (!state.run) return state;
       return {
         ...state,
-        run: { 
-          ...state.run, 
-          equipmentInventory: [...state.run.equipmentInventory, action.item] 
+        run: {
+          ...state.run,
+          equipmentInventory: [...state.run.equipmentInventory, action.item],
+        },
+        saveData: {
+          ...state.saveData,
+          storedEquipment: [...state.saveData.storedEquipment, action.item],
         },
       };
+    }
     
     case 'EQUIP_ITEM': {
       if (!state.run) return state;
@@ -830,12 +840,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const slot = action.item.slot;
       const currentEquipment = state.run.partyEquipment[equipIndex] || createEmptyEquipment();
       const previouslyEquipped = currentEquipment[slot];
+      // Pull the equipped item out of the shared pool, push the displaced one back in.
       const newEquipmentInv = state.run.equipmentInventory.filter(i => i.id !== action.item.id);
-      // Add previously equipped item back to inventory
+      const newStored = state.saveData.storedEquipment.filter(i => i.id !== action.item.id);
       if (previouslyEquipped) {
         newEquipmentInv.push(previouslyEquipped);
+        newStored.push(previouslyEquipped);
       }
-      // Update the party equipment array
       const newPartyEquipment = [...state.run.partyEquipment];
       newPartyEquipment[equipIndex] = {
         ...currentEquipment,
@@ -848,6 +859,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           equipmentInventory: newEquipmentInv,
           partyEquipment: newPartyEquipment,
         },
+        saveData: {
+          ...state.saveData,
+          storedEquipment: newStored,
+        },
       };
     }
     
@@ -858,7 +873,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const unequipCurrentEquipment = state.run.partyEquipment[unequipIndex] || createEmptyEquipment();
       const itemToUnequip = unequipCurrentEquipment[unequipSlot];
       if (!itemToUnequip) return state;
-      // Update the party equipment array
       const unequipNewPartyEquipment = [...state.run.partyEquipment];
       unequipNewPartyEquipment[unequipIndex] = {
         ...unequipCurrentEquipment,
@@ -871,24 +885,30 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           equipmentInventory: [...state.run.equipmentInventory, itemToUnequip],
           partyEquipment: unequipNewPartyEquipment,
         },
+        saveData: {
+          ...state.saveData,
+          storedEquipment: [...state.saveData.storedEquipment, itemToUnequip],
+        },
       };
     }
     
     case 'BULK_EQUIP': {
       if (!state.run) return state;
       const bulkIndex = action.partyIndex;
-      // Remove used items from inventory
-      const bulkNewInventory = state.run.equipmentInventory.filter(i => !action.usedIds.includes(i.id));
-      // Add previously equipped items back to inventory
+      // Remove newly-equipped items from the shared pool.
+      const usedSet = new Set(action.usedIds);
+      const bulkNewInventory = state.run.equipmentInventory.filter(i => !usedSet.has(i.id));
+      const bulkNewStored = state.saveData.storedEquipment.filter(i => !usedSet.has(i.id));
+      // Push displaced previously-equipped items back into the pool.
       const bulkCurrentEquipment = state.run.partyEquipment[bulkIndex] || createEmptyEquipment();
       const slots: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory', 'back'];
       for (const slot of slots) {
         const oldItem = bulkCurrentEquipment[slot];
-        if (oldItem && !action.usedIds.includes(oldItem.id)) {
+        if (oldItem && !usedSet.has(oldItem.id)) {
           bulkNewInventory.push(oldItem);
+          bulkNewStored.push(oldItem);
         }
       }
-      // Update party equipment
       const bulkNewPartyEquipment = [...state.run.partyEquipment];
       bulkNewPartyEquipment[bulkIndex] = action.equipment;
       return {
@@ -897,6 +917,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           ...state.run,
           equipmentInventory: bulkNewInventory,
           partyEquipment: bulkNewPartyEquipment,
+        },
+        saveData: {
+          ...state.saveData,
+          storedEquipment: bulkNewStored,
         },
       };
     }
@@ -908,6 +932,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         run: {
           ...state.run,
           equipmentInventory: state.run.equipmentInventory.filter(i => i.id !== action.itemId),
+        },
+        saveData: {
+          ...state.saveData,
+          storedEquipment: state.saveData.storedEquipment.filter(i => i.id !== action.itemId),
         },
       };
     

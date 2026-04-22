@@ -241,6 +241,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       // town anymore).
       const startingInventory: InventoryItem[] = (state.saveData.storedItems || []).map(i => ({ ...i }));
       const remainingStoredItems = state.saveData.storedItems || [];
+
+      // Unified equipment inventory: same pattern as items. The run's loose
+      // equipment IS the town's stored equipment — both lists are mirrored
+      // by ADD/EQUIP/UNEQUIP/BULK_EQUIP/DROP/STORE/WITHDRAW/SELL/DISMANTLE.
+      // Pre-equipped items (action.withdrawnIds) are bound to monsters and
+      // therefore removed from the shared pool.
+      const startingEquipmentInventory: EquipmentItem[] = remainingStorage.map(i => ({ ...i }));
       
       // Build full party
       const fullParty = action.party && action.party.length > 0
@@ -276,7 +283,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           experience: 0,
           itemsCollected: [],
           inventory: startingInventory,
-          equipmentInventory: [],
+          equipmentInventory: startingEquipmentInventory,
           partyEquipment: fullPartyEquipment,
           runMaterials: {},
           enemiesDefeated: 0,

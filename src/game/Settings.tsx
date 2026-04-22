@@ -327,6 +327,115 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   );
 }
 
+// ─── Rebuild Overworld ───
+// Lets the player wipe the procedural map (terrain, biomes, dungeons, nests,
+// roads, placed buildings, fog-of-war) and regenerate it under a new seed,
+// while keeping their monsters, items, gold, recipes, and equipment intact.
+// A blank seed rolls a random one. Same seed = same world (shareable).
+function RebuildOverworldSection() {
+  const { toast } = useToast();
+  const [seedInput, setSeedInput] = useState('');
+  const [confirming, setConfirming] = useState(false);
+
+  // Read the live seed from the persisted save so players can copy/share it.
+  const currentSeed = (() => {
+    try {
+      const raw = localStorage.getItem('monster-roguelike-save');
+      if (!raw) return 0;
+      const parsed = JSON.parse(raw);
+      return parsed?.overworldState?.worldSeed ?? 0;
+    } catch { return 0; }
+  })();
+
+  const doRebuild = () => {
+    // Lazy-import to avoid pulling overworld.ts into Settings' module graph
+    // before the user actually clicks Rebuild.
+    import('./overworld').then(({ hashSeedString, randomWorldSeed }) => {
+      const trimmed = seedInput.trim();
+      const seed = trimmed ? hashSeedString(trimmed) : randomWorldSeed();
+      // Fire a global event consumed by OverworldView; that component owns the
+      // overworld state and will swap it out + persist via UPDATE_OVERWORLD.
+      window.dispatchEvent(new CustomEvent('menagerie-rebuild-overworld', {
+        detail: { seed, label: trimmed || `random (${seed})` },
+      }));
+      toast({
+        title: '🌍 Overworld rebuilt',
+        description: `New seed: ${trimmed || seed}`,
+      });
+      setConfirming(false);
+      setSeedInput('');
+    });
+  };
+
+  return (
+    <div className="space-y-3 pt-4 border-t">
+      <Label className="text-base flex items-center gap-2">
+        <Globe2 className="w-4 h-4 text-primary" />
+        Overworld
+      </Label>
+      <p className="text-xs text-muted-foreground -mt-1">
+        Rebuild the world map under a new seed. Keeps your monsters, gold,
+        materials, equipment, and recipes — wipes terrain, dungeons, nests,
+        roads, and placed buildings.
+      </p>
+
+      <div className="space-y-2">
+        <Label htmlFor="world-seed-input" className="text-xs">Seed (optional)</Label>
+        <div className="flex gap-2">
+          <Input
+            id="world-seed-input"
+            value={seedInput}
+            onChange={(e) => setSeedInput(e.target.value)}
+            placeholder="Leave blank for random"
+            className="flex-1 h-9 text-sm"
+            maxLength={64}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setSeedInput(`world-${Math.floor(Math.random() * 99999)}`)}
+            title="Roll a random seed name"
+          >
+            <Dices className="w-4 h-4" />
+          </Button>
+        </div>
+        {currentSeed !== 0 && (
+          <p className="text-[11px] text-muted-foreground">
+            Current world seed: <span className="font-mono text-foreground">{currentSeed}</span>
+          </p>
+        )}
+      </div>
+
+      {!confirming ? (
+        <Button
+          variant="destructive"
+          size="sm"
+          className="w-full"
+          onClick={() => setConfirming(true)}
+        >
+          🌍 Rebuild Overworld
+        </Button>
+      ) : (
+        <div className="space-y-2 rounded-md border border-destructive/40 bg-destructive/10 p-2">
+          <p className="text-xs">
+            This wipes terrain, dungeons, nests, roads, and placed buildings.
+            Your monsters, gold, materials, equipment, and recipes are kept.
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => setConfirming(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" size="sm" className="flex-1" onClick={doRebuild}>
+              Confirm Rebuild
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Admin Panel Trigger Button - only visible to admins (just the button, no dialog)
 function AdminPanelTrigger({ onOpenAdmin }: { onOpenAdmin: () => void }) {
   const { isAdmin, loading } = useAdminRole();

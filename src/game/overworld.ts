@@ -71,12 +71,46 @@ export interface OverworldState {
   // Keyed by "x,y". Used so refresh-time chunk regeneration doesn't wipe
   // player edits (water-fills, harvested grass, depleted resources, fog-of-war).
   tileOverrides?: Record<string, OverworldTile>;
+  // Procedural seed mixed into every world hash (biomes, elevation, dungeon
+  // placement, nests). 0 = legacy default. Set via Settings → Rebuild Overworld.
+  worldSeed?: number;
 }
 
 // ============= CONSTANTS =============
 
 export const CHUNK_SIZE = 16;
 const VIEW_RADIUS = 5; // Visibility radius around player
+
+// ─── Global world seed ───
+// Mixed into every procedural hash site so re-seeding produces a fully
+// different overworld (biomes, rivers, elevation, dungeon placement, nests,
+// resource tiers, …). Default 0 keeps legacy worlds bit-for-bit identical.
+let _worldSeed = 0;
+export function getWorldSeed(): number { return _worldSeed; }
+export function setWorldSeed(seed: number): void {
+  _worldSeed = (seed | 0) >>> 0; // coerce to unsigned 32-bit
+}
+
+/**
+ * Hash a free-form seed string (e.g. "dragon-valley") into a deterministic
+ * 32-bit unsigned integer. Empty / whitespace-only strings return 0 so
+ * callers can use `hashSeedString(input) || randomSeed()` for "blank = random".
+ */
+export function hashSeedString(input: string): number {
+  const str = (input || '').trim();
+  if (!str) return 0;
+  // FNV-1a 32-bit
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+export function randomWorldSeed(): number {
+  return (Math.floor(Math.random() * 0xffffffff)) >>> 0;
+}
 
 export const BUILDING_UPGRADES: Record<BuildingType, {
   label: string;
@@ -112,9 +146,11 @@ const BIOME_ELEMENTS: ElementType[] = ['fire', 'water', 'earth', 'air', 'void'];
 
 // Simple 2D value noise for biome assignment
 function biomeNoise(worldX: number, worldY: number, scale: number = 0.04): number {
-  // Use multiple octaves of seeded noise for organic regions
-  const s1 = seededRandom(Math.floor(worldX * scale) * 73856093 + Math.floor(worldY * scale) * 19349663);
-  const s2 = seededRandom(Math.floor(worldX * scale * 0.5) * 83492791 + Math.floor(worldY * scale * 0.5) * 47302831);
+  // Use multiple octaves of seeded noise for organic regions.
+  // Mix the global world seed in so re-seeding produces different biomes.
+  const ws = _worldSeed;
+  const s1 = seededRandom(Math.floor(worldX * scale) * 73856093 + Math.floor(worldY * scale) * 19349663 + ws);
+  const s2 = seededRandom(Math.floor(worldX * scale * 0.5) * 83492791 + Math.floor(worldY * scale * 0.5) * 47302831 + ws * 7);
   return s1 * 0.6 + s2 * 0.4;
 }
 
@@ -150,10 +186,11 @@ function smoothNoise(x: number, y: number, salt: number): number {
   const iy = Math.floor(y);
   const fx = x - ix;
   const fy = y - iy;
-  const v00 = seededRandom(ix * 73856093 + iy * 19349663 + salt);
-  const v10 = seededRandom((ix + 1) * 73856093 + iy * 19349663 + salt);
-  const v01 = seededRandom(ix * 73856093 + (iy + 1) * 19349663 + salt);
-  const v11 = seededRandom((ix + 1) * 73856093 + (iy + 1) * 19349663 + salt);
+  const ws = _worldSeed;
+  const v00 = seededRandom(ix * 73856093 + iy * 19349663 + salt + ws);
+  const v10 = seededRandom((ix + 1) * 73856093 + iy * 19349663 + salt + ws);
+  const v01 = seededRandom(ix * 73856093 + (iy + 1) * 19349663 + salt + ws);
+  const v11 = seededRandom((ix + 1) * 73856093 + (iy + 1) * 19349663 + salt + ws);
   // Smoothstep weights for nicer (less blocky) interpolation.
   const sx = fx * fx * (3 - 2 * fx);
   const sy = fy * fy * (3 - 2 * fy);
@@ -217,11 +254,12 @@ function isDungeonEntranceAt(worldX: number, worldY: number): boolean {
   const regionSize = 12;
   const regionX = Math.floor(worldX / regionSize);
   const regionY = Math.floor(worldY / regionSize);
-  const hash = seededRandom(regionX * 98765 + regionY * 54321 + 11111);
+  const ws = _worldSeed;
+  const hash = seededRandom(regionX * 98765 + regionY * 54321 + 11111 + ws);
 
   // The dungeon is at a specific tile within the region
   const dungeonLocalX = Math.floor(hash * regionSize);
-  const dungeonLocalY = Math.floor(seededRandom(hash * 77777 + 33333) * regionSize);
+  const dungeonLocalY = Math.floor(seededRandom(hash * 77777 + 33333 + ws) * regionSize);
   const dungeonWorldX = regionX * regionSize + dungeonLocalX;
   const dungeonWorldY = regionY * regionSize + dungeonLocalY;
 
@@ -246,7 +284,7 @@ function findThemedTowerAt(
 // Create a DungeonEntrance for a world position
 function createDungeonEntrance(worldX: number, worldY: number): DungeonEntrance {
   const id = `dungeon_${worldX}_${worldY}`;
-  const seed = Math.abs(worldX * 73856093 + worldY * 19349663) % 2147483647;
+  const seed = Math.abs(worldX * 73856093 + worldY * 19349663 + _worldSeed) % 2147483647;
   const dist = Math.sqrt(worldX * worldX + worldY * worldY);
   // Procedural dungeons scale gently with distance from town.
   const difficulty = Math.max(2, Math.floor(dist / 6));
@@ -272,7 +310,7 @@ function seededRandom(seed: number): number {
 function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntrances: Record<string, DungeonEntrance>, nests: Record<string, NestState>, resourceUpgrades?: Record<string, ResourceUpgradeState>): OverworldChunk {
   const tiles: OverworldTile[][] = [];
   const enemies: Monster[] = [];
-  const seed = cx * 10000 + cy * 100;
+  const seed = cx * 10000 + cy * 100 + _worldSeed;
   
   for (let y = 0; y < CHUNK_SIZE; y++) {
     const row: OverworldTile[] = [];
@@ -501,7 +539,8 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
 
 // ============= OVERWORLD STATE MANAGEMENT =============
 
-export function createOverworldState(): OverworldState {
+export function createOverworldState(seed: number = 0): OverworldState {
+  setWorldSeed(seed);
   const state: OverworldState = {
     playerPosition: { x: 0, y: 0 },
     chunks: {},
@@ -520,14 +559,28 @@ export function createOverworldState(): OverworldState {
     roads: {},
     resourceUpgrades: {},
     totalSteps: 0,
+    worldSeed: seed,
   };
-  
+
   // Generate starting chunk and surrounding chunks
   ensureChunksLoaded(state, 0, 0);
   // Make tiles around player visible
   updateVisibility(state);
-  
+
   return state;
+}
+
+/**
+ * Rebuilds the overworld map under a new procedural seed while preserving
+ * player progress (gold, monsters, materials, recipes, equipment — those live
+ * outside this state). Wipes everything *map*-related: chunks, fog-of-war,
+ * placed buildings, roads, harvested resources, nests, dungeon entrances,
+ * tile overrides. Player respawns at the home base (0,0).
+ *
+ * Pass the same seed to reproduce a previously seen world.
+ */
+export function regenerateOverworld(seed: number = 0): OverworldState {
+  return createOverworldState(seed);
 }
 
 // Overworld difficulty must stay <= the nearest dungeon's starting level so the
@@ -1307,6 +1360,10 @@ export function expandOverworldFromSave(state: OverworldState): OverworldState {
   if (!state.nests) state.nests = {};
   if (!state.roads) state.roads = {};
   if (!state.resourceUpgrades) state.resourceUpgrades = {};
+
+  // Restore the procedural world seed BEFORE regenerating chunks so freshly
+  // generated tiles match the seed this world was originally built with.
+  setWorldSeed(state.worldSeed ?? 0);
 
   // Generate the chunk around the player so getOverworldTile/setOverworldTile work.
   ensureChunksLoaded(state, state.playerPosition.x, state.playerPosition.y);

@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Position, Monster, MonsterStats, InventoryItem, DungeonEntrance } from './types';
 import { 
-  createOverworldState, 
+  createOverworldState,
+  regenerateOverworld,
   movePlayer, 
   updateVisibility,
   ensureChunksLoaded,
@@ -232,6 +233,24 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const saveOverworld = useCallback((ow: OverworldState) => {
     dispatch({ type: 'UPDATE_OVERWORLD', overworld: { ...ow } });
   }, [dispatch]);
+
+  // ─── Settings → Rebuild Overworld ───
+  // Listens for the global "rebuild" event fired from the Settings panel.
+  // Wipes the current map and regenerates it under the chosen seed, while
+  // keeping the player's monsters/items/gold (those live in saveData, not here).
+  useEffect(() => {
+    const onRebuild = (e: Event) => {
+      const seed = (e as CustomEvent<{ seed: number; label?: string }>).detail?.seed ?? 0;
+      const label = (e as CustomEvent<{ seed: number; label?: string }>).detail?.label ?? String(seed);
+      const fresh = regenerateOverworld(seed);
+      setOverworld(fresh);
+      saveOverworld(fresh);
+      addLog(`🌍 Overworld rebuilt with seed ${label}.`, 'system');
+      toast.success(`World rebuilt — seed ${label}`);
+    };
+    window.addEventListener('menagerie-rebuild-overworld', onRebuild);
+    return () => window.removeEventListener('menagerie-rebuild-overworld', onRebuild);
+  }, [saveOverworld, addLog]);
 
   // ─── Manual save: flush in-memory overworld into saveData, then push to cloud
   // (or just confirm the local snapshot if not signed in). Useful for the player

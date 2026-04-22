@@ -1545,7 +1545,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         tools={state.saveData.tools}
         onCraft={(recipe, result) => {
           if (!isCreativeMode()) dispatch({ type: 'USE_MATERIALS', materials: recipe.materials });
-          dispatch({ type: 'STORE_EQUIPMENT', item: result });
+          // Send crafted gear into the active run's inventory so the Equipment menu sees it immediately.
+          if (state.run) {
+            dispatch({ type: 'ADD_EQUIPMENT', item: result });
+          } else {
+            dispatch({ type: 'STORE_EQUIPMENT', item: result });
+          }
         }}
         onCraftConsumable={(recipe) => {
           if (!isCreativeMode()) dispatch({ type: 'USE_MATERIALS', materials: recipe.materials });

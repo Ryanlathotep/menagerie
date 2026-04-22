@@ -281,7 +281,7 @@ function findThemedTowerAt(
 // Create a DungeonEntrance for a world position
 function createDungeonEntrance(worldX: number, worldY: number): DungeonEntrance {
   const id = `dungeon_${worldX}_${worldY}`;
-  const seed = Math.abs(worldX * 73856093 + worldY * 19349663) % 2147483647;
+  const seed = Math.abs(worldX * 73856093 + worldY * 19349663 + _worldSeed) % 2147483647;
   const dist = Math.sqrt(worldX * worldX + worldY * worldY);
   // Procedural dungeons scale gently with distance from town.
   const difficulty = Math.max(2, Math.floor(dist / 6));

@@ -760,6 +760,10 @@ function DungeonView({
   const [targetPath, setTargetPath] = useState<Position[]>([]);
   const [isPathWalking, setIsPathWalking] = useState(false);
   const pathWalkRef = useRef<Position[]>([]);
+  // Goal tile in CURRENT dungeon coordinates. Updated whenever the dungeon
+  // expands (which shifts existing coordinates) so we can re-pathfind to the
+  // correct destination instead of getting confused by stale path entries.
+  const pathGoalRef = useRef<Position | null>(null);
   
   // Attack targeting state
   const [targetingMove, setTargetingMove] = useState<Move | null>(null);

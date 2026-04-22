@@ -1010,16 +1010,28 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       };
     
     case 'STORE_EQUIPMENT':
+      // Mirror into the run's loose inventory when a run is active so newly
+      // crafted/stored gear is immediately equippable.
       return {
         ...state,
+        run: state.run
+          ? {
+              ...state.run,
+              equipmentInventory: [...state.run.equipmentInventory, action.item],
+            }
+          : state.run,
         saveData: {
           ...state.saveData,
           storedEquipment: [...state.saveData.storedEquipment, action.item],
         },
       };
     
-    case 'WITHDRAW_EQUIPMENT':
+    case 'WITHDRAW_EQUIPMENT': {
+      // Lists are unified, so withdrawal is a no-op functionally — but we
+      // keep the action available for older callers.
       if (!state.run) return state;
+      const alreadyInRun = state.run.equipmentInventory.some(i => i.id === action.itemId);
+      if (alreadyInRun) return state;
       const withdrawItem = state.saveData.storedEquipment.find(i => i.id === action.itemId);
       if (!withdrawItem) return state;
       return {
@@ -1028,19 +1040,21 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           ...state.run,
           equipmentInventory: [...state.run.equipmentInventory, withdrawItem],
         },
-        saveData: {
-          ...state.saveData,
-          storedEquipment: state.saveData.storedEquipment.filter(i => i.id !== action.itemId),
-        },
       };
+    }
     
     case 'SELL_EQUIPMENT': {
-      // Sell stored equipment for gold
+      // Sell shared equipment for gold — remove from both views.
       const itemToSell = state.saveData.storedEquipment.find(i => i.id === action.itemId);
       if (!itemToSell) return state;
-      
       return {
         ...state,
+        run: state.run
+          ? {
+              ...state.run,
+              equipmentInventory: state.run.equipmentInventory.filter(i => i.id !== action.itemId),
+            }
+          : state.run,
         saveData: {
           ...state.saveData,
           storedEquipment: state.saveData.storedEquipment.filter(i => i.id !== action.itemId),
@@ -1050,19 +1064,23 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
     
     case 'DISMANTLE_EQUIPMENT': {
-      // Break stored equipment into materials
+      // Break shared equipment into materials — remove from both views.
       const itemToDismantle = state.saveData.storedEquipment.find(i => i.id === action.itemId);
       if (!itemToDismantle) return state;
       
       const dismantleResult = dismantleEquipment(itemToDismantle);
       const updatedMaterials = { ...state.saveData.materials };
-      
       for (const { materialId, quantity } of dismantleResult.materials) {
         updatedMaterials[materialId] = (updatedMaterials[materialId] || 0) + quantity;
       }
-      
       return {
         ...state,
+        run: state.run
+          ? {
+              ...state.run,
+              equipmentInventory: state.run.equipmentInventory.filter(i => i.id !== action.itemId),
+            }
+          : state.run,
         saveData: {
           ...state.saveData,
           storedEquipment: state.saveData.storedEquipment.filter(i => i.id !== action.itemId),

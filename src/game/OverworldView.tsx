@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Position, Monster, MonsterStats, InventoryItem, DungeonEntrance } from './types';
 import { 
-  createOverworldState, 
+  createOverworldState,
+  regenerateOverworld,
   movePlayer, 
   updateVisibility,
   ensureChunksLoaded,

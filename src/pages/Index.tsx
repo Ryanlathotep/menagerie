@@ -864,7 +864,25 @@ function DungeonView({
       toast.error(`Save failed: ${result.error || 'unknown error'}`);
     }
   }, [dispatch, state.saveData, state.run, isAdmin, isAuthenticated, saveToCloud, addLog]);
-  
+
+  // ─── Suspend run and return to main menu ───
+  // Snapshots the current run into saveData (no END_RUN) and switches to the
+  // main menu phase. Resume from the main menu drops the player back into the
+  // dungeon at the exact same spot. Pushes to cloud if signed in.
+  const handleMainMenu = useCallback(async () => {
+    addLog('💾 Saving and returning to main menu...', 'system');
+    const snapshot = buildProgressSnapshot(state.saveData, state.run, null);
+    dispatch({ type: 'SNAPSHOT_RUN_PROGRESS', overworld: null });
+    if (isAuthenticated) {
+      const result = await saveToCloud(snapshot);
+      if (result.success) toast.success('☁️ Saved — returning to menu');
+      else toast.error(`Save failed: ${result.error || 'unknown'} — returning anyway`);
+    } else {
+      toast.success('💾 Saved locally — returning to menu');
+    }
+    dispatch({ type: 'SET_PHASE', phase: 'main_menu' });
+  }, [dispatch, state.saveData, state.run, isAuthenticated, saveToCloud, addLog]);
+
   // Reset respawn counter when floor changes
   useEffect(() => {
     if (dungeon && dungeon.floor !== lastFloorRef.current) {

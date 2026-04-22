@@ -7,12 +7,14 @@ import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Settings as SettingsIcon, X, Download, Upload, Shield, Globe2, Dices } from 'lucide-react';
+import { Settings as SettingsIcon, X, Download, Upload, Shield, Globe2, Dices, Home } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { AdminPanel } from '@/admin/AdminPanel';
-import { useGame } from './state';
+import { useGame, buildProgressSnapshot } from './state';
+import { useCloudSave } from '@/hooks/useCloudSave';
+import { toast as sonnerToast } from 'sonner';
 
 // Settings interface
 export interface GameSettings {

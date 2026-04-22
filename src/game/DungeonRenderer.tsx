@@ -775,6 +775,25 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                 const isAffected = affectedTiles.some(t => t.x === x && t.y === y);
                 const isHovered = hoveredTile?.x === x && hoveredTile?.y === y;
 
+                // Mobile long-press → opens right-click menu (e.g. enemy attack menu).
+                // Uses a ref-based timer per render; cleared on touchend/move/cancel.
+                let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+                let longPressFired = false;
+                const startLongPress = () => {
+                  longPressFired = false;
+                  if (!onTileRightClick || !tile.explored) return;
+                  longPressTimer = setTimeout(() => {
+                    longPressFired = true;
+                    lastTapRef.current = null;
+                    onTileRightClick(x, y);
+                  }, 450);
+                };
+                const cancelLongPress = () => {
+                  if (longPressTimer) {
+                    clearTimeout(longPressTimer);
+                    longPressTimer = null;
+                  }
+                };
                 return (
                   <div
                     key={`${x}-${y}`}
@@ -788,6 +807,18 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                       lastTapRef.current = null;
                       onTileRightClick(x, y);
                     }}
+                    onTouchStart={startLongPress}
+                    onTouchMove={cancelLongPress}
+                    onTouchEnd={(e) => {
+                      cancelLongPress();
+                      // If long-press fired, swallow the trailing tap so we don't
+                      // also auto-attack/move into the tile.
+                      if (longPressFired) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                    }}
+                    onTouchCancel={cancelLongPress}
                   >
                     <Tile
                       tile={tile}

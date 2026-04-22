@@ -240,7 +240,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             <User className="w-5 h-5 sm:w-4 sm:h-4" />
           </Button>
           
-          <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 hidden sm:flex" onClick={() => handlePanelChange('moves')} title="Moves">
+          <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8" onClick={() => handlePanelChange('moves')} title="Moves / Attacks">
             <Swords className="w-5 h-5 sm:w-4 sm:h-4" />
           </Button>
           

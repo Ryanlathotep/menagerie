@@ -2470,13 +2470,8 @@ function DungeonView({
             if (!isCreativeMode()) {
               dispatch({ type: 'USE_MATERIALS', materials: recipe.materials });
             }
-            // Crafted gear goes into the active run's inventory so it can be equipped immediately.
-            // (FLEE_DUNGEON / END_RUN move loose run gear back to town storage.)
-            if (state.run) {
-              dispatch({ type: 'ADD_EQUIPMENT', item: result });
-            } else {
-              dispatch({ type: 'STORE_EQUIPMENT', item: result });
-            }
+            // Unified inventory: STORE_EQUIPMENT mirrors into the active run automatically.
+            dispatch({ type: 'STORE_EQUIPMENT', item: result });
             toast.success(`Crafted ${result.name}!`);
           }}
           onCraftConsumable={(recipe) => {

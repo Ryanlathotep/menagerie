@@ -2797,6 +2797,22 @@ function BattleView({
       toast.error(`Save failed: ${result.error || 'unknown error'}`);
     }
   }, [dispatch, state.saveData, state.run, isAdmin, isAuthenticated, saveToCloud]);
+
+  // ─── Suspend run and return to main menu (from battle) ───
+  // Snapshots run state and switches to main menu so the player can resume.
+  const handleMainMenu = useCallback(async () => {
+    addLog('💾 Saving and returning to main menu...', 'system');
+    const snapshot = buildProgressSnapshot(state.saveData, state.run, null);
+    dispatch({ type: 'SNAPSHOT_RUN_PROGRESS', overworld: null });
+    if (isAuthenticated) {
+      const result = await saveToCloud(snapshot);
+      if (result.success) toast.success('☁️ Saved — returning to menu');
+      else toast.error(`Save failed: ${result.error || 'unknown'} — returning anyway`);
+    } else {
+      toast.success('💾 Saved locally — returning to menu');
+    }
+    dispatch({ type: 'SET_PHASE', phase: 'main_menu' });
+  }, [dispatch, state.saveData, state.run, isAuthenticated, saveToCloud, addLog]);
   
   // Level up screen queue state - supports multiple level-ups (active + passive party members)
   interface LevelUpEntry {

@@ -7,12 +7,14 @@ import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Settings as SettingsIcon, X, Download, Upload, Shield, Globe2, Dices } from 'lucide-react';
+import { Settings as SettingsIcon, X, Download, Upload, Shield, Globe2, Dices, Home } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { AdminPanel } from '@/admin/AdminPanel';
-import { useGame } from './state';
+import { useGame, buildProgressSnapshot } from './state';
+import { useCloudSave } from '@/hooks/useCloudSave';
+import { toast as sonnerToast } from 'sonner';
 
 // Settings interface
 export interface GameSettings {
@@ -280,6 +282,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           {/* Overworld Rebuild Section */}
           <RebuildOverworldSection />
 
+          {/* Return to Main Menu — only shown when a run is active. Suspends
+              the run (no progress lost) and switches to the main menu. */}
+          <ReturnToMainMenuSection onClose={onClose} />
+
 
           <div className="space-y-3 pt-4 border-t">
             <Label className="text-base">Save Data</Label>
@@ -480,6 +486,61 @@ function AdminPanelTrigger({ onOpenAdmin }: { onOpenAdmin: () => void }) {
       <p className="text-xs text-muted-foreground">
         Edit game data, sprites, and configurations
       </p>
+    </div>
+  );
+}
+
+// ─── Return to Main Menu ───
+// Suspends the active run (no progress lost) and switches phases. Saves to
+// cloud first when signed in. Hidden when no run is in progress, since the
+// user is already on the main menu.
+function ReturnToMainMenuSection({ onClose }: { onClose: () => void }) {
+  const { state, dispatch } = useGame();
+  const { saveToCloud } = useCloudSave();
+  const [saving, setSaving] = useState(false);
+
+  if (!state.run) return null;
+
+  const handleReturn = async () => {
+    setSaving(true);
+    const snapshot = buildProgressSnapshot(state.saveData, state.run, null);
+    dispatch({ type: 'SNAPSHOT_RUN_PROGRESS', overworld: null });
+    try {
+      const result = await saveToCloud(snapshot);
+      if (result.success) {
+        sonnerToast.success('☁️ Saved — returning to menu');
+      } else {
+        // Not signed in or cloud failed — local autosave still applies.
+        sonnerToast.success('💾 Saved locally — returning to menu');
+      }
+    } catch {
+      sonnerToast.success('💾 Saved locally — returning to menu');
+    }
+    setSaving(false);
+    onClose();
+    dispatch({ type: 'SET_PHASE', phase: 'main_menu' });
+  };
+
+  return (
+    <div className="space-y-2 pt-4 border-t">
+      <Label className="text-base flex items-center gap-2">
+        <Home className="w-4 h-4 text-primary" />
+        Main Menu
+      </Label>
+      <p className="text-xs text-muted-foreground">
+        Save your progress and return to the main menu. You can resume right
+        where you left off from the menu.
+      </p>
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full"
+        onClick={handleReturn}
+        disabled={saving}
+      >
+        <Home className="w-4 h-4 mr-1" />
+        {saving ? 'Saving…' : 'Return to Main Menu'}
+      </Button>
     </div>
   );
 }

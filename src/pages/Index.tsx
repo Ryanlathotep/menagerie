@@ -175,6 +175,29 @@ function MainMenu() {
         <p className="text-muted-foreground text-lg">Play as the monsters. Unlock them all.</p>
         
         <div className="space-y-4">
+          {/* Resume button — only when a run is suspended in memory. Drops the
+              player back into dungeon/battle/overworld at the exact spot they
+              left from. */}
+          {state.run && (
+            <div className="flex gap-2 justify-center">
+              <Button
+                size="lg"
+                className="w-64 bg-gradient-to-r from-accent to-primary hover:opacity-90 animate-pulse"
+                onClick={() => {
+                  // Pick the right phase based on what the run was doing.
+                  const phase = state.run?.battle
+                    ? 'battle'
+                    : state.run?.dungeon
+                      ? 'dungeon'
+                      : 'overworld';
+                  dispatch({ type: 'SET_PHASE', phase });
+                }}
+              >
+                ▶️ Resume Run
+              </Button>
+            </div>
+          )}
+
           {/* Overworld button moved to top */}
           <div className="flex gap-2 justify-center">
             <Button
@@ -864,7 +887,25 @@ function DungeonView({
       toast.error(`Save failed: ${result.error || 'unknown error'}`);
     }
   }, [dispatch, state.saveData, state.run, isAdmin, isAuthenticated, saveToCloud, addLog]);
-  
+
+  // ─── Suspend run and return to main menu ───
+  // Snapshots the current run into saveData (no END_RUN) and switches to the
+  // main menu phase. Resume from the main menu drops the player back into the
+  // dungeon at the exact same spot. Pushes to cloud if signed in.
+  const handleMainMenu = useCallback(async () => {
+    addLog('💾 Saving and returning to main menu...', 'system');
+    const snapshot = buildProgressSnapshot(state.saveData, state.run, null);
+    dispatch({ type: 'SNAPSHOT_RUN_PROGRESS', overworld: null });
+    if (isAuthenticated) {
+      const result = await saveToCloud(snapshot);
+      if (result.success) toast.success('☁️ Saved — returning to menu');
+      else toast.error(`Save failed: ${result.error || 'unknown'} — returning anyway`);
+    } else {
+      toast.success('💾 Saved locally — returning to menu');
+    }
+    dispatch({ type: 'SET_PHASE', phase: 'main_menu' });
+  }, [dispatch, state.saveData, state.run, isAuthenticated, saveToCloud, addLog]);
+
   // Reset respawn counter when floor changes
   useEffect(() => {
     if (dungeon && dungeon.floor !== lastFloorRef.current) {
@@ -2353,6 +2394,8 @@ function DungeonView({
         experience={state.run?.experience || 0} 
         experienceToNext={xpToNextLevel(state.run?.currentMonster?.level || 1)} 
         onFlee={handleFlee}
+        onMainMenu={handleMainMenu}
+        mainMenuTitle="Save and return to main menu (resume later)"
         onOpenWorkshop={state.saveData.tools?.workstation ? () => setShowWorkshop(true) : undefined}
         onDropItem={handleDropItem} 
         onUseItem={handleUseItemOutOfCombat}
@@ -2777,6 +2820,22 @@ function BattleView({
       toast.error(`Save failed: ${result.error || 'unknown error'}`);
     }
   }, [dispatch, state.saveData, state.run, isAdmin, isAuthenticated, saveToCloud]);
+
+  // ─── Suspend run and return to main menu (from battle) ───
+  // Snapshots run state and switches to main menu so the player can resume.
+  const handleMainMenu = useCallback(async () => {
+    addLog('💾 Saving and returning to main menu...', 'system');
+    const snapshot = buildProgressSnapshot(state.saveData, state.run, null);
+    dispatch({ type: 'SNAPSHOT_RUN_PROGRESS', overworld: null });
+    if (isAuthenticated) {
+      const result = await saveToCloud(snapshot);
+      if (result.success) toast.success('☁️ Saved — returning to menu');
+      else toast.error(`Save failed: ${result.error || 'unknown'} — returning anyway`);
+    } else {
+      toast.success('💾 Saved locally — returning to menu');
+    }
+    dispatch({ type: 'SET_PHASE', phase: 'main_menu' });
+  }, [dispatch, state.saveData, state.run, isAuthenticated, saveToCloud, addLog]);
   
   // Level up screen queue state - supports multiple level-ups (active + passive party members)
   interface LevelUpEntry {
@@ -4348,6 +4407,8 @@ function BattleView({
         moveOrder={state.run.moveOrder}
         hiddenMoves={state.run.hiddenMoves}
         onFlee={handleFlee}
+        onMainMenu={handleMainMenu}
+        mainMenuTitle="Save and return to main menu (resume later)"
         inBattle={true}
         experience={experience}
         experienceToNext={experienceToNext}

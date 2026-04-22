@@ -276,7 +276,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             </div>
           </div>
 
-          {/* Backup/Restore Section */}
+          {/* Overworld Rebuild Section */}
+          <RebuildOverworldSection />
+
+
           <div className="space-y-3 pt-4 border-t">
             <Label className="text-base">Save Data</Label>
             <div className="flex gap-2">

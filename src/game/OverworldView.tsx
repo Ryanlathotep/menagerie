@@ -240,9 +240,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   // keeping the player's monsters/items/gold (those live in saveData, not here).
   useEffect(() => {
     const onRebuild = (e: Event) => {
-      const seed = (e as CustomEvent<{ seed: number; label?: string }>).detail?.seed ?? 0;
-      const label = (e as CustomEvent<{ seed: number; label?: string }>).detail?.label ?? String(seed);
-      const fresh = regenerateOverworld(seed);
+      const detail = (e as CustomEvent<{ seed: number; label?: string; overworld?: OverworldState }>).detail;
+      const seed = detail?.seed ?? 0;
+      const label = detail?.label ?? String(seed);
+      // Prefer the freshly-built overworld passed from Settings to avoid
+      // regenerating twice; fall back to building one here.
+      const fresh = detail?.overworld ?? regenerateOverworld(seed);
       setOverworld(fresh);
       saveOverworld(fresh);
       addLog(`🌍 Overworld rebuilt with seed ${label}.`, 'system');

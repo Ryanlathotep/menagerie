@@ -251,11 +251,12 @@ function isDungeonEntranceAt(worldX: number, worldY: number): boolean {
   const regionSize = 12;
   const regionX = Math.floor(worldX / regionSize);
   const regionY = Math.floor(worldY / regionSize);
-  const hash = seededRandom(regionX * 98765 + regionY * 54321 + 11111);
+  const ws = _worldSeed;
+  const hash = seededRandom(regionX * 98765 + regionY * 54321 + 11111 + ws);
 
   // The dungeon is at a specific tile within the region
   const dungeonLocalX = Math.floor(hash * regionSize);
-  const dungeonLocalY = Math.floor(seededRandom(hash * 77777 + 33333) * regionSize);
+  const dungeonLocalY = Math.floor(seededRandom(hash * 77777 + 33333 + ws) * regionSize);
   const dungeonWorldX = regionX * regionSize + dungeonLocalX;
   const dungeonWorldY = regionY * regionSize + dungeonLocalY;
 

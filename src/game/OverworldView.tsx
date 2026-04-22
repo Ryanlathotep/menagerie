@@ -1494,7 +1494,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       fleeTitle="Return to town"
       fleeVariant="home"
       onMainMenu={handleReturnToMainMenu}
-      mainMenuTitle="Return to main menu (ends run)"
+      mainMenuTitle="Save and return to main menu (resume later)"
       onDropItem={handleDropItem} 
       onUseItem={handleUseItemOutOfCombat}
       onUseMove={handleUseMoveOnMap}

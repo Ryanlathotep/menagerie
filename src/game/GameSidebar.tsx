@@ -253,7 +253,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             <Button 
               variant="ghost" 
               size="icon" 
-              className="w-9 h-9 sm:w-8 sm:h-8 relative hidden sm:flex" 
+              className="w-9 h-9 sm:w-8 sm:h-8 relative" 
               onClick={onOpenEquipment}
               title="Equipment"
             >

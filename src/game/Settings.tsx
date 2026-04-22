@@ -7,7 +7,7 @@ import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Settings as SettingsIcon, X, Download, Upload, Shield, Map, Dices } from 'lucide-react';
+import { Settings as SettingsIcon, X, Download, Upload, Shield, Globe2, Dices } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminRole } from '@/hooks/useAdminRole';

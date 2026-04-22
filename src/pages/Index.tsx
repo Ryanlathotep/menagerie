@@ -2371,6 +2371,8 @@ function DungeonView({
         experience={state.run?.experience || 0} 
         experienceToNext={xpToNextLevel(state.run?.currentMonster?.level || 1)} 
         onFlee={handleFlee}
+        onMainMenu={handleMainMenu}
+        mainMenuTitle="Save and return to main menu (resume later)"
         onOpenWorkshop={state.saveData.tools?.workstation ? () => setShowWorkshop(true) : undefined}
         onDropItem={handleDropItem} 
         onUseItem={handleUseItemOutOfCombat}

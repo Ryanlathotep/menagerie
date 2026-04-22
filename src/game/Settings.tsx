@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { AdminPanel } from '@/admin/AdminPanel';
+import { useGame } from './state';
 
 // Settings interface
 export interface GameSettings {
@@ -334,30 +335,32 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 // A blank seed rolls a random one. Same seed = same world (shareable).
 function RebuildOverworldSection() {
   const { toast } = useToast();
+  const { state, dispatch } = useGame();
   const [seedInput, setSeedInput] = useState('');
   const [confirming, setConfirming] = useState(false);
 
-  // Read the live seed from the persisted save so players can copy/share it.
-  const currentSeed = (() => {
-    try {
-      const raw = localStorage.getItem('monster-roguelike-save');
-      if (!raw) return 0;
-      const parsed = JSON.parse(raw);
-      return parsed?.overworldState?.worldSeed ?? 0;
-    } catch { return 0; }
-  })();
+  // Read the live seed from in-memory game state so it stays accurate after
+  // rebuilding without needing a refresh.
+  const currentSeed = state.saveData?.overworldState?.worldSeed ?? 0;
 
   const doRebuild = () => {
     // Lazy-import to avoid pulling overworld.ts into Settings' module graph
     // before the user actually clicks Rebuild.
-    import('./overworld').then(({ hashSeedString, randomWorldSeed }) => {
+    import('./overworld').then(({ hashSeedString, randomWorldSeed, regenerateOverworld }) => {
       const trimmed = seedInput.trim();
       const seed = trimmed ? hashSeedString(trimmed) : randomWorldSeed();
-      // Fire a global event consumed by OverworldView; that component owns the
-      // overworld state and will swap it out + persist via UPDATE_OVERWORLD.
+      const fresh = regenerateOverworld(seed);
+
+      // Dispatch directly so this works from the main menu too — not just
+      // when OverworldView is mounted to listen for a global event.
+      dispatch({ type: 'UPDATE_OVERWORLD', overworld: fresh });
+
+      // Also fire the event for any mounted overworld listener (so its local
+      // overworld useState mirror stays in sync without a remount).
       window.dispatchEvent(new CustomEvent('menagerie-rebuild-overworld', {
-        detail: { seed, label: trimmed || `random (${seed})` },
+        detail: { seed, label: trimmed || `random (${seed})`, overworld: fresh },
       }));
+
       toast({
         title: '🌍 Overworld rebuilt',
         description: `New seed: ${trimmed || seed}`,

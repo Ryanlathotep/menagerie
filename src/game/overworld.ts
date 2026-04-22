@@ -539,7 +539,8 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
 
 // ============= OVERWORLD STATE MANAGEMENT =============
 
-export function createOverworldState(): OverworldState {
+export function createOverworldState(seed: number = 0): OverworldState {
+  setWorldSeed(seed);
   const state: OverworldState = {
     playerPosition: { x: 0, y: 0 },
     chunks: {},
@@ -558,14 +559,28 @@ export function createOverworldState(): OverworldState {
     roads: {},
     resourceUpgrades: {},
     totalSteps: 0,
+    worldSeed: seed,
   };
-  
+
   // Generate starting chunk and surrounding chunks
   ensureChunksLoaded(state, 0, 0);
   // Make tiles around player visible
   updateVisibility(state);
-  
+
   return state;
+}
+
+/**
+ * Rebuilds the overworld map under a new procedural seed while preserving
+ * player progress (gold, monsters, materials, recipes, equipment — those live
+ * outside this state). Wipes everything *map*-related: chunks, fog-of-war,
+ * placed buildings, roads, harvested resources, nests, dungeon entrances,
+ * tile overrides. Player respawns at the home base (0,0).
+ *
+ * Pass the same seed to reproduce a previously seen world.
+ */
+export function regenerateOverworld(seed: number = 0): OverworldState {
+  return createOverworldState(seed);
 }
 
 // Overworld difficulty must stay <= the nearest dungeon's starting level so the

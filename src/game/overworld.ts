@@ -71,6 +71,9 @@ export interface OverworldState {
   // Keyed by "x,y". Used so refresh-time chunk regeneration doesn't wipe
   // player edits (water-fills, harvested grass, depleted resources, fog-of-war).
   tileOverrides?: Record<string, OverworldTile>;
+  // Procedural seed mixed into every world hash (biomes, elevation, dungeon
+  // placement, nests). 0 = legacy default. Set via Settings → Rebuild Overworld.
+  worldSeed?: number;
 }
 
 // ============= CONSTANTS =============

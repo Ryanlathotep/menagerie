@@ -1267,19 +1267,26 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     toast.success('Returned to town');
   };
 
-  // Return to Main Menu: ends the current overworld run cleanly. Equipment stays
-  // bound to each party member (handled in END_RUN reducer), gold/materials are
-  // banked, and the player returns to the main menu screen.
-  const handleReturnToMainMenu = () => {
-    const ok = typeof window === 'undefined' ? true : window.confirm(
-      'Return to main menu? Your run will end. Equipment stays equipped to your party and gold/materials are banked.'
-    );
-    if (!ok) return;
-    addLog('🚪 Returning to main menu...', 'system');
-    dispatch({ type: 'END_RUN', victory: true });
+  // Return to Main Menu: SUSPEND the current run (no END_RUN). Snapshots
+  // current run + overworld state into saveData so a "Resume" from the main
+  // menu drops the player back exactly where they were. Pushes to cloud when
+  // signed in for cross-device safety.
+  const handleReturnToMainMenu = async () => {
+    addLog('💾 Saving and returning to main menu...', 'system');
+    // Build a fresh snapshot that includes the live overworld (positions,
+    // fog, buildings, etc.) so resume works without losing progress.
+    const snapshot = buildProgressSnapshot(state.saveData, state.run, overworld);
+    dispatch({ type: 'SNAPSHOT_RUN_PROGRESS', overworld });
+    if (isAuthenticated) {
+      const result = await saveToCloud(snapshot);
+      if (result.success) toast.success('☁️ Saved — returning to menu');
+      else toast.error(`Save failed: ${result.error || 'unknown'} — returning anyway`);
+    } else {
+      toast.success('💾 Saved locally — returning to menu');
+    }
     dispatch({ type: 'SET_PHASE', phase: 'main_menu' });
   };
-  
+
   const handleDropItem = (itemId: string) => {
     dispatch({ type: 'DROP_ITEM', itemId });
     addLog('🗑️ Item dropped', 'info');

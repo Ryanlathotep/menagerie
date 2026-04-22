@@ -78,6 +78,37 @@ export interface OverworldState {
 export const CHUNK_SIZE = 16;
 const VIEW_RADIUS = 5; // Visibility radius around player
 
+// ─── Global world seed ───
+// Mixed into every procedural hash site so re-seeding produces a fully
+// different overworld (biomes, rivers, elevation, dungeon placement, nests,
+// resource tiers, …). Default 0 keeps legacy worlds bit-for-bit identical.
+let _worldSeed = 0;
+export function getWorldSeed(): number { return _worldSeed; }
+export function setWorldSeed(seed: number): void {
+  _worldSeed = (seed | 0) >>> 0; // coerce to unsigned 32-bit
+}
+
+/**
+ * Hash a free-form seed string (e.g. "dragon-valley") into a deterministic
+ * 32-bit unsigned integer. Empty / whitespace-only strings return 0 so
+ * callers can use `hashSeedString(input) || randomSeed()` for "blank = random".
+ */
+export function hashSeedString(input: string): number {
+  const str = (input || '').trim();
+  if (!str) return 0;
+  // FNV-1a 32-bit
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+export function randomWorldSeed(): number {
+  return (Math.floor(Math.random() * 0xffffffff)) >>> 0;
+}
+
 export const BUILDING_UPGRADES: Record<BuildingType, {
   label: string;
   emoji: string;

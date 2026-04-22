@@ -309,10 +309,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         return { ...state, phase: 'run_summary' };
       }
 
-      // Loose run loot returns to town storage (unbound so it can be re-used).
-      const equipmentToStore: EquipmentItem[] = state.run.equipmentInventory.map(
-        item => ({ ...item, bound: undefined })
-      );
+      // Unified equipment inventory: run.equipmentInventory IS already mirrored
+      // into storedEquipment by the equipment reducers. Don't re-append or
+      // items will duplicate. Just clear `bound` flags on whatever is loose.
+      const equipmentToStore: EquipmentItem[] = [];
 
       // Run inventory IS town storage now (kept in sync via ADD/USE/DROP_ITEM).
       // Don't merge again or items will duplicate.
@@ -327,9 +327,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       // Run gold is added to town gold (no loss on death).
       const newTownGold = (state.saveData.gold || 0) + state.run.gold;
 
-      // Recipes unlock from any equipment seen this run (equipped + loose loot).
+      // Recipes unlock from any equipment seen this run (loose loot already in
+      // storedEquipment via mirroring + currently equipped on party members).
       const newUnlockedRecipes = [...(state.saveData.unlockedRecipes || [])];
-      const allSeenEquipment: EquipmentItem[] = [...equipmentToStore];
+      const allSeenEquipment: EquipmentItem[] = [...state.run.equipmentInventory];
       if (state.run.partyEquipment) {
         for (const memberEquipment of state.run.partyEquipment) {
           for (const slot of EQUIPMENT_SLOTS) {
@@ -392,7 +393,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           totalEnemiesDefeated: state.saveData.totalEnemiesDefeated + state.run.enemiesDefeated,
           gold: newTownGold,
           materials: mergedMaterials,
-          storedEquipment: [...state.saveData.storedEquipment, ...equipmentToStore],
+          // Already mirrored throughout the run — don't append again.
+          storedEquipment: state.saveData.storedEquipment,
           storedItems,
           unlockedMonsters: updatedUnlockedMonsters,
           unlockedRecipes: newUnlockedRecipes,
@@ -407,9 +409,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       // Equipment stays equipped to each party member (persisted onto UnlockedMonster).
       if (!state.run) return state;
       
-      // Only loose loot equipment goes to town storage; equipped gear stays on monsters.
+      // Unified equipment inventory: loose loot is already mirrored into
+      // storedEquipment via ADD/EQUIP/UNEQUIP/etc. Don't re-append.
       const slots: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory', 'back'];
-      const equipmentToStore: EquipmentItem[] = state.run.equipmentInventory.map(item => ({ ...item, bound: undefined }));
+      const equipmentToStore: EquipmentItem[] = [];
       
       // Merge run materials with saved materials
       const mergedMaterials = { ...state.saveData.materials };
@@ -452,9 +455,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         }
       });
       
-      // Unlock recipes for any equipment seen this run (loose loot + currently equipped).
+      // Unlock recipes for any equipment seen this run (loose loot already in
+      // storedEquipment via mirroring + currently equipped).
       const newUnlockedRecipes = [...(state.saveData.unlockedRecipes || [])];
-      const allFleeEquipment: EquipmentItem[] = [...equipmentToStore];
+      const allFleeEquipment: EquipmentItem[] = [...state.run.equipmentInventory];
       for (const memberEquipment of state.run.partyEquipment) {
         for (const slot of slots) {
           const item = memberEquipment[slot];
@@ -521,7 +525,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             : state.saveData.highestFloor,
           totalEnemiesDefeated: state.saveData.totalEnemiesDefeated + state.run.enemiesDefeated,
           gold: newTownGold,
-          storedEquipment: [...state.saveData.storedEquipment, ...equipmentToStore],
+          // Already mirrored throughout the run — don't append again.
+          storedEquipment: state.saveData.storedEquipment,
           storedItems: storedItems,
           materials: mergedMaterials,
           unlockedMonsters: updatedUnlockedMonsters,

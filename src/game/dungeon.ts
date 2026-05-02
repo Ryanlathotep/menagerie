@@ -16,7 +16,7 @@ function createDungeonNest(floor: number, theme?: DungeonTheme): NestState {
   const themeElement = theme?.kind === 'element' && theme.value
     ? (theme.value as ElementType)
     : undefined;
-  const elements: ElementType[] = ['fire','water','grass','electric','ice','dark','light','earth','air','normal'];
+  const elements: ElementType[] = ['fire','water','earth','air','void','normal'];
   const element = themeElement || elements[Math.floor(Math.random() * elements.length)];
   const level = Math.max(1, floor);
   const baseHp = 30 + level * 15;

@@ -11,6 +11,29 @@ import { NestState } from './nests';
 const DUNGEON_WIDTH = 30;
 const DUNGEON_HEIGHT = 25;
 
+// Create a dungeon nest, themed by element if the dungeon theme is elemental.
+function createDungeonNest(floor: number, theme?: DungeonTheme): NestState {
+  const themeElement = theme?.kind === 'element' && theme.value
+    ? (theme.value as ElementType)
+    : undefined;
+  const elements: ElementType[] = ['fire','water','grass','electric','ice','dark','light','earth','air','normal'];
+  const element = themeElement || elements[Math.floor(Math.random() * elements.length)];
+  const level = Math.max(1, floor);
+  const baseHp = 30 + level * 15;
+  return {
+    id: `dnest_${floor}_${Math.floor(Math.random() * 1e9)}`,
+    worldX: 0, worldY: 0,
+    element,
+    hp: baseHp,
+    maxHp: baseHp,
+    level,
+    spawnCooldown: 12,
+    maxSpawnCooldown: Math.max(6, 12 - Math.floor(level / 3)),
+    totalSpawned: 0,
+    destroyed: false,
+  };
+}
+
 // Item types for loot
 export interface LootItem {
   id: string;

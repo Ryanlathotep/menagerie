@@ -1636,9 +1636,13 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         enemy={defeatedEnemy}
         recruitChance={recruitChance}
         impressiveStats={battleStats}
+        party={state.run?.party || []}
         partyFull={(state.run?.party?.length || 0) >= 6}
-        onRecruit={handleRecruit}
         onDismiss={handleSkipRecruit}
+        onFail={handleRecruitFail}
+        onAddToParty={handleRecruitAddToParty}
+        onReplaceMember={handleRecruitReplace}
+        onSendHome={handleRecruitSendHome}
       />
     )}
     

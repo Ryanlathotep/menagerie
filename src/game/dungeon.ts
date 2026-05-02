@@ -522,21 +522,21 @@ export function movePlayer(
 
   // Check bounds
   if (newX < 0 || newX >= dungeon.width || newY < 0 || newY >= dungeon.height) {
-    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null, runeBump: null };
+    return { dungeon, encounter: null, treasure: false, stairs: false, stairsUp: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null, runeBump: null };
   }
 
   const targetTile = tiles[newY][newX];
 
   // Bedrock walls — flat block, no mining possible
   if (targetTile.type === 'wall') {
-    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null, runeBump: null };
+    return { dungeon, encounter: null, treasure: false, stairs: false, stairsUp: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null, runeBump: null };
   }
 
   // Mineable walls — also block movement, but signal a "bump" so Index.tsx
   // can apply a Pickaxe hit if the player owns one strong enough.
   if (targetTile.type === 'mineable_wall' && targetTile.wallTier) {
     return {
-      dungeon, encounter: null, treasure: false, stairs: false, trap: null,
+      dungeon, encounter: null, treasure: false, stairs: false, stairsUp: false, trap: null,
       terrain: null, shop: false, elevator: false, loot: null, blocked: true,
       plant: null,
       mineableBump: { x: newX, y: newY, tier: targetTile.wallTier },

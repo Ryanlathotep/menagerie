@@ -83,6 +83,9 @@ export function AdminPanel() {
           <TabsContent value="monsters" className="p-4 m-0">
             <MonstersEditor />
           </TabsContent>
+          <TabsContent value="access" className="p-4 m-0">
+            <AdminAccessEditor />
+          </TabsContent>
         </ScrollArea>
       </Tabs>
     </Card>

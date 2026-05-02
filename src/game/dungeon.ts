@@ -365,6 +365,71 @@ export function generateDungeon(floor: number, theme?: DungeonTheme, startingFlo
     }
   }
 
+  // ===== Monster nests (uncommon, mostly on floors %5 and %10) =====
+  // Frequency: floor%10===0 → 80%, floor%5===0 → 40%, otherwise none.
+  // 50% of placed nests are biased toward blocking a feature
+  // (stairs, shop, elevator, treasure); the other 50% are scattered.
+  const nestChance = floor > 0 && floor % 10 === 0
+    ? 0.8
+    : floor > 0 && floor % 5 === 0
+      ? 0.4
+      : 0;
+  if (nestChance > 0 && Math.random() < nestChance) {
+    const numNests = floor % 10 === 0 ? 1 + (Math.random() < 0.4 ? 1 : 0) : 1;
+
+    // Collect feature tiles to potentially block
+    const featureTiles: { x: number; y: number }[] = [];
+    for (let y = 0; y < DUNGEON_HEIGHT; y++) {
+      for (let x = 0; x < DUNGEON_WIDTH; x++) {
+        const t = tiles[y][x].type;
+        if (t === 'stairs' || t === 'stairs_up' || t === 'shop' || t === 'elevator' || t === 'treasure') {
+          featureTiles.push({ x, y });
+        }
+      }
+    }
+
+    for (let n = 0; n < numNests; n++) {
+      let placed = false;
+      const blocking = Math.random() < 0.5 && featureTiles.length > 0;
+
+      if (blocking) {
+        // Try to place adjacent to a random feature tile (cardinal neighbour)
+        const feature = featureTiles[Math.floor(Math.random() * featureTiles.length)];
+        const dirs = [[0,-1],[1,0],[0,1],[-1,0]].sort(() => Math.random() - 0.5);
+        for (const [dx, dy] of dirs) {
+          const nx = feature.x + dx, ny = feature.y + dy;
+          if (nx < 1 || nx >= DUNGEON_WIDTH - 1 || ny < 1 || ny >= DUNGEON_HEIGHT - 1) continue;
+          if (tiles[ny][nx].type !== 'floor') continue;
+          // Don't block the player's first room
+          if (firstRoom && nx >= firstRoom.x && nx < firstRoom.x + firstRoom.width &&
+              ny >= firstRoom.y && ny < firstRoom.y + firstRoom.height) continue;
+          tiles[ny][nx].type = 'nest';
+          tiles[ny][nx].nestState = createDungeonNest(floor, theme);
+          placed = true;
+          break;
+        }
+      }
+
+      if (!placed) {
+        // Scatter: random floor tile in any non-first room
+        let attempts = 0;
+        while (!placed && attempts < 50) {
+          const roomIndex = 1 + Math.floor(Math.random() * Math.max(1, rooms.length - 1));
+          if (roomIndex >= rooms.length) { attempts++; continue; }
+          const room = rooms[roomIndex];
+          const nx = room.x + Math.floor(Math.random() * room.width);
+          const ny = room.y + Math.floor(Math.random() * room.height);
+          if (tiles[ny]?.[nx]?.type === 'floor') {
+            tiles[ny][nx].type = 'nest';
+            tiles[ny][nx].nestState = createDungeonNest(floor, theme);
+            placed = true;
+          }
+          attempts++;
+        }
+      }
+    }
+  }
+
   // Reveal tiles around player
   updateVisibility(tiles, playerPosition);
 

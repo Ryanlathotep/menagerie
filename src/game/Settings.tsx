@@ -17,6 +17,7 @@ import { useCloudSave } from '@/hooks/useCloudSave';
 import { toast as sonnerToast } from 'sonner';
 import { UsernameEditor } from './UsernameEditor';
 import { DiscoveryLeaderboard } from './DiscoveryLeaderboard';
+import { ExplorationLeaderboard } from './ExplorationLeaderboard';
 
 // Settings interface
 export interface GameSettings {

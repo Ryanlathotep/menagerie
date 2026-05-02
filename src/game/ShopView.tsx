@@ -77,7 +77,7 @@ export function ShopView({ gold, floor, onBuy, onBuyEquipment, onClose }: ShopVi
           </TabsList>
           
           <TabsContent value="potions" className="flex-1 min-h-0">
-            <ScrollArea className="h-[300px]">
+            <ScrollArea className="h-[40vh] sm:h-[300px]">
               <div className="space-y-2 pr-4">
                 {SHOP_ITEMS.map(({ item, price }) => (
                   <div key={item.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
@@ -100,7 +100,7 @@ export function ShopView({ gold, floor, onBuy, onBuyEquipment, onClose }: ShopVi
           </TabsContent>
           
           <TabsContent value="equipment" className="flex-1 min-h-0">
-            <ScrollArea className="h-[300px]">
+            <ScrollArea className="h-[40vh] sm:h-[300px]">
               <div className="space-y-2 pr-4">
                 {shopEquipment.map(({ item, price }) => {
                   const bought = boughtEquipment.includes(item.id);

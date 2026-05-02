@@ -128,7 +128,7 @@ export const SPECIES_MOVES: Record<SpeciesType, Move[]> = {
     { id: 'web_shot', name: 'Web Shot', description: 'Ranged web attack in a straight line', type: 'ranged', power: 20, accuracy: 95, staminaCost: 5, speedMod: 1, aspects: ['species'], effect: 'lower_speed', unlockLevel: 4, targeting: 'single' },
     { id: 'fang_strike', name: 'Fang Strike', description: 'Powerful fang attack', type: 'melee', power: 40, accuracy: 88, staminaCost: 9, speedMod: 0, aspects: ['species'], effect: 'poison', unlockLevel: 7 },
     { id: 'cocoon', name: 'Cocoon', description: 'Wrap in protective silk', type: 'status', power: 0, accuracy: 100, staminaCost: 8, speedMod: -1, aspects: ['species'], effect: 'raise_defense', unlockLevel: 10 },
-    { id: 'spider_swarm', name: 'Spider Swarm', description: 'Summon tiny spiders', type: 'melee', power: 50, accuracy: 85, staminaCost: 14, speedMod: 0, aspects: ['species'], effect: 'poison', unlockLevel: 14 },
+    { id: 'spider_swarm', name: 'Spider Swarm', description: 'Summon tiny spiders that swarm around you', type: 'melee', power: 50, accuracy: 85, staminaCost: 14, speedMod: 0, aspects: ['species'], effect: 'poison', unlockLevel: 14, targeting: 'aura', aoeRadius: 1 },
   ],
   bat: [
     { id: 'sonic_screech', name: 'Sonic Screech', description: 'Disorienting cone of sound', type: 'ranged', power: 25, accuracy: 95, staminaCost: 6, speedMod: 1, aspects: ['species'], unlockLevel: 1, targeting: 'cone' },

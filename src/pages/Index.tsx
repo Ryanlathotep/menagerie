@@ -860,6 +860,14 @@ function DungeonView({
     statusEffectsApplied: 0,
     criticalHits: 0,
   });
+  // Queue of additional defeated enemies awaiting their own recruitment modal
+  // (populated when a single AoE attack defeats multiple enemies at once).
+  type RecruitQueueEntry = {
+    enemy: Monster;
+    chance: number;
+    stats: { turnsUsed: number; overkillDamage: number; statusEffectsApplied: number; criticalHits: number };
+  };
+  const [recruitQueue, setRecruitQueue] = useState<RecruitQueueEntry[]>([]);
   
   // Dungeon revive modal state
   const [showDungeonReviveModal, setShowDungeonReviveModal] = useState(false);

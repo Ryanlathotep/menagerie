@@ -633,6 +633,17 @@ export function movePlayer(
       plant: null,
       mineableBump: { x: newX, y: newY, tier: targetTile.wallTier },
       runeBump: null,
+      nestBump: null,
+    };
+  }
+
+  // Nest tiles block movement; caller deals damage based on player attack.
+  if (targetTile.type === 'nest') {
+    return {
+      dungeon, encounter: null, treasure: false, stairs: false, stairsUp: false, trap: null,
+      terrain: null, shop: false, elevator: false, loot: null, blocked: true,
+      plant: null, mineableBump: null, runeBump: null,
+      nestBump: { x: newX, y: newY },
     };
   }
 

@@ -413,6 +413,26 @@ export function StairsTile({ size, seed = 0 }: TileGraphicProps) {
   );
 }
 
+// Ascending staircase — mirror of StairsTile with an upward arrow.
+export function StairsUpTile({ size, seed = 0 }: TileGraphicProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className="block">
+      <line x1="0" y1="0" x2="24" y2="0" stroke={INK_COLORS.faint} strokeWidth={0.3} opacity={0.4} />
+      <line x1="0" y1="0" x2="0" y2="24" stroke={INK_COLORS.faint} strokeWidth={0.3} opacity={0.4} />
+
+      {/* Ascending stairs - widest step at the bottom */}
+      <rect x="8" y="5"  width="8"  height="3" fill="hsl(35 40% 45%)" stroke={INK_COLORS.medium} strokeWidth={0.5} />
+      <rect x="7" y="8"  width="10" height="3" fill="hsl(35 40% 55%)" stroke={INK_COLORS.medium} strokeWidth={0.5} />
+      <rect x="6" y="11" width="12" height="3" fill="hsl(35 40% 65%)" stroke={INK_COLORS.medium} strokeWidth={0.5} />
+      <rect x="5" y="14" width="14" height="3" fill="hsl(35 40% 70%)" stroke={INK_COLORS.medium} strokeWidth={0.5} />
+      <rect x="4" y="17" width="16" height="3" fill="hsl(35 40% 75%)" stroke={INK_COLORS.medium} strokeWidth={0.5} />
+
+      {/* Up arrow */}
+      <path d="M12 2 L9 6 L15 6 Z" fill={INK_COLORS.dark} opacity={0.7} />
+    </svg>
+  );
+}
+
 // Treasure tile
 export function TreasureTile({ size, seed = 0 }: TileGraphicProps) {
   const r1 = seededRandom(seed);

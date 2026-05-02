@@ -2912,6 +2912,12 @@ function DungeonView({
           onDismiss={() => {
             advanceQueue();
           }}
+          queuedRecruits={recruitQueue.length}
+          onSkipAll={() => {
+            setRecruitQueue([]);
+            setShowRecruitment(false);
+            setDefeatedEnemy(null);
+          }}
         />
         );
       })()}

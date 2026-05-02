@@ -60,6 +60,8 @@ export function RecruitmentModal({
   onReplaceMember,
   onSendHome,
   onFail,
+  queuedRecruits = 0,
+  onSkipAll,
 }: RecruitmentModalProps) {
   const speciesData = SPECIES_DATA[enemy.species];
   const [step, setStep] = useState<Step>('intro');

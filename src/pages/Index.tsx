@@ -4154,91 +4154,127 @@ function BattleView({
     });
   };
   
-  // Handle recruitment attempt
-  const handleRecruit = () => {
-    if (!defeatedEnemy || !state.run) return;
-    
-    // Roll for recruitment
-    const roll = Math.random() * 100;
-    const success = roll < recruitChance;
-    
-    if (success) {
-      // Create a fresh copy of the defeated enemy for the party
-      // When recruited, the monster keeps their equipment (added to party equipment)
-      const recruitedMonster: Monster = {
-        ...defeatedEnemy,
-        id: `party_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        stats: {
-          ...defeatedEnemy.stats,
-          currentHp: Math.floor(defeatedEnemy.stats.maxHp * 0.5), // Joins at 50% HP
-          currentStamina: Math.floor((defeatedEnemy.stats.stamina || 50) * 0.5),
-        },
-        // Clear equipment from monster - it will be added to party equipment separately
-        equipment: undefined,
-      };
-      
-      dispatch({ type: 'ADD_TO_PARTY', monster: recruitedMonster });
-      
-      // If the recruited monster had equipment, add it to the new party member's equipment slot
-      if (defeatedEnemy.equipment) {
-        const equipmentDrops = getEnemyEquipmentDrops(defeatedEnemy.equipment);
-        for (const item of equipmentDrops) {
-          dispatch({ type: 'ADD_EQUIPMENT', item });
-        }
-        if (equipmentDrops.length > 0) {
-          toast.success(`🎉 ${defeatedEnemy.name} joined with ${equipmentDrops.length} equipment piece(s)!`);
-        } else {
-          toast.success(`🎉 ${defeatedEnemy.name} joined your party!`);
-        }
+  // ─── Recruitment handlers (post-combat) ───
+  // The roll happens inside RecruitmentModal. These callbacks just react
+  // to whichever path the player took: fail, add-to-party, replace, send-home,
+  // or dismiss.
+
+  // Shared: end the recruitment flow and finalize the battle.
+  const finishRecruitmentFlow = () => {
+    setShowRecruitment(false);
+    setDefeatedEnemy(null);
+    setBattleStats({ turnsUsed: 0, overkillDamage: 0, statusEffectsApplied: 0, criticalHits: 0 });
+    dispatch({ type: 'END_BATTLE', victory: true });
+  };
+
+  // Shared: drop the defeated enemy's gear into player loot.
+  const dropDefeatedEquipment = () => {
+    if (!defeatedEnemy?.equipment) return 0;
+    const equipmentDrops = getEnemyEquipmentDrops(defeatedEnemy.equipment);
+    for (const item of equipmentDrops) {
+      dispatch({ type: 'ADD_EQUIPMENT', item });
+    }
+    return equipmentDrops.length;
+  };
+
+  // Recruit roll failed.
+  const handleRecruitFail = () => {
+    if (!defeatedEnemy) return finishRecruitmentFlow();
+    toast.error(`${defeatedEnemy.name} wasn't impressed enough to join...`);
+    const dropped = dropDefeatedEquipment();
+    if (dropped > 0) {
+      toast.success(`⚔️ Enemy dropped ${dropped} equipment piece(s)!`);
+    }
+    finishRecruitmentFlow();
+  };
+
+  // Recruit succeeded → add directly to active party.
+  const handleRecruitAddToParty = () => {
+    if (!defeatedEnemy || !state.run) return finishRecruitmentFlow();
+
+    const recruitedMonster: Monster = {
+      ...defeatedEnemy,
+      id: `party_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      stats: {
+        ...defeatedEnemy.stats,
+        currentHp: Math.floor(defeatedEnemy.stats.maxHp * 0.5),
+        currentStamina: Math.floor((defeatedEnemy.stats.stamina || 50) * 0.5),
+      },
+      equipment: undefined,
+    };
+
+    dispatch({ type: 'ADD_TO_PARTY', monster: recruitedMonster });
+
+    if (defeatedEnemy.equipment) {
+      const dropped = dropDefeatedEquipment();
+      if (dropped > 0) {
+        toast.success(`🎉 ${defeatedEnemy.name} joined with ${dropped} equipment piece(s)!`);
       } else {
         toast.success(`🎉 ${defeatedEnemy.name} joined your party!`);
       }
     } else {
-      toast.error(`${defeatedEnemy.name} wasn't impressed enough to join...`);
-      
-      // Failed recruitment - drop enemy equipment as loot
-      if (defeatedEnemy.equipment) {
-        const equipmentDrops = getEnemyEquipmentDrops(defeatedEnemy.equipment);
-        for (const item of equipmentDrops) {
-          dispatch({ type: 'ADD_EQUIPMENT', item });
-        }
-        if (equipmentDrops.length > 0) {
-          toast.success(`⚔️ Enemy dropped ${equipmentDrops.length} equipment piece(s)!`);
-        }
-      }
+      toast.success(`🎉 ${defeatedEnemy.name} joined your party!`);
     }
-    
-    setShowRecruitment(false);
-    setDefeatedEnemy(null);
-    setBattleStats({ turnsUsed: 0, overkillDamage: 0, statusEffectsApplied: 0, criticalHits: 0 });
-    
-    dispatch({
-      type: 'END_BATTLE',
-      victory: true
-    });
+    finishRecruitmentFlow();
   };
-  
-  // Handle dismissing recruitment
-  const handleDismissRecruitment = () => {
-    // Player chose not to recruit - drop enemy equipment as loot
-    if (defeatedEnemy?.equipment) {
-      const equipmentDrops = getEnemyEquipmentDrops(defeatedEnemy.equipment);
-      for (const item of equipmentDrops) {
-        dispatch({ type: 'ADD_EQUIPMENT', item });
+
+  // Recruit succeeded → swap out a chosen party member (sent home), then add.
+  const handleRecruitReplaceMember = (replaceIndex: number) => {
+    if (!defeatedEnemy || !state.run) return finishRecruitmentFlow();
+    dispatch({ type: 'SEND_PARTY_MEMBER_TO_TOWN', partyIndex: replaceIndex });
+
+    const recruitedMonster: Monster = {
+      ...defeatedEnemy,
+      id: `party_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      stats: {
+        ...defeatedEnemy.stats,
+        currentHp: Math.floor(defeatedEnemy.stats.maxHp * 0.5),
+        currentStamina: Math.floor((defeatedEnemy.stats.stamina || 50) * 0.5),
+      },
+      equipment: undefined,
+    };
+    dispatch({ type: 'ADD_TO_PARTY', monster: recruitedMonster });
+
+    if (defeatedEnemy.equipment) {
+      const dropped = dropDefeatedEquipment();
+      if (dropped > 0) {
+        toast.success(`🔄 Replaced! ${defeatedEnemy.name} joined with ${dropped} equipment piece(s)!`);
+      } else {
+        toast.success(`🔄 ${defeatedEnemy.name} took their place in the party!`);
       }
-      if (equipmentDrops.length > 0) {
-        toast.success(`⚔️ Enemy dropped ${equipmentDrops.length} equipment piece(s)!`);
-      }
+    } else {
+      toast.success(`🔄 ${defeatedEnemy.name} took their place in the party!`);
     }
-    
-    setShowRecruitment(false);
-    setDefeatedEnemy(null);
-    setBattleStats({ turnsUsed: 0, overkillDamage: 0, statusEffectsApplied: 0, criticalHits: 0 });
-    
+    finishRecruitmentFlow();
+  };
+
+  // Recruit succeeded → send the recruit straight to roster storage.
+  const handleRecruitSendHome = () => {
+    if (!defeatedEnemy) return finishRecruitmentFlow();
+    const comboId = `${defeatedEnemy.species}_${defeatedEnemy.element}_${defeatedEnemy.class}`;
     dispatch({
-      type: 'END_BATTLE',
-      victory: true
+      type: 'UNLOCK_MONSTER',
+      monster: {
+        comboId,
+        species: defeatedEnemy.species,
+        element: defeatedEnemy.element,
+        classType: defeatedEnemy.class,
+        level: defeatedEnemy.level,
+        equipment: defeatedEnemy.equipment,
+      },
     });
+    // Equipment travels home with the recruit — don't also drop it as loot.
+    toast.success(`🏠 ${defeatedEnemy.name} was sent home to your roster!`);
+    finishRecruitmentFlow();
+  };
+
+  // Player chose to walk away before even attempting the roll.
+  const handleDismissRecruitment = () => {
+    const dropped = dropDefeatedEquipment();
+    if (dropped > 0) {
+      toast.success(`⚔️ Enemy dropped ${dropped} equipment piece(s)!`);
+    }
+    finishRecruitmentFlow();
   };
 
   return (

@@ -2364,6 +2364,19 @@ function DungeonView({
       addLog(`⛏️ ${targetingMove.name} chipped ${wallsChipped} wall${wallsChipped > 1 ? 's' : ''}.`, 'system');
     }
     
+    // If any enemies were defeated, surface the recruitment modals — first
+    // entry shown immediately, the rest queued for sequential display.
+    if (recruitEntries.length > 0) {
+      const [first, ...rest] = recruitEntries;
+      setDefeatedEnemy(first.enemy);
+      setRecruitChance(first.chance);
+      setBattleStats(first.stats);
+      if (rest.length > 0) {
+        setRecruitQueue(q => [...q, ...rest]);
+      }
+      setShowRecruitment(true);
+    }
+    
     // Update dungeon state
     dispatch({ type: 'SET_DUNGEON', dungeon: newDungeon });
     

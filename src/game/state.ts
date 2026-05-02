@@ -79,12 +79,32 @@ function persistRunPartyProgress(saveData: SaveData, run: GameState['run']): Sav
     const existingIdx = updatedUnlockedMonsters.findIndex(m => m.comboId === comboId);
 
     if (existingIdx !== -1) {
+      const existing = updatedUnlockedMonsters[existingIdx];
+      const currentLevel = partyMember.level;
+      const existingLevel = existing.level;
+      const useCurrent = currentLevel >= existingLevel;
+
+      // Merge mastery: keep highest uses per move
+      const mergedMastery: typeof partyMember.moveMastery = { ...(existing.moveMastery || {}) };
+      if (partyMember.moveMastery) {
+        for (const [moveId, current] of Object.entries(partyMember.moveMastery)) {
+          const prev = mergedMastery[moveId];
+          if (!prev || (current?.uses ?? 0) > (prev.uses ?? 0)) {
+            mergedMastery[moveId] = current;
+          }
+        }
+      }
+
       updatedUnlockedMonsters[existingIdx] = {
-        ...updatedUnlockedMonsters[existingIdx],
-        level: Math.max(updatedUnlockedMonsters[existingIdx].level, partyMember.level),
-        experience: partyMember.experience ?? 0,
-        moveMastery: partyMember.moveMastery,
-        equipment: cleanedEquipment,
+        ...existing,
+        level: Math.max(existingLevel, currentLevel),
+        // If we leveled up, take current XP; otherwise keep the higher of the two
+        experience: useCurrent
+          ? (partyMember.experience ?? 0)
+          : Math.max(existing.experience ?? 0, partyMember.experience ?? 0),
+        moveMastery: mergedMastery,
+        // Equipment: prefer current (bound to active monster), fall back to existing
+        equipment: cleanedEquipment ?? existing.equipment,
       };
       return;
     }
@@ -1584,6 +1604,27 @@ export function GameProvider({ children }: GameProviderProps) {
       console.error('[save] Failed to write to localStorage:', err);
     }
   }, [state.saveData]);
+
+  // Auto-snapshot party progress when meaningful in-run milestones change
+  // (level-up, floor change, total mastery uses). This ensures level-ups
+  // survive crashes — without thrashing on every tick of movement.
+  const partyProgressSig = state.run
+    ? (() => {
+        let sig = `f${state.run.dungeon?.floor ?? 0}|`;
+        for (const m of state.run.party) {
+          const masteryTotal = m.moveMastery
+            ? Object.values(m.moveMastery).reduce((s, x) => s + (x?.uses ?? 0), 0)
+            : 0;
+          sig += `${m.species}_${m.element}_${m.class}:L${m.level}:X${m.experience ?? 0}:M${masteryTotal};`;
+        }
+        return sig;
+      })()
+    : '';
+
+  useEffect(() => {
+    if (!state.run || !partyProgressSig) return;
+    dispatch({ type: 'SNAPSHOT_RUN_PROGRESS' });
+  }, [partyProgressSig]);
 
   return React.createElement(GameContext.Provider, { value: { state, dispatch } }, children);
 }

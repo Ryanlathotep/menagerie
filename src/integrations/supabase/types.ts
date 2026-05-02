@@ -48,6 +48,7 @@ export type Database = {
           id: string
           updated_at: string
           user_id: string
+          world_seed: number | null
         }
         Insert: {
           achieved_at?: string
@@ -55,6 +56,7 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id: string
+          world_seed?: number | null
         }
         Update: {
           achieved_at?: string
@@ -62,6 +64,7 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id?: string
+          world_seed?: number | null
         }
         Relationships: []
       }
@@ -234,6 +237,7 @@ export type Database = {
           rank: number
           user_id: string
           username: string
+          world_seed: number
         }[]
       }
       get_my_username: { Args: never; Returns: string }
@@ -269,7 +273,10 @@ export type Database = {
       }
       revoke_admin: { Args: { _user_id: string }; Returns: undefined }
       set_username: { Args: { _username: string }; Returns: Json }
-      submit_discovery_count: { Args: { _count: number }; Returns: Json }
+      submit_discovery_count: {
+        Args: { _count: number; _world_seed?: number }
+        Returns: Json
+      }
       submit_tower_floor: {
         Args: {
           _floor: number

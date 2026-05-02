@@ -1462,7 +1462,7 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
 ];
 
 // ============= CONSUMABLE/POTION RECIPES =============
-export type ConsumableEffect = 'heal_hp' | 'heal_stamina' | 'heal_full' | 'cure_poison' | 'cure_burn' | 'cure_freeze' | 'cure_all' | 'boost_attack' | 'boost_defense' | 'boost_speed' | 'revive' | 'revive_full' | 'reveal_stairs';
+export type ConsumableEffect = 'heal_hp' | 'heal_stamina' | 'heal_full' | 'cure_poison' | 'cure_burn' | 'cure_freeze' | 'cure_all' | 'boost_attack' | 'boost_defense' | 'boost_speed' | 'revive' | 'revive_full' | 'reveal_stairs' | 'town_portal';
 
 export interface ConsumableRecipe {
   id: string;
@@ -1700,6 +1700,19 @@ export const CONSUMABLE_RECIPES: ConsumableRecipe[] = [
     icon: '🧭',
     description: 'Single use. Pins a waypoint to this floor\'s exit stairs.',
     effect: 'reveal_stairs',
+  },
+  {
+    id: 'craft_town_portal_scroll',
+    name: 'Town Portal Scroll',
+    resultId: 'town_portal_scroll',
+    rarity: 'uncommon',
+    materials: [
+      { materialId: 'mana_blossom', quantity: 2 },
+      { materialId: 'healing_herb', quantity: 1 },
+    ],
+    icon: '📜',
+    description: 'Tears open a portal back to town. Required to flee any tower other than the Tower of the Infinite.',
+    effect: 'town_portal',
   },
   // NOTE: Portable Workstation is now a singleton TOOL (see tools.ts WORKSTATION),
   // crafted under the Tools tab and triggered via a sidebar button. It is no

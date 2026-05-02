@@ -521,6 +521,11 @@ function CharacterSelect() {
   
   // Show equipment selection screen
   if (showEquipmentSelect && partyForRun.length > 0) {
+    const isHomeTower = activeEntranceForPrep?.isHome === true;
+    const ownedScrollCount = (state.saveData.storedItems || [])
+      .filter(i => i.id === 'town_portal_scroll')
+      .reduce((sum, i) => sum + (i.quantity || 1), 0);
+    const TOWN_PORTAL_PRICE = 80;
     return (
       <PreRunEquipment
         party={partyForRun}
@@ -528,6 +533,20 @@ function CharacterSelect() {
         storedItems={state.saveData.storedItems || []}
         entranceFloor={entranceFloorForPrep}
         maxStartFloor={maxStartFloorForPrep}
+        isHomeTower={runDestination === 'dungeon' ? isHomeTower : undefined}
+        townGold={state.saveData.gold || 0}
+        townPortalScrollPrice={TOWN_PORTAL_PRICE}
+        ownedScrollCount={ownedScrollCount}
+        onBuyTownPortalScroll={() => {
+          if (!isCreativeMode()) {
+            dispatch({ type: 'SPEND_TOWN_GOLD', amount: TOWN_PORTAL_PRICE });
+          }
+          dispatch({
+            type: 'STORE_ITEM',
+            item: { id: 'town_portal_scroll', name: 'Town Portal Scroll', quantity: 1, type: 'potion', effect: 'town_portal', value: 0 },
+          });
+          toast.success('Bought Town Portal Scroll!');
+        }}
         onStart={startRun}
         onBack={() => setShowEquipmentSelect(false)}
       />
@@ -1372,6 +1391,26 @@ function DungeonView({
     const origin = typeof window !== 'undefined'
       ? localStorage.getItem('menagerie_run_origin')
       : null;
+    const activeId = typeof window !== 'undefined'
+      ? localStorage.getItem('menagerie_active_dungeon_id')
+      : null;
+    const activeEntrance = activeId ? state.saveData?.dungeonEntrances?.[activeId] : undefined;
+    const isHomeTower = activeEntrance?.isHome === true;
+
+    // Non-home towers require a Town Portal Scroll to escape.
+    if (!isHomeTower) {
+      const scroll = state.run?.inventory.find(i => i.id === 'town_portal_scroll');
+      if (!scroll) {
+        toast.error('You need a Town Portal Scroll to flee this tower!', {
+          description: 'Only the Tower of the Infinite can be exited freely. Buy or craft a scroll in town next time.',
+        });
+        addLog('📜 You have no Town Portal Scroll — you cannot escape this tower!', 'info');
+        return;
+      }
+      dispatch({ type: 'USE_ITEM', itemId: 'town_portal_scroll' });
+      addLog('📜 You tear open a Town Portal Scroll — a swirling gateway home appears!', 'system');
+    }
+
     dispatch({ type: 'FLEE_DUNGEON' });
     if (origin === 'overworld') {
       // Return to the overworld next to the dungeon entrance we came from.
@@ -1732,6 +1771,20 @@ function DungeonView({
       // Reusable — does NOT consume the item.
       setShowWorkshop(true);
       addLog(`🛠️ You unfold the portable workshop.`, 'system');
+      return;
+    } else if (item.effect === 'town_portal') {
+      // Consume the scroll and exit the dungeon back to town/overworld.
+      const origin = typeof window !== 'undefined'
+        ? localStorage.getItem('menagerie_run_origin')
+        : null;
+      dispatch({ type: 'USE_ITEM', itemId: item.id });
+      addLog('📜 You tear open the Town Portal Scroll — a swirling gateway home appears!', 'system');
+      dispatch({ type: 'FLEE_DUNGEON' });
+      if (origin === 'overworld') {
+        dispatch({ type: 'SET_PHASE', phase: 'overworld' });
+      } else {
+        dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
+      }
       return;
     } else if (item.effect === 'revive' || item.effect === 'revive_full') {
       // Check if there are fainted party members

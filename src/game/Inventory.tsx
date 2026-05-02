@@ -8,7 +8,7 @@ import { FullMonster, ExpandedStats } from './CharacterSheet';
 
 // Item types
 export type ItemType = 'consumable' | 'key' | 'material';
-export type ConsumableEffect = 'heal_hp' | 'heal_stamina' | 'cure_poison' | 'cure_burn' | 'cure_freeze' | 'cure_all' | 'boost_attack' | 'boost_defense' | 'boost_speed' | 'revive' | 'revive_full';
+export type ConsumableEffect = 'heal_hp' | 'heal_stamina' | 'cure_poison' | 'cure_burn' | 'cure_freeze' | 'cure_all' | 'boost_attack' | 'boost_defense' | 'boost_speed' | 'revive' | 'revive_full' | 'town_portal';
 
 export interface Item {
   id: string;
@@ -224,6 +224,18 @@ export const ITEMS: Record<string, Item> = {
     rarity: 'epic',
     effect: 'revive_full',
   },
+  // Town Portal Scroll - escape any non-home dungeon back to town
+  town_portal_scroll: {
+    id: 'town_portal_scroll',
+    name: 'Town Portal Scroll',
+    description: 'Tears open a portal back to town. Required to exit any tower other than the Tower of the Infinite.',
+    type: 'consumable',
+    stackable: true,
+    maxStack: 10,
+    icon: '📜',
+    rarity: 'uncommon',
+    effect: 'town_portal',
+  },
 };
 
 // Rarity colors
@@ -247,6 +259,7 @@ export function createStarterInventory(): Inventory {
     slots: [
       { item: ITEMS.small_potion, quantity: 3 },
       { item: ITEMS.antidote, quantity: 1 },
+      { item: ITEMS.town_portal_scroll, quantity: 1 },
     ],
     maxSlots: 20,
     gold: 0,

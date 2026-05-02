@@ -31,6 +31,16 @@ interface PreRunEquipmentProps {
   entranceFloor?: number;
   /** Maximum floor the player may skip to (e.g. entranceFloor + floor(highestLevel/2)). */
   maxStartFloor?: number;
+  /** True if entering the Tower of the Infinite (no portal scroll needed to leave). */
+  isHomeTower?: boolean;
+  /** Town gold available for in-prep purchases (e.g. quick-buy a Town Portal Scroll). */
+  townGold?: number;
+  /** Price of a Town Portal Scroll in the town shop. */
+  townPortalScrollPrice?: number;
+  /** Number of Town Portal Scrolls already in town storage. */
+  ownedScrollCount?: number;
+  /** Buy a Town Portal Scroll from the shop and store it; called when checkbox is selected. */
+  onBuyTownPortalScroll?: () => void;
   onStart: (
     partyEquipment: MonsterEquipment[],
     withdrawnIds: string[],
@@ -47,6 +57,11 @@ export function PreRunEquipment({
   storedItems,
   entranceFloor,
   maxStartFloor,
+  isHomeTower,
+  townGold = 0,
+  townPortalScrollPrice = 80,
+  ownedScrollCount = 0,
+  onBuyTownPortalScroll,
   onStart,
   onBack,
 }: PreRunEquipmentProps) {
@@ -270,6 +285,40 @@ export function PreRunEquipment({
             <p className="text-[10px] text-muted-foreground mt-2 text-center">
               Begin deeper to face tougher enemies and richer loot. Max floor scales with your strongest monster.
             </p>
+          </Card>
+        )}
+
+        {/* Town Portal Scroll warning + quick buy (non-home towers only) */}
+        {isHomeTower === false && (
+          <Card className="p-3 border-secondary/40 bg-secondary/5">
+            <div className="flex items-start gap-2">
+              <span className="text-xl leading-none">📜</span>
+              <div className="flex-1 space-y-1">
+                <h3 className="text-sm font-semibold text-secondary">Town Portal Scroll Required</h3>
+                <p className="text-xs text-muted-foreground">
+                  You can only flee this tower by using a <strong>Town Portal Scroll</strong>. Without one, your only way out is victory or defeat.
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  In storage: <span className="font-mono font-semibold">{ownedScrollCount}</span>
+                </p>
+                {onBuyTownPortalScroll && (
+                  <label className={`flex items-center gap-2 mt-1 text-xs cursor-pointer select-none ${townGold < townPortalScrollPrice ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-primary"
+                      disabled={townGold < townPortalScrollPrice}
+                      onChange={(e) => {
+                        if (e.target.checked) onBuyTownPortalScroll();
+                      }}
+                    />
+                    <span>
+                      Quick-buy 1 Town Portal Scroll for <span className="font-semibold text-primary">💰 {townPortalScrollPrice}</span>
+                      {townGold < townPortalScrollPrice && <span className="ml-1 text-destructive">(not enough gold)</span>}
+                    </span>
+                  </label>
+                )}
+              </div>
+            </div>
           </Card>
         )}
         {/* Party member tabs */}

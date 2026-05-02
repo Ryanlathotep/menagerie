@@ -1,11 +1,14 @@
 // Scrolling list of all known dungeons grouped by category.
 // Replaces the single Start Run button on the main menu.
 
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Trophy, ChevronDown, ChevronUp } from 'lucide-react';
 import { DungeonEntrance } from './types';
+import { TowerLeaderboard } from './TowerLeaderboard';
 
 interface DungeonListPanelProps {
   dungeonEntrances: Record<string, DungeonEntrance>;

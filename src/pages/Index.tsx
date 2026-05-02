@@ -1753,6 +1753,20 @@ function DungeonView({
       setShowWorkshop(true);
       addLog(`🛠️ You unfold the portable workshop.`, 'system');
       return;
+    } else if (item.effect === 'town_portal') {
+      // Consume the scroll and exit the dungeon back to town/overworld.
+      const origin = typeof window !== 'undefined'
+        ? localStorage.getItem('menagerie_run_origin')
+        : null;
+      dispatch({ type: 'USE_ITEM', itemId: item.id });
+      addLog('📜 You tear open the Town Portal Scroll — a swirling gateway home appears!', 'system');
+      dispatch({ type: 'FLEE_DUNGEON' });
+      if (origin === 'overworld') {
+        dispatch({ type: 'SET_PHASE', phase: 'overworld' });
+      } else {
+        dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
+      }
+      return;
     } else if (item.effect === 'revive' || item.effect === 'revive_full') {
       // Check if there are fainted party members
       const hasFainted = state.run!.party.some(m => m.stats.currentHp <= 0);

@@ -488,6 +488,7 @@ export function shouldStopAutoRun(tiles: DungeonTile[][], x: number, y: number, 
   if (tile.type === 'treasure') return true;
   if (tile.type === 'trap' && !tile.triggered) return true;
   if (tile.type === 'stairs') return true;
+  if (tile.type === 'stairs_up') return true;
   if (tile.type === 'shop') return true;
   if (tile.type === 'elevator') return true;
   

@@ -1252,6 +1252,10 @@ function DungeonView({
         void submitTowerFloor(towerId, nextFloorNum, partySnapshot);
       }
       return;
+    } else if (result.stairsUp && dungeon.floor <= (dungeon.startingFloor ?? 1)) {
+      // Stepped onto the entry staircase — exit the dungeon.
+      handleFlee();
+      return;
     } else if (result.stairsUp && dungeon.floor > 1) {
       const visited = { ...(dungeon.visitedFloors || {}) };
       visited[dungeon.floor] = {

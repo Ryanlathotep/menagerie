@@ -16,6 +16,7 @@ import { useGame, buildProgressSnapshot } from './state';
 import { useCloudSave } from '@/hooks/useCloudSave';
 import { toast as sonnerToast } from 'sonner';
 import { UsernameEditor } from './UsernameEditor';
+import { DiscoveryLeaderboard } from './DiscoveryLeaderboard';
 
 // Settings interface
 export interface GameSettings {

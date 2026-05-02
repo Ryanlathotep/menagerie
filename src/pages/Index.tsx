@@ -2320,9 +2320,8 @@ function DungeonView({
             
             addLog(`💥 ${targetingMove.name} defeated ${enemy.name}! (+${damage} dmg, +${xpGained} XP)`, 'damage');
             
-            // Set up recruitment for this kill. If a recruitment modal is
-            // already open (from an earlier enemy defeated by the same AoE),
-            // queue this one to show next.
+            // Set up recruitment for this kill — collect now, dispatch once
+            // after the loop so multi-kills queue up cleanly.
             const playerHpPercent = Math.floor((monster.stats.currentHp / monster.stats.maxHp) * 100);
             const chance = calculateRecruitChance({
               turnsUsed: 1,
@@ -2333,17 +2332,10 @@ function DungeonView({
               enemyLevel: enemy.level,
               playerLevel: monster.level,
             });
-            const entryStats = { turnsUsed: 1, overkillDamage: overkill, statusEffectsApplied: 0, criticalHits: 0 };
-            setDefeatedEnemy(prev => {
-              if (prev) {
-                // Already showing a modal — append to queue
-                setRecruitQueue(q => [...q, { enemy, chance, stats: entryStats }]);
-                return prev;
-              }
-              setRecruitChance(chance);
-              setBattleStats(entryStats);
-              setShowRecruitment(true);
-              return enemy;
+            recruitEntries.push({
+              enemy,
+              chance,
+              stats: { turnsUsed: 1, overkillDamage: overkill, statusEffectsApplied: 0, criticalHits: 0 },
             });
           } else {
             // Update enemy HP, and apply drain_stamina effect if move has it

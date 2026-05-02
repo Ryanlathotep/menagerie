@@ -21,12 +21,15 @@ import { DiscoveryLeaderboard } from './DiscoveryLeaderboard';
 import { ExplorationLeaderboard } from './ExplorationLeaderboard';
 
 // Settings interface
+export type ThemeMode = 'system' | 'light' | 'dark';
+
 export interface GameSettings {
   autoRunDelay: number;      // ms for double-tap detection (100-500)
   autoRunSpeed: number;      // ms between auto-run steps (100-200)
   dungeonZoom: number;       // zoom level for dungeon tiles (50-400, 100 = default)
   showDamageNumbers: boolean;
   soundEnabled: boolean;
+  theme: ThemeMode;          // light / dark / follow browser
   // Overworld direction arrow overlays
   showHomeArrow: boolean;
   showHomeTowerArrow: boolean;
@@ -42,6 +45,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   dungeonZoom: 100,          // 100% = default size
   showDamageNumbers: true,
   soundEnabled: true,
+  theme: 'system',
   showHomeArrow: true,
   showHomeTowerArrow: true,
   showMajorDungeonArrows: true,
@@ -77,6 +81,23 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem('monster-roguelike-settings', JSON.stringify(settings));
   }, [settings]);
+
+  // Apply theme to <html> — light/dark/system (follows browser preference)
+  useEffect(() => {
+    const root = document.documentElement;
+    const apply = (mode: ThemeMode) => {
+      const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+      const isDark = mode === 'dark' || (mode === 'system' && prefersDark);
+      root.classList.toggle('dark', isDark);
+    };
+    apply(settings.theme);
+    if (settings.theme === 'system' && window.matchMedia) {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      const handler = () => apply('system');
+      mq.addEventListener('change', handler);
+      return () => mq.removeEventListener('change', handler);
+    }
+  }, [settings.theme]);
 
   const updateSetting = <K extends keyof GameSettings>(key: K, value: GameSettings[K]) => {
     setSettings(prev => ({ ...prev, [key]: value }));
@@ -239,6 +260,27 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             />
             <p className="text-xs text-muted-foreground">
               Time between steps when auto-running (lower = faster)
+            </p>
+          </div>
+
+          {/* Theme */}
+          <div className="space-y-2 pt-4 border-t">
+            <Label className="text-base">Theme</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['system', 'light', 'dark'] as const).map((mode) => (
+                <Button
+                  key={mode}
+                  variant={settings.theme === mode ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => updateSetting('theme', mode)}
+                  className="capitalize"
+                >
+                  {mode === 'system' ? 'Browser' : mode}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              "Browser" follows your OS / browser preference.
             </p>
           </div>
 

@@ -22,6 +22,7 @@ import {
   ElevatorTile,
   DoorTile 
 } from './TileGraphics';
+import { OverworldNestTile } from './OverworldTileGraphics';
 import { fitFromNeighbors } from './autoTiling';
 
 // Check if a monster combo has been captured at equal or lower level

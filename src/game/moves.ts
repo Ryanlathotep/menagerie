@@ -110,7 +110,7 @@ export const SPECIES_MOVES: Record<SpeciesType, Move[]> = {
   dragon: [
     { id: 'claw_rend', name: 'Claw Rend', description: 'Savage claw attack', type: 'melee', power: 40, accuracy: 90, staminaCost: 8, speedMod: 0, aspects: ['species'], unlockLevel: 1 },
     { id: 'dragon_roar', name: 'Dragon Roar', description: 'Intimidating roar', type: 'status', power: 0, accuracy: 100, staminaCost: 6, speedMod: 1, aspects: ['species'], effect: 'lower_all_stats', unlockLevel: 1 },
-    { id: 'tail_sweep', name: 'Tail Sweep', description: 'Sweeping tail attack', type: 'melee', power: 35, accuracy: 95, staminaCost: 7, speedMod: 0, aspects: ['species'], unlockLevel: 4 },
+    { id: 'tail_sweep', name: 'Tail Sweep', description: 'Sweeping tail attack — hits a melee cone', type: 'melee', power: 35, accuracy: 95, staminaCost: 7, speedMod: 0, aspects: ['species'], unlockLevel: 4, targeting: 'cone' },
     { id: 'wing_gust', name: 'Wing Gust', description: 'Cone of wind from wings', type: 'ranged', power: 40, accuracy: 90, staminaCost: 9, speedMod: 1, aspects: ['species'], effect: 'lower_speed', unlockLevel: 7, targeting: 'cone' },
     { id: 'dragon_fury', name: 'Dragon Fury', description: 'Unleash draconic rage', type: 'melee', power: 60, accuracy: 85, staminaCost: 14, speedMod: 0, aspects: ['species'], unlockLevel: 11 },
     { id: 'ancient_wrath', name: 'Ancient Wrath', description: 'Power of an ancient dragon', type: 'melee', power: 80, accuracy: 75, staminaCost: 20, speedMod: -1, aspects: ['species'], unlockLevel: 16 },

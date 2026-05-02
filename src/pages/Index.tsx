@@ -860,6 +860,14 @@ function DungeonView({
     statusEffectsApplied: 0,
     criticalHits: 0,
   });
+  // Queue of additional defeated enemies awaiting their own recruitment modal
+  // (populated when a single AoE attack defeats multiple enemies at once).
+  type RecruitQueueEntry = {
+    enemy: Monster;
+    chance: number;
+    stats: { turnsUsed: number; overkillDamage: number; statusEffectsApplied: number; criticalHits: number };
+  };
+  const [recruitQueue, setRecruitQueue] = useState<RecruitQueueEntry[]>([]);
   
   // Dungeon revive modal state
   const [showDungeonReviveModal, setShowDungeonReviveModal] = useState(false);
@@ -2196,6 +2204,9 @@ function DungeonView({
     // Calculate damage and apply to enemies in affected tiles
     let totalDamage = 0;
     let enemiesHit: Monster[] = [];
+    // Collect recruitment entries for every enemy this AoE defeats so we can
+    // queue them up after the loop (multi-kill recruitment flow).
+    const recruitEntries: RecruitQueueEntry[] = [];
     let newDungeon = { ...dungeon };
     
     // Wall mining via attacks: melee/ranged moves with power > 0 chip mineable
@@ -2309,7 +2320,8 @@ function DungeonView({
             
             addLog(`💥 ${targetingMove.name} defeated ${enemy.name}! (+${damage} dmg, +${xpGained} XP)`, 'damage');
             
-            // Set up recruitment (only for last enemy killed)
+            // Set up recruitment for this kill — collect now, dispatch once
+            // after the loop so multi-kills queue up cleanly.
             const playerHpPercent = Math.floor((monster.stats.currentHp / monster.stats.maxHp) * 100);
             const chance = calculateRecruitChance({
               turnsUsed: 1,
@@ -2320,15 +2332,11 @@ function DungeonView({
               enemyLevel: enemy.level,
               playerLevel: monster.level,
             });
-            setDefeatedEnemy(enemy);
-            setRecruitChance(chance);
-            setBattleStats({
-              turnsUsed: 1,
-              overkillDamage: overkill,
-              statusEffectsApplied: 0,
-              criticalHits: 0,
+            recruitEntries.push({
+              enemy,
+              chance,
+              stats: { turnsUsed: 1, overkillDamage: overkill, statusEffectsApplied: 0, criticalHits: 0 },
             });
-            setShowRecruitment(true);
           } else {
             // Update enemy HP, and apply drain_stamina effect if move has it
             const updatedEnemies = newDungeon.enemies.map(e => {
@@ -2354,6 +2362,19 @@ function DungeonView({
       addLog(`⚔️ ${targetingMove.name} missed! No enemies in range.`, 'info');
     } else if (enemiesHit.length === 0 && wallsChipped > 0 && wallsMined === 0) {
       addLog(`⛏️ ${targetingMove.name} chipped ${wallsChipped} wall${wallsChipped > 1 ? 's' : ''}.`, 'system');
+    }
+    
+    // If any enemies were defeated, surface the recruitment modals — first
+    // entry shown immediately, the rest queued for sequential display.
+    if (recruitEntries.length > 0) {
+      const [first, ...rest] = recruitEntries;
+      setDefeatedEnemy(first.enemy);
+      setRecruitChance(first.chance);
+      setBattleStats(first.stats);
+      if (rest.length > 0) {
+        setRecruitQueue(q => [...q, ...rest]);
+      }
+      setShowRecruitment(true);
     }
     
     // Update dungeon state
@@ -2834,8 +2855,28 @@ function DungeonView({
         />
       )}
       
-      {/* Recruitment Modal for dungeon map kills */}
-      {showRecruitment && defeatedEnemy && (
+      {/* Recruitment Modal for dungeon map kills.
+          When multiple enemies are defeated by a single AoE, additional
+          recruits are queued in `recruitQueue` and shown in sequence as
+          the player resolves each modal. */}
+      {showRecruitment && defeatedEnemy && (() => {
+        const advanceQueue = () => {
+          if (recruitQueue.length > 0) {
+            const [next, ...rest] = recruitQueue;
+            setRecruitQueue(rest);
+            setDefeatedEnemy(next.enemy);
+            setRecruitChance(next.chance);
+            setBattleStats(next.stats);
+            // keep showRecruitment true
+          } else {
+            setShowRecruitment(false);
+            setDefeatedEnemy(null);
+          }
+        };
+        const queueBadge = recruitQueue.length > 0
+          ? ` (${recruitQueue.length} more recruit${recruitQueue.length === 1 ? '' : 's'} waiting)`
+          : '';
+        return (
         <RecruitmentModal
           enemy={defeatedEnemy}
           recruitChance={recruitChance}
@@ -2843,24 +2884,21 @@ function DungeonView({
           party={state.run?.party || []}
           partyFull={(state.run?.party.length || 0) >= 6}
           onFail={() => {
-            addLog(`😔 ${defeatedEnemy.name} declined to join...`, 'info');
-            setShowRecruitment(false);
-            setDefeatedEnemy(null);
+            addLog(`😔 ${defeatedEnemy.name} declined to join...${queueBadge}`, 'info');
+            advanceQueue();
           }}
           onAddToParty={() => {
             dispatch({ type: 'ADD_TO_PARTY', monster: defeatedEnemy });
-            addLog(`🎉 ${defeatedEnemy.name} joined your party!`, 'system');
+            addLog(`🎉 ${defeatedEnemy.name} joined your party!${queueBadge}`, 'system');
             toast.success(`${defeatedEnemy.species} joined your team!`);
-            setShowRecruitment(false);
-            setDefeatedEnemy(null);
+            advanceQueue();
           }}
           onReplaceMember={(replaceIndex) => {
             dispatch({ type: 'SEND_PARTY_MEMBER_TO_TOWN', partyIndex: replaceIndex });
             dispatch({ type: 'ADD_TO_PARTY', monster: defeatedEnemy });
-            addLog(`🔄 Sent a party member home; ${defeatedEnemy.name} took their place!`, 'system');
+            addLog(`🔄 Sent a party member home; ${defeatedEnemy.name} took their place!${queueBadge}`, 'system');
             toast.success(`${defeatedEnemy.species} joined your team!`);
-            setShowRecruitment(false);
-            setDefeatedEnemy(null);
+            advanceQueue();
           }}
           onSendHome={() => {
             const comboId = `${defeatedEnemy.species}_${defeatedEnemy.element}_${defeatedEnemy.class}`;
@@ -2875,17 +2913,22 @@ function DungeonView({
                 equipment: defeatedEnemy.equipment,
               },
             });
-            addLog(`🏠 ${defeatedEnemy.name} was sent home to the roster.`, 'system');
+            addLog(`🏠 ${defeatedEnemy.name} was sent home to the roster.${queueBadge}`, 'system');
             toast.success(`${defeatedEnemy.species} sent home!`);
-            setShowRecruitment(false);
-            setDefeatedEnemy(null);
+            advanceQueue();
           }}
           onDismiss={() => {
+            advanceQueue();
+          }}
+          queuedRecruits={recruitQueue.length}
+          onSkipAll={() => {
+            setRecruitQueue([]);
             setShowRecruitment(false);
             setDefeatedEnemy(null);
           }}
         />
-      )}
+        );
+      })()}
       
       {/* Dungeon Revive Target Modal */}
       <ReviveTargetModal

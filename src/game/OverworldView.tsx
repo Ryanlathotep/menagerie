@@ -219,6 +219,13 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [defeatedEnemy, setDefeatedEnemy] = useState<Monster | null>(null);
   const [recruitChance, setRecruitChance] = useState(0);
   const [battleStats, setBattleStats] = useState({ turnsUsed: 1, overkillDamage: 0, statusEffectsApplied: 0, criticalHits: 0 });
+  // Queue of additional defeated enemies awaiting recruitment (multi-kill AoE)
+  type RecruitQueueEntry = {
+    enemy: Monster;
+    chance: number;
+    stats: { turnsUsed: number; overkillDamage: number; statusEffectsApplied: number; criticalHits: number };
+  };
+  const [recruitQueue, setRecruitQueue] = useState<RecruitQueueEntry[]>([]);
   
   // Revive modal
   const [showReviveModal, setShowReviveModal] = useState(false);
@@ -652,6 +659,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     let newStamina = curSta - staminaCost;
     
     let enemiesHit: { enemy: Monster; pos: Position }[] = [];
+    const recruitEntries: RecruitQueueEntry[] = [];
     
     setOverworld(prev => {
       const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
@@ -737,10 +745,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
                 turnsUsed: 1, overkillDamage: overkill, statusEffectsApplied: 0, criticalHits: 0,
                 playerHpPercent, enemyLevel: enemy.level, playerLevel: monster.level,
               });
-              setDefeatedEnemy(enemy);
-              setRecruitChance(chance);
-              setBattleStats({ turnsUsed: 1, overkillDamage: overkill, statusEffectsApplied: 0, criticalHits: 0 });
-              setShowRecruitment(true);
+              recruitEntries.push({
+                enemy,
+                chance,
+                stats: { turnsUsed: 1, overkillDamage: overkill, statusEffectsApplied: 0, criticalHits: 0 },
+              });
               
               enemiesHit.push({ enemy, pos: tile });
             } else {
@@ -801,6 +810,16 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
       
       setTimeout(() => processEnemyTurns(newOw), 100);
+      
+      // Surface multi-kill recruitment: first entry shown immediately, rest queued.
+      if (recruitEntries.length > 0) {
+        const [first, ...rest] = recruitEntries;
+        setDefeatedEnemy(first.enemy);
+        setRecruitChance(first.chance);
+        setBattleStats(first.stats);
+        if (rest.length > 0) setRecruitQueue(q => [...q, ...rest]);
+        setShowRecruitment(true);
+      }
       
       saveOverworld(newOw);
       return newOw;
@@ -1222,14 +1241,29 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   }, [pendingReviveItem, state.run, dispatch, addLog]);
   
   // ─── Recruitment handlers ───
-  // Roll happens inside the modal. These just react to the outcome.
+  // Roll happens inside the modal. These react to the outcome and advance the
+  // recruit queue (used when one AoE attack defeated multiple enemies).
+  const advanceRecruitQueue = useCallback(() => {
+    setRecruitQueue(q => {
+      if (q.length > 0) {
+        const [next, ...rest] = q;
+        setDefeatedEnemy(next.enemy);
+        setRecruitChance(next.chance);
+        setBattleStats(next.stats);
+        return rest;
+      }
+      setShowRecruitment(false);
+      setDefeatedEnemy(null);
+      return q;
+    });
+  }, []);
+
   const handleRecruitFail = useCallback(() => {
     if (defeatedEnemy) {
       addLog(`😔 ${defeatedEnemy.name} declined to join...`, 'info');
     }
-    setShowRecruitment(false);
-    setDefeatedEnemy(null);
-  }, [defeatedEnemy, addLog]);
+    advanceRecruitQueue();
+  }, [defeatedEnemy, addLog, advanceRecruitQueue]);
 
   const handleRecruitAddToParty = useCallback(() => {
     if (defeatedEnemy) {
@@ -1237,9 +1271,8 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       addLog(`🎉 ${defeatedEnemy.name} joined your party!`, 'system');
       toast.success(`${defeatedEnemy.species} joined your team!`);
     }
-    setShowRecruitment(false);
-    setDefeatedEnemy(null);
-  }, [defeatedEnemy, dispatch, addLog]);
+    advanceRecruitQueue();
+  }, [defeatedEnemy, dispatch, addLog, advanceRecruitQueue]);
 
   const handleRecruitReplace = useCallback((replaceIndex: number) => {
     if (defeatedEnemy) {
@@ -1248,9 +1281,8 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       addLog(`🔄 Sent a party member home; ${defeatedEnemy.name} took their place!`, 'system');
       toast.success(`${defeatedEnemy.species} joined your team!`);
     }
-    setShowRecruitment(false);
-    setDefeatedEnemy(null);
-  }, [defeatedEnemy, dispatch, addLog]);
+    advanceRecruitQueue();
+  }, [defeatedEnemy, dispatch, addLog, advanceRecruitQueue]);
 
   const handleRecruitSendHome = useCallback(() => {
     if (defeatedEnemy) {
@@ -1269,14 +1301,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       addLog(`🏠 ${defeatedEnemy.name} was sent home to the roster.`, 'system');
       toast.success(`${defeatedEnemy.species} sent home!`);
     }
-    setShowRecruitment(false);
-    setDefeatedEnemy(null);
-  }, [defeatedEnemy, dispatch, addLog]);
+    advanceRecruitQueue();
+  }, [defeatedEnemy, dispatch, addLog, advanceRecruitQueue]);
 
   const handleSkipRecruit = useCallback(() => {
-    setShowRecruitment(false);
-    setDefeatedEnemy(null);
-  }, []);
+    advanceRecruitQueue();
+  }, [advanceRecruitQueue]);
   
   // Party switch handler
   const handlePartySwitch = useCallback((index: number) => {
@@ -1668,6 +1698,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         onAddToParty={handleRecruitAddToParty}
         onReplaceMember={handleRecruitReplace}
         onSendHome={handleRecruitSendHome}
+        queuedRecruits={recruitQueue.length}
+        onSkipAll={() => {
+          setRecruitQueue([]);
+          setShowRecruitment(false);
+          setDefeatedEnemy(null);
+        }}
       />
     )}
     

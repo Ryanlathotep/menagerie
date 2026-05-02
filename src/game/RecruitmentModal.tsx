@@ -41,6 +41,10 @@ interface RecruitmentModalProps {
   onSendHome: () => void;
   /** Called when the recruit roll fails. */
   onFail: () => void;
+  /** Number of additional defeated enemies queued behind this one. */
+  queuedRecruits?: number;
+  /** Optional: skip every queued recruit at once (also dismisses current). */
+  onSkipAll?: () => void;
 }
 
 type Step = 'intro' | 'decision' | 'replace';
@@ -56,6 +60,8 @@ export function RecruitmentModal({
   onReplaceMember,
   onSendHome,
   onFail,
+  queuedRecruits = 0,
+  onSkipAll,
 }: RecruitmentModalProps) {
   const speciesData = SPECIES_DATA[enemy.species];
   const [step, setStep] = useState<Step>('intro');
@@ -122,6 +128,18 @@ export function RecruitmentModal({
   return (
     <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md p-6 space-y-4">
+        {queuedRecruits > 0 && (
+          <div className="flex items-center justify-between gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
+            <span className="font-semibold text-amber-700 dark:text-amber-300">
+              ⚔️ Multi-kill! {queuedRecruits} more recruit{queuedRecruits === 1 ? '' : 's'} waiting after this one.
+            </span>
+            {onSkipAll && (
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]" onClick={onSkipAll}>
+                Skip all
+              </Button>
+            )}
+          </div>
+        )}
         {step === 'intro' && (
           <>
             {renderHeader('Impressive Victory!', 'The defeated monster is considering joining you!')}

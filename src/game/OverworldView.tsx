@@ -1523,7 +1523,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     });
   }, [contextMenuBuilding, addLog, saveOverworld]);
   const isMobileLayout = typeof window !== 'undefined' && window.innerWidth < 640;
-  const sidebarHeight = isMobileLayout ? 64 : 96;
+  const sidebarHeight = isMobileLayout ? 108 : 96;
   const defaultBarHeight = isMobileLayout ? 280 : 260;
   const [controlsBarHeight, setControlsBarHeight] = useState(() => {
     const saved = localStorage.getItem('menagerie-overworld-bar-height');

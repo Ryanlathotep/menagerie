@@ -123,6 +123,12 @@ export function calculateExpectedDamage(
   
   // Base damage calculation
   let baseDamage = Math.floor(move.power * (attackStat / 20));
+
+  // Ranged attacks deal ~half the damage of melee — they have positional safety
+  // and frequently hit multiple targets via piercing/cone/aura.
+  if (move.type === 'ranged') {
+    baseDamage = Math.floor(baseDamage * 0.5);
+  }
   
   // === ATTACKER PASSIVES ===
   

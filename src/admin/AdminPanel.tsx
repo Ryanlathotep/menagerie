@@ -7,7 +7,8 @@ import { MovesEditor } from './MovesEditor';
 import { EquipmentEditor } from './EquipmentEditor';
 import { RecipesEditor } from './RecipesEditor';
 import { MonstersEditor } from './MonstersEditor';
-import { Shield, Swords, Package, Ghost } from 'lucide-react';
+import { AdminAccessEditor } from './AdminAccessEditor';
+import { Shield, Swords, Package, Ghost, UserCog } from 'lucide-react';
 
 export function AdminPanel() {
   const { isAdmin, loading } = useAdminRole();

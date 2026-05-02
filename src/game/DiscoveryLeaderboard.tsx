@@ -10,6 +10,7 @@ interface DiscoveryEntry {
   user_id: string;
   username: string;
   discovered_count: number;
+  world_seed: number | null;
   achieved_at: string;
 }
 
@@ -79,6 +80,14 @@ export function DiscoveryLeaderboard({ limit = 10 }: { limit?: number }) {
                   {r.rank}.
                 </span>
                 <span className="truncate font-medium">{r.username}</span>
+                {r.world_seed != null && (
+                  <span
+                    className="font-mono text-[10px] text-muted-foreground/80"
+                    title={`World seed: ${r.world_seed}`}
+                  >
+                    🌱{r.world_seed}
+                  </span>
+                )}
               </span>
               <span className="font-mono text-foreground">{r.discovered_count}</span>
             </li>

@@ -385,11 +385,12 @@ function CharacterSelect() {
   // Get all unlocked monsters (specific combos with levels)
   const unlockedMonsters = state.saveData.unlockedMonsters || [];
 
-  // Auto-submit unique discovery count to public leaderboard whenever it grows.
+  // Auto-submit unique discovery count + current world seed to public leaderboard.
   // No-op for signed-out users or those without a username (handled server-side).
+  const currentWorldSeed = state.saveData?.overworldState?.worldSeed ?? null;
   useEffect(() => {
-    void submitDiscoveryCount(unlockedMonsters.length);
-  }, [unlockedMonsters.length]);
+    void submitDiscoveryCount(unlockedMonsters.length, currentWorldSeed);
+  }, [unlockedMonsters.length, currentWorldSeed]);
 
   
   // Restore last party selection from localStorage

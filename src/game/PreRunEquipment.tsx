@@ -31,6 +31,16 @@ interface PreRunEquipmentProps {
   entranceFloor?: number;
   /** Maximum floor the player may skip to (e.g. entranceFloor + floor(highestLevel/2)). */
   maxStartFloor?: number;
+  /** True if entering the Tower of the Infinite (no portal scroll needed to leave). */
+  isHomeTower?: boolean;
+  /** Town gold available for in-prep purchases (e.g. quick-buy a Town Portal Scroll). */
+  townGold?: number;
+  /** Price of a Town Portal Scroll in the town shop. */
+  townPortalScrollPrice?: number;
+  /** Number of Town Portal Scrolls already in town storage. */
+  ownedScrollCount?: number;
+  /** Buy a Town Portal Scroll from the shop and store it; called when checkbox is selected. */
+  onBuyTownPortalScroll?: () => void;
   onStart: (
     partyEquipment: MonsterEquipment[],
     withdrawnIds: string[],
@@ -47,6 +57,11 @@ export function PreRunEquipment({
   storedItems,
   entranceFloor,
   maxStartFloor,
+  isHomeTower,
+  townGold = 0,
+  townPortalScrollPrice = 80,
+  ownedScrollCount = 0,
+  onBuyTownPortalScroll,
   onStart,
   onBack,
 }: PreRunEquipmentProps) {

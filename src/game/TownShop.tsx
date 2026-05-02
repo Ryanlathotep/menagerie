@@ -64,6 +64,10 @@ const SHOP_ITEMS: ShopItem[] = [
     item: { id: 'phoenix_feather', name: 'Phoenix Feather', quantity: 1, type: 'potion', effect: 'revive', value: 50 }, 
     price: 200, icon: '🔥', description: 'Revives with 50% HP'
   },
+  { 
+    item: { id: 'town_portal_scroll', name: 'Town Portal Scroll', quantity: 1, type: 'potion', effect: 'town_portal', value: 0 }, 
+    price: 80, icon: '📜', description: 'Required to flee any tower other than the Tower of the Infinite. Tears open a portal home.'
+  },
 ];
 
 // Generate town shop equipment (refreshes on visit, higher average quality)

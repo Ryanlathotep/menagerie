@@ -870,3 +870,50 @@ export function removeEnemy(dungeon: DungeonState, enemyId: string): DungeonStat
     enemies: newEnemies,
   };
 }
+
+// ============= DUNGEON NESTS =============
+// Apply damage to a nest tile. Returns the updated dungeon and whether the nest was destroyed.
+export function damageDungeonNest(
+  dungeon: DungeonState,
+  x: number,
+  y: number,
+  damage: number,
+): { dungeon: DungeonState; destroyed: boolean; nest: NestState | null } {
+  const tile = dungeon.tiles[y]?.[x];
+  if (!tile || tile.type !== 'nest' || !tile.nestState) {
+    return { dungeon, destroyed: false, nest: null };
+  }
+  const newTiles = dungeon.tiles.map(row => row.map(t => ({ ...t, nestState: t.nestState ? { ...t.nestState } : undefined })));
+  const target = newTiles[y][x];
+  const nest = target.nestState!;
+  nest.hp = Math.max(0, nest.hp - damage);
+  if (nest.hp <= 0) {
+    nest.destroyed = true;
+    target.type = 'floor';
+    target.nestState = undefined;
+    return { dungeon: { ...dungeon, tiles: newTiles }, destroyed: true, nest };
+  }
+  return { dungeon: { ...dungeon, tiles: newTiles }, destroyed: false, nest };
+}
+
+// Tick all visible nests on the current floor; returns list of spawn requests.
+export function tickDungeonNests(
+  dungeon: DungeonState,
+): { dungeon: DungeonState; spawns: { nestX: number; nestY: number; nest: NestState }[] } {
+  const newTiles = dungeon.tiles.map(row => row.map(t => ({ ...t, nestState: t.nestState ? { ...t.nestState } : undefined })));
+  const spawns: { nestX: number; nestY: number; nest: NestState }[] = [];
+  for (let y = 0; y < newTiles.length; y++) {
+    for (let x = 0; x < newTiles[y].length; x++) {
+      const t = newTiles[y][x];
+      if (t.type !== 'nest' || !t.nestState || t.nestState.destroyed) continue;
+      // Only tick when player has discovered the nest (visible or explored)
+      if (!t.explored) continue;
+      t.nestState.spawnCooldown -= 1;
+      if (t.nestState.spawnCooldown <= 0) {
+        t.nestState.spawnCooldown = t.nestState.maxSpawnCooldown;
+        spawns.push({ nestX: x, nestY: y, nest: t.nestState });
+      }
+    }
+  }
+  return { dungeon: { ...dungeon, tiles: newTiles }, spawns };
+}

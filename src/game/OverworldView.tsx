@@ -744,10 +744,17 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
                 turnsUsed: 1, overkillDamage: overkill, statusEffectsApplied: 0, criticalHits: 0,
                 playerHpPercent, enemyLevel: enemy.level, playerLevel: monster.level,
               });
-              setDefeatedEnemy(enemy);
-              setRecruitChance(chance);
-              setBattleStats({ turnsUsed: 1, overkillDamage: overkill, statusEffectsApplied: 0, criticalHits: 0 });
-              setShowRecruitment(true);
+              const entryStats = { turnsUsed: 1, overkillDamage: overkill, statusEffectsApplied: 0, criticalHits: 0 };
+              setDefeatedEnemy(prev => {
+                if (prev) {
+                  setRecruitQueue(q => [...q, { enemy, chance, stats: entryStats }]);
+                  return prev;
+                }
+                setRecruitChance(chance);
+                setBattleStats(entryStats);
+                setShowRecruitment(true);
+                return enemy;
+              });
               
               enemiesHit.push({ enemy, pos: tile });
             } else {

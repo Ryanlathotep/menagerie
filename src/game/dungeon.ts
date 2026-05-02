@@ -753,6 +753,7 @@ export function movePlayer(
     blocked: false,
     mineableBump: null,
     runeBump,
+    nestBump: null,
   };
 }
 

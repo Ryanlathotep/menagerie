@@ -105,7 +105,7 @@ export const SPECIES_MOVES: Record<SpeciesType, Move[]> = {
     { id: 'lion_bite', name: 'Lion Bite', description: 'Savage lion head attack', type: 'melee', power: 45, accuracy: 90, staminaCost: 10, speedMod: 0, aspects: ['species'], unlockLevel: 5 },
     { id: 'snake_venom', name: 'Snake Venom', description: 'Venomous snake head strike', type: 'melee', power: 35, accuracy: 95, staminaCost: 9, speedMod: 1, aspects: ['species'], effect: 'poison', unlockLevel: 8 },
     { id: 'goat_ram', name: 'Goat Ram', description: 'Powerful goat head charge', type: 'melee', power: 55, accuracy: 80, staminaCost: 13, speedMod: -1, aspects: ['species'], unlockLevel: 11 },
-    { id: 'chimeric_fury', name: 'Chimeric Fury', description: 'All three heads attack together', type: 'melee', power: 70, accuracy: 75, staminaCost: 18, speedMod: 0, aspects: ['species'], unlockLevel: 15 },
+    { id: 'chimeric_fury', name: 'Chimeric Fury', description: 'All three heads attack together — hits adjacent foes', type: 'melee', power: 70, accuracy: 75, staminaCost: 18, speedMod: 0, aspects: ['species'], unlockLevel: 15, targeting: 'aura', aoeRadius: 1 },
   ],
   dragon: [
     { id: 'claw_rend', name: 'Claw Rend', description: 'Savage claw attack', type: 'melee', power: 40, accuracy: 90, staminaCost: 8, speedMod: 0, aspects: ['species'], unlockLevel: 1 },

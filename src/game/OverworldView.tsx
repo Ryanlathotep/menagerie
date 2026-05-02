@@ -811,6 +811,16 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       
       setTimeout(() => processEnemyTurns(newOw), 100);
       
+      // Surface multi-kill recruitment: first entry shown immediately, rest queued.
+      if (recruitEntries.length > 0) {
+        const [first, ...rest] = recruitEntries;
+        setDefeatedEnemy(first.enemy);
+        setRecruitChance(first.chance);
+        setBattleStats(first.stats);
+        if (rest.length > 0) setRecruitQueue(q => [...q, ...rest]);
+        setShowRecruitment(true);
+      }
+      
       saveOverworld(newOw);
       return newOw;
     });

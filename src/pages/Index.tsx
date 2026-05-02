@@ -1245,6 +1245,7 @@ function DungeonView({
         })) ?? null;
         void submitTowerFloor(towerId, nextFloorNum, partySnapshot);
       }
+      return;
     } else if (result.stairsUp && dungeon.floor > 1) {
       const visited = { ...(dungeon.visitedFloors || {}) };
       visited[dungeon.floor] = {
@@ -1271,6 +1272,7 @@ function DungeonView({
         : { ...generateDungeon(prevFloorNum, dungeon.theme, dungeon.startingFloor), visitedFloors: visited };
       dispatch({ type: 'SET_DUNGEON', dungeon: newDungeon });
       addLog(`⬆️ Ascended to Floor ${prevFloorNum}.`, 'system');
+      return;
     } else if (result.trap) {
       if (result.trap.type === 'spike' && result.trap.damage) {
         const newHp = Math.max(0, state.run.currentMonster.stats.currentHp - result.trap.damage);

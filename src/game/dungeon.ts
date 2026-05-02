@@ -564,6 +564,7 @@ export function movePlayer(
   let encounter: Monster | null = null;
   let treasure = false;
   let stairs = false;
+  let stairsUp = false;
   let trap: { type: TrapType; damage?: number } | null = null;
   let terrain: { type: TerrainType } | null = null;
   let shop = false;
@@ -583,6 +584,8 @@ export function movePlayer(
     }
   } else if (targetTile.type === 'stairs') {
     stairs = true;
+  } else if (targetTile.type === 'stairs_up') {
+    stairsUp = true;
   } else if (targetTile.type === 'trap' && !targetTile.triggered) {
     const trapType = targetTile.trapType || 'spike';
     const damage = trapType === 'spike' ? 10 + Math.floor(dungeon.floor * 2) : 0;

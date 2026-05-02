@@ -301,6 +301,8 @@ export interface DungeonTile {
   // Set while the player stands on a staircase tile so we can restore the
   // staircase (instead of plain floor) when they step off.
   stairsBeneath?: 'down' | 'up';
+  // Embedded nest state when type === 'nest' (dungeon-only). Mirrors NestState shape.
+  nestState?: import('./nests').NestState;
 }
 
 export interface Position {

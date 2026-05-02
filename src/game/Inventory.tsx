@@ -8,7 +8,7 @@ import { FullMonster, ExpandedStats } from './CharacterSheet';
 
 // Item types
 export type ItemType = 'consumable' | 'key' | 'material';
-export type ConsumableEffect = 'heal_hp' | 'heal_stamina' | 'cure_poison' | 'cure_burn' | 'cure_freeze' | 'cure_all' | 'boost_attack' | 'boost_defense' | 'boost_speed' | 'revive' | 'revive_full';
+export type ConsumableEffect = 'heal_hp' | 'heal_stamina' | 'cure_poison' | 'cure_burn' | 'cure_freeze' | 'cure_all' | 'boost_attack' | 'boost_defense' | 'boost_speed' | 'revive' | 'revive_full' | 'town_portal';
 
 export interface Item {
   id: string;

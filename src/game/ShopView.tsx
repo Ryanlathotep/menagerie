@@ -88,7 +88,7 @@ export function ShopView({ gold, floor, onBuy, onBuyEquipment, onClose }: ShopVi
                     <Button
                       size="sm"
                       disabled={gold < price}
-                      onClick={() => onBuy(item)}
+                      onClick={() => onBuy(item, price)}
                       className="bg-gradient-to-r from-green-500 to-emerald-500"
                     >
                       💰 {price}

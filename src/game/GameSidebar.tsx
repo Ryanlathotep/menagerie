@@ -234,8 +234,10 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
           </div>
         )}
         
-        {/* Menu buttons - larger touch targets on mobile */}
-        <div className="flex gap-0.5 sm:gap-1 ml-auto">
+        {/* Menu buttons - larger touch targets on mobile. Scrolls horizontally on
+            tiny viewports so the Flee / Main Menu buttons on the right never get
+            pushed off-screen. */}
+        <div className="flex gap-0.5 sm:gap-1 ml-auto min-w-0 flex-1 overflow-x-auto no-scrollbar justify-end">
           <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8" onClick={() => handlePanelChange('character')} title="Character Sheet">
             <User className="w-5 h-5 sm:w-4 sm:h-4" />
           </Button>

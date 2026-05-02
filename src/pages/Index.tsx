@@ -1608,8 +1608,12 @@ function DungeonView({
     dispatch({ type: 'SWITCH_ACTIVE_MONSTER', index });
     addLog(`🔄 Switched to ${state.run?.party[index]?.species}!`, 'system');
   }, [dispatch, state.run?.party]);
-  const handleBuyItem = (item: LootItem) => {
-    const price = item.value * 1.5; // Shop markup
+  const handleBuyItem = (item: LootItem, price: number) => {
+    // Use the price the shop UI showed the player — not a recomputed value.
+    // Recomputing here previously caused the displayed price (e.g. 50g) to
+    // diverge from the deducted price (e.g. 1498g for a Full Heal), making
+    // it look like gold "wasn't updating" because the click silently no-op'd
+    // when the player couldn't actually afford the hidden true cost.
     const creative = isCreativeMode();
     if (state.run && (creative || state.run.gold >= price)) {
       if (!creative) {
@@ -1630,10 +1634,10 @@ function DungeonView({
         type: 'ADD_ITEM',
         item: lootItem
       });
-      addLog(`🛒 Bought ${item.name}!`, 'loot');
+      addLog(`🛒 Bought ${item.name} for ${Math.floor(price)}g!`, 'loot');
     }
   };
-  
+
   const handleBuyEquipment = (item: EquipmentItem, price: number) => {
     const creative = isCreativeMode();
     if (state.run && (creative || state.run.gold >= price)) {

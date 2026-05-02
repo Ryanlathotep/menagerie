@@ -11,7 +11,7 @@ import { generateEquipment, EquipmentItem, RARITY_COLORS, SLOT_INFO } from './eq
 interface ShopViewProps {
   gold: number;
   floor: number;
-  onBuy: (item: LootItem) => void;
+  onBuy: (item: LootItem, price: number) => void;
   onBuyEquipment: (item: EquipmentItem, price: number) => void;
   onClose: () => void;
 }
@@ -88,7 +88,7 @@ export function ShopView({ gold, floor, onBuy, onBuyEquipment, onClose }: ShopVi
                     <Button
                       size="sm"
                       disabled={gold < price}
-                      onClick={() => onBuy(item)}
+                      onClick={() => onBuy(item, price)}
                       className="bg-gradient-to-r from-green-500 to-emerald-500"
                     >
                       💰 {price}

@@ -125,13 +125,14 @@ export function getAttackConfig(move: Move | EvolvedMove): AttackConfig {
           wallPenetrate 
         };
       case 'piercing':
-        return { pattern: 'line', range: 5, piercing: true, wallPenetrate };
+        return { pattern: 'line', range: move.type === 'melee' ? 2 : 5, piercing: true, wallPenetrate };
       case 'cone':
-        return { pattern: 'cone', range: 3, width: 2, wallPenetrate };
+        // Melee cones are short sweeps in front of the attacker
+        return { pattern: 'cone', range: move.type === 'melee' ? 2 : 3, width: 2, wallPenetrate };
       case 'aura':
-        return { pattern: 'aura', range: aoeRadius || 2, wallPenetrate: true }; // Auras ignore walls
+        return { pattern: 'aura', range: aoeRadius || (move.type === 'melee' ? 1 : 2), wallPenetrate: true }; // Auras ignore walls
       case 'area':
-        return { pattern: 'area', range: 4, width: aoeRadius || 2, wallPenetrate };
+        return { pattern: 'area', range: move.type === 'melee' ? 1 : 4, width: aoeRadius || 2, wallPenetrate };
       case 'arc':
         return { pattern: 'single', range: 4, wallPenetrate: true }; // Arc ignores walls
     }

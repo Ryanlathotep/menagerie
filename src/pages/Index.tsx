@@ -169,13 +169,13 @@ function MainMenu() {
   };
   
   return (
-    <div className="game-container text-7xl font-serif text-center">
-      <div className="text-center space-y-8">
-        <h1 className="text-7xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent pb-2">
+    <div className="game-container font-serif text-center">
+      <div className="w-full max-w-md mx-auto text-center space-y-6 sm:space-y-8 px-2">
+        <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent pb-2 break-words">
           Menagerie
         </h1>
-        <p className="text-muted-foreground text-lg">Play as the monsters. Unlock them all.</p>
-        
+        <p className="text-muted-foreground text-base sm:text-lg">Play as the monsters. Unlock them all.</p>
+
         <div className="space-y-4">
           {/* Resume button — only when a run is suspended in memory. Drops the
               player back into dungeon/battle/overworld at the exact spot they
@@ -184,7 +184,7 @@ function MainMenu() {
             <div className="flex gap-2 justify-center">
               <Button
                 size="lg"
-                className="w-64 bg-gradient-to-r from-accent to-primary hover:opacity-90 animate-pulse"
+                className="w-full max-w-xs sm:w-64 bg-gradient-to-r from-accent to-primary hover:opacity-90 animate-pulse"
                 onClick={() => {
                   // Pick the right phase based on what the run was doing.
                   const phase = state.run?.battle
@@ -204,7 +204,7 @@ function MainMenu() {
           <div className="flex gap-2 justify-center">
             <Button
               size="lg"
-              className="w-64 bg-gradient-to-r from-secondary to-primary hover:opacity-90"
+              className="w-full max-w-xs sm:w-64 bg-gradient-to-r from-secondary to-primary hover:opacity-90"
               onClick={() => {
                 localStorage.setItem('menagerie_run_destination', 'overworld');
                 localStorage.setItem('menagerie_run_origin', 'main_menu');

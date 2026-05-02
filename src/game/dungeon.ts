@@ -457,6 +457,7 @@ export interface MoveResult {
   encounter: Monster | null;
   treasure: boolean;
   stairs: boolean;
+  stairsUp: boolean;
   trap: { type: TrapType; damage?: number } | null;
   terrain: { type: TerrainType } | null; // Terrain tile stepped on
   shop: boolean;
@@ -487,6 +488,7 @@ export function shouldStopAutoRun(tiles: DungeonTile[][], x: number, y: number, 
   if (tile.type === 'treasure') return true;
   if (tile.type === 'trap' && !tile.triggered) return true;
   if (tile.type === 'stairs') return true;
+  if (tile.type === 'stairs_up') return true;
   if (tile.type === 'shop') return true;
   if (tile.type === 'elevator') return true;
   
@@ -521,21 +523,21 @@ export function movePlayer(
 
   // Check bounds
   if (newX < 0 || newX >= dungeon.width || newY < 0 || newY >= dungeon.height) {
-    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null, runeBump: null };
+    return { dungeon, encounter: null, treasure: false, stairs: false, stairsUp: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null, runeBump: null };
   }
 
   const targetTile = tiles[newY][newX];
 
   // Bedrock walls — flat block, no mining possible
   if (targetTile.type === 'wall') {
-    return { dungeon, encounter: null, treasure: false, stairs: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null, runeBump: null };
+    return { dungeon, encounter: null, treasure: false, stairs: false, stairsUp: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null, runeBump: null };
   }
 
   // Mineable walls — also block movement, but signal a "bump" so Index.tsx
   // can apply a Pickaxe hit if the player owns one strong enough.
   if (targetTile.type === 'mineable_wall' && targetTile.wallTier) {
     return {
-      dungeon, encounter: null, treasure: false, stairs: false, trap: null,
+      dungeon, encounter: null, treasure: false, stairs: false, stairsUp: false, trap: null,
       terrain: null, shop: false, elevator: false, loot: null, blocked: true,
       plant: null,
       mineableBump: { x: newX, y: newY, tier: targetTile.wallTier },
@@ -546,11 +548,17 @@ export function movePlayer(
   // Create new tiles array
   const newTiles = tiles.map(row => row.map(tile => ({ ...tile })));
   
-  // Clear old position - restore terrain if player was on one
+  // Clear old position - restore terrain / stairs if player was on one
   const oldTile = tiles[playerPosition.y][playerPosition.x];
   if (oldTile.terrainType) {
     // Player was on terrain - restore it
     newTiles[playerPosition.y][playerPosition.x].type = 'terrain';
+  } else if (oldTile.stairsBeneath === 'down') {
+    newTiles[playerPosition.y][playerPosition.x].type = 'stairs';
+    newTiles[playerPosition.y][playerPosition.x].stairsBeneath = undefined;
+  } else if (oldTile.stairsBeneath === 'up') {
+    newTiles[playerPosition.y][playerPosition.x].type = 'stairs_up';
+    newTiles[playerPosition.y][playerPosition.x].stairsBeneath = undefined;
   } else {
     newTiles[playerPosition.y][playerPosition.x].type = 'floor';
   }
@@ -558,6 +566,7 @@ export function movePlayer(
   let encounter: Monster | null = null;
   let treasure = false;
   let stairs = false;
+  let stairsUp = false;
   let trap: { type: TrapType; damage?: number } | null = null;
   let terrain: { type: TerrainType } | null = null;
   let shop = false;
@@ -577,6 +586,8 @@ export function movePlayer(
     }
   } else if (targetTile.type === 'stairs') {
     stairs = true;
+  } else if (targetTile.type === 'stairs_up') {
+    stairsUp = true;
   } else if (targetTile.type === 'trap' && !targetTile.triggered) {
     const trapType = targetTile.trapType || 'spike';
     const damage = trapType === 'spike' ? 10 + Math.floor(dungeon.floor * 2) : 0;
@@ -603,6 +614,13 @@ export function movePlayer(
   } else {
     newTiles[newY][newX].type = 'player';
   }
+  // Remember if there's a staircase under the player so it gets restored on
+  // step-off (player tile overwrites the stairs tile while standing).
+  if (targetTile.type === 'stairs') {
+    newTiles[newY][newX].stairsBeneath = 'down';
+  } else if (targetTile.type === 'stairs_up') {
+    newTiles[newY][newX].stairsBeneath = 'up';
+  }
   
   const newPosition = { x: newX, y: newY };
   updateVisibility(newTiles, newPosition);
@@ -623,6 +641,7 @@ export function movePlayer(
     encounter,
     treasure,
     stairs,
+    stairsUp,
     trap,
     terrain,
     shop,

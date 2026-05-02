@@ -273,7 +273,7 @@ export interface Move {
 // ============= DUNGEON =============
 // 'wall' = bedrock (never mineable). 'mineable_wall' = breakable with a Pickaxe;
 // see `wallTier` and `wallHits` on DungeonTile for hardness/progress.
-export type TileType = 'floor' | 'wall' | 'mineable_wall' | 'door' | 'stairs' | 'trap' | 'treasure' | 'enemy' | 'player' | 'shop' | 'terrain' | 'plant' | 'elevator';
+export type TileType = 'floor' | 'wall' | 'mineable_wall' | 'door' | 'stairs' | 'stairs_up' | 'trap' | 'treasure' | 'enemy' | 'player' | 'shop' | 'terrain' | 'plant' | 'elevator';
 export type TrapType = 'spike' | 'poison' | 'alarm';
 export type PlantType = 'healing_herb' | 'stamina_root' | 'antidote_leaf' | 'mana_blossom' | 'fire_pepper' | 'ice_mint' | 'revive_moss' | 'golden_ginseng' | 'phoenix_flower' | 'panacea_petal' | 'miracle_lotus';
 
@@ -343,6 +343,16 @@ export interface DungeonState {
   // Dungeon Compass: one-shot waypoint pinned to the floor's stairs. Renderer
   // overlays an arrow on this tile so the player can find the exit.
   compassWaypoint?: Position;
+  // Persistent per-floor snapshots so the player can walk back up the
+  // staircase to revisit a previous floor (tile state, enemies, position).
+  // Excludes `compassWaypoint` and the active floor itself.
+  visitedFloors?: Record<number, {
+    tiles: DungeonTile[][];
+    enemies: Monster[];
+    playerPosition: Position;
+    width: number;
+    height: number;
+  }>;
 }
 
 export interface InventoryItem {

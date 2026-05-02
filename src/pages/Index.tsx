@@ -2847,8 +2847,28 @@ function DungeonView({
         />
       )}
       
-      {/* Recruitment Modal for dungeon map kills */}
-      {showRecruitment && defeatedEnemy && (
+      {/* Recruitment Modal for dungeon map kills.
+          When multiple enemies are defeated by a single AoE, additional
+          recruits are queued in `recruitQueue` and shown in sequence as
+          the player resolves each modal. */}
+      {showRecruitment && defeatedEnemy && (() => {
+        const advanceQueue = () => {
+          if (recruitQueue.length > 0) {
+            const [next, ...rest] = recruitQueue;
+            setRecruitQueue(rest);
+            setDefeatedEnemy(next.enemy);
+            setRecruitChance(next.chance);
+            setBattleStats(next.stats);
+            // keep showRecruitment true
+          } else {
+            setShowRecruitment(false);
+            setDefeatedEnemy(null);
+          }
+        };
+        const queueBadge = recruitQueue.length > 0
+          ? ` (${recruitQueue.length} more recruit${recruitQueue.length === 1 ? '' : 's'} waiting)`
+          : '';
+        return (
         <RecruitmentModal
           enemy={defeatedEnemy}
           recruitChance={recruitChance}
@@ -2856,24 +2876,21 @@ function DungeonView({
           party={state.run?.party || []}
           partyFull={(state.run?.party.length || 0) >= 6}
           onFail={() => {
-            addLog(`😔 ${defeatedEnemy.name} declined to join...`, 'info');
-            setShowRecruitment(false);
-            setDefeatedEnemy(null);
+            addLog(`😔 ${defeatedEnemy.name} declined to join...${queueBadge}`, 'info');
+            advanceQueue();
           }}
           onAddToParty={() => {
             dispatch({ type: 'ADD_TO_PARTY', monster: defeatedEnemy });
-            addLog(`🎉 ${defeatedEnemy.name} joined your party!`, 'system');
+            addLog(`🎉 ${defeatedEnemy.name} joined your party!${queueBadge}`, 'system');
             toast.success(`${defeatedEnemy.species} joined your team!`);
-            setShowRecruitment(false);
-            setDefeatedEnemy(null);
+            advanceQueue();
           }}
           onReplaceMember={(replaceIndex) => {
             dispatch({ type: 'SEND_PARTY_MEMBER_TO_TOWN', partyIndex: replaceIndex });
             dispatch({ type: 'ADD_TO_PARTY', monster: defeatedEnemy });
-            addLog(`🔄 Sent a party member home; ${defeatedEnemy.name} took their place!`, 'system');
+            addLog(`🔄 Sent a party member home; ${defeatedEnemy.name} took their place!${queueBadge}`, 'system');
             toast.success(`${defeatedEnemy.species} joined your team!`);
-            setShowRecruitment(false);
-            setDefeatedEnemy(null);
+            advanceQueue();
           }}
           onSendHome={() => {
             const comboId = `${defeatedEnemy.species}_${defeatedEnemy.element}_${defeatedEnemy.class}`;
@@ -2888,17 +2905,16 @@ function DungeonView({
                 equipment: defeatedEnemy.equipment,
               },
             });
-            addLog(`🏠 ${defeatedEnemy.name} was sent home to the roster.`, 'system');
+            addLog(`🏠 ${defeatedEnemy.name} was sent home to the roster.${queueBadge}`, 'system');
             toast.success(`${defeatedEnemy.species} sent home!`);
-            setShowRecruitment(false);
-            setDefeatedEnemy(null);
+            advanceQueue();
           }}
           onDismiss={() => {
-            setShowRecruitment(false);
-            setDefeatedEnemy(null);
+            advanceQueue();
           }}
         />
-      )}
+        );
+      })()}
       
       {/* Dungeon Revive Target Modal */}
       <ReviveTargetModal

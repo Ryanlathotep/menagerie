@@ -837,6 +837,10 @@ function DungeonView({
   const [hoveredTile, setHoveredTile] = useState<Position | null>(null);
   const [targetingTiles, setTargetingTiles] = useState<Position[]>([]);
   const [affectedTiles, setAffectedTiles] = useState<Position[]>([]);
+  // On touch devices, AoE moves require two taps on the same tile: first tap
+  // previews the affected area, second tap (within window) commits the attack.
+  // Single-target moves still fire on the first tap. Tracks { x, y, time }.
+  const aoePendingConfirmRef = useRef<{ x: number; y: number; time: number } | null>(null);
   // Right-click an enemy → opens this attack menu
   const [attackMenuTarget, setAttackMenuTarget] = useState<EnemyAttackTarget | null>(null);
   
@@ -2134,6 +2138,7 @@ function DungeonView({
     setTargetingTiles([]);
     setAffectedTiles([]);
     setHoveredTile(null);
+    aoePendingConfirmRef.current = null;
   }, []);
 
   // While aiming a skill, recompute valid target tiles (and the AoE preview
@@ -2192,8 +2197,32 @@ function DungeonView({
       addLog('❌ Invalid target!', 'info');
       return;
     }
-    
+
     const config = getAttackConfig(targetingMove);
+
+    // Mobile/touch tap-to-preview, tap-again-to-confirm for AoE moves.
+    // Skip on hover-capable devices (mouse) and for single-target moves.
+    const isTouchDevice = typeof window !== 'undefined'
+      && window.matchMedia?.('(hover: none), (pointer: coarse)').matches;
+    const isAoE = (targetingMove.targeting && targetingMove.targeting !== 'single')
+      || (targetingMove.aoeRadius ?? 0) > 0;
+    if (isTouchDevice && isAoE) {
+      const pending = aoePendingConfirmRef.current;
+      const now = Date.now();
+      const sameTile = pending && pending.x === x && pending.y === y && now - pending.time < 4000;
+      if (!sameTile) {
+        // First tap: preview only.
+        const previewTiles = getAffectedTiles(dungeon.playerPosition, { x, y }, config, dungeon.width, dungeon.height, dungeon.tiles);
+        setHoveredTile({ x, y });
+        setAffectedTiles(previewTiles);
+        aoePendingConfirmRef.current = { x, y, time: now };
+        addLog(`🎯 Tap again to fire ${targetingMove.name}`, 'system');
+        return;
+      }
+      // Second tap on same tile → commit.
+      aoePendingConfirmRef.current = null;
+    }
+
     const affected = getAffectedTiles(dungeon.playerPosition, { x, y }, config, dungeon.width, dungeon.height);
     
     // Consume stamina

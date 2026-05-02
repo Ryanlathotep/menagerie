@@ -219,6 +219,13 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [defeatedEnemy, setDefeatedEnemy] = useState<Monster | null>(null);
   const [recruitChance, setRecruitChance] = useState(0);
   const [battleStats, setBattleStats] = useState({ turnsUsed: 1, overkillDamage: 0, statusEffectsApplied: 0, criticalHits: 0 });
+  // Queue of additional defeated enemies awaiting recruitment (multi-kill AoE)
+  type RecruitQueueEntry = {
+    enemy: Monster;
+    chance: number;
+    stats: { turnsUsed: number; overkillDamage: number; statusEffectsApplied: number; criticalHits: number };
+  };
+  const [recruitQueue, setRecruitQueue] = useState<RecruitQueueEntry[]>([]);
   
   // Revive modal
   const [showReviveModal, setShowReviveModal] = useState(false);

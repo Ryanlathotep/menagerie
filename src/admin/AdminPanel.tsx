@@ -7,7 +7,8 @@ import { MovesEditor } from './MovesEditor';
 import { EquipmentEditor } from './EquipmentEditor';
 import { RecipesEditor } from './RecipesEditor';
 import { MonstersEditor } from './MonstersEditor';
-import { Shield, Swords, Package, Ghost } from 'lucide-react';
+import { AdminAccessEditor } from './AdminAccessEditor';
+import { Shield, Swords, Package, Ghost, UserCog } from 'lucide-react';
 
 export function AdminPanel() {
   const { isAdmin, loading } = useAdminRole();
@@ -63,6 +64,10 @@ export function AdminPanel() {
             <Ghost className="w-4 h-4" />
             Monsters
           </TabsTrigger>
+          <TabsTrigger value="access" className="gap-2">
+            <UserCog className="w-4 h-4" />
+            Access
+          </TabsTrigger>
         </TabsList>
 
         <ScrollArea className="flex-1">
@@ -77,6 +82,9 @@ export function AdminPanel() {
           </TabsContent>
           <TabsContent value="monsters" className="p-4 m-0">
             <MonstersEditor />
+          </TabsContent>
+          <TabsContent value="access" className="p-4 m-0">
+            <AdminAccessEditor />
           </TabsContent>
         </ScrollArea>
       </Tabs>

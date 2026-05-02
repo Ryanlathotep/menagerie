@@ -238,15 +238,15 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             tiny viewports so the Flee / Main Menu buttons on the right never get
             pushed off-screen. */}
         <div className="flex gap-0.5 sm:gap-1 ml-auto min-w-0 flex-1 overflow-x-auto no-scrollbar justify-end">
-          <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8" onClick={() => handlePanelChange('character')} title="Character Sheet">
+          <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('character')} title="Character Sheet">
             <User className="w-5 h-5 sm:w-4 sm:h-4" />
           </Button>
           
-          <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8" onClick={() => handlePanelChange('moves')} title="Moves / Attacks">
+          <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('moves')} title="Moves / Attacks">
             <Swords className="w-5 h-5 sm:w-4 sm:h-4" />
           </Button>
           
-          <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8" onClick={() => handlePanelChange('inventory')} title="Inventory">
+          <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('inventory')} title="Inventory">
             <Backpack className="w-5 h-5 sm:w-4 sm:h-4" />
           </Button>
           
@@ -255,7 +255,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             <Button 
               variant="ghost" 
               size="icon" 
-              className="w-9 h-9 sm:w-8 sm:h-8 relative" 
+              className="w-9 h-9 sm:w-8 sm:h-8 relative flex-shrink-0" 
               onClick={onOpenEquipment}
               title="Equipment"
             >
@@ -273,7 +273,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             <Button 
               variant={activePanel === 'party' ? 'default' : 'ghost'} 
               size="icon" 
-              className="w-9 h-9 sm:w-8 sm:h-8 relative" 
+              className="w-9 h-9 sm:w-8 sm:h-8 relative flex-shrink-0" 
               onClick={() => handlePanelChange('party')} 
               title="Party"
             >
@@ -289,7 +289,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             <Button
               variant="ghost"
               size="icon"
-              className="w-9 h-9 sm:w-8 sm:h-8"
+              className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
               onClick={onOpenWorkshop}
               title="Open Portable Workstation (crafting)"
             >
@@ -298,7 +298,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
           )}
 
           {/* Settings button */}
-          <Button variant="ghost" size="icon" className="w-9 h-9 sm:w-8 sm:h-8 hidden sm:flex" onClick={() => setShowSettings(true)} title="Settings">
+          <Button variant="ghost" size="icon" className="w-9 h-9 sm:w-8 sm:h-8 hidden sm:flex flex-shrink-0" onClick={() => setShowSettings(true)} title="Settings">
             <Settings className="w-5 h-5 sm:w-4 sm:h-4" />
           </Button>
         </div>

@@ -1372,6 +1372,26 @@ function DungeonView({
     const origin = typeof window !== 'undefined'
       ? localStorage.getItem('menagerie_run_origin')
       : null;
+    const activeId = typeof window !== 'undefined'
+      ? localStorage.getItem('menagerie_active_dungeon_id')
+      : null;
+    const activeEntrance = activeId ? state.saveData?.dungeonEntrances?.[activeId] : undefined;
+    const isHomeTower = activeEntrance?.isHome === true;
+
+    // Non-home towers require a Town Portal Scroll to escape.
+    if (!isHomeTower) {
+      const scroll = state.run?.inventory.find(i => i.id === 'town_portal_scroll');
+      if (!scroll) {
+        toast.error('You need a Town Portal Scroll to flee this tower!', {
+          description: 'Only the Tower of the Infinite can be exited freely. Buy or craft a scroll in town next time.',
+        });
+        addLog('📜 You have no Town Portal Scroll — you cannot escape this tower!', 'info');
+        return;
+      }
+      dispatch({ type: 'USE_ITEM', itemId: 'town_portal_scroll' });
+      addLog('📜 You tear open a Town Portal Scroll — a swirling gateway home appears!', 'system');
+    }
+
     dispatch({ type: 'FLEE_DUNGEON' });
     if (origin === 'overworld') {
       // Return to the overworld next to the dungeon entrance we came from.

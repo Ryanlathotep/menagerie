@@ -537,10 +537,16 @@ function CharacterSelect() {
         townGold={state.saveData.gold || 0}
         townPortalScrollPrice={TOWN_PORTAL_PRICE}
         ownedScrollCount={ownedScrollCount}
-        onBuyTownPortalScroll={() => handleBuyItem(
-          { id: 'town_portal_scroll', name: 'Town Portal Scroll', quantity: 1, type: 'potion', effect: 'town_portal', value: 0 },
-          TOWN_PORTAL_PRICE,
-        )}
+        onBuyTownPortalScroll={() => {
+          if (!isCreativeMode()) {
+            dispatch({ type: 'SPEND_TOWN_GOLD', amount: TOWN_PORTAL_PRICE });
+          }
+          dispatch({
+            type: 'STORE_ITEM',
+            item: { id: 'town_portal_scroll', name: 'Town Portal Scroll', quantity: 1, type: 'potion', effect: 'town_portal', value: 0 },
+          });
+          toast.success('Bought Town Portal Scroll!');
+        }}
         onStart={startRun}
         onBack={() => setShowEquipmentSelect(false)}
       />

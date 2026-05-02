@@ -120,7 +120,7 @@ export const SPECIES_MOVES: Record<SpeciesType, Move[]> = {
     { id: 'scavenge', name: 'Scavenge', description: 'Find an item', type: 'status', power: 0, accuracy: 80, staminaCost: 8, speedMod: 0, aspects: ['species'], effect: 'find_item', unlockLevel: 1 },
     { id: 'gnaw', name: 'Gnaw', description: 'Persistent gnawing', type: 'melee', power: 30, accuracy: 95, staminaCost: 6, speedMod: 1, aspects: ['species'], unlockLevel: 3 },
     { id: 'disease_bite', name: 'Disease Bite', description: 'Infectious bite', type: 'melee', power: 25, accuracy: 90, staminaCost: 7, speedMod: 1, aspects: ['species'], effect: 'poison', unlockLevel: 6 },
-    { id: 'swarm_call', name: 'Swarm Call', description: 'Call rat allies', type: 'melee', power: 45, accuracy: 85, staminaCost: 12, speedMod: 0, aspects: ['species'], unlockLevel: 10 },
+    { id: 'swarm_call', name: 'Swarm Call', description: 'Call rat allies to swarm adjacent foes', type: 'melee', power: 45, accuracy: 85, staminaCost: 12, speedMod: 0, aspects: ['species'], unlockLevel: 10, targeting: 'aura', aoeRadius: 1 },
   ],
   spider: [
     { id: 'venom_bite', name: 'Venom Bite', description: 'Poisonous fangs', type: 'melee', power: 25, accuracy: 90, staminaCost: 6, speedMod: 0, aspects: ['species'], effect: 'poison', unlockLevel: 1 },

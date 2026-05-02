@@ -1,10 +1,11 @@
 // Dungeon generation and management
 
-import { DungeonState, DungeonTile, Position, Monster, SpeciesType, TrapType, PlantType, DungeonTheme } from './types';
+import { DungeonState, DungeonTile, Position, Monster, SpeciesType, TrapType, PlantType, DungeonTheme, ElementType } from './types';
 import { generateRandomMonster } from './utils';
 import { generateEquipment, generateMaterialDrop, CraftingMaterial, EquipmentItem } from './equipment';
 import { getRandomTerrainType, TerrainType } from './terrain';
 import { getWallTierForFloor, MineableWallTier, hitsToBreak, rollWallDrop, PickaxeTier, MINEABLE_WALL_TIERS } from './tools';
+import { NestState } from './nests';
 
 // Larger dungeons with scrolling viewport
 const DUNGEON_WIDTH = 30;

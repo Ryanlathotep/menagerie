@@ -21,7 +21,8 @@ import { ShopView } from '@/game/ShopView';
 import { executeCombat, calculateXpReward, xpToNextLevel, checkLevelUp, getEffectiveness, hasPassive, checkSkeletonSurvival, applyMushroomRegen, checkImpSteal } from '@/game/combat';
 import { toast } from 'sonner';
 import { SettingsProvider, SettingsButton, useSettings } from '@/game/Settings';
-import { submitTowerFloor, submitDiscoveryCount } from '@/hooks/useUsername';
+import { submitTowerFloor, submitDiscoveryCount, submitExplorationCount } from '@/hooks/useUsername';
+import { countExploredTiles } from '@/game/overworld';
 import { MonsterStatsPreview } from '@/game/MonsterStatsPreview';
 import { LevelUpScreen } from '@/game/LevelUpScreen';
 import { EquipmentItem, MonsterEquipment } from '@/game/equipment';
@@ -391,6 +392,17 @@ function CharacterSelect() {
   useEffect(() => {
     void submitDiscoveryCount(unlockedMonsters.length, currentWorldSeed);
   }, [unlockedMonsters.length, currentWorldSeed]);
+
+  // Auto-submit explored-tile count to public exploration leaderboard.
+  // Recomputes when the overworld state object changes (after movement / chunk gen).
+  // Server only persists when the new count is higher, so spammy submits are fine.
+  const exploredTileCount = countExploredTiles(state.saveData?.overworldState);
+  useEffect(() => {
+    if (exploredTileCount > 0) {
+      void submitExplorationCount(exploredTileCount, currentWorldSeed);
+    }
+  }, [exploredTileCount, currentWorldSeed]);
+
 
   
   // Restore last party selection from localStorage

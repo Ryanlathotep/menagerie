@@ -71,6 +71,18 @@ export async function submitDiscoveryCount(count: number, worldSeed?: number | n
   }
 }
 
+export async function submitExplorationCount(count: number, worldSeed?: number | null): Promise<void> {
+  if (!Number.isFinite(count) || count < 0) return;
+  try {
+    await supabase.rpc('submit_exploration_count', {
+      _count: Math.floor(count),
+      _world_seed: worldSeed != null && Number.isFinite(worldSeed) ? Math.floor(worldSeed) : null,
+    });
+  } catch (e) {
+    console.warn('submit_exploration_count failed', e);
+  }
+}
+
 export async function submitTowerFloor(
   towerId: string,
   floor: number,

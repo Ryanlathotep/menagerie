@@ -1197,21 +1197,57 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   }, [pendingReviveItem, state.run, dispatch, addLog]);
   
   // ─── Recruitment handlers ───
-  const handleRecruit = useCallback(() => {
+  // Roll happens inside the modal. These just react to the outcome.
+  const handleRecruitFail = useCallback(() => {
     if (defeatedEnemy) {
-      const roll = Math.random() * 100;
-      if (roll < recruitChance) {
-        dispatch({ type: 'ADD_TO_PARTY', monster: defeatedEnemy });
-        addLog(`🎉 ${defeatedEnemy.name} joined your party!`, 'system');
-        toast.success(`${defeatedEnemy.species} joined your team!`);
-      } else {
-        addLog(`😔 ${defeatedEnemy.name} declined to join...`, 'info');
-      }
+      addLog(`😔 ${defeatedEnemy.name} declined to join...`, 'info');
     }
     setShowRecruitment(false);
     setDefeatedEnemy(null);
-  }, [defeatedEnemy, recruitChance, dispatch, addLog]);
-  
+  }, [defeatedEnemy, addLog]);
+
+  const handleRecruitAddToParty = useCallback(() => {
+    if (defeatedEnemy) {
+      dispatch({ type: 'ADD_TO_PARTY', monster: defeatedEnemy });
+      addLog(`🎉 ${defeatedEnemy.name} joined your party!`, 'system');
+      toast.success(`${defeatedEnemy.species} joined your team!`);
+    }
+    setShowRecruitment(false);
+    setDefeatedEnemy(null);
+  }, [defeatedEnemy, dispatch, addLog]);
+
+  const handleRecruitReplace = useCallback((replaceIndex: number) => {
+    if (defeatedEnemy) {
+      dispatch({ type: 'SEND_PARTY_MEMBER_TO_TOWN', partyIndex: replaceIndex });
+      dispatch({ type: 'ADD_TO_PARTY', monster: defeatedEnemy });
+      addLog(`🔄 Sent a party member home; ${defeatedEnemy.name} took their place!`, 'system');
+      toast.success(`${defeatedEnemy.species} joined your team!`);
+    }
+    setShowRecruitment(false);
+    setDefeatedEnemy(null);
+  }, [defeatedEnemy, dispatch, addLog]);
+
+  const handleRecruitSendHome = useCallback(() => {
+    if (defeatedEnemy) {
+      const comboId = `${defeatedEnemy.species}_${defeatedEnemy.element}_${defeatedEnemy.class}`;
+      dispatch({
+        type: 'UNLOCK_MONSTER',
+        monster: {
+          comboId,
+          species: defeatedEnemy.species,
+          element: defeatedEnemy.element,
+          classType: defeatedEnemy.class,
+          level: defeatedEnemy.level,
+          equipment: defeatedEnemy.equipment,
+        },
+      });
+      addLog(`🏠 ${defeatedEnemy.name} was sent home to the roster.`, 'system');
+      toast.success(`${defeatedEnemy.species} sent home!`);
+    }
+    setShowRecruitment(false);
+    setDefeatedEnemy(null);
+  }, [defeatedEnemy, dispatch, addLog]);
+
   const handleSkipRecruit = useCallback(() => {
     setShowRecruitment(false);
     setDefeatedEnemy(null);
@@ -1600,9 +1636,13 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         enemy={defeatedEnemy}
         recruitChance={recruitChance}
         impressiveStats={battleStats}
+        party={state.run?.party || []}
         partyFull={(state.run?.party?.length || 0) >= 6}
-        onRecruit={handleRecruit}
         onDismiss={handleSkipRecruit}
+        onFail={handleRecruitFail}
+        onAddToParty={handleRecruitAddToParty}
+        onReplaceMember={handleRecruitReplace}
+        onSendHome={handleRecruitSendHome}
       />
     )}
     

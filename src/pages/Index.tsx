@@ -310,7 +310,7 @@ function MainMenu() {
               size="sm"
               onClick={() => navigate('/auth')}
             >
-              ☁️ Sign In for Cloud Saves
+              ☁️ Sign In / Create Account
             </Button>
           )}
         </div>

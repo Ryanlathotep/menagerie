@@ -152,7 +152,7 @@ export const SPECIES_MOVES: Record<SpeciesType, Move[]> = {
     { id: 'feral_bite', name: 'Feral Bite', description: 'Savage biting attack', type: 'melee', power: 40, accuracy: 92, staminaCost: 8, speedMod: 0, aspects: ['species'], unlockLevel: 4 },
     { id: 'chase_down', name: 'Chase Down', description: 'Swift pursuit attack', type: 'melee', power: 35, accuracy: 95, staminaCost: 7, speedMod: 2, aspects: ['species'], unlockLevel: 7 },
     { id: 'alpha_strike', name: 'Alpha Strike', description: 'Dominant attack', type: 'melee', power: 55, accuracy: 88, staminaCost: 13, speedMod: 0, aspects: ['species'], effect: 'lower_attack', unlockLevel: 11 },
-    { id: 'pack_frenzy', name: 'Pack Frenzy', description: 'Coordinated assault', type: 'melee', power: 70, accuracy: 80, staminaCost: 17, speedMod: 0, aspects: ['species'], unlockLevel: 15 },
+    { id: 'pack_frenzy', name: 'Pack Frenzy', description: 'Coordinated assault on adjacent foes', type: 'melee', power: 70, accuracy: 80, staminaCost: 17, speedMod: 0, aspects: ['species'], unlockLevel: 15, targeting: 'aura', aoeRadius: 1 },
   ],
   beetle: [
     { id: 'horn_charge', name: 'Horn Charge', description: 'Powerful charge', type: 'melee', power: 35, accuracy: 85, staminaCost: 8, speedMod: -1, aspects: ['species'], unlockLevel: 1 },

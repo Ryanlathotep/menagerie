@@ -457,6 +457,7 @@ export interface MoveResult {
   encounter: Monster | null;
   treasure: boolean;
   stairs: boolean;
+  stairsUp: boolean;
   trap: { type: TrapType; damage?: number } | null;
   terrain: { type: TerrainType } | null; // Terrain tile stepped on
   shop: boolean;

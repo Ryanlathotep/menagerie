@@ -1,6 +1,7 @@
 // Game Settings Component and Hook
 
 import { useState, useEffect, createContext, useContext, ReactNode, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
@@ -351,37 +352,89 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 // roads, placed buildings, fog-of-war) and regenerate it under a new seed,
 // while keeping their monsters, items, gold, recipes, and equipment intact.
 // A blank seed rolls a random one. Same seed = same world (shareable).
+interface PopularSeed {
+  world_seed: number;
+  explorers: number;
+  best_tiles: number;
+}
+
 function RebuildOverworldSection() {
   const { toast } = useToast();
   const { state, dispatch } = useGame();
   const [seedInput, setSeedInput] = useState('');
   const [confirming, setConfirming] = useState(false);
+  const [popular, setPopular] = useState<PopularSeed[] | null>(null);
+  const [loadingPopular, setLoadingPopular] = useState(false);
 
   // Read the live seed from in-memory game state so it stays accurate after
   // rebuilding without needing a refresh.
   const currentSeed = state.saveData?.overworldState?.worldSeed ?? 0;
 
-  const doRebuild = () => {
-    // Lazy-import to avoid pulling overworld.ts into Settings' module graph
-    // before the user actually clicks Rebuild.
+  // Pull top exploration entries and aggregate by world_seed to find the
+  // most-explored shared worlds players are jumping into.
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingPopular(true);
+    supabase
+      .rpc('get_exploration_leaderboard', { _limit: 100 })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error || !data) {
+          setPopular([]);
+          setLoadingPopular(false);
+          return;
+        }
+        const agg = new Map<number, PopularSeed>();
+        for (const row of data as Array<{ world_seed: number | null; tiles_explored: number }>) {
+          if (row.world_seed == null || row.world_seed === 0) continue;
+          const existing = agg.get(row.world_seed);
+          if (existing) {
+            existing.explorers += 1;
+            existing.best_tiles = Math.max(existing.best_tiles, row.tiles_explored);
+          } else {
+            agg.set(row.world_seed, {
+              world_seed: row.world_seed,
+              explorers: 1,
+              best_tiles: row.tiles_explored,
+            });
+          }
+        }
+        const sorted = Array.from(agg.values())
+          .sort((a, b) => b.explorers - a.explorers || b.best_tiles - a.best_tiles)
+          .slice(0, 5);
+        setPopular(sorted);
+        setLoadingPopular(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const doRebuild = (overrideSeedNumber?: number) => {
     import('./overworld').then(({ hashSeedString, randomWorldSeed, regenerateOverworld }) => {
-      const trimmed = seedInput.trim();
-      const seed = trimmed ? hashSeedString(trimmed) : randomWorldSeed();
+      let seed: number;
+      let label: string;
+      if (overrideSeedNumber != null) {
+        seed = overrideSeedNumber >>> 0;
+        label = String(seed);
+      } else {
+        const trimmed = seedInput.trim();
+        if (trimmed) {
+          // Allow either pure numeric seed or a string label
+          const asNum = Number(trimmed);
+          seed = Number.isFinite(asNum) && /^\d+$/.test(trimmed) ? (asNum >>> 0) : hashSeedString(trimmed);
+          label = trimmed;
+        } else {
+          seed = randomWorldSeed();
+          label = `random (${seed})`;
+        }
+      }
       const fresh = regenerateOverworld(seed);
-
-      // Dispatch directly so this works from the main menu too — not just
-      // when OverworldView is mounted to listen for a global event.
       dispatch({ type: 'UPDATE_OVERWORLD', overworld: fresh });
-
-      // Also fire the event for any mounted overworld listener (so its local
-      // overworld useState mirror stays in sync without a remount).
       window.dispatchEvent(new CustomEvent('menagerie-rebuild-overworld', {
-        detail: { seed, label: trimmed || `random (${seed})`, overworld: fresh },
+        detail: { seed, label, overworld: fresh },
       }));
-
       toast({
         title: '🌍 Overworld rebuilt',
-        description: `New seed: ${trimmed || seed}`,
+        description: `New seed: ${label}`,
       });
       setConfirming(false);
       setSeedInput('');
@@ -428,7 +481,42 @@ function RebuildOverworldSection() {
         )}
       </div>
 
+      {/* Popular shared seeds aggregated from exploration leaderboard */}
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Popular shared worlds</Label>
+        {loadingPopular && (
+          <p className="text-[11px] text-muted-foreground italic">Loading…</p>
+        )}
+        {!loadingPopular && popular && popular.length === 0 && (
+          <p className="text-[11px] text-muted-foreground italic">No shared worlds yet.</p>
+        )}
+        {!loadingPopular && popular && popular.length > 0 && (
+          <ul className="space-y-1">
+            {popular.map(p => (
+              <li key={p.world_seed} className="flex items-center justify-between gap-2 text-xs rounded border bg-background/40 px-2 py-1">
+                <span className="flex items-center gap-1.5 min-w-0">
+                  <span className="font-mono truncate">🌱{p.world_seed}</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {p.explorers} explorer{p.explorers === 1 ? '' : 's'} · best {p.best_tiles.toLocaleString()}
+                  </span>
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-6 px-2 text-[11px]"
+                  onClick={() => setSeedInput(String(p.world_seed))}
+                  title="Load this seed into the input"
+                >
+                  Use
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       {!confirming ? (
+
         <Button
           variant="destructive"
           size="sm"
@@ -447,7 +535,7 @@ function RebuildOverworldSection() {
             <Button variant="outline" size="sm" className="flex-1" onClick={() => setConfirming(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" size="sm" className="flex-1" onClick={doRebuild}>
+            <Button variant="destructive" size="sm" className="flex-1" onClick={() => doRebuild()}>
               Confirm Rebuild
             </Button>
           </div>

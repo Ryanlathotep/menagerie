@@ -79,12 +79,32 @@ function persistRunPartyProgress(saveData: SaveData, run: GameState['run']): Sav
     const existingIdx = updatedUnlockedMonsters.findIndex(m => m.comboId === comboId);
 
     if (existingIdx !== -1) {
+      const existing = updatedUnlockedMonsters[existingIdx];
+      const currentLevel = partyMember.level;
+      const existingLevel = existing.level;
+      const useCurrent = currentLevel >= existingLevel;
+
+      // Merge mastery: keep highest uses per move
+      const mergedMastery: typeof partyMember.moveMastery = { ...(existing.moveMastery || {}) };
+      if (partyMember.moveMastery) {
+        for (const [moveId, current] of Object.entries(partyMember.moveMastery)) {
+          const prev = mergedMastery[moveId];
+          if (!prev || (current?.uses ?? 0) > (prev.uses ?? 0)) {
+            mergedMastery[moveId] = current;
+          }
+        }
+      }
+
       updatedUnlockedMonsters[existingIdx] = {
-        ...updatedUnlockedMonsters[existingIdx],
-        level: Math.max(updatedUnlockedMonsters[existingIdx].level, partyMember.level),
-        experience: partyMember.experience ?? 0,
-        moveMastery: partyMember.moveMastery,
-        equipment: cleanedEquipment,
+        ...existing,
+        level: Math.max(existingLevel, currentLevel),
+        // If we leveled up, take current XP; otherwise keep the higher of the two
+        experience: useCurrent
+          ? (partyMember.experience ?? 0)
+          : Math.max(existing.experience ?? 0, partyMember.experience ?? 0),
+        moveMastery: mergedMastery,
+        // Equipment: prefer current (bound to active monster), fall back to existing
+        equipment: cleanedEquipment ?? existing.equipment,
       };
       return;
     }

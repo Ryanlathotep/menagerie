@@ -481,7 +481,42 @@ function RebuildOverworldSection() {
         )}
       </div>
 
+      {/* Popular shared seeds aggregated from exploration leaderboard */}
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Popular shared worlds</Label>
+        {loadingPopular && (
+          <p className="text-[11px] text-muted-foreground italic">Loading…</p>
+        )}
+        {!loadingPopular && popular && popular.length === 0 && (
+          <p className="text-[11px] text-muted-foreground italic">No shared worlds yet.</p>
+        )}
+        {!loadingPopular && popular && popular.length > 0 && (
+          <ul className="space-y-1">
+            {popular.map(p => (
+              <li key={p.world_seed} className="flex items-center justify-between gap-2 text-xs rounded border bg-background/40 px-2 py-1">
+                <span className="flex items-center gap-1.5 min-w-0">
+                  <span className="font-mono truncate">🌱{p.world_seed}</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {p.explorers} explorer{p.explorers === 1 ? '' : 's'} · best {p.best_tiles.toLocaleString()}
+                  </span>
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-6 px-2 text-[11px]"
+                  onClick={() => setSeedInput(String(p.world_seed))}
+                  title="Load this seed into the input"
+                >
+                  Use
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       {!confirming ? (
+
         <Button
           variant="destructive"
           size="sm"

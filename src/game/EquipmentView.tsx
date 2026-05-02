@@ -160,7 +160,7 @@ export function EquipmentView({
   
   return (
     <div
-      className="fixed top-0 right-0 bottom-0 z-40 w-full sm:w-[460px] md:w-[500px] bg-background/95 backdrop-blur-sm border-l border-border shadow-2xl flex flex-col pointer-events-auto"
+      className="fixed top-0 right-0 z-40 w-full sm:w-[460px] md:w-[500px] h-[100dvh] max-h-screen bg-background/95 backdrop-blur-sm border-l border-border shadow-2xl flex flex-col pointer-events-auto"
       onClick={e => e.stopPropagation()}
     >
       {/* Header */}

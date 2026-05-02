@@ -184,7 +184,7 @@ function MainMenu() {
             <div className="flex gap-2 justify-center">
               <Button
                 size="lg"
-                className="w-64 bg-gradient-to-r from-accent to-primary hover:opacity-90 animate-pulse"
+                className="w-full max-w-xs sm:w-64 bg-gradient-to-r from-accent to-primary hover:opacity-90 animate-pulse"
                 onClick={() => {
                   // Pick the right phase based on what the run was doing.
                   const phase = state.run?.battle
@@ -204,7 +204,7 @@ function MainMenu() {
           <div className="flex gap-2 justify-center">
             <Button
               size="lg"
-              className="w-64 bg-gradient-to-r from-secondary to-primary hover:opacity-90"
+              className="w-full max-w-xs sm:w-64 bg-gradient-to-r from-secondary to-primary hover:opacity-90"
               onClick={() => {
                 localStorage.setItem('menagerie_run_destination', 'overworld');
                 localStorage.setItem('menagerie_run_origin', 'main_menu');

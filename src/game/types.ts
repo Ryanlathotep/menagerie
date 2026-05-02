@@ -298,6 +298,9 @@ export interface DungeonTile {
   // Mineable wall metadata (only set when type === 'mineable_wall')
   wallTier?: import('./tools').MineableWallTier; // 1=Cavestone, 2=Deepstone, 3=Coreshard
   wallHits?: number; // Accumulated hits with a Pickaxe; breaks at hitsToBreak()
+  // Set while the player stands on a staircase tile so we can restore the
+  // staircase (instead of plain floor) when they step off.
+  stairsBeneath?: 'down' | 'up';
 }
 
 export interface Position {

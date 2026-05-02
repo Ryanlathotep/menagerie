@@ -263,6 +263,27 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             </p>
           </div>
 
+          {/* Theme */}
+          <div className="space-y-2 pt-4 border-t">
+            <Label className="text-base">Theme</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['system', 'light', 'dark'] as const).map((mode) => (
+                <Button
+                  key={mode}
+                  variant={settings.theme === mode ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => updateSetting('theme', mode)}
+                  className="capitalize"
+                >
+                  {mode === 'system' ? 'Browser' : mode}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              "Browser" follows your OS / browser preference.
+            </p>
+          </div>
+
           {/* Overworld Direction Arrows */}
           <div className="space-y-3 pt-4 border-t">
             <Label className="text-base">Overworld Arrows</Label>

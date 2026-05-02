@@ -21,7 +21,7 @@ import { ShopView } from '@/game/ShopView';
 import { executeCombat, calculateXpReward, xpToNextLevel, checkLevelUp, getEffectiveness, hasPassive, checkSkeletonSurvival, applyMushroomRegen, checkImpSteal } from '@/game/combat';
 import { toast } from 'sonner';
 import { SettingsProvider, SettingsButton, useSettings } from '@/game/Settings';
-import { submitTowerFloor } from '@/hooks/useUsername';
+import { submitTowerFloor, submitDiscoveryCount } from '@/hooks/useUsername';
 import { MonsterStatsPreview } from '@/game/MonsterStatsPreview';
 import { LevelUpScreen } from '@/game/LevelUpScreen';
 import { EquipmentItem, MonsterEquipment } from '@/game/equipment';
@@ -384,6 +384,13 @@ function CharacterSelect() {
 
   // Get all unlocked monsters (specific combos with levels)
   const unlockedMonsters = state.saveData.unlockedMonsters || [];
+
+  // Auto-submit unique discovery count to public leaderboard whenever it grows.
+  // No-op for signed-out users or those without a username (handled server-side).
+  useEffect(() => {
+    void submitDiscoveryCount(unlockedMonsters.length);
+  }, [unlockedMonsters.length]);
+
   
   // Restore last party selection from localStorage
   const [selectedParty, setSelectedParty] = useState<typeof unlockedMonsters>(() => {

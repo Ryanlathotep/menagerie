@@ -16,6 +16,7 @@ import { useGame, buildProgressSnapshot } from './state';
 import { useCloudSave } from '@/hooks/useCloudSave';
 import { toast as sonnerToast } from 'sonner';
 import { UsernameEditor } from './UsernameEditor';
+import { DiscoveryLeaderboard } from './DiscoveryLeaderboard';
 
 // Settings interface
 export interface GameSettings {
@@ -282,6 +283,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
           {/* Public Username (for tower leaderboards) */}
           <UsernameEditor />
+
+          {/* Global discovery leaderboard (top 10 by unique monsters unlocked) */}
+          <DiscoveryLeaderboard limit={10} />
 
           {/* Overworld Rebuild Section */}
           <RebuildOverworldSection />

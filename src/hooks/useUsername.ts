@@ -59,6 +59,15 @@ export async function setMyUsername(name: string): Promise<{ ok: true; username:
   return { ok: true, username: result?.username ?? name.trim() };
 }
 
+export async function submitDiscoveryCount(count: number): Promise<void> {
+  if (!Number.isFinite(count) || count < 0) return;
+  try {
+    await supabase.rpc('submit_discovery_count', { _count: Math.floor(count) });
+  } catch (e) {
+    console.warn('submit_discovery_count failed', e);
+  }
+}
+
 export async function submitTowerFloor(
   towerId: string,
   floor: number,

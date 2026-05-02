@@ -1465,6 +1465,15 @@ function DungeonView({
     const activeEntrance = activeId ? state.saveData?.dungeonEntrances?.[activeId] : undefined;
     const isHomeTower = activeEntrance?.isHome === true;
 
+    // Confirm before leaving — exiting abandons floor progress in this run.
+    const currentFloor = dungeon?.floor ?? 1;
+    const confirmMsg =
+      `Exit the dungeon on Floor ${currentFloor}?\n\n` +
+      `You'll keep your gold, materials, items, and equipment, but you'll lose your place on every floor of this run. Stairs you've placed will be regenerated next time.`;
+    if (typeof window !== 'undefined' && !window.confirm(confirmMsg)) {
+      return;
+    }
+
     // Non-home towers require a Town Portal Scroll to escape.
     if (!isHomeTower) {
       const scroll = state.run?.inventory.find(i => i.id === 'town_portal_scroll');

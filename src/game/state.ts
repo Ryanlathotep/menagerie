@@ -1605,6 +1605,27 @@ export function GameProvider({ children }: GameProviderProps) {
     }
   }, [state.saveData]);
 
+  // Auto-snapshot party progress when meaningful in-run milestones change
+  // (level-up, floor change, total mastery uses). This ensures level-ups
+  // survive crashes — without thrashing on every tick of movement.
+  const partyProgressSig = state.run
+    ? (() => {
+        let sig = `f${state.run.dungeon?.floor ?? 0}|`;
+        for (const m of state.run.party) {
+          const masteryTotal = m.moveMastery
+            ? Object.values(m.moveMastery).reduce((s, x) => s + (x?.uses ?? 0), 0)
+            : 0;
+          sig += `${m.species}_${m.element}_${m.class}:L${m.level}:X${m.experience ?? 0}:M${masteryTotal};`;
+        }
+        return sig;
+      })()
+    : '';
+
+  useEffect(() => {
+    if (!state.run || !partyProgressSig) return;
+    dispatch({ type: 'SNAPSHOT_RUN_PROGRESS' });
+  }, [partyProgressSig]);
+
   return React.createElement(GameContext.Provider, { value: { state, dispatch } }, children);
 }
 

@@ -659,6 +659,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     let newStamina = curSta - staminaCost;
     
     let enemiesHit: { enemy: Monster; pos: Position }[] = [];
+    const recruitEntries: RecruitQueueEntry[] = [];
     
     setOverworld(prev => {
       const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;

@@ -551,10 +551,12 @@ export function movePlayer(
   if (oldTile.terrainType) {
     // Player was on terrain - restore it
     newTiles[playerPosition.y][playerPosition.x].type = 'terrain';
-  } else if ((oldTile as any).stairsBeneath === 'down') {
+  } else if (oldTile.stairsBeneath === 'down') {
     newTiles[playerPosition.y][playerPosition.x].type = 'stairs';
-  } else if ((oldTile as any).stairsBeneath === 'up') {
+    newTiles[playerPosition.y][playerPosition.x].stairsBeneath = undefined;
+  } else if (oldTile.stairsBeneath === 'up') {
     newTiles[playerPosition.y][playerPosition.x].type = 'stairs_up';
+    newTiles[playerPosition.y][playerPosition.x].stairsBeneath = undefined;
   } else {
     newTiles[playerPosition.y][playerPosition.x].type = 'floor';
   }

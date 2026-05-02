@@ -41,6 +41,10 @@ interface RecruitmentModalProps {
   onSendHome: () => void;
   /** Called when the recruit roll fails. */
   onFail: () => void;
+  /** Number of additional defeated enemies queued behind this one. */
+  queuedRecruits?: number;
+  /** Optional: skip every queued recruit at once (also dismisses current). */
+  onSkipAll?: () => void;
 }
 
 type Step = 'intro' | 'decision' | 'replace';

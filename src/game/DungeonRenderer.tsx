@@ -563,6 +563,12 @@ function Tile({
     door: {
       title: '🚪 Door',
       description: 'A passageway'
+    },
+    nest: {
+      title: '🪺 Monster Nest',
+      description: tile.nestState
+        ? `${tile.nestState.element} nest — HP ${tile.nestState.hp}/${tile.nestState.maxHp}. Attack to destroy.`
+        : 'Spawns enemies. Attack to destroy.',
     }
   };
   

@@ -64,6 +64,10 @@ export function AdminPanel() {
             <Ghost className="w-4 h-4" />
             Monsters
           </TabsTrigger>
+          <TabsTrigger value="access" className="gap-2">
+            <UserCog className="w-4 h-4" />
+            Access
+          </TabsTrigger>
         </TabsList>
 
         <ScrollArea className="flex-1">

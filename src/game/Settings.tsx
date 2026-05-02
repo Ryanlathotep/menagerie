@@ -82,6 +82,23 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('monster-roguelike-settings', JSON.stringify(settings));
   }, [settings]);
 
+  // Apply theme to <html> — light/dark/system (follows browser preference)
+  useEffect(() => {
+    const root = document.documentElement;
+    const apply = (mode: ThemeMode) => {
+      const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+      const isDark = mode === 'dark' || (mode === 'system' && prefersDark);
+      root.classList.toggle('dark', isDark);
+    };
+    apply(settings.theme);
+    if (settings.theme === 'system' && window.matchMedia) {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      const handler = () => apply('system');
+      mq.addEventListener('change', handler);
+      return () => mq.removeEventListener('change', handler);
+    }
+  }, [settings.theme]);
+
   const updateSetting = <K extends keyof GameSettings>(key: K, value: GameSettings[K]) => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };

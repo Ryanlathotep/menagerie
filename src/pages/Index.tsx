@@ -4134,8 +4134,10 @@ function BattleView({
       
       // If no more level-ups, proceed to recruitment or end battle
       if (remaining.length === 0) {
-        // Check if we should show recruitment after all level ups
-        if (defeatedEnemy && state.run && state.run.party.length < 6) {
+        // Show recruitment if there's a defeated enemy. Even when the party
+        // is full the modal lets the player replace a member or send the
+        // recruit home to storage.
+        if (defeatedEnemy && state.run) {
           setShowRecruitment(true);
         } else {
           // End the battle now that user has seen all level up screens

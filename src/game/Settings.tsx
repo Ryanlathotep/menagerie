@@ -21,12 +21,15 @@ import { DiscoveryLeaderboard } from './DiscoveryLeaderboard';
 import { ExplorationLeaderboard } from './ExplorationLeaderboard';
 
 // Settings interface
+export type ThemeMode = 'system' | 'light' | 'dark';
+
 export interface GameSettings {
   autoRunDelay: number;      // ms for double-tap detection (100-500)
   autoRunSpeed: number;      // ms between auto-run steps (100-200)
   dungeonZoom: number;       // zoom level for dungeon tiles (50-400, 100 = default)
   showDamageNumbers: boolean;
   soundEnabled: boolean;
+  theme: ThemeMode;          // light / dark / follow browser
   // Overworld direction arrow overlays
   showHomeArrow: boolean;
   showHomeTowerArrow: boolean;
@@ -42,6 +45,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   dungeonZoom: 100,          // 100% = default size
   showDamageNumbers: true,
   soundEnabled: true,
+  theme: 'system',
   showHomeArrow: true,
   showHomeTowerArrow: true,
   showMajorDungeonArrows: true,

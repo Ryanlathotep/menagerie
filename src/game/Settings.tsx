@@ -500,7 +500,7 @@ function RebuildOverworldSection() {
             <Button variant="outline" size="sm" className="flex-1" onClick={() => setConfirming(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" size="sm" className="flex-1" onClick={doRebuild}>
+            <Button variant="destructive" size="sm" className="flex-1" onClick={() => doRebuild()}>
               Confirm Rebuild
             </Button>
           </div>

@@ -1462,7 +1462,7 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
 ];
 
 // ============= CONSUMABLE/POTION RECIPES =============
-export type ConsumableEffect = 'heal_hp' | 'heal_stamina' | 'heal_full' | 'cure_poison' | 'cure_burn' | 'cure_freeze' | 'cure_all' | 'boost_attack' | 'boost_defense' | 'boost_speed' | 'revive' | 'revive_full' | 'reveal_stairs';
+export type ConsumableEffect = 'heal_hp' | 'heal_stamina' | 'heal_full' | 'cure_poison' | 'cure_burn' | 'cure_freeze' | 'cure_all' | 'boost_attack' | 'boost_defense' | 'boost_speed' | 'revive' | 'revive_full' | 'reveal_stairs' | 'town_portal';
 
 export interface ConsumableRecipe {
   id: string;

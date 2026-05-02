@@ -617,6 +617,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     setTargetingTiles([]);
     setAffectedTiles([]);
     setHoveredTile(null);
+    aoePendingConfirmRef.current = null;
   }, []);
 
   // While aiming a skill, recompute valid targets (and the AoE preview under
@@ -653,6 +654,27 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     }
     
     const config = getAttackConfig(targetingMove);
+
+    // Mobile/touch tap-to-preview, tap-again-to-confirm for AoE moves.
+    const isTouchDevice = typeof window !== 'undefined'
+      && window.matchMedia?.('(hover: none), (pointer: coarse)').matches;
+    const isAoE = (targetingMove.targeting && targetingMove.targeting !== 'single')
+      || (targetingMove.aoeRadius ?? 0) > 0;
+    if (isTouchDevice && isAoE) {
+      const pending = aoePendingConfirmRef.current;
+      const now = Date.now();
+      const sameTile = pending && pending.x === worldX && pending.y === worldY && now - pending.time < 4000;
+      if (!sameTile) {
+        const previewTiles = getOverworldAffectedTiles(overworld.playerPosition, { x: worldX, y: worldY }, config, overworld);
+        setHoveredTile({ x: worldX, y: worldY });
+        setAffectedTiles(previewTiles);
+        aoePendingConfirmRef.current = { x: worldX, y: worldY, time: now };
+        addLog(`🎯 Tap again to fire ${targetingMove.name}`, 'system');
+        return;
+      }
+      aoePendingConfirmRef.current = null;
+    }
+
     const affected = getOverworldAffectedTiles(overworld.playerPosition, { x: worldX, y: worldY }, config, overworld);
     
     const staminaCost = targetingMove.staminaCost || 0;

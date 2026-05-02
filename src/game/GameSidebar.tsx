@@ -167,184 +167,318 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   const enemyMaxStamina = enemyExpandedStats?.stamina ?? enemyMonster?.stats.special ?? 1;
   const enemyHpPercent = enemyCurrentHp / enemyMaxHp * 100;
   const enemyStaminaPercent = enemyCurrentStamina / enemyMaxStamina * 100;
+  const desktopIconClass = 'w-5 h-5 sm:w-4 sm:h-4';
+  const mobileMenuButtonClass = 'h-10 flex-1 min-w-0 px-0';
+
   return <>
       {/* Always visible bottom bar */}
-      <div ref={ref} className="fixed bottom-0 left-0 right-0 bg-card border-t-2 border-primary/20 flex items-center px-2 sm:px-3 gap-2 sm:gap-4 z-50 shadow-lg h-16 sm:h-24">
-        {/* Player section */}
-        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-          {/* Monster portrait */}
-          <div className="relative flex-shrink-0">
-            <MonsterSprite species={monster.species} element={monster.element} classType={monster.class} size={isMobileView ? 40 : 64} animated={false} equipment={equipment} />
-            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 rounded-full">
-              {monster.level}
-            </div>
-          </div>
-          
-          {/* Player bars - always visible */}
-          <div className="flex flex-col gap-0.5 sm:gap-1 w-[80px] sm:w-[180px]">
-            <div className="flex items-center gap-1 sm:gap-2">
-              <span className="text-[10px] sm:text-xs text-stat-hp w-5 sm:w-6 font-medium">HP</span>
-              <div className="flex-1 h-3 sm:h-4 bg-muted rounded-full overflow-hidden" title={`HP: ${currentHp}/${maxHp}`}>
-                <div className="h-full bg-stat-hp transition-all" style={{ width: `${hpPercent}%` }} />
-              </div>
-              <span className="hidden sm:inline text-xs font-mono w-16 text-right">{currentHp}/{maxHp}</span>
-            </div>
-            <div className="flex items-center gap-1 sm:gap-2">
-              <span className="text-[10px] sm:text-xs text-stat-special w-5 sm:w-6 font-medium">ST</span>
-              <div className="flex-1 h-3 sm:h-4 bg-muted rounded-full overflow-hidden" title={`Stamina: ${currentStamina}/${maxStamina}`}>
-                <div className="h-full bg-stat-special transition-all" style={{ width: `${staminaPercent}%` }} />
-              </div>
-              <span className="hidden sm:inline text-xs font-mono w-16 text-right">{currentStamina}/{maxStamina}</span>
-            </div>
-            <div className="flex items-center gap-1 sm:gap-2">
-              <span className="text-[10px] sm:text-xs text-secondary w-5 sm:w-6 font-medium">XP</span>
-              <div className="flex-1 h-2.5 sm:h-3 bg-muted rounded-full overflow-hidden" title={`XP: ${experience}/${experienceToNext}`}>
-                <div className="h-full bg-secondary transition-all" style={{ width: `${xpPercent}%` }} />
-              </div>
-              <span className="hidden sm:inline text-xs font-mono w-16 text-right">{experience}/{experienceToNext}</span>
-            </div>
-          </div>
-        </div>
+      <div
+        ref={ref}
+        className={isMobileView
+          ? 'fixed bottom-0 left-0 right-0 bg-card border-t-2 border-primary/20 flex flex-col px-2 py-1.5 gap-1.5 z-50 shadow-lg h-[108px]'
+          : 'fixed bottom-0 left-0 right-0 bg-card border-t-2 border-primary/20 flex items-center px-2 sm:px-3 gap-2 sm:gap-4 z-50 shadow-lg h-16 sm:h-24'}
+      >
+        {isMobileView ? (
+          <>
+            <div className="flex items-center gap-2 min-w-0 w-full">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <div className="relative flex-shrink-0">
+                  <MonsterSprite species={monster.species} element={monster.element} classType={monster.class} size={40} animated={false} equipment={equipment} />
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                    {monster.level}
+                  </div>
+                </div>
 
-        {/* Enemy section - only in battle */}
-        {inBattle && enemyMonster && (
-          <div className="hidden sm:flex items-center gap-2 flex-shrink-0 border-l border-border/50 pl-3">
-            <div className="relative flex-shrink-0">
-              <MonsterSprite species={enemyMonster.species} element={enemyMonster.element} classType={enemyMonster.class} size={36} animated={false} />
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 rounded-full">
-                {enemyMonster.level}
+                <div className="flex flex-col gap-0.5 min-w-0 flex-1 max-w-[140px]">
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-stat-hp w-5 font-medium">HP</span>
+                    <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden" title={`HP: ${currentHp}/${maxHp}`}>
+                      <div className="h-full bg-stat-hp transition-all" style={{ width: `${hpPercent}%` }} />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-stat-special w-5 font-medium">ST</span>
+                    <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden" title={`Stamina: ${currentStamina}/${maxStamina}`}>
+                      <div className="h-full bg-stat-special transition-all" style={{ width: `${staminaPercent}%` }} />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-secondary w-5 font-medium">XP</span>
+                    <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden" title={`XP: ${experience}/${experienceToNext}`}>
+                      <div className="h-full bg-secondary transition-all" style={{ width: `${xpPercent}%` }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="flex flex-col items-end leading-none max-w-[92px] min-w-0 mr-1">
+                  {locationName && (
+                    <div className="flex items-center gap-1 text-muted-foreground min-w-0 max-w-full" title={locationName}>
+                      <Map className="w-3 h-3 flex-shrink-0" />
+                      <span className="truncate text-[10px]">{locationName}</span>
+                    </div>
+                  )}
+                  <span className="text-[10px] text-muted-foreground">F{floor}</span>
+                  <span className="text-[10px] text-primary font-bold">💰{gold}</span>
+                </div>
+
+                <Button variant="ghost" size="icon" className="w-9 h-9 flex-shrink-0" onClick={() => setShowSettings(true)} title="Settings">
+                  <Settings className="w-5 h-5" />
+                </Button>
+
+                {onFlee && (
+                  <Button
+                    variant={fleeVariant === 'home' ? 'secondary' : 'destructive'}
+                    size="icon"
+                    className="w-9 h-9 flex-shrink-0"
+                    onClick={onFlee}
+                    title={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
+                  >
+                    {fleeVariant === 'home'
+                      ? <Home className="w-5 h-5" />
+                      : <DoorOpen className="w-5 h-5" />}
+                  </Button>
+                )}
+
+                {onMainMenu && (
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="w-9 h-9 flex-shrink-0"
+                    onClick={onMainMenu}
+                    title={mainMenuTitle ?? 'Return to main menu (ends run)'}
+                  >
+                    <LogOut className="w-5 h-5" />
+                  </Button>
+                )}
               </div>
             </div>
-            <div className="flex flex-col gap-1 min-w-[80px]">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-stat-hp w-5 font-medium">HP</span>
-                <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-stat-hp transition-all" style={{ width: `${enemyHpPercent}%` }} />
-                </div>
-                <span className="text-[10px] font-mono w-12 text-right">{enemyCurrentHp}/{enemyMaxHp}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-stat-special w-5 font-medium">ST</span>
-                <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-stat-special transition-all" style={{ width: `${enemyStaminaPercent}%` }} />
-                </div>
-                <span className="text-[10px] font-mono w-12 text-right">{enemyCurrentStamina}/{enemyMaxStamina}</span>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {/* Menu buttons - larger touch targets on mobile. Scrolls horizontally on
-            tiny viewports so the Flee / Main Menu buttons on the right never get
-            pushed off-screen. */}
-        <div className="flex gap-0.5 sm:gap-1 ml-auto min-w-0 flex-1 overflow-x-auto no-scrollbar justify-end">
-          <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('character')} title="Character Sheet">
-            <User className="w-5 h-5 sm:w-4 sm:h-4" />
-          </Button>
-          
-          <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('moves')} title="Moves / Attacks">
-            <Swords className="w-5 h-5 sm:w-4 sm:h-4" />
-          </Button>
-          
-          <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('inventory')} title="Inventory">
-            <Backpack className="w-5 h-5 sm:w-4 sm:h-4" />
-          </Button>
-          
-          {/* Equipment button - shows equipped item count */}
-          {onOpenEquipment && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="w-9 h-9 sm:w-8 sm:h-8 relative flex-shrink-0" 
-              onClick={onOpenEquipment}
-              title="Equipment"
-            >
-              <Shirt className="w-5 h-5 sm:w-4 sm:h-4" />
-              {equipmentInventory.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                  {equipmentInventory.length}
-                </span>
+
+            <div className="flex items-center gap-1 w-full min-w-0">
+              <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('character')} title="Character Sheet">
+                <User className="w-5 h-5" />
+              </Button>
+
+              <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('moves')} title="Moves / Attacks">
+                <Swords className="w-5 h-5" />
+              </Button>
+
+              <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('inventory')} title="Inventory">
+                <Backpack className="w-5 h-5" />
+              </Button>
+
+              {onOpenEquipment && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`${mobileMenuButtonClass} relative`}
+                  onClick={onOpenEquipment}
+                  title="Equipment"
+                >
+                  <Shirt className="w-5 h-5" />
+                  {equipmentInventory.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                      {equipmentInventory.length}
+                    </span>
+                  )}
+                </Button>
               )}
-            </Button>
-          )}
-          
-          {/* Party button - only show if party has more than 1 member */}
-          {party.length > 1 && onPartySwitch && (
-            <Button 
-              variant={activePanel === 'party' ? 'default' : 'ghost'} 
-              size="icon" 
-              className="w-9 h-9 sm:w-8 sm:h-8 relative flex-shrink-0" 
-              onClick={() => handlePanelChange('party')} 
-              title="Party"
-            >
-              <Users className="w-5 h-5 sm:w-4 sm:h-4" />
-              <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                {party.length}
-              </span>
-            </Button>
-          )}
-          
-          {/* Portable Workstation — opens crafting modal anywhere when owned */}
-          {onOpenWorkshop && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
-              onClick={onOpenWorkshop}
-              title="Open Portable Workstation (crafting)"
-            >
-              <Hammer className="w-5 h-5 sm:w-4 sm:h-4" />
-            </Button>
-          )}
 
-          {/* Settings button */}
-          <Button variant="ghost" size="icon" className="w-9 h-9 sm:w-8 sm:h-8 hidden sm:flex flex-shrink-0" onClick={() => setShowSettings(true)} title="Settings">
-            <Settings className="w-5 h-5 sm:w-4 sm:h-4" />
-          </Button>
-        </div>
-        
-        {/* Location, floor and gold */}
-        <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs flex-shrink-0 min-w-0">
-          <div className="flex items-center gap-0.5 sm:gap-1 text-muted-foreground min-w-0" title={locationName}>
-            <Map className="w-3 h-3 flex-shrink-0" />
-            {locationName ? (
-              <span className="truncate max-w-[80px] sm:max-w-[200px]">
-                <span className="text-foreground font-semibold hidden sm:inline">{locationName}</span>
-                <span className="sm:ml-1">F{floor}</span>
-              </span>
-            ) : (
-              <span>F{floor}</span>
+              {party.length > 1 && onPartySwitch && (
+                <Button
+                  variant={activePanel === 'party' ? 'default' : 'ghost'}
+                  size="sm"
+                  className={`${mobileMenuButtonClass} relative`}
+                  onClick={() => handlePanelChange('party')}
+                  title="Party"
+                >
+                  <Users className="w-5 h-5" />
+                  <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                    {party.length}
+                  </span>
+                </Button>
+              )}
+
+              {onOpenWorkshop && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={mobileMenuButtonClass}
+                  onClick={onOpenWorkshop}
+                  title="Open Portable Workstation (crafting)"
+                >
+                  <Hammer className="w-5 h-5" />
+                </Button>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Player section */}
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              <div className="relative flex-shrink-0">
+                <MonsterSprite species={monster.species} element={monster.element} classType={monster.class} size={64} animated={false} equipment={equipment} />
+                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 rounded-full">
+                  {monster.level}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-0.5 sm:gap-1 w-[80px] sm:w-[180px]">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <span className="text-[10px] sm:text-xs text-stat-hp w-5 sm:w-6 font-medium">HP</span>
+                  <div className="flex-1 h-3 sm:h-4 bg-muted rounded-full overflow-hidden" title={`HP: ${currentHp}/${maxHp}`}>
+                    <div className="h-full bg-stat-hp transition-all" style={{ width: `${hpPercent}%` }} />
+                  </div>
+                  <span className="hidden sm:inline text-xs font-mono w-16 text-right">{currentHp}/{maxHp}</span>
+                </div>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <span className="text-[10px] sm:text-xs text-stat-special w-5 sm:w-6 font-medium">ST</span>
+                  <div className="flex-1 h-3 sm:h-4 bg-muted rounded-full overflow-hidden" title={`Stamina: ${currentStamina}/${maxStamina}`}>
+                    <div className="h-full bg-stat-special transition-all" style={{ width: `${staminaPercent}%` }} />
+                  </div>
+                  <span className="hidden sm:inline text-xs font-mono w-16 text-right">{currentStamina}/{maxStamina}</span>
+                </div>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <span className="text-[10px] sm:text-xs text-secondary w-5 sm:w-6 font-medium">XP</span>
+                  <div className="flex-1 h-2.5 sm:h-3 bg-muted rounded-full overflow-hidden" title={`XP: ${experience}/${experienceToNext}`}>
+                    <div className="h-full bg-secondary transition-all" style={{ width: `${xpPercent}%` }} />
+                  </div>
+                  <span className="hidden sm:inline text-xs font-mono w-16 text-right">{experience}/{experienceToNext}</span>
+                </div>
+              </div>
+            </div>
+
+            {inBattle && enemyMonster && (
+              <div className="hidden sm:flex items-center gap-2 flex-shrink-0 border-l border-border/50 pl-3">
+                <div className="relative flex-shrink-0">
+                  <MonsterSprite species={enemyMonster.species} element={enemyMonster.element} classType={enemyMonster.class} size={36} animated={false} />
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 rounded-full">
+                    {enemyMonster.level}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1 min-w-[80px]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-stat-hp w-5 font-medium">HP</span>
+                    <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-stat-hp transition-all" style={{ width: `${enemyHpPercent}%` }} />
+                    </div>
+                    <span className="text-[10px] font-mono w-12 text-right">{enemyCurrentHp}/{enemyMaxHp}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-stat-special w-5 font-medium">ST</span>
+                    <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-stat-special transition-all" style={{ width: `${enemyStaminaPercent}%` }} />
+                    </div>
+                    <span className="text-[10px] font-mono w-12 text-right">{enemyCurrentStamina}/{enemyMaxStamina}</span>
+                  </div>
+                </div>
+              </div>
             )}
-          </div>
-          <div className="text-primary font-bold flex-shrink-0">💰{gold}</div>
-        </div>
-        
-        {/* Flee button */}
-        {onFlee && (
-          <Button
-            variant={fleeVariant === 'home' ? 'secondary' : 'destructive'}
-            size="icon"
-            className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
-            onClick={onFlee}
-            title={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
-          >
-            {fleeVariant === 'home'
-              ? <Home className="w-5 h-5 sm:w-4 sm:h-4" />
-              : <DoorOpen className="w-5 h-5 sm:w-4 sm:h-4" />}
-          </Button>
-        )}
 
-        {/* Return to Main Menu button */}
-        {onMainMenu && (
-          <Button
-            variant="destructive"
-            size="icon"
-            className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
-            onClick={onMainMenu}
-            title={mainMenuTitle ?? 'Return to main menu (ends run)'}
-          >
-            <LogOut className="w-5 h-5 sm:w-4 sm:h-4" />
-          </Button>
+            <div className="flex gap-0.5 sm:gap-1 ml-auto min-w-0 flex-1 overflow-x-auto no-scrollbar justify-end">
+              <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('character')} title="Character Sheet">
+                <User className={desktopIconClass} />
+              </Button>
+
+              <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('moves')} title="Moves / Attacks">
+                <Swords className={desktopIconClass} />
+              </Button>
+
+              <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('inventory')} title="Inventory">
+                <Backpack className={desktopIconClass} />
+              </Button>
+
+              {onOpenEquipment && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-9 h-9 sm:w-8 sm:h-8 relative flex-shrink-0"
+                  onClick={onOpenEquipment}
+                  title="Equipment"
+                >
+                  <Shirt className={desktopIconClass} />
+                  {equipmentInventory.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                      {equipmentInventory.length}
+                    </span>
+                  )}
+                </Button>
+              )}
+
+              {party.length > 1 && onPartySwitch && (
+                <Button
+                  variant={activePanel === 'party' ? 'default' : 'ghost'}
+                  size="icon"
+                  className="w-9 h-9 sm:w-8 sm:h-8 relative flex-shrink-0"
+                  onClick={() => handlePanelChange('party')}
+                  title="Party"
+                >
+                  <Users className={desktopIconClass} />
+                  <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                    {party.length}
+                  </span>
+                </Button>
+              )}
+
+              {onOpenWorkshop && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
+                  onClick={onOpenWorkshop}
+                  title="Open Portable Workstation (crafting)"
+                >
+                  <Hammer className={desktopIconClass} />
+                </Button>
+              )}
+
+              <Button variant="ghost" size="icon" className="w-9 h-9 sm:w-8 sm:h-8 hidden sm:flex flex-shrink-0" onClick={() => setShowSettings(true)} title="Settings">
+                <Settings className={desktopIconClass} />
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs flex-shrink-0 min-w-0">
+              <div className="flex items-center gap-0.5 sm:gap-1 text-muted-foreground min-w-0" title={locationName}>
+                <Map className="w-3 h-3 flex-shrink-0" />
+                {locationName ? (
+                  <span className="truncate max-w-[80px] sm:max-w-[200px]">
+                    <span className="text-foreground font-semibold hidden sm:inline">{locationName}</span>
+                    <span className="sm:ml-1">F{floor}</span>
+                  </span>
+                ) : (
+                  <span>F{floor}</span>
+                )}
+              </div>
+              <div className="text-primary font-bold flex-shrink-0">💰{gold}</div>
+            </div>
+
+            {onFlee && (
+              <Button
+                variant={fleeVariant === 'home' ? 'secondary' : 'destructive'}
+                size="icon"
+                className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
+                onClick={onFlee}
+                title={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
+              >
+                {fleeVariant === 'home'
+                  ? <Home className={desktopIconClass} />
+                  : <DoorOpen className={desktopIconClass} />}
+              </Button>
+            )}
+
+            {onMainMenu && (
+              <Button
+                variant="destructive"
+                size="icon"
+                className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
+                onClick={onMainMenu}
+                title={mainMenuTitle ?? 'Return to main menu (ends run)'}
+              >
+                <LogOut className={desktopIconClass} />
+              </Button>
+            )}
+          </>
         )}
       </div>
       

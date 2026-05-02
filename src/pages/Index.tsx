@@ -2330,10 +2330,19 @@ function DungeonView({
             });
             setShowRecruitment(true);
           } else {
-            // Update enemy HP
-            const updatedEnemies = newDungeon.enemies.map(e => 
-              e.id === enemy.id ? { ...e, stats: { ...e.stats, currentHp: newEnemyHp } } : e
-            );
+            // Update enemy HP, and apply drain_stamina effect if move has it
+            const updatedEnemies = newDungeon.enemies.map(e => {
+              if (e.id !== enemy.id) return e;
+              const nextStats = { ...e.stats, currentHp: newEnemyHp };
+              if (targetingMove.effect === 'drain_stamina') {
+                const staMax = nextStats.stamina ?? 50;
+                const staCur = nextStats.currentStamina ?? staMax;
+                const drained = Math.min(staCur, 15);
+                nextStats.currentStamina = Math.max(0, staCur - drained);
+                if (drained > 0) addLog(`🌀 ${e.name} loses ${drained} stamina!`, 'status');
+              }
+              return { ...e, stats: nextStats };
+            });
             newDungeon = { ...newDungeon, enemies: updatedEnemies };
             addLog(`⚔️ ${targetingMove.name} hit ${enemy.name} for ${damage} damage!`, 'damage');
           }

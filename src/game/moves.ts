@@ -158,7 +158,7 @@ export const SPECIES_MOVES: Record<SpeciesType, Move[]> = {
     { id: 'horn_charge', name: 'Horn Charge', description: 'Powerful charge', type: 'melee', power: 35, accuracy: 85, staminaCost: 8, speedMod: -1, aspects: ['species'], unlockLevel: 1 },
     { id: 'shell_guard', name: 'Shell Guard', description: 'Defensive stance', type: 'status', power: 0, accuracy: 100, staminaCost: 4, speedMod: 0, aspects: ['species'], effect: 'raise_defense', unlockLevel: 1 },
     { id: 'mandible_crush', name: 'Mandible Crush', description: 'Crushing mandible attack', type: 'melee', power: 42, accuracy: 88, staminaCost: 9, speedMod: -1, aspects: ['species'], unlockLevel: 4 },
-    { id: 'roll_out', name: 'Roll Out', description: 'Rolling ball attack', type: 'melee', power: 40, accuracy: 90, staminaCost: 8, speedMod: 0, aspects: ['species'], unlockLevel: 7 },
+    { id: 'roll_out', name: 'Roll Out', description: 'Rolling ball attack — bowls through enemies in a line', type: 'melee', power: 40, accuracy: 90, staminaCost: 8, speedMod: 0, aspects: ['species'], unlockLevel: 7, targeting: 'piercing' },
     { id: 'iron_shell', name: 'Iron Shell', description: 'Maximum defense', type: 'status', power: 0, accuracy: 100, staminaCost: 10, speedMod: -2, aspects: ['species'], effect: 'raise_defense', unlockLevel: 10 },
     { id: 'horn_javelin', name: 'Horn Javelin', description: 'Devastating horn strike', type: 'melee', power: 65, accuracy: 78, staminaCost: 16, speedMod: -1, aspects: ['species'], unlockLevel: 14 },
   ],

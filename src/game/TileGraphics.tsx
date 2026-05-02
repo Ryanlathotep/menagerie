@@ -392,43 +392,70 @@ function openSidesFromTerrainFit(fit: AutoTileFit): { n: boolean; e: boolean; s:
   }
 }
 
-// Stairs tile
+// Descending staircase — a dark pit with steps fading into shadow.
 export function StairsTile({ size, seed = 0 }: TileGraphicProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className="block">
       {/* Grid lines */}
       <line x1="0" y1="0" x2="24" y2="0" stroke={INK_COLORS.faint} strokeWidth={0.3} opacity={0.4} />
       <line x1="0" y1="0" x2="0" y2="24" stroke={INK_COLORS.faint} strokeWidth={0.3} opacity={0.4} />
-      
-      {/* Descending stairs - hand drawn style */}
-      <rect x="4" y="4" width="16" height="3" fill="hsl(35 40% 75%)" stroke={INK_COLORS.medium} strokeWidth={0.5} />
-      <rect x="5" y="7" width="14" height="3" fill="hsl(35 40% 70%)" stroke={INK_COLORS.medium} strokeWidth={0.5} />
-      <rect x="6" y="10" width="12" height="3" fill="hsl(35 40% 65%)" stroke={INK_COLORS.medium} strokeWidth={0.5} />
-      <rect x="7" y="13" width="10" height="3" fill="hsl(35 40% 55%)" stroke={INK_COLORS.medium} strokeWidth={0.5} />
-      <rect x="8" y="16" width="8" height="3" fill="hsl(35 40% 45%)" stroke={INK_COLORS.medium} strokeWidth={0.5} />
-      
+
+      {/* Dark pit backdrop — recessed shadow */}
+      <rect x="3" y="3" width="18" height="18" rx="1.5" fill="hsl(28 25% 18%)" stroke={INK_COLORS.dark} strokeWidth={0.6} />
+      {/* Inner shadow gradient feel */}
+      <rect x="5" y="5" width="14" height="14" rx="1" fill="hsl(28 30% 12%)" opacity={0.85} />
+
+      {/* Descending steps — narrower as they go deeper into the dark */}
+      <rect x="4"  y="4"  width="16" height="2.2" fill="hsl(35 35% 60%)" stroke={INK_COLORS.dark} strokeWidth={0.5} />
+      <rect x="5"  y="6.2" width="14" height="2.2" fill="hsl(33 32% 48%)" stroke={INK_COLORS.dark} strokeWidth={0.5} />
+      <rect x="6"  y="8.4" width="12" height="2.2" fill="hsl(30 28% 36%)" stroke={INK_COLORS.dark} strokeWidth={0.5} />
+      <rect x="7"  y="10.6" width="10" height="2.2" fill="hsl(28 25% 26%)" stroke={INK_COLORS.dark} strokeWidth={0.4} />
+      <rect x="8"  y="12.8" width="8"  height="2.2" fill="hsl(28 22% 18%)" stroke={INK_COLORS.dark} strokeWidth={0.3} />
+      {/* Black void at the bottom */}
+      <rect x="9.5" y="15" width="5" height="4" fill="hsl(28 30% 6%)" />
+
       {/* Down arrow */}
-      <path d="M12 19 L9 15 L15 15 Z" fill={INK_COLORS.dark} opacity={0.7} />
+      <path d="M12 20.5 L8.5 16.5 L15.5 16.5 Z" fill="hsl(40 60% 75%)" stroke={INK_COLORS.dark} strokeWidth={0.4} />
     </svg>
   );
 }
 
-// Ascending staircase — mirror of StairsTile with an upward arrow.
+// Ascending staircase — bright stone steps rising toward a glowing opening above.
 export function StairsUpTile({ size, seed = 0 }: TileGraphicProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className="block">
       <line x1="0" y1="0" x2="24" y2="0" stroke={INK_COLORS.faint} strokeWidth={0.3} opacity={0.4} />
       <line x1="0" y1="0" x2="0" y2="24" stroke={INK_COLORS.faint} strokeWidth={0.3} opacity={0.4} />
 
-      {/* Ascending stairs - widest step at the bottom */}
-      <rect x="8" y="5"  width="8"  height="3" fill="hsl(35 40% 45%)" stroke={INK_COLORS.medium} strokeWidth={0.5} />
-      <rect x="7" y="8"  width="10" height="3" fill="hsl(35 40% 55%)" stroke={INK_COLORS.medium} strokeWidth={0.5} />
-      <rect x="6" y="11" width="12" height="3" fill="hsl(35 40% 65%)" stroke={INK_COLORS.medium} strokeWidth={0.5} />
-      <rect x="5" y="14" width="14" height="3" fill="hsl(35 40% 70%)" stroke={INK_COLORS.medium} strokeWidth={0.5} />
-      <rect x="4" y="17" width="16" height="3" fill="hsl(35 40% 75%)" stroke={INK_COLORS.medium} strokeWidth={0.5} />
+      {/* Stone archway frame around the stairs */}
+      <path
+        d="M3 21 L3 9 Q3 3 12 3 Q21 3 21 9 L21 21 Z"
+        fill="hsl(35 30% 78%)"
+        stroke={INK_COLORS.dark}
+        strokeWidth={0.7}
+      />
+      {/* Glowing opening at the top of the arch */}
+      <path
+        d="M6 9 Q6 6 12 6 Q18 6 18 9 L18 12 L6 12 Z"
+        fill="hsl(48 90% 78%)"
+        opacity={0.9}
+      />
+      <path
+        d="M6 9 Q6 6 12 6 Q18 6 18 9"
+        stroke={INK_COLORS.dark}
+        strokeWidth={0.5}
+        fill="none"
+      />
 
-      {/* Up arrow */}
-      <path d="M12 2 L9 6 L15 6 Z" fill={INK_COLORS.dark} opacity={0.7} />
+      {/* Ascending steps — widest at bottom, lighter as they rise into the light */}
+      <rect x="8"  y="11" width="8"  height="2.1" fill="hsl(40 55% 80%)" stroke={INK_COLORS.dark} strokeWidth={0.4} />
+      <rect x="7"  y="13.1" width="10" height="2.1" fill="hsl(38 45% 72%)" stroke={INK_COLORS.dark} strokeWidth={0.4} />
+      <rect x="6"  y="15.2" width="12" height="2.1" fill="hsl(36 40% 64%)" stroke={INK_COLORS.dark} strokeWidth={0.5} />
+      <rect x="5"  y="17.3" width="14" height="2.1" fill="hsl(34 35% 56%)" stroke={INK_COLORS.dark} strokeWidth={0.5} />
+      <rect x="4"  y="19.4" width="16" height="2.1" fill="hsl(32 30% 48%)" stroke={INK_COLORS.dark} strokeWidth={0.6} />
+
+      {/* Up arrow centered in the glowing opening */}
+      <path d="M12 4 L8.5 8.5 L15.5 8.5 Z" fill="hsl(28 40% 25%)" stroke={INK_COLORS.dark} strokeWidth={0.4} />
     </svg>
   );
 }

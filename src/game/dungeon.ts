@@ -612,6 +612,13 @@ export function movePlayer(
   } else {
     newTiles[newY][newX].type = 'player';
   }
+  // Remember if there's a staircase under the player so it gets restored on
+  // step-off (player tile overwrites the stairs tile while standing).
+  if (targetTile.type === 'stairs') {
+    newTiles[newY][newX].stairsBeneath = 'down';
+  } else if (targetTile.type === 'stairs_up') {
+    newTiles[newY][newX].stairsBeneath = 'up';
+  }
   
   const newPosition = { x: newX, y: newY };
   updateVisibility(newTiles, newPosition);
@@ -632,6 +639,7 @@ export function movePlayer(
     encounter,
     treasure,
     stairs,
+    stairsUp,
     trap,
     terrain,
     shop,

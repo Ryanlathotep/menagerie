@@ -915,9 +915,15 @@ function DungeonView({
       }
 
       const newDungeon = generateDungeon(startingFloor, entrance?.theme, startingFloor);
+      // Mark the entry tile so an "up" staircase appears beneath the player —
+      // stepping back onto it exits the dungeon to the overworld / summary.
+      const spawn = newDungeon.playerPosition;
+      const entryTiles = newDungeon.tiles.map((row, y) =>
+        row.map((t, x) => (x === spawn.x && y === spawn.y ? { ...t, stairsBeneath: 'up' as const } : t))
+      );
       dispatch({
         type: 'SET_DUNGEON',
-        dungeon: newDungeon
+        dungeon: { ...newDungeon, tiles: entryTiles }
       });
     }
   }, [dungeon, dispatch, state.saveData.dungeonEntrances, state.saveData.unlockedMonsters]);

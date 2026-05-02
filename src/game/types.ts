@@ -273,7 +273,7 @@ export interface Move {
 // ============= DUNGEON =============
 // 'wall' = bedrock (never mineable). 'mineable_wall' = breakable with a Pickaxe;
 // see `wallTier` and `wallHits` on DungeonTile for hardness/progress.
-export type TileType = 'floor' | 'wall' | 'mineable_wall' | 'door' | 'stairs' | 'stairs_up' | 'trap' | 'treasure' | 'enemy' | 'player' | 'shop' | 'terrain' | 'plant' | 'elevator';
+export type TileType = 'floor' | 'wall' | 'mineable_wall' | 'door' | 'stairs' | 'stairs_up' | 'trap' | 'treasure' | 'enemy' | 'player' | 'shop' | 'terrain' | 'plant' | 'elevator' | 'nest';
 export type TrapType = 'spike' | 'poison' | 'alarm';
 export type PlantType = 'healing_herb' | 'stamina_root' | 'antidote_leaf' | 'mana_blossom' | 'fire_pepper' | 'ice_mint' | 'revive_moss' | 'golden_ginseng' | 'phoenix_flower' | 'panacea_petal' | 'miracle_lotus';
 

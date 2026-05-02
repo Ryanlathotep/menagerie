@@ -143,7 +143,7 @@ export const SPECIES_MOVES: Record<SpeciesType, Move[]> = {
     { id: 'toxic_fang', name: 'Toxic Fang', description: 'Venomous strike', type: 'melee', power: 25, accuracy: 90, staminaCost: 6, speedMod: 0, aspects: ['species'], effect: 'poison', unlockLevel: 1 },
     { id: 'coil', name: 'Coil', description: 'Defensive coiling', type: 'status', power: 0, accuracy: 100, staminaCost: 4, speedMod: 0, aspects: ['species'], effect: 'raise_defense', unlockLevel: 3 },
     { id: 'venom_spray', name: 'Venom Spray', description: 'Spray venom in a cone', type: 'ranged', power: 30, accuracy: 85, staminaCost: 8, speedMod: 0, aspects: ['species'], effect: 'poison', unlockLevel: 6, targeting: 'cone' },
-    { id: 'crushing_coils', name: 'Crushing Coils', description: 'Powerful constriction', type: 'melee', power: 50, accuracy: 82, staminaCost: 12, speedMod: -1, aspects: ['species'], unlockLevel: 10 },
+    { id: 'crushing_coils', name: 'Crushing Coils', description: 'Powerful constriction — pierces through enemies in line', type: 'melee', power: 50, accuracy: 82, staminaCost: 12, speedMod: -1, aspects: ['species'], unlockLevel: 10, targeting: 'piercing' },
     { id: 'deadly_venom', name: 'Deadly Venom', description: 'Lethal poison attack', type: 'melee', power: 45, accuracy: 90, staminaCost: 14, speedMod: 0, aspects: ['species'], effect: 'poison', unlockLevel: 14 },
   ],
   wolf: [

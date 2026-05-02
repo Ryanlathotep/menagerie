@@ -2641,18 +2641,43 @@ function DungeonView({
           enemy={defeatedEnemy}
           recruitChance={recruitChance}
           impressiveStats={battleStats}
+          party={state.run?.party || []}
           partyFull={(state.run?.party.length || 0) >= 6}
-          onRecruit={() => {
-            // Attempt recruitment
-            const roll = Math.random() * 100;
-            if (roll < recruitChance) {
-              // Success!
-              dispatch({ type: 'ADD_TO_PARTY', monster: defeatedEnemy });
-              addLog(`🎉 ${defeatedEnemy.name} joined your party!`, 'system');
-              toast.success(`${defeatedEnemy.species} joined your team!`);
-            } else {
-              addLog(`😔 ${defeatedEnemy.name} declined to join...`, 'info');
-            }
+          onFail={() => {
+            addLog(`😔 ${defeatedEnemy.name} declined to join...`, 'info');
+            setShowRecruitment(false);
+            setDefeatedEnemy(null);
+          }}
+          onAddToParty={() => {
+            dispatch({ type: 'ADD_TO_PARTY', monster: defeatedEnemy });
+            addLog(`🎉 ${defeatedEnemy.name} joined your party!`, 'system');
+            toast.success(`${defeatedEnemy.species} joined your team!`);
+            setShowRecruitment(false);
+            setDefeatedEnemy(null);
+          }}
+          onReplaceMember={(replaceIndex) => {
+            dispatch({ type: 'SEND_PARTY_MEMBER_TO_TOWN', partyIndex: replaceIndex });
+            dispatch({ type: 'ADD_TO_PARTY', monster: defeatedEnemy });
+            addLog(`🔄 Sent a party member home; ${defeatedEnemy.name} took their place!`, 'system');
+            toast.success(`${defeatedEnemy.species} joined your team!`);
+            setShowRecruitment(false);
+            setDefeatedEnemy(null);
+          }}
+          onSendHome={() => {
+            const comboId = `${defeatedEnemy.species}_${defeatedEnemy.element}_${defeatedEnemy.class}`;
+            dispatch({
+              type: 'UNLOCK_MONSTER',
+              monster: {
+                comboId,
+                species: defeatedEnemy.species,
+                element: defeatedEnemy.element,
+                classType: defeatedEnemy.class,
+                level: defeatedEnemy.level,
+                equipment: defeatedEnemy.equipment,
+              },
+            });
+            addLog(`🏠 ${defeatedEnemy.name} was sent home to the roster.`, 'system');
+            toast.success(`${defeatedEnemy.species} sent home!`);
             setShowRecruitment(false);
             setDefeatedEnemy(null);
           }}

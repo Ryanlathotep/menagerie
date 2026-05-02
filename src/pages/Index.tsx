@@ -4307,8 +4307,12 @@ function BattleView({
           enemy={defeatedEnemy}
           recruitChance={recruitChance}
           impressiveStats={battleStats}
+          party={state.run?.party || []}
           partyFull={(state.run?.party.length || 0) >= 6}
-          onRecruit={handleRecruit}
+          onFail={handleRecruitFail}
+          onAddToParty={handleRecruitAddToParty}
+          onReplaceMember={handleRecruitReplaceMember}
+          onSendHome={handleRecruitSendHome}
           onDismiss={handleDismissRecruitment}
         />
       )}

@@ -1,14 +1,38 @@
 // Dungeon generation and management
 
-import { DungeonState, DungeonTile, Position, Monster, SpeciesType, TrapType, PlantType, DungeonTheme } from './types';
+import { DungeonState, DungeonTile, Position, Monster, SpeciesType, TrapType, PlantType, DungeonTheme, ElementType } from './types';
 import { generateRandomMonster } from './utils';
 import { generateEquipment, generateMaterialDrop, CraftingMaterial, EquipmentItem } from './equipment';
 import { getRandomTerrainType, TerrainType } from './terrain';
 import { getWallTierForFloor, MineableWallTier, hitsToBreak, rollWallDrop, PickaxeTier, MINEABLE_WALL_TIERS } from './tools';
+import { NestState } from './nests';
 
 // Larger dungeons with scrolling viewport
 const DUNGEON_WIDTH = 30;
 const DUNGEON_HEIGHT = 25;
+
+// Create a dungeon nest, themed by element if the dungeon theme is elemental.
+function createDungeonNest(floor: number, theme?: DungeonTheme): NestState {
+  const themeElement = theme?.kind === 'element' && theme.value
+    ? (theme.value as ElementType)
+    : undefined;
+  const elements: ElementType[] = ['fire','water','earth','air','void','normal'];
+  const element = themeElement || elements[Math.floor(Math.random() * elements.length)];
+  const level = Math.max(1, floor);
+  const baseHp = 30 + level * 15;
+  return {
+    id: `dnest_${floor}_${Math.floor(Math.random() * 1e9)}`,
+    worldX: 0, worldY: 0,
+    element,
+    hp: baseHp,
+    maxHp: baseHp,
+    level,
+    spawnCooldown: 12,
+    maxSpawnCooldown: Math.max(6, 12 - Math.floor(level / 3)),
+    totalSpawned: 0,
+    destroyed: false,
+  };
+}
 
 // Item types for loot
 export interface LootItem {
@@ -364,6 +388,71 @@ export function generateDungeon(floor: number, theme?: DungeonTheme, startingFlo
     }
   }
 
+  // ===== Monster nests (uncommon, mostly on floors %5 and %10) =====
+  // Frequency: floor%10===0 → 80%, floor%5===0 → 40%, otherwise none.
+  // 50% of placed nests are biased toward blocking a feature
+  // (stairs, shop, elevator, treasure); the other 50% are scattered.
+  const nestChance = floor > 0 && floor % 10 === 0
+    ? 0.8
+    : floor > 0 && floor % 5 === 0
+      ? 0.4
+      : 0;
+  if (nestChance > 0 && Math.random() < nestChance) {
+    const numNests = floor % 10 === 0 ? 1 + (Math.random() < 0.4 ? 1 : 0) : 1;
+
+    // Collect feature tiles to potentially block
+    const featureTiles: { x: number; y: number }[] = [];
+    for (let y = 0; y < DUNGEON_HEIGHT; y++) {
+      for (let x = 0; x < DUNGEON_WIDTH; x++) {
+        const t = tiles[y][x].type;
+        if (t === 'stairs' || t === 'stairs_up' || t === 'shop' || t === 'elevator' || t === 'treasure') {
+          featureTiles.push({ x, y });
+        }
+      }
+    }
+
+    for (let n = 0; n < numNests; n++) {
+      let placed = false;
+      const blocking = Math.random() < 0.5 && featureTiles.length > 0;
+
+      if (blocking) {
+        // Try to place adjacent to a random feature tile (cardinal neighbour)
+        const feature = featureTiles[Math.floor(Math.random() * featureTiles.length)];
+        const dirs = [[0,-1],[1,0],[0,1],[-1,0]].sort(() => Math.random() - 0.5);
+        for (const [dx, dy] of dirs) {
+          const nx = feature.x + dx, ny = feature.y + dy;
+          if (nx < 1 || nx >= DUNGEON_WIDTH - 1 || ny < 1 || ny >= DUNGEON_HEIGHT - 1) continue;
+          if (tiles[ny][nx].type !== 'floor') continue;
+          // Don't block the player's first room
+          if (firstRoom && nx >= firstRoom.x && nx < firstRoom.x + firstRoom.width &&
+              ny >= firstRoom.y && ny < firstRoom.y + firstRoom.height) continue;
+          tiles[ny][nx].type = 'nest';
+          tiles[ny][nx].nestState = createDungeonNest(floor, theme);
+          placed = true;
+          break;
+        }
+      }
+
+      if (!placed) {
+        // Scatter: random floor tile in any non-first room
+        let attempts = 0;
+        while (!placed && attempts < 50) {
+          const roomIndex = 1 + Math.floor(Math.random() * Math.max(1, rooms.length - 1));
+          if (roomIndex >= rooms.length) { attempts++; continue; }
+          const room = rooms[roomIndex];
+          const nx = room.x + Math.floor(Math.random() * room.width);
+          const ny = room.y + Math.floor(Math.random() * room.height);
+          if (tiles[ny]?.[nx]?.type === 'floor') {
+            tiles[ny][nx].type = 'nest';
+            tiles[ny][nx].nestState = createDungeonNest(floor, theme);
+            placed = true;
+          }
+          attempts++;
+        }
+      }
+    }
+  }
+
   // Reveal tiles around player
   updateVisibility(tiles, playerPosition);
 
@@ -471,6 +560,8 @@ export interface MoveResult {
   // Bumped into a rune tile (terrain). The caller decides whether to dig
   // (if a strong enough Shovel is held) or step onto it normally.
   runeBump: { x: number; y: number; terrainType: TerrainType } | null;
+  // Bumped into a monster nest. Caller deals damage based on player's attack stat.
+  nestBump: { x: number; y: number } | null;
 }
 
 // Check if a tile should stop auto-run
@@ -491,6 +582,7 @@ export function shouldStopAutoRun(tiles: DungeonTile[][], x: number, y: number, 
   if (tile.type === 'stairs_up') return true;
   if (tile.type === 'shop') return true;
   if (tile.type === 'elevator') return true;
+  if (tile.type === 'nest') return true;
   
   return false;
 }
@@ -523,14 +615,14 @@ export function movePlayer(
 
   // Check bounds
   if (newX < 0 || newX >= dungeon.width || newY < 0 || newY >= dungeon.height) {
-    return { dungeon, encounter: null, treasure: false, stairs: false, stairsUp: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null, runeBump: null };
+    return { dungeon, encounter: null, treasure: false, stairs: false, stairsUp: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null, runeBump: null, nestBump: null };
   }
 
   const targetTile = tiles[newY][newX];
 
   // Bedrock walls — flat block, no mining possible
   if (targetTile.type === 'wall') {
-    return { dungeon, encounter: null, treasure: false, stairs: false, stairsUp: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null, runeBump: null };
+    return { dungeon, encounter: null, treasure: false, stairs: false, stairsUp: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null, runeBump: null, nestBump: null };
   }
 
   // Mineable walls — also block movement, but signal a "bump" so Index.tsx
@@ -542,6 +634,17 @@ export function movePlayer(
       plant: null,
       mineableBump: { x: newX, y: newY, tier: targetTile.wallTier },
       runeBump: null,
+      nestBump: null,
+    };
+  }
+
+  // Nest tiles block movement; caller deals damage based on player attack.
+  if (targetTile.type === 'nest') {
+    return {
+      dungeon, encounter: null, treasure: false, stairs: false, stairsUp: false, trap: null,
+      terrain: null, shop: false, elevator: false, loot: null, blocked: true,
+      plant: null, mineableBump: null, runeBump: null,
+      nestBump: { x: newX, y: newY },
     };
   }
 
@@ -651,6 +754,7 @@ export function movePlayer(
     blocked: false,
     mineableBump: null,
     runeBump,
+    nestBump: null,
   };
 }
 
@@ -765,4 +869,51 @@ export function removeEnemy(dungeon: DungeonState, enemyId: string): DungeonStat
     tiles: newTiles,
     enemies: newEnemies,
   };
+}
+
+// ============= DUNGEON NESTS =============
+// Apply damage to a nest tile. Returns the updated dungeon and whether the nest was destroyed.
+export function damageDungeonNest(
+  dungeon: DungeonState,
+  x: number,
+  y: number,
+  damage: number,
+): { dungeon: DungeonState; destroyed: boolean; nest: NestState | null } {
+  const tile = dungeon.tiles[y]?.[x];
+  if (!tile || tile.type !== 'nest' || !tile.nestState) {
+    return { dungeon, destroyed: false, nest: null };
+  }
+  const newTiles = dungeon.tiles.map(row => row.map(t => ({ ...t, nestState: t.nestState ? { ...t.nestState } : undefined })));
+  const target = newTiles[y][x];
+  const nest = target.nestState!;
+  nest.hp = Math.max(0, nest.hp - damage);
+  if (nest.hp <= 0) {
+    nest.destroyed = true;
+    target.type = 'floor';
+    target.nestState = undefined;
+    return { dungeon: { ...dungeon, tiles: newTiles }, destroyed: true, nest };
+  }
+  return { dungeon: { ...dungeon, tiles: newTiles }, destroyed: false, nest };
+}
+
+// Tick all visible nests on the current floor; returns list of spawn requests.
+export function tickDungeonNests(
+  dungeon: DungeonState,
+): { dungeon: DungeonState; spawns: { nestX: number; nestY: number; nest: NestState }[] } {
+  const newTiles = dungeon.tiles.map(row => row.map(t => ({ ...t, nestState: t.nestState ? { ...t.nestState } : undefined })));
+  const spawns: { nestX: number; nestY: number; nest: NestState }[] = [];
+  for (let y = 0; y < newTiles.length; y++) {
+    for (let x = 0; x < newTiles[y].length; x++) {
+      const t = newTiles[y][x];
+      if (t.type !== 'nest' || !t.nestState || t.nestState.destroyed) continue;
+      // Only tick when player has discovered the nest (visible or explored)
+      if (!t.explored) continue;
+      t.nestState.spawnCooldown -= 1;
+      if (t.nestState.spawnCooldown <= 0) {
+        t.nestState.spawnCooldown = t.nestState.maxSpawnCooldown;
+        spawns.push({ nestX: x, nestY: y, nest: t.nestState });
+      }
+    }
+  }
+  return { dungeon: { ...dungeon, tiles: newTiles }, spawns };
 }

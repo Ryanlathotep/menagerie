@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getComboId, UnlockedMonster, InventoryItem, MonsterStats, Monster, Position, DungeonState } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
-import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, hasVisibleEnemy, LOOT_TABLE, mineWall, mineableWallName, digRune } from '@/game/dungeon';
+import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, hasVisibleEnemy, LOOT_TABLE, mineWall, mineableWallName, digRune, damageDungeonNest, tickDungeonNests } from '@/game/dungeon';
+import { spawnNestMonster, getNestDestroyRewards } from '@/game/nests';
 import { expandDungeonIfNeeded, findStairsPosition } from '@/game/dungeonExpansion';
 import { PICKAXE_TIERS, hitsToBreak } from '@/game/tools';
 import { useEffect, useCallback, useState, useRef } from 'react';
@@ -1057,6 +1058,29 @@ function DungeonView({
       return;
     }
 
+    // Nest bump: attack the nest with the active monster's attack stat (consumes the turn).
+    if (result.nestBump) {
+      const monster = state.run.currentMonster;
+      const attack = monster.stats.attack ?? 5;
+      const damage = Math.max(1, Math.floor(attack));
+      const damageResult = damageDungeonNest(dungeon, result.nestBump.x, result.nestBump.y, damage);
+      dispatch({ type: 'SET_DUNGEON', dungeon: damageResult.dungeon });
+      if (damageResult.destroyed && damageResult.nest) {
+        const rewards = getNestDestroyRewards(damageResult.nest);
+        dispatch({ type: 'ADD_GOLD', amount: rewards.gold });
+        for (const mat of rewards.materials) {
+          dispatch({ type: 'ADD_MATERIAL', materialId: mat.id, quantity: 1 });
+        }
+        addLog(`💥 Destroyed the ${damageResult.nest.element} nest! +${rewards.gold} gold, +${rewards.materials.length} materials`, 'loot');
+      } else if (damageResult.nest) {
+        addLog(`⚔️ Hit the ${damageResult.nest.element} nest for ${damage}! (${damageResult.nest.hp}/${damageResult.nest.maxHp} HP)`, 'damage');
+      }
+      // Let enemies act after this attack
+      setTimeout(() => {
+        processEnemyTurnsRef.current?.(damageResult.dungeon);
+      }, 100);
+      return;
+    }
 
     // If not blocked, apply minor HP and Stamina regeneration to ALL conscious party members
     if (!result.blocked) {
@@ -1326,11 +1350,43 @@ function DungeonView({
       checkStepRespawn();
     }
     
+    // Tick dungeon nests on successful, non-event moves: explored nests may spawn an adjacent enemy.
+    let dungeonForEnemyTurn = result.dungeon;
+    if (!result.blocked && !result.encounter) {
+      const tickResult = tickDungeonNests(result.dungeon);
+      if (tickResult.spawns.length > 0) {
+        let workingDungeon = tickResult.dungeon;
+        const newEnemies = [...workingDungeon.enemies];
+        const newTiles = workingDungeon.tiles.map(row => row.map(t => ({ ...t })));
+        for (const { nestX, nestY, nest } of tickResult.spawns) {
+          // Find an adjacent floor tile to spawn on
+          const offsets = [[0,-1],[1,0],[0,1],[-1,0],[1,-1],[1,1],[-1,1],[-1,-1]].sort(() => Math.random() - 0.5);
+          for (const [dx, dy] of offsets) {
+            const sx = nestX + dx, sy = nestY + dy;
+            if (sy < 0 || sy >= newTiles.length || sx < 0 || sx >= newTiles[0].length) continue;
+            if (newTiles[sy][sx].type !== 'floor') continue;
+            const enemy = spawnNestMonster(nest);
+            newTiles[sy][sx].type = 'enemy';
+            newTiles[sy][sx].enemyId = enemy.id;
+            newEnemies.push(enemy);
+            addLog(`🪺 A ${enemy.name} emerges from a nearby nest!`, 'damage');
+            break;
+          }
+        }
+        workingDungeon = { ...workingDungeon, tiles: newTiles, enemies: newEnemies };
+        dispatch({ type: 'SET_DUNGEON', dungeon: workingDungeon });
+        dungeonForEnemyTurn = workingDungeon;
+      } else {
+        dispatch({ type: 'SET_DUNGEON', dungeon: tickResult.dungeon });
+        dungeonForEnemyTurn = tickResult.dungeon;
+      }
+    }
+
     // Process enemy turns after player moves (if not entering battle/shop/etc.)
     if (!result.blocked && !result.encounter && !result.shop && !result.elevator && !result.stairs) {
       // Delay enemy processing slightly to allow UI update
       setTimeout(() => {
-        processEnemyTurnsRef.current?.(result.dungeon);
+        processEnemyTurnsRef.current?.(dungeonForEnemyTurn);
       }, 100);
     }
   }, [dungeon, dispatch, state.run, checkStepRespawn]);

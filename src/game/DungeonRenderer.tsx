@@ -22,6 +22,7 @@ import {
   ElevatorTile,
   DoorTile 
 } from './TileGraphics';
+import { OverworldNestTile } from './OverworldTileGraphics';
 import { fitFromNeighbors } from './autoTiling';
 
 // Check if a monster combo has been captured at equal or lower level
@@ -562,6 +563,12 @@ function Tile({
     door: {
       title: '🚪 Door',
       description: 'A passageway'
+    },
+    nest: {
+      title: '🪺 Monster Nest',
+      description: tile.nestState
+        ? `${tile.nestState.element} nest — HP ${tile.nestState.hp}/${tile.nestState.maxHp}. Attack to destroy.`
+        : 'Spawns enemies. Attack to destroy.',
     }
   };
   
@@ -582,6 +589,11 @@ function Tile({
         return <ElevatorTile size={tileSize} seed={tileSeed} />;
       case 'door':
         return <DoorTile size={tileSize} seed={tileSeed} />;
+      case 'nest': {
+        const ns = tile.nestState;
+        const hpPct = ns ? Math.round((ns.hp / ns.maxHp) * 100) : 100;
+        return <OverworldNestTile size={tileSize} seed={tileSeed} element={ns?.element || 'normal'} hpPercent={hpPct} />;
+      }
       default:
         return null;
     }

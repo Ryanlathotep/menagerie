@@ -621,7 +621,7 @@ export function movePlayer(
 
   // Bedrock walls — flat block, no mining possible
   if (targetTile.type === 'wall') {
-    return { dungeon, encounter: null, treasure: false, stairs: false, stairsUp: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null, runeBump: null };
+    return { dungeon, encounter: null, treasure: false, stairs: false, stairsUp: false, trap: null, terrain: null, shop: false, elevator: false, loot: null, blocked: true, plant: null, mineableBump: null, runeBump: null, nestBump: null };
   }
 
   // Mineable walls — also block movement, but signal a "bump" so Index.tsx

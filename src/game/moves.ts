@@ -89,7 +89,8 @@ export const SPECIES_MOVES: Record<SpeciesType, Move[]> = {
     { id: 'fortify', name: 'Fortify', description: 'Harden defenses', type: 'status', power: 0, accuracy: 100, staminaCost: 6, speedMod: 0, aspects: ['species'], effect: 'raise_defense', unlockLevel: 1 },
     { id: 'tremor', name: 'Tremor', description: 'Shake the ground', type: 'melee', power: 30, accuracy: 90, staminaCost: 7, speedMod: -1, aspects: ['species'], effect: 'lower_speed', unlockLevel: 4 },
     { id: 'boulder_throw', name: 'Boulder Throw', description: 'Hurl a massive rock in a straight line', type: 'ranged', power: 55, accuracy: 70, staminaCost: 13, speedMod: -2, aspects: ['species'], unlockLevel: 8, targeting: 'single' },
-    { id: 'tectonic_slam', name: 'Tectonic Slam', description: 'Earth-shattering blow', type: 'melee', power: 70, accuracy: 65, staminaCost: 18, speedMod: -3, aspects: ['species'], unlockLevel: 14 },
+    { id: 'tectonic_slam', name: 'Tectonic Slam', description: 'Earth-shattering blow that quakes adjacent tiles', type: 'melee', power: 70, accuracy: 65, staminaCost: 18, speedMod: -3, aspects: ['species'], unlockLevel: 14, targeting: 'aura', aoeRadius: 1 },
+    { id: 'shockwave', name: 'Shockwave', description: 'Pound the ground — hits all adjacent foes', type: 'melee', power: 32, accuracy: 90, staminaCost: 10, speedMod: -1, aspects: ['species'], unlockLevel: 6, targeting: 'aura', aoeRadius: 1 },
   ],
   wisp: [
     { id: 'light_beam', name: 'Light Beam', description: 'Piercing beam of light that hits all in a line', type: 'ranged', power: 30, accuracy: 95, staminaCost: 7, speedMod: 1, aspects: ['species'], unlockLevel: 1, targeting: 'piercing' },

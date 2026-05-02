@@ -560,6 +560,8 @@ export interface MoveResult {
   // Bumped into a rune tile (terrain). The caller decides whether to dig
   // (if a strong enough Shovel is held) or step onto it normally.
   runeBump: { x: number; y: number; terrainType: TerrainType } | null;
+  // Bumped into a monster nest. Caller deals damage based on player's attack stat.
+  nestBump: { x: number; y: number } | null;
 }
 
 // Check if a tile should stop auto-run

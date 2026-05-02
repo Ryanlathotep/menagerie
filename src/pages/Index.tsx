@@ -2204,6 +2204,9 @@ function DungeonView({
     // Calculate damage and apply to enemies in affected tiles
     let totalDamage = 0;
     let enemiesHit: Monster[] = [];
+    // Collect recruitment entries for every enemy this AoE defeats so we can
+    // queue them up after the loop (multi-kill recruitment flow).
+    const recruitEntries: RecruitQueueEntry[] = [];
     let newDungeon = { ...dungeon };
     
     // Wall mining via attacks: melee/ranged moves with power > 0 chip mineable

@@ -844,6 +844,7 @@ function DungeonView({
   const [stepsSinceLastSpawn, setStepsSinceLastSpawn] = useState(0);
   const [respawnStepThreshold, setRespawnStepThreshold] = useState(RESPAWN_CONFIG.baseSteps);
   const lastFloorRef = useRef<number>(dungeon?.floor ?? 1);
+  const lastDungeonRunRef = useRef<unknown>(state.run);
   
   // Ref for enemy processing to avoid circular dependency
   const processEnemyTurnsRef = useRef<((dungeon: import('@/game/types').DungeonState | null) => void) | null>(null);
@@ -925,15 +926,22 @@ function DungeonView({
     dispatch({ type: 'SET_PHASE', phase: 'main_menu' });
   }, [dispatch, state.saveData, state.run, isAuthenticated, saveToCloud, addLog]);
 
-  // Reset respawn counter when floor changes
+  // Reset respawn counter when floor changes OR a new run starts (so a fresh
+  // dungeon doesn't inherit the accelerated spawn threshold from the prior run).
   useEffect(() => {
-    if (dungeon && dungeon.floor !== lastFloorRef.current) {
+    if (!dungeon) return;
+    const runChanged = state.run !== lastDungeonRunRef.current;
+    const floorChanged = dungeon.floor !== lastFloorRef.current;
+    if (runChanged || floorChanged) {
       lastFloorRef.current = dungeon.floor;
+      lastDungeonRunRef.current = state.run;
       setStepsSinceLastSpawn(0);
       setRespawnStepThreshold(RESPAWN_CONFIG.baseSteps);
-      addLog('🔄 Respawn counter reset on new floor.', 'system');
+      if (floorChanged) {
+        addLog('🔄 Respawn counter reset on new floor.', 'system');
+      }
     }
-  }, [dungeon?.floor, addLog]);
+  }, [dungeon, state.run, addLog]);
   
   // Step-based respawn check - called when player moves
   const checkStepRespawn = useCallback(() => {

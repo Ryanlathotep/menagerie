@@ -1058,6 +1058,29 @@ function DungeonView({
       return;
     }
 
+    // Nest bump: attack the nest with the active monster's attack stat (consumes the turn).
+    if (result.nestBump) {
+      const monster = state.run.currentMonster;
+      const attack = monster.stats.attack ?? 5;
+      const damage = Math.max(1, Math.floor(attack));
+      const damageResult = damageDungeonNest(dungeon, result.nestBump.x, result.nestBump.y, damage);
+      dispatch({ type: 'SET_DUNGEON', dungeon: damageResult.dungeon });
+      if (damageResult.destroyed && damageResult.nest) {
+        const rewards = getNestDestroyRewards(damageResult.nest);
+        dispatch({ type: 'ADD_GOLD', amount: rewards.gold });
+        for (const mat of rewards.materials) {
+          dispatch({ type: 'ADD_MATERIAL', materialId: mat.id, quantity: 1 });
+        }
+        addLog(`💥 Destroyed the ${damageResult.nest.element} nest! +${rewards.gold} gold, +${rewards.materials.length} materials`, 'loot');
+      } else if (damageResult.nest) {
+        addLog(`⚔️ Hit the ${damageResult.nest.element} nest for ${damage}! (${damageResult.nest.hp}/${damageResult.nest.maxHp} HP)`, 'damage');
+      }
+      // Let enemies act after this attack
+      setTimeout(() => {
+        processEnemyTurnsRef.current?.(damageResult.dungeon);
+      }, 100);
+      return;
+    }
 
     // If not blocked, apply minor HP and Stamina regeneration to ALL conscious party members
     if (!result.blocked) {

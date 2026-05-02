@@ -1693,6 +1693,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         onAddToParty={handleRecruitAddToParty}
         onReplaceMember={handleRecruitReplace}
         onSendHome={handleRecruitSendHome}
+        queuedRecruits={recruitQueue.length}
+        onSkipAll={() => {
+          setRecruitQueue([]);
+          setShowRecruitment(false);
+          setDefeatedEnemy(null);
+        }}
       />
     )}
     

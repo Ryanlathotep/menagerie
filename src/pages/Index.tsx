@@ -844,6 +844,7 @@ function DungeonView({
   const [stepsSinceLastSpawn, setStepsSinceLastSpawn] = useState(0);
   const [respawnStepThreshold, setRespawnStepThreshold] = useState(RESPAWN_CONFIG.baseSteps);
   const lastFloorRef = useRef<number>(dungeon?.floor ?? 1);
+  const lastDungeonSeedRef = useRef<number | null>(dungeon?.seed ?? null);
   
   // Ref for enemy processing to avoid circular dependency
   const processEnemyTurnsRef = useRef<((dungeon: import('@/game/types').DungeonState | null) => void) | null>(null);

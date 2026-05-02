@@ -139,8 +139,13 @@ export default function Auth() {
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
             />
+            {!isLogin && (
+              <p className="text-sm text-muted-foreground">
+                Must be at least 6 characters.
+              </p>
+            )}
             {errors.password && (
-              <p className="text-xs text-destructive">{errors.password}</p>
+              <p className="text-sm font-medium text-destructive">{errors.password}</p>
             )}
           </div>
 
@@ -156,11 +161,11 @@ export default function Auth() {
         <div className="text-center space-y-3">
           <button
             type="button"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="text-base font-semibold text-primary underline underline-offset-4 hover:text-primary/80 transition-colors"
             onClick={() => setIsLogin(!isLogin)}
           >
             {isLogin
-              ? "Don't have an account? Sign up"
+              ? "Don't have an account? Create one"
               : 'Already have an account? Sign in'}
           </button>
 

@@ -589,6 +589,11 @@ function Tile({
         return <ElevatorTile size={tileSize} seed={tileSeed} />;
       case 'door':
         return <DoorTile size={tileSize} seed={tileSeed} />;
+      case 'nest': {
+        const ns = tile.nestState;
+        const hpPct = ns ? Math.round((ns.hp / ns.maxHp) * 100) : 100;
+        return <OverworldNestTile size={tileSize} seed={tileSeed} element={ns?.element || 'normal'} hpPercent={hpPct} />;
+      }
       default:
         return null;
     }

@@ -1307,6 +1307,23 @@ function tilesDiffer(a: OverworldTile, b: OverworldTile): boolean {
   return false;
 }
 
+// Count how many tiles the player has actually explored across all loaded chunks.
+// Used by the public exploration leaderboard. O(loaded tiles), cheap to call.
+export function countExploredTiles(state: OverworldState | undefined | null): number {
+  if (!state || !state.chunks) return 0;
+  let n = 0;
+  for (const chunk of Object.values(state.chunks)) {
+    for (let y = 0; y < CHUNK_SIZE_LOCAL; y++) {
+      const row = chunk.tiles[y];
+      if (!row) continue;
+      for (let x = 0; x < CHUNK_SIZE_LOCAL; x++) {
+        if (row[x]?.explored) n++;
+      }
+    }
+  }
+  return n;
+}
+
 // Strip chunks from the overworld state for compact serialization.
 // Returns a NEW object — does not mutate input. Captures the bare minimum
 // (tileOverrides + explored set) needed to faithfully restore on load.

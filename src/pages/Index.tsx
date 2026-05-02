@@ -1159,7 +1159,7 @@ function DungeonView({
       if (towerId) {
         const partySnapshot = state.run?.party?.map(m => ({
           species: m.species,
-          classType: m.classType,
+          class: m.class,
           element: m.element,
           level: m.level,
         })) ?? null;

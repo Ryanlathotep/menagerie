@@ -206,3 +206,7 @@
 .class-biological { background: linear-gradient(135deg, hsl(var(--class-biological)), hsl(135 75% 55%)); }
 .class-chemical { background: linear-gradient(135deg, hsl(var(--class-chemical)), hsl(285 80% 65%)); }
 .class-political { background: linear-gradient(135deg, hsl(var(--class-political)), hsl(205 85% 65%)); }
+
+/* Hide scrollbars on horizontally scrolling toolbars while keeping scroll behavior. */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

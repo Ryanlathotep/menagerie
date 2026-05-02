@@ -79,11 +79,15 @@ export function EnemyAttackMenu({
 
   return (
     <div
-      className="fixed inset-0 bg-background/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-background/60 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center p-2 sm:p-4 overscroll-contain"
+      style={{
+        paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
+        paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+      }}
       onClick={onClose}
     >
       <Card
-        className="p-4 max-w-md w-full space-y-3 max-h-[80vh] flex flex-col"
+        className="p-3 sm:p-4 w-full max-w-md space-y-3 flex flex-col max-h-full sm:max-h-[80vh] min-h-0"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

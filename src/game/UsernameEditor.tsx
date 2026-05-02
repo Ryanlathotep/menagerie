@@ -64,7 +64,7 @@ export function UsernameEditor() {
     setSaving(true);
     const result = await setMyUsername(draft);
     setSaving(false);
-    if (!result.ok) {
+    if (result.ok === false) {
       setLocalError(result.error);
       return;
     }

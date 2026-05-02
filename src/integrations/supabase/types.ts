@@ -41,6 +41,30 @@ export type Database = {
         }
         Relationships: []
       }
+      discovery_leaderboard: {
+        Row: {
+          achieved_at: string
+          discovered_count: number
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          achieved_at?: string
+          discovered_count?: number
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          achieved_at?: string
+          discovered_count?: number
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       game_data_overrides: {
         Row: {
           created_at: string
@@ -202,6 +226,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_discovery_leaderboard: {
+        Args: { _limit?: number }
+        Returns: {
+          achieved_at: string
+          discovered_count: number
+          rank: number
+          user_id: string
+          username: string
+        }[]
+      }
       get_my_username: { Args: never; Returns: string }
       get_tower_leaderboard: {
         Args: { _limit?: number; _tower_id: string }
@@ -235,6 +269,7 @@ export type Database = {
       }
       revoke_admin: { Args: { _user_id: string }; Returns: undefined }
       set_username: { Args: { _username: string }; Returns: Json }
+      submit_discovery_count: { Args: { _count: number }; Returns: Json }
       submit_tower_floor: {
         Args: {
           _floor: number

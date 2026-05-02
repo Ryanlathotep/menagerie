@@ -546,11 +546,15 @@ export function movePlayer(
   // Create new tiles array
   const newTiles = tiles.map(row => row.map(tile => ({ ...tile })));
   
-  // Clear old position - restore terrain if player was on one
+  // Clear old position - restore terrain / stairs if player was on one
   const oldTile = tiles[playerPosition.y][playerPosition.x];
   if (oldTile.terrainType) {
     // Player was on terrain - restore it
     newTiles[playerPosition.y][playerPosition.x].type = 'terrain';
+  } else if ((oldTile as any).stairsBeneath === 'down') {
+    newTiles[playerPosition.y][playerPosition.x].type = 'stairs';
+  } else if ((oldTile as any).stairsBeneath === 'up') {
+    newTiles[playerPosition.y][playerPosition.x].type = 'stairs_up';
   } else {
     newTiles[playerPosition.y][playerPosition.x].type = 'floor';
   }

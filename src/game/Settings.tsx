@@ -1,6 +1,7 @@
 // Game Settings Component and Hook
 
 import { useState, useEffect, createContext, useContext, ReactNode, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';

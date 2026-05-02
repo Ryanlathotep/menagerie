@@ -521,6 +521,11 @@ function CharacterSelect() {
   
   // Show equipment selection screen
   if (showEquipmentSelect && partyForRun.length > 0) {
+    const isHomeTower = activeEntranceForPrep?.isHome === true;
+    const ownedScrollCount = (state.saveData.storedItems || [])
+      .filter(i => i.id === 'town_portal_scroll')
+      .reduce((sum, i) => sum + (i.quantity || 1), 0);
+    const TOWN_PORTAL_PRICE = 80;
     return (
       <PreRunEquipment
         party={partyForRun}
@@ -528,6 +533,14 @@ function CharacterSelect() {
         storedItems={state.saveData.storedItems || []}
         entranceFloor={entranceFloorForPrep}
         maxStartFloor={maxStartFloorForPrep}
+        isHomeTower={runDestination === 'dungeon' ? isHomeTower : undefined}
+        townGold={state.saveData.gold || 0}
+        townPortalScrollPrice={TOWN_PORTAL_PRICE}
+        ownedScrollCount={ownedScrollCount}
+        onBuyTownPortalScroll={() => handleBuyItem(
+          { id: 'town_portal_scroll', name: 'Town Portal Scroll', quantity: 1, type: 'potion', effect: 'town_portal', value: 0 },
+          TOWN_PORTAL_PRICE,
+        )}
         onStart={startRun}
         onBack={() => setShowEquipmentSelect(false)}
       />

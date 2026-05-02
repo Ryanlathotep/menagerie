@@ -68,6 +68,33 @@ export type Database = {
         }
         Relationships: []
       }
+      exploration_leaderboard: {
+        Row: {
+          achieved_at: string
+          id: string
+          tiles_explored: number
+          updated_at: string
+          user_id: string
+          world_seed: number | null
+        }
+        Insert: {
+          achieved_at?: string
+          id?: string
+          tiles_explored?: number
+          updated_at?: string
+          user_id: string
+          world_seed?: number | null
+        }
+        Update: {
+          achieved_at?: string
+          id?: string
+          tiles_explored?: number
+          updated_at?: string
+          user_id?: string
+          world_seed?: number | null
+        }
+        Relationships: []
+      }
       game_data_overrides: {
         Row: {
           created_at: string
@@ -240,6 +267,17 @@ export type Database = {
           world_seed: number
         }[]
       }
+      get_exploration_leaderboard: {
+        Args: { _limit?: number }
+        Returns: {
+          achieved_at: string
+          rank: number
+          tiles_explored: number
+          user_id: string
+          username: string
+          world_seed: number
+        }[]
+      }
       get_my_username: { Args: never; Returns: string }
       get_tower_leaderboard: {
         Args: { _limit?: number; _tower_id: string }
@@ -274,6 +312,10 @@ export type Database = {
       revoke_admin: { Args: { _user_id: string }; Returns: undefined }
       set_username: { Args: { _username: string }; Returns: Json }
       submit_discovery_count: {
+        Args: { _count: number; _world_seed?: number }
+        Returns: Json
+      }
+      submit_exploration_count: {
         Args: { _count: number; _world_seed?: number }
         Returns: Json
       }

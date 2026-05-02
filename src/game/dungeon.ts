@@ -582,6 +582,7 @@ export function shouldStopAutoRun(tiles: DungeonTile[][], x: number, y: number, 
   if (tile.type === 'stairs_up') return true;
   if (tile.type === 'shop') return true;
   if (tile.type === 'elevator') return true;
+  if (tile.type === 'nest') return true;
   
   return false;
 }

@@ -1146,25 +1146,72 @@ function DungeonView({
         addLog(`📦 Found ${result.loot.name}!`, 'loot');
       }
     } else if (result.stairs) {
-      // Preserve the run's theme + starting floor when descending (infinite floors).
-      const newDungeon = generateDungeon(dungeon.floor + 1, dungeon.theme, dungeon.startingFloor);
-      dispatch({
-        type: 'SET_DUNGEON',
-        dungeon: newDungeon
-      });
-      addLog(`⬇️ Descended to Floor ${dungeon.floor + 1}!`, 'system');
-      // Auto-submit best floor to the public tower leaderboard. Best-effort
-      // and silently skipped for signed-out players or those without a username.
+      // Persistent staircases: snapshot current floor, then descend.
+      const visited = { ...(dungeon.visitedFloors || {}) };
+      visited[dungeon.floor] = {
+        tiles: dungeon.tiles,
+        enemies: dungeon.enemies,
+        playerPosition: dungeon.playerPosition,
+        width: dungeon.width,
+        height: dungeon.height,
+      };
+      const nextFloorNum = dungeon.floor + 1;
+      const cached = visited[nextFloorNum];
+      let newDungeon: DungeonState;
+      if (cached) {
+        newDungeon = {
+          floor: nextFloorNum,
+          tiles: cached.tiles,
+          enemies: cached.enemies,
+          playerPosition: cached.playerPosition,
+          width: cached.width,
+          height: cached.height,
+          theme: dungeon.theme,
+          startingFloor: dungeon.startingFloor,
+          visitedFloors: visited,
+        };
+      } else {
+        const fresh = generateDungeon(nextFloorNum, dungeon.theme, dungeon.startingFloor);
+        const tiles = fresh.tiles.map(row => row.map(t => ({ ...t })));
+        const spawn = fresh.playerPosition;
+        tiles[spawn.y][spawn.x].stairsBeneath = 'up';
+        newDungeon = { ...fresh, tiles, visitedFloors: visited };
+      }
+      dispatch({ type: 'SET_DUNGEON', dungeon: newDungeon });
+      addLog(`⬇️ Descended to Floor ${nextFloorNum}!`, 'system');
       const towerId = typeof window !== 'undefined' ? localStorage.getItem('menagerie_active_dungeon_id') : null;
       if (towerId) {
         const partySnapshot = state.run?.party?.map(m => ({
-          species: m.species,
-          class: m.class,
-          element: m.element,
-          level: m.level,
+          species: m.species, class: m.class, element: m.element, level: m.level,
         })) ?? null;
-        void submitTowerFloor(towerId, dungeon.floor + 1, partySnapshot);
+        void submitTowerFloor(towerId, nextFloorNum, partySnapshot);
       }
+    } else if (result.stairsUp && dungeon.floor > 1) {
+      const visited = { ...(dungeon.visitedFloors || {}) };
+      visited[dungeon.floor] = {
+        tiles: dungeon.tiles,
+        enemies: dungeon.enemies,
+        playerPosition: dungeon.playerPosition,
+        width: dungeon.width,
+        height: dungeon.height,
+      };
+      const prevFloorNum = dungeon.floor - 1;
+      const cached = visited[prevFloorNum];
+      const newDungeon: DungeonState = cached
+        ? {
+            floor: prevFloorNum,
+            tiles: cached.tiles,
+            enemies: cached.enemies,
+            playerPosition: cached.playerPosition,
+            width: cached.width,
+            height: cached.height,
+            theme: dungeon.theme,
+            startingFloor: dungeon.startingFloor,
+            visitedFloors: visited,
+          }
+        : { ...generateDungeon(prevFloorNum, dungeon.theme, dungeon.startingFloor), visitedFloors: visited };
+      dispatch({ type: 'SET_DUNGEON', dungeon: newDungeon });
+      addLog(`⬆️ Ascended to Floor ${prevFloorNum}.`, 'system');
     } else if (result.trap) {
       if (result.trap.type === 'spike' && result.trap.damage) {
         const newHp = Math.max(0, state.run.currentMonster.stats.currentHp - result.trap.damage);

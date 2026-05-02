@@ -14,6 +14,7 @@ import {
   MineableWallTile,
   TerrainTile, 
   StairsTile, 
+  StairsUpTile,
   TreasureTile, 
   TrapTile, 
   PlantTile, 
@@ -543,8 +544,12 @@ function Tile({
       description: 'Walk over to collect loot!'
     },
     stairs: {
-      title: '⬇️ Stairs',
+      title: '⬇️ Stairs Down',
       description: 'Descend to the next floor'
+    },
+    stairs_up: {
+      title: '⬆️ Stairs Up',
+      description: 'Ascend back to the previous floor'
     },
     shop: {
       title: '🏪 Shop',
@@ -569,6 +574,8 @@ function Tile({
         return <TreasureTile size={tileSize} seed={tileSeed} />;
       case 'stairs':
         return <StairsTile size={tileSize} seed={tileSeed} />;
+      case 'stairs_up':
+        return <StairsUpTile size={tileSize} seed={tileSeed} />;
       case 'shop':
         return <ShopTile size={tileSize} seed={tileSeed} />;
       case 'elevator':

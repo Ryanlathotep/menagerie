@@ -42,7 +42,9 @@ const DEFAULT_SAVE_DATA: SaveData = {
   gold: 0,                    // Town gold
   materials: {},              // Crafting materials
   storedEquipment: [],        // Equipment storage
-  storedItems: [],            // Town item storage
+  storedItems: [
+    { id: 'town_portal_scroll', name: 'Town Portal Scroll', quantity: 1, type: 'potion', effect: 'town_portal', value: 0 },
+  ],            // Town item storage (starter Town Portal Scroll)
   unlockedRecipes: [],        // Unlocked crafting recipes
   dungeonEntrances: createAllThemedTowers(), // Tower of the Infinite + element/class/species towers
   tools: {},                  // Singleton tools (pickaxe, etc.) - undefined until crafted

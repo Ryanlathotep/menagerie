@@ -11,7 +11,7 @@ import { generateEquipment, EquipmentItem, RARITY_COLORS, SLOT_INFO } from './eq
 interface ShopViewProps {
   gold: number;
   floor: number;
-  onBuy: (item: LootItem) => void;
+  onBuy: (item: LootItem, price: number) => void;
   onBuyEquipment: (item: EquipmentItem, price: number) => void;
   onClose: () => void;
 }

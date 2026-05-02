@@ -618,3 +618,16 @@ export function canSeePlayer(
   
   return true;
 }
+
+// ============= ENEMY STAMINA =============
+// Cost an enemy pays each time it attacks. If the enemy is below this
+// threshold, it must rest (regen) instead. Tuned to roughly the same
+// economy as player melee moves so combat with stamina-drain moves matters.
+export const ENEMY_ATTACK_STAMINA_COST = 8;
+export const ENEMY_REST_STAMINA_REGEN = 5;
+
+// Returns true if the enemy can pay the attack cost.
+export function enemyHasStaminaToAttack(enemy: Monster): boolean {
+  const cur = enemy.stats.currentStamina ?? enemy.stats.stamina ?? 0;
+  return cur >= ENEMY_ATTACK_STAMINA_COST;
+}

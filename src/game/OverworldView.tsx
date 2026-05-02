@@ -285,17 +285,42 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     
     const enemies = getVisibleOverworldEnemies(ow);
     let playerDamage = 0;
-    
+
     for (const { enemy, pos } of enemies) {
       const action = calculateOverworldEnemyAction(enemy, pos, ow.playerPosition, ow);
-      
+      const ATTACK_COST = 8;
+      const REGEN = 5;
+
       if (action.type === 'attack') {
+        const sMax = enemy.stats.stamina ?? 50;
+        const sCur = enemy.stats.currentStamina ?? sMax;
+        if (sCur < ATTACK_COST) {
+          // Exhausted — rest instead
+          for (const chunk of Object.values(ow.chunks)) {
+            const e = chunk.enemies.find(e => e.id === enemy.id);
+            if (e) { e.stats.currentStamina = Math.min(sMax, sCur + REGEN); break; }
+          }
+          addLog(`💤 ${enemy.name} is exhausted and catches its breath.`, 'system');
+          continue;
+        }
+        // Pay cost + attack
+        for (const chunk of Object.values(ow.chunks)) {
+          const e = chunk.enemies.find(e => e.id === enemy.id);
+          if (e) { e.stats.currentStamina = Math.max(0, sCur - ATTACK_COST); break; }
+        }
         const attackPower = enemy.stats.attack;
         const playerDef = state.run.currentMonster.stats.defense;
         const damage = Math.max(1, Math.floor(attackPower - playerDef * 0.3));
         playerDamage += damage;
         addLog(`👹 ${enemy.name} attacks for ${damage} damage!`, 'damage');
       } else if (action.type === 'move') {
+        // Small regen on move
+        const sMax = enemy.stats.stamina ?? 50;
+        const sCur = enemy.stats.currentStamina ?? sMax;
+        for (const chunk of Object.values(ow.chunks)) {
+          const e = chunk.enemies.find(e => e.id === enemy.id);
+          if (e) { e.stats.currentStamina = Math.min(sMax, sCur + Math.floor(REGEN / 2)); break; }
+        }
         moveOverworldEnemy(ow, enemy.id, pos, action.dx, action.dy);
       }
     }

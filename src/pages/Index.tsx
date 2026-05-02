@@ -74,6 +74,9 @@ import {
   moveEnemy, 
   getEnemyPosition, 
   canSeePlayer,
+  ENEMY_ATTACK_STAMINA_COST,
+  ENEMY_REST_STAMINA_REGEN,
+  enemyHasStaminaToAttack,
 } from '@/game/dungeonCombat';
 import { MoveInfoPanel } from '@/game/AttackTargeting';
 import { loadKeybinds, getMonsterKeybinds as getMonsterKeybindsImport } from '@/game/keybinds';
@@ -2327,10 +2330,19 @@ function DungeonView({
             });
             setShowRecruitment(true);
           } else {
-            // Update enemy HP
-            const updatedEnemies = newDungeon.enemies.map(e => 
-              e.id === enemy.id ? { ...e, stats: { ...e.stats, currentHp: newEnemyHp } } : e
-            );
+            // Update enemy HP, and apply drain_stamina effect if move has it
+            const updatedEnemies = newDungeon.enemies.map(e => {
+              if (e.id !== enemy.id) return e;
+              const nextStats = { ...e.stats, currentHp: newEnemyHp };
+              if (targetingMove.effect === 'drain_stamina') {
+                const staMax = nextStats.stamina ?? 50;
+                const staCur = nextStats.currentStamina ?? staMax;
+                const drained = Math.min(staCur, 15);
+                nextStats.currentStamina = Math.max(0, staCur - drained);
+                if (drained > 0) addLog(`🌀 ${e.name} loses ${drained} stamina!`, 'status');
+              }
+              return { ...e, stats: nextStats };
+            });
             newDungeon = { ...newDungeon, enemies: updatedEnemies };
             addLog(`⚔️ ${targetingMove.name} hit ${enemy.name} for ${damage} damage!`, 'damage');
           }
@@ -2385,7 +2397,12 @@ function DungeonView({
     
     let updatedDungeon = currentDungeon;
     let playerDamage = 0;
-    
+
+    // Track stamina deltas per enemy applied this turn (consumed by attack or
+    // regenerated while resting / moving). Applied once at the end so the
+    // dungeon's enemies array reflects the new values for the UI.
+    const staminaChanges = new Map<string, number>(); // enemyId -> delta (negative for consumption)
+
     for (const enemy of currentDungeon.enemies) {
       const enemyPos = getEnemyPosition(updatedDungeon, enemy.id);
       if (!enemyPos) continue;
@@ -2407,18 +2424,29 @@ function DungeonView({
       );
       
       if (action.type === 'attack') {
-        // Enemy attacks player
+        // Enemy must pay a stamina cost to attack. If exhausted, it rests instead.
+        if (!enemyHasStaminaToAttack(enemy)) {
+          staminaChanges.set(enemy.id, (staminaChanges.get(enemy.id) || 0) + ENEMY_REST_STAMINA_REGEN);
+          addLog(`💤 ${enemy.name} is exhausted and catches its breath.`, 'system');
+          continue;
+        }
+        // Pay cost + deal damage
+        staminaChanges.set(enemy.id, (staminaChanges.get(enemy.id) || 0) - ENEMY_ATTACK_STAMINA_COST);
         const attackPower = enemy.stats.attack;
         const playerDef = state.run.currentMonster.stats.defense;
         const damage = Math.max(1, Math.floor(attackPower - playerDef * 0.3));
         playerDamage += damage;
         addLog(`👹 ${enemy.name} attacks for ${damage} damage!`, 'damage');
       } else if (action.type === 'move' && action.direction) {
-        // Enemy moves
+        // Enemy moves — small stamina regen while not attacking
+        staminaChanges.set(enemy.id, (staminaChanges.get(enemy.id) || 0) + Math.floor(ENEMY_REST_STAMINA_REGEN / 2));
         const result = moveEnemy(updatedDungeon, enemy.id, action.direction);
         if (result.newPos) {
           updatedDungeon = result.dungeon;
         }
+      } else {
+        // Idle — regen
+        staminaChanges.set(enemy.id, (staminaChanges.get(enemy.id) || 0) + ENEMY_REST_STAMINA_REGEN);
       }
     }
     
@@ -2439,10 +2467,24 @@ function DungeonView({
         return;
       }
     }
+
+    // Apply stamina deltas to the enemies array (clamped to [0, max]).
+    if (staminaChanges.size > 0) {
+      const newEnemies = updatedDungeon.enemies.map(e => {
+        const delta = staminaChanges.get(e.id);
+        if (!delta) return e;
+        const max = e.stats.stamina ?? 50;
+        const cur = e.stats.currentStamina ?? max;
+        const next = Math.max(0, Math.min(max, cur + delta));
+        if (next === cur) return e;
+        return { ...e, stats: { ...e.stats, currentStamina: next } };
+      });
+      updatedDungeon = { ...updatedDungeon, enemies: newEnemies };
+    }
     
     // Update dungeon with enemy movements
     dispatch({ type: 'SET_DUNGEON', dungeon: updatedDungeon });
-  }, [state.run, dispatch]);
+  }, [state.run, dispatch, addLog, handleActiveMonsterDownOnMap]);
   
   // Keep the ref updated
   useEffect(() => {

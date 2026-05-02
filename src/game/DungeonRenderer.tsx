@@ -342,6 +342,24 @@ function Tile({
                 }} />
                 </div>
               </div>
+
+              {/* Stamina bar */}
+              {(() => {
+                const sMax = enemy.stats.stamina ?? 0;
+                const sCur = enemy.stats.currentStamina ?? sMax;
+                if (sMax <= 0) return null;
+                return (
+                  <div className="space-y-0.5">
+                    <div className="flex justify-between text-xs">
+                      <span>⚡ Stamina</span>
+                      <span className="font-mono">{sCur}/{sMax}</span>
+                    </div>
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-amber-500 transition-all" style={{ width: `${(sCur / sMax) * 100}%` }} />
+                    </div>
+                  </div>
+                );
+              })()}
               
               {/* Stats row */}
               <div className="flex gap-2 text-[10px] text-muted-foreground">

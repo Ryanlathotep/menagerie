@@ -81,7 +81,7 @@ export async function submitExplorationCount(count: number, worldSeed?: number |
   } catch (e) {
     console.warn('submit_exploration_count failed', e);
   }
-
+}
 
 export async function submitTowerFloor(
   towerId: string,

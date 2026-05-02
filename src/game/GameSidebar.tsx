@@ -348,7 +348,11 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
       
       {(activePanel && panelHost)
         ? createPortal(
-          <div className="h-full overflow-y-auto bg-card animate-fade-in">
+          <div
+            key={activePanel}
+            className="h-full w-full overflow-y-auto overscroll-contain bg-card animate-fade-in"
+            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+          >
             <div className="p-3">
             {/* Panel header */}
             <div className="flex items-center justify-between gap-2 mb-2">

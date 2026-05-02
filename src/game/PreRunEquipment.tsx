@@ -287,6 +287,40 @@ export function PreRunEquipment({
             </p>
           </Card>
         )}
+
+        {/* Town Portal Scroll warning + quick buy (non-home towers only) */}
+        {isHomeTower === false && (
+          <Card className="p-3 border-secondary/40 bg-secondary/5">
+            <div className="flex items-start gap-2">
+              <span className="text-xl leading-none">📜</span>
+              <div className="flex-1 space-y-1">
+                <h3 className="text-sm font-semibold text-secondary">Town Portal Scroll Required</h3>
+                <p className="text-xs text-muted-foreground">
+                  You can only flee this tower by using a <strong>Town Portal Scroll</strong>. Without one, your only way out is victory or defeat.
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  In storage: <span className="font-mono font-semibold">{ownedScrollCount}</span>
+                </p>
+                {onBuyTownPortalScroll && (
+                  <label className={`flex items-center gap-2 mt-1 text-xs cursor-pointer select-none ${townGold < townPortalScrollPrice ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-primary"
+                      disabled={townGold < townPortalScrollPrice}
+                      onChange={(e) => {
+                        if (e.target.checked) onBuyTownPortalScroll();
+                      }}
+                    />
+                    <span>
+                      Quick-buy 1 Town Portal Scroll for <span className="font-semibold text-primary">💰 {townPortalScrollPrice}</span>
+                      {townGold < townPortalScrollPrice && <span className="ml-1 text-destructive">(not enough gold)</span>}
+                    </span>
+                  </label>
+                )}
+              </div>
+            </div>
+          </Card>
+        )}
         {/* Party member tabs */}
         {monsters.length > 1 && (
           <div className="flex gap-1 justify-center flex-wrap">

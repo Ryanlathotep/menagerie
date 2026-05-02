@@ -119,6 +119,39 @@ export type Database = {
         }
         Relationships: []
       }
+      tower_leaderboard: {
+        Row: {
+          achieved_at: string
+          best_floor: number
+          id: string
+          party_snapshot: Json | null
+          run_seconds: number | null
+          tower_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          achieved_at?: string
+          best_floor: number
+          id?: string
+          party_snapshot?: Json | null
+          run_seconds?: number | null
+          tower_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          achieved_at?: string
+          best_floor?: number
+          id?: string
+          party_snapshot?: Json | null
+          run_seconds?: number | null
+          tower_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -140,11 +173,48 @@ export type Database = {
         }
         Relationships: []
       }
+      usernames: {
+        Row: {
+          created_at: string
+          updated_at: string
+          user_id: string
+          username: string
+          username_lower: string | null
+        }
+        Insert: {
+          created_at?: string
+          updated_at?: string
+          user_id: string
+          username: string
+          username_lower?: string | null
+        }
+        Update: {
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+          username?: string
+          username_lower?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      get_my_username: { Args: never; Returns: string }
+      get_tower_leaderboard: {
+        Args: { _limit?: number; _tower_id: string }
+        Returns: {
+          achieved_at: string
+          best_floor: number
+          party_snapshot: Json
+          rank: number
+          run_seconds: number
+          user_id: string
+          username: string
+        }[]
+      }
       grant_admin_by_email: { Args: { _email: string }; Returns: Json }
       has_role: {
         Args: {
@@ -164,6 +234,16 @@ export type Database = {
         }[]
       }
       revoke_admin: { Args: { _user_id: string }; Returns: undefined }
+      set_username: { Args: { _username: string }; Returns: Json }
+      submit_tower_floor: {
+        Args: {
+          _floor: number
+          _party_snapshot?: Json
+          _run_seconds?: number
+          _tower_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

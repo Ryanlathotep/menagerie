@@ -1,11 +1,14 @@
 // Scrolling list of all known dungeons grouped by category.
 // Replaces the single Start Run button on the main menu.
 
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Trophy, ChevronDown, ChevronUp } from 'lucide-react';
 import { DungeonEntrance } from './types';
+import { TowerLeaderboard } from './TowerLeaderboard';
 
 interface DungeonListPanelProps {
   dungeonEntrances: Record<string, DungeonEntrance>;
@@ -58,53 +61,73 @@ function DungeonRow({ d, onLaunch }: { d: DungeonEntrance; onLaunch: (e: Dungeon
   const startingLevel = Math.max(1, d.difficulty || 1);
   const themeLabel = getThemeLabel(d);
   const icon = getThemeIcon(d);
+  const [showBoard, setShowBoard] = useState(false);
 
   return (
-    <button
-      onClick={() => onLaunch(d)}
-      className={`w-full text-left rounded-md border p-3 transition-colors hover:bg-accent/40 ${
+    <div
+      className={`w-full rounded-md border p-3 transition-colors ${
         d.isHome
           ? 'border-primary/60 bg-gradient-to-r from-primary/10 to-secondary/10'
           : 'border-border bg-card'
       }`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-base">{icon}</span>
-            <span className="font-semibold text-sm truncate">
-              {d.name || `Dungeon at (${d.worldX}, ${d.worldY})`}
-            </span>
-          </div>
-          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-            <span>Start Lv. <span className="text-foreground font-medium">{startingLevel}</span></span>
-            <span>Floors <span className="text-foreground font-medium">∞</span></span>
-            <span>
-              Best floor:{' '}
-              <span className={cleared ? 'text-foreground font-medium' : 'text-muted-foreground/60'}>
-                {cleared ? d.deepestFloor : '—'}
+      <button
+        type="button"
+        onClick={() => onLaunch(d)}
+        className="w-full text-left hover:opacity-90"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-base">{icon}</span>
+              <span className="font-semibold text-sm truncate">
+                {d.name || `Dungeon at (${d.worldX}, ${d.worldY})`}
               </span>
-            </span>
-          </div>
-          {themeLabel && (
-            <div className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground/80 capitalize">
-              {themeLabel}
             </div>
-          )}
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+              <span>Start Lv. <span className="text-foreground font-medium">{startingLevel}</span></span>
+              <span>Floors <span className="text-foreground font-medium">∞</span></span>
+              <span>
+                Best floor:{' '}
+                <span className={cleared ? 'text-foreground font-medium' : 'text-muted-foreground/60'}>
+                  {cleared ? d.deepestFloor : '—'}
+                </span>
+              </span>
+            </div>
+            {themeLabel && (
+              <div className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground/80 capitalize">
+                {themeLabel}
+              </div>
+            )}
+          </div>
+          <Button
+            size="sm"
+            variant={d.isHome ? 'default' : 'outline'}
+            className={d.isHome ? 'bg-gradient-to-r from-primary to-secondary' : ''}
+            onClick={(e) => {
+              e.stopPropagation();
+              onLaunch(d);
+            }}
+          >
+            Enter
+          </Button>
         </div>
-        <Button
-          size="sm"
-          variant={d.isHome ? 'default' : 'outline'}
-          className={d.isHome ? 'bg-gradient-to-r from-primary to-secondary' : ''}
-          onClick={(e) => {
-            e.stopPropagation();
-            onLaunch(d);
-          }}
-        >
-          Enter
-        </Button>
-      </div>
-    </button>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setShowBoard(s => !s)}
+        className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <Trophy className="w-3 h-3 text-amber-500" />
+        Leaderboard
+        {showBoard
+          ? <ChevronUp className="w-3 h-3" />
+          : <ChevronDown className="w-3 h-3" />}
+      </button>
+
+      {showBoard && <TowerLeaderboard towerId={d.id} />}
+    </div>
   );
 }
 

@@ -15,6 +15,7 @@ import { AdminPanel } from '@/admin/AdminPanel';
 import { useGame, buildProgressSnapshot } from './state';
 import { useCloudSave } from '@/hooks/useCloudSave';
 import { toast as sonnerToast } from 'sonner';
+import { UsernameEditor } from './UsernameEditor';
 
 // Settings interface
 export interface GameSettings {
@@ -278,6 +279,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               />
             </div>
           </div>
+
+          {/* Public Username (for tower leaderboards) */}
+          <UsernameEditor />
 
           {/* Overworld Rebuild Section */}
           <RebuildOverworldSection />

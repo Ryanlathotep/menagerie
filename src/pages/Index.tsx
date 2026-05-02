@@ -21,6 +21,7 @@ import { ShopView } from '@/game/ShopView';
 import { executeCombat, calculateXpReward, xpToNextLevel, checkLevelUp, getEffectiveness, hasPassive, checkSkeletonSurvival, applyMushroomRegen, checkImpSteal } from '@/game/combat';
 import { toast } from 'sonner';
 import { SettingsProvider, SettingsButton, useSettings } from '@/game/Settings';
+import { submitTowerFloor } from '@/hooks/useUsername';
 import { MonsterStatsPreview } from '@/game/MonsterStatsPreview';
 import { LevelUpScreen } from '@/game/LevelUpScreen';
 import { EquipmentItem, MonsterEquipment } from '@/game/equipment';
@@ -1152,6 +1153,18 @@ function DungeonView({
         dungeon: newDungeon
       });
       addLog(`⬇️ Descended to Floor ${dungeon.floor + 1}!`, 'system');
+      // Auto-submit best floor to the public tower leaderboard. Best-effort
+      // and silently skipped for signed-out players or those without a username.
+      const towerId = typeof window !== 'undefined' ? localStorage.getItem('menagerie_active_dungeon_id') : null;
+      if (towerId) {
+        const partySnapshot = state.run?.party?.map(m => ({
+          species: m.species,
+          class: m.class,
+          element: m.element,
+          level: m.level,
+        })) ?? null;
+        void submitTowerFloor(towerId, dungeon.floor + 1, partySnapshot);
+      }
     } else if (result.trap) {
       if (result.trap.type === 'spike' && result.trap.damage) {
         const newHp = Math.max(0, state.run.currentMonster.stats.currentHp - result.trap.damage);

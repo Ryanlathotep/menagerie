@@ -409,7 +409,17 @@ function CharacterSelect() {
   }, [exploredTileCount, currentWorldSeed]);
 
 
-  
+            {/* Unified right-click tile action menu */}
+            {tileActionMenu && (
+              <DungeonTileActionMenu
+                worldX={tileActionMenu.x}
+                worldY={tileActionMenu.y}
+                tileLabel={tileActionMenu.label}
+                actions={tileActionMenu.actions}
+                onClose={() => setTileActionMenu(null)}
+              />
+            )}
+
   // Restore last party selection from localStorage
   const [selectedParty, setSelectedParty] = useState<typeof unlockedMonsters>(() => {
     try {

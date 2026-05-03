@@ -310,39 +310,88 @@ export function generateDungeon(floor: number, theme?: DungeonTheme, startingFlo
     }
   }
 
-  // Place terrain hazards (inside rooms only, in center areas to avoid blocking paths)
-  const numTerrainTiles = 4 + Math.floor(floor / 2) + Math.floor(Math.random() * 4);
-  for (let i = 0; i < numTerrainTiles; i++) {
-    let placed = false;
+  // Place rune pools. To make pools read as a single body and to keep the
+  // floor uncluttered, we restrict each floor to AT MOST 2 distinct rune
+  // types and grow each one into a contiguous multi-tile pool via a random
+  // flood-fill, instead of scattering many independent single-rune tiles.
+  const allRuneTypes: TerrainType[] = [
+    'water', 'lava', 'rubble', 'vents', 'shadows',
+    'spikes', 'lasers', 'acid', 'tendrils', 'psychic',
+  ];
+  // 1–2 rune types per floor (lower floors lean toward 1).
+  const numRuneTypes = Math.random() < (floor < 3 ? 0.4 : 0.7) ? 2 : 1;
+  // Some terrain visuals (rubble, spikes, laser beams) intentionally do not
+  // share a continuous pool — they look fine scattered. Others (water, lava,
+  // shadows, vents, acid, tendrils, psychic) read best as connected pools.
+  const isPoolType = (t: TerrainType) =>
+    t === 'water' || t === 'lava' || t === 'shadows' || t === 'vents' ||
+    t === 'acid' || t === 'tendrils' || t === 'psychic';
+  const chosenTypes: TerrainType[] = [];
+  const shuffled = [...allRuneTypes].sort(() => Math.random() - 0.5);
+  for (const t of shuffled) {
+    if (chosenTypes.length >= numRuneTypes) break;
+    chosenTypes.push(t);
+  }
+
+  for (const runeType of chosenTypes) {
+    // Pick a room (not first/last) with enough room to host a pool.
     let attempts = 0;
-    
-    while (!placed && attempts < 50) {
-      // Only place terrain inside rooms, not in first room (player start) or last room (stairs)
-      const roomIndex = 1 + Math.floor(Math.random() * Math.max(1, rooms.length - 2));
-      if (roomIndex >= rooms.length - 1) {
-        attempts++;
-        continue;
-      }
-      
-      const room = rooms[roomIndex];
-      // Only place in rooms that are at least 4x4 to have a proper center
-      if (room.width < 4 || room.height < 4) {
-        attempts++;
-        continue;
-      }
-      
-      // Place in center of room, not on edges (at least 1 tile from walls)
-      const wx = room.x + 1 + Math.floor(Math.random() * Math.max(1, room.width - 2));
-      const wy = room.y + 1 + Math.floor(Math.random() * Math.max(1, room.height - 2));
-      
-      if (tiles[wy]?.[wx]?.type === 'floor') {
-        tiles[wy][wx].type = 'terrain';
-        tiles[wy][wx].terrainType = getRandomTerrainType();
-        placed = true;
-      }
+    let chosenRoom: typeof rooms[number] | null = null;
+    while (!chosenRoom && attempts < 30) {
+      const idx = 1 + Math.floor(Math.random() * Math.max(1, rooms.length - 2));
+      if (idx >= rooms.length - 1) { attempts++; continue; }
+      const room = rooms[idx];
+      if (room.width >= 4 && room.height >= 4) chosenRoom = room;
       attempts++;
     }
+    if (!chosenRoom) continue;
+
+    // Seed point near the center of the room.
+    const sx = chosenRoom.x + 1 + Math.floor(Math.random() * Math.max(1, chosenRoom.width - 2));
+    const sy = chosenRoom.y + 1 + Math.floor(Math.random() * Math.max(1, chosenRoom.height - 2));
+    if (tiles[sy]?.[sx]?.type !== 'floor') continue;
+
+    // Pool size scales with floor depth. Scattered types stay small.
+    const targetSize = isPoolType(runeType)
+      ? 4 + Math.floor(Math.random() * 4) + Math.floor(floor / 3) // 4–11 tiles
+      : 2 + Math.floor(Math.random() * 2);                         // 2–3 tiles
+
+    // Flood-grow the pool: start from seed, repeatedly pick a random
+    // already-placed pool tile and extend into a random orthogonal floor
+    // neighbor that's still inside the chosen room.
+    const placed: { x: number; y: number }[] = [];
+    tiles[sy][sx].type = 'terrain';
+    tiles[sy][sx].terrainType = runeType;
+    placed.push({ x: sx, y: sy });
+
+    let growAttempts = 0;
+    while (placed.length < targetSize && growAttempts < targetSize * 12) {
+      growAttempts++;
+      const seed = placed[Math.floor(Math.random() * placed.length)];
+      const dirs = [[0,-1],[1,0],[0,1],[-1,0]].sort(() => Math.random() - 0.5);
+      let extended = false;
+      for (const [dx, dy] of dirs) {
+        const nx = seed.x + dx;
+        const ny = seed.y + dy;
+        // Stay inside the chosen room (and 1 tile from its walls).
+        if (nx < chosenRoom.x + 1 || nx > chosenRoom.x + chosenRoom.width - 2) continue;
+        if (ny < chosenRoom.y + 1 || ny > chosenRoom.y + chosenRoom.height - 2) continue;
+        if (tiles[ny]?.[nx]?.type !== 'floor') continue;
+        tiles[ny][nx].type = 'terrain';
+        tiles[ny][nx].terrainType = runeType;
+        placed.push({ x: nx, y: ny });
+        extended = true;
+        break;
+      }
+      if (!extended) {
+        // Local dead-end — keep trying from another existing tile.
+        continue;
+      }
+    }
   }
+
+  // Silence unused-import warning when nothing else references it.
+  void getRandomTerrainType;
 
   // Place harvestable plants
   const numPlants = 3 + Math.floor(floor / 2) + Math.floor(Math.random() * 3);

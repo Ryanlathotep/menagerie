@@ -67,9 +67,36 @@ export function RecruitmentModal({
   onFail,
   queuedRecruits = 0,
   onSkipAll,
+  unlockedMonsters = [],
 }: RecruitmentModalProps) {
   const speciesData = SPECIES_DATA[enemy.species];
   const [step, setStep] = useState<Step>('intro');
+
+  // Persisted "auto-skip useless recruits" toggle.
+  const [autoSkipUseless, setAutoSkipUseless] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem(AUTO_SKIP_KEY) === '1';
+  });
+  useEffect(() => {
+    try { localStorage.setItem(AUTO_SKIP_KEY, autoSkipUseless ? '1' : '0'); } catch { /* noop */ }
+  }, [autoSkipUseless]);
+
+  // Compare against existing unlocked record (matches by species + element + class).
+  const existingUnlock = unlockedMonsters.find(
+    u => u.species === enemy.species && u.element === enemy.element && u.classType === enemy.class,
+  );
+  const isBrandNew = !existingUnlock;
+  const isLevelUpgrade = !!existingUnlock && enemy.level > existingUnlock.level;
+  const isUseful = isBrandNew || isLevelUpgrade;
+
+  // Auto-skip when toggle is on and this recruit wouldn't improve the roster.
+  // Fire onFail() (which the parent treats as "advance the queue") on mount.
+  useEffect(() => {
+    if (autoSkipUseless && !isUseful && step === 'intro') {
+      onFail();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Visual breakdown of what made it impressive
   const impressiveFactors: { icon: string; label: string; detail: string }[] = [];

@@ -436,7 +436,11 @@ function Tile({
 
     const handleRightClick = (e: React.MouseEvent) => {
       e.preventDefault();
-      handleDisarm();
+      e.stopPropagation();
+      // Defer to the parent's unified tile menu so the player can choose
+      // between Disarm / Pin / Walk here. Falling back to direct disarm only
+      // if no parent handler is wired (legacy callers).
+      if (!onTileRightClick) handleDisarm();
     };
 
     // Long-press for mobile

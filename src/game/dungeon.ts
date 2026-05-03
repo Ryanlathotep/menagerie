@@ -514,6 +514,7 @@ export function generateDungeon(floor: number, theme?: DungeonTheme, startingFlo
     height: DUNGEON_HEIGHT,
     theme,
     startingFloor,
+    entryPosition: { ...playerPosition },
   };
 }
 

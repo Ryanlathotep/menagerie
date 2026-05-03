@@ -1673,19 +1673,48 @@ export function GameProvider({ children }: GameProviderProps) {
   const partyProgressSig = state.run
     ? (() => {
         let sig = `f${state.run.dungeon?.floor ?? 0}|`;
-        for (const m of state.run.party) {
+        for (let i = 0; i < state.run.party.length; i++) {
+          const m = state.run.party[i];
           const masteryTotal = m.moveMastery
             ? Object.values(m.moveMastery).reduce((s, x) => s + (x?.uses ?? 0), 0)
             : 0;
-          sig += `${m.species}_${m.element}_${m.class}:L${m.level}:X${m.experience ?? 0}:M${masteryTotal};`;
+          // Hash equipped item ids so equipping/unequipping triggers a
+          // snapshot (and downstream cloud autosave) immediately.
+          const eq = state.run.partyEquipment?.[i];
+          let eqSig = '';
+          if (eq) {
+            for (const slot of Object.keys(eq).sort()) {
+              const item = (eq as unknown as Record<string, { id?: string } | null>)[slot];
+              eqSig += `${slot}:${item?.id ?? '_'};`;
+            }
+          }
+          sig += `${m.species}_${m.element}_${m.class}:L${m.level}:X${m.experience ?? 0}:M${masteryTotal}:E[${eqSig}];`;
         }
         return sig;
       })()
     : '';
 
+  // Snapshot run progress on every change, AND request an immediate cloud
+  // flush when the change includes a level-up or equipment swap (so creatures
+  // never lose levels or gear if the tab dies before the autosave debounce).
+  const lastSigRef = React.useRef('');
   useEffect(() => {
-    if (!state.run || !partyProgressSig) return;
+    if (!state.run || !partyProgressSig) {
+      lastSigRef.current = partyProgressSig;
+      return;
+    }
+    const prev = lastSigRef.current;
     dispatch({ type: 'SNAPSHOT_RUN_PROGRESS' });
+
+    if (prev && prev !== partyProgressSig && typeof window !== 'undefined') {
+      const levelOrEqChanged =
+        prev.replace(/:X\d+/g, '').replace(/:M\d+/g, '') !==
+        partyProgressSig.replace(/:X\d+/g, '').replace(/:M\d+/g, '');
+      if (levelOrEqChanged) {
+        window.dispatchEvent(new CustomEvent('cloud-save-request', { detail: { reason: 'milestone' } }));
+      }
+    }
+    lastSigRef.current = partyProgressSig;
   }, [partyProgressSig]);
 
   return React.createElement(GameContext.Provider, { value: { state, dispatch } }, children);

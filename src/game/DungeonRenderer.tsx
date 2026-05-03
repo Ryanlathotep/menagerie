@@ -24,6 +24,7 @@ import {
 } from './TileGraphics';
 import { OverworldNestTile } from './OverworldTileGraphics';
 import { fitFromNeighbors } from './autoTiling';
+import { isAdminCompass, onAdminCompassChange } from './adminCompass';
 
 // Check if a monster combo has been captured at equal or lower level
 function isCaptured(enemy: Monster, unlockedMonsters: UnlockedMonster[]): {

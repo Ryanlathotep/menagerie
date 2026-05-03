@@ -47,7 +47,7 @@ import {
 import { StatusIcons } from '@/game/StatusEffectDisplay';
 import { CraftingWorkshop } from '@/game/CraftingWorkshop';
 import { CraftingRecipe, ConsumableRecipe } from '@/game/equipment';
-import { isCreativeMode } from '@/game/creativeMode';
+import { isCreativeMode, effectiveTools } from '@/game/creativeMode';
 import { findPath, getDirection } from '@/game/pathfinding';
 import { RecruitmentModal, calculateRecruitChance } from '@/game/RecruitmentModal';
 import { PartySwitchModal } from '@/game/PartySwitchModal';

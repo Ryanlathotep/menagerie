@@ -31,3 +31,16 @@ export function onCreativeModeChange(cb: (enabled: boolean) => void): () => void
   window.addEventListener(EVENT_NAME, handler);
   return () => window.removeEventListener(EVENT_NAME, handler);
 }
+
+// Effective tool loadout for gameplay gating. In Creative Mode the player is
+// treated as if they own every tool at its maximum tier — pickaxe, shovel,
+// AND the Portable Workstation — so they can mine any wall, dig any rune,
+// and open the workshop anywhere without crafting first. Outside Creative
+// Mode this just returns whatever is actually persisted on saveData.
+import type { PlayerTools } from './tools';
+export function effectiveTools(tools: PlayerTools | undefined): PlayerTools {
+  if (isCreativeMode()) {
+    return { pickaxe: 'mithril', shovel: 'mithril', workstation: true };
+  }
+  return tools || {};
+}

@@ -34,7 +34,7 @@ import {
   PlayerBuildingType, BUILDING_DEFINITIONS, canPlaceBuilding, createBuilding, tickFarm,
   processScoutTowerAttacks, PlayerBuilding, getDisassembleRefund, getRepairCost, isWallActingAsGate,
 } from './buildings';
-import { isCreativeMode } from './creativeMode';
+import { isCreativeMode, effectiveTools } from './creativeMode';
 import { detectConnectorDir, nextConnectorDir } from './wallTop';
 import { OverworldRenderer, OverworldRendererHandle } from './OverworldRenderer';
 import { findOverworldPath } from './overworldPathfinding';
@@ -1605,7 +1605,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       experience={state.run?.experience || 0} 
       experienceToNext={xpToNextLevel(state.run?.currentMonster?.level || 1)} 
       onFlee={handleReturnToTown}
-      onOpenWorkshop={state.saveData.tools?.workstation ? () => setShowWorkshop(true) : undefined}
+      onOpenWorkshop={effectiveTools(state.saveData.tools).workstation ? () => setShowWorkshop(true) : undefined}
       fleeTitle="Return to town"
       fleeVariant="home"
       onMainMenu={handleReturnToMainMenu}
@@ -1657,7 +1657,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         playerLevel={state.run?.currentMonster?.level || 1}
         storedEquipment={state.saveData.storedEquipment || []}
         unlockedRecipes={state.saveData.unlockedRecipes || []}
-        tools={state.saveData.tools}
+        tools={effectiveTools(state.saveData.tools)}
         onCraft={(recipe, result) => {
           if (!isCreativeMode()) dispatch({ type: 'USE_MATERIALS', materials: recipe.materials });
           // Unified inventory: STORE_EQUIPMENT mirrors into the active run automatically.

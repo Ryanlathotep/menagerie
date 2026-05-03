@@ -47,7 +47,7 @@ import {
 import { StatusIcons } from '@/game/StatusEffectDisplay';
 import { CraftingWorkshop } from '@/game/CraftingWorkshop';
 import { CraftingRecipe, ConsumableRecipe } from '@/game/equipment';
-import { isCreativeMode } from '@/game/creativeMode';
+import { isCreativeMode, effectiveTools } from '@/game/creativeMode';
 import { findPath, getDirection } from '@/game/pathfinding';
 import { RecruitmentModal, calculateRecruitChance } from '@/game/RecruitmentModal';
 import { PartySwitchModal } from '@/game/PartySwitchModal';
@@ -346,7 +346,7 @@ function MainMenu() {
           playerLevel={1}
           storedEquipment={state.saveData.storedEquipment || []}
           unlockedRecipes={state.saveData.unlockedRecipes || []}
-          tools={state.saveData.tools}
+          tools={effectiveTools(state.saveData.tools)}
           onCraft={handleCraft}
           onCraftConsumable={handleCraftConsumable}
           onDismantle={handleDismantle}
@@ -1051,7 +1051,7 @@ function DungeonView({
     // Mining: bumped into a mineable wall. If the player owns a strong enough
     // pickaxe, apply a hit (consumes the turn). Otherwise show a hint toast.
     if (result.mineableBump) {
-      const pickaxeTier = state.saveData.tools?.pickaxe;
+      const pickaxeTier = effectiveTools(state.saveData.tools).pickaxe;
       const wallTier = result.mineableBump.tier;
       const wallName = mineableWallName(wallTier);
       if (!pickaxeTier) {
@@ -1353,7 +1353,7 @@ function DungeonView({
     // terrain branch). Single-hit by design — runes are surface inscriptions,
     // not bedrock.
     if (result.runeBump && isAutoShovelEnabled()) {
-      const shovelTier = state.saveData.tools?.shovel;
+      const shovelTier = effectiveTools(state.saveData.tools).shovel;
       const runeType = result.runeBump.terrainType;
       const needed = shovelHitsToBreak(runeType, shovelTier);
       if (shovelTier && isFinite(needed)) {
@@ -1582,7 +1582,8 @@ function DungeonView({
     }
 
     // Non-home towers require a Town Portal Scroll to escape.
-    if (!isHomeTower) {
+    // Creative Mode bypasses the scroll requirement entirely.
+    if (!isHomeTower && !isCreativeMode()) {
       const scroll = state.run?.inventory.find(i => i.id === 'town_portal_scroll');
       if (!scroll) {
         toast.error('You need a Town Portal Scroll to flee this tower!', {
@@ -2258,7 +2259,7 @@ function DungeonView({
     
     // Wall mining via attacks: melee/ranged moves with power > 0 chip mineable
     // walls in their AoE, gated by pickaxe tier. Stronger moves chip more.
-    const pickaxeTier = state.saveData.tools?.pickaxe;
+    const pickaxeTier = effectiveTools(state.saveData.tools).pickaxe;
     const wallHitsPerAttack = targetingMove.power > 0
       ? Math.max(1, Math.floor(targetingMove.power / 20))
       : 0;
@@ -2716,7 +2717,7 @@ function DungeonView({
         onFlee={handleFlee}
         onMainMenu={handleMainMenu}
         mainMenuTitle="Save and return to main menu (resume later)"
-        onOpenWorkshop={state.saveData.tools?.workstation ? () => setShowWorkshop(true) : undefined}
+        onOpenWorkshop={effectiveTools(state.saveData.tools).workstation ? () => setShowWorkshop(true) : undefined}
         onDropItem={handleDropItem} 
         onUseItem={handleUseItemOutOfCombat}
         onUseMove={handleUseMoveOutOfCombat}
@@ -2785,7 +2786,7 @@ function DungeonView({
           playerLevel={state.run?.currentMonster?.level || 1}
           storedEquipment={state.saveData.storedEquipment || []}
           unlockedRecipes={state.saveData.unlockedRecipes || []}
-          tools={state.saveData.tools}
+          tools={effectiveTools(state.saveData.tools)}
           onCraft={(recipe, result) => {
             if (!isCreativeMode()) {
               dispatch({ type: 'USE_MATERIALS', materials: recipe.materials });
@@ -2998,7 +2999,7 @@ function DungeonView({
             <DungeonRenderer 
               dungeon={dungeon} 
               playerElement={state.run?.currentMonster.element || 'fire'} 
-              playerPickaxeTier={state.saveData.tools?.pickaxe}
+              playerPickaxeTier={effectiveTools(state.saveData.tools).pickaxe}
               playerClass={state.run?.currentMonster.class}
               playerSpecies={state.run?.currentMonster.species}
               playerDexterity={state.run?.currentMonster.stats.dodge || 10}

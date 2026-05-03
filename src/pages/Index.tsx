@@ -33,6 +33,7 @@ import { PreRunEquipment } from '@/game/PreRunEquipment';
 import { OverworldView } from '@/game/OverworldView';
 import { DungeonListPanel } from '@/game/DungeonListPanel';
 import { EnemyAttackMenu, EnemyAttackTarget } from '@/game/EnemyAttackMenu';
+import { DungeonTileActionMenu, type TileAction } from '@/game/DungeonTileActionMenu';
 import { 
   CombatEffects, 
   EMPTY_COMBAT_EFFECTS, 

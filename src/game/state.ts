@@ -169,6 +169,7 @@ type GameAction =
   | { type: 'FLEE_DUNGEON' }  // Flee safely - keeps materials and equipment
   | { type: 'SET_DUNGEON'; dungeon: DungeonState }
   | { type: 'UPDATE_DUNGEON'; dungeon: Partial<DungeonState> }
+  | { type: 'TOGGLE_DUNGEON_WAYPOINT'; x: number; y: number }
   | { type: 'DISARM_TRAP'; x: number; y: number; success: boolean }
   | { type: 'START_BATTLE'; enemy: Monster }
   | { type: 'UPDATE_BATTLE'; battle: Partial<BattleState> }

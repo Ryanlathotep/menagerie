@@ -224,6 +224,7 @@ export function expandDungeonIfNeeded(dungeon: DungeonState): DungeonState {
     playerPosition = { ...playerPosition, x: playerPosition.x + STRIP_WIDTH };
     if (entryPosition) entryPosition = { ...entryPosition, x: entryPosition.x + STRIP_WIDTH };
     if (compassWaypoint) compassWaypoint = { ...compassWaypoint, x: compassWaypoint.x + STRIP_WIDTH };
+    if (compassWaypoints) compassWaypoints = compassWaypoints.map(p => ({ ...p, x: p.x + STRIP_WIDTH }));
     carveStripContent(newTiles, 'west', dungeon.floor, newEnemies, availableSpecies, theme);
     tiles = newTiles;
     mutated = true;

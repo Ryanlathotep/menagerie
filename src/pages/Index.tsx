@@ -33,6 +33,7 @@ import { PreRunEquipment } from '@/game/PreRunEquipment';
 import { OverworldView } from '@/game/OverworldView';
 import { DungeonListPanel } from '@/game/DungeonListPanel';
 import { EnemyAttackMenu, EnemyAttackTarget } from '@/game/EnemyAttackMenu';
+import { DungeonTileActionMenu, type TileAction } from '@/game/DungeonTileActionMenu';
 import { 
   CombatEffects, 
   EMPTY_COMBAT_EFFECTS, 
@@ -408,7 +409,6 @@ function CharacterSelect() {
   }, [exploredTileCount, currentWorldSeed]);
 
 
-  
   // Restore last party selection from localStorage
   const [selectedParty, setSelectedParty] = useState<typeof unlockedMonsters>(() => {
     try {
@@ -846,6 +846,10 @@ function DungeonView({
   const aoePendingConfirmRef = useRef<{ x: number; y: number; time: number } | null>(null);
   // Right-click an enemy → opens this attack menu
   const [attackMenuTarget, setAttackMenuTarget] = useState<EnemyAttackTarget | null>(null);
+  // Unified right-click action menu (any tile)
+  const [tileActionMenu, setTileActionMenu] = useState<{
+    x: number; y: number; label: string; actions: TileAction[];
+  } | null>(null);
   
   // Level up screen queue state - supports multiple level-ups (active + passive party members)
   interface LevelUpEntry {
@@ -3020,30 +3024,134 @@ function DungeonView({
               onTileRightClick={(x, y) => {
                 if (!dungeon || !state.run) return;
                 const tile = dungeon.tiles[y]?.[x];
-                if (tile?.type === 'enemy' && tile.enemyId) {
+                if (!tile?.explored) return;
+
+                const monster = state.run.currentMonster;
+                const playerPos = dungeon.playerPosition;
+                const dist = Math.abs(x - playerPos.x) + Math.abs(y - playerPos.y);
+                const isAdjacent = dist === 1;
+                const actions: TileAction[] = [];
+                let label = 'Tile';
+
+                // ---- Enemy ----
+                if (tile.type === 'enemy' && tile.enemyId) {
                   const enemy = dungeon.enemies.find(e => e.id === tile.enemyId);
                   if (enemy) {
-                    setAttackMenuTarget({
-                      enemy,
-                      enemyPos: { x, y },
-                      playerPos: dungeon.playerPosition,
+                    label = `Enemy: ${enemy.name}`;
+                    actions.push({
+                      id: 'attack', icon: 'attack', primary: true,
+                      label: 'Attack…',
+                      hint: 'Pick a move to use against this enemy',
+                      onSelect: () => setAttackMenuTarget({
+                        enemy, enemyPos: { x, y }, playerPos,
+                      }),
                     });
                   }
-                  return;
                 }
-                // Right-click any other explored tile → toggle a waypoint pin.
-                if (!tile?.explored) return;
-                const existing = dungeon.compassWaypoints || [];
-                const isPinned = existing.some(p => p.x === x && p.y === y);
-                dispatch({ type: 'TOGGLE_DUNGEON_WAYPOINT', x, y });
-                if (isPinned) {
-                  addLog(`📍 Waypoint removed`, 'system');
-                } else {
-                  // Show coordinates relative to entry stairs (matches the HUD).
-                  const ex = dungeon.entryPosition?.x ?? 0;
-                  const ey = dungeon.entryPosition?.y ?? 0;
-                  addLog(`📍 Waypoint pinned at (${x - ex}, ${y - ey})`, 'system');
+
+                // ---- Trap ----
+                if (tile.type === 'trap' && !tile.triggered) {
+                  label = `Trap: ${tile.trapType ?? 'spike'}`;
+                  const dex = monster.stats.dodge ?? 10;
+                  const chance = Math.min(95, Math.max(5, dex * 3 + 20));
+                  actions.push({
+                    id: 'disarm', icon: 'disarm', primary: true,
+                    label: `Disarm trap (${chance}%)`,
+                    hint: 'Failure triggers the trap on you',
+                    onSelect: () => {
+                      const success = Math.random() * 100 < chance;
+                      dispatch({ type: 'DISARM_TRAP', x, y, success });
+                      if (success) {
+                        addLog('🔧 Trap disarmed!', 'system');
+                      } else if (tile.trapType === 'spike') {
+                        const damage = 10 + Math.floor(dungeon.floor * 2);
+                        const newHp = Math.max(0, monster.stats.currentHp - damage);
+                        dispatch({
+                          type: 'UPDATE_PLAYER_MONSTER',
+                          monster: { ...monster, stats: { ...monster.stats, currentHp: newHp } },
+                        });
+                        addLog(`⚠️ Disarm failed! Spike trap dealt ${damage} damage!`, 'damage');
+                        if (newHp <= 0) handleActiveMonsterDownOnMap('a triggered spike trap');
+                      } else if (tile.trapType === 'poison') {
+                        addLog('☠️ Disarm failed! You got poisoned!', 'status');
+                      } else if (tile.trapType === 'alarm') {
+                        addLog('🔔 Disarm failed! Alarm triggered!', 'status');
+                      }
+                    },
+                  });
                 }
+
+                // ---- Plant (harvest) ----
+                if (tile.type === 'plant' && !tile.harvested) {
+                  label = `Plant: ${tile.plantType ?? ''}`;
+                  actions.push({
+                    id: 'harvest', icon: 'harvest', primary: !actions.length,
+                    label: 'Walk over to harvest',
+                    hint: 'Step onto the plant to gather it',
+                    disabled: !isAdjacent,
+                    onSelect: () => handleTileClick(x, y),
+                  });
+                }
+
+                // ---- Mineable wall ----
+                if (tile.type === 'mineable_wall' && tile.wallTier) {
+                  const wallName = mineableWallName(tile.wallTier);
+                  label = `${wallName} (mineable)`;
+                  actions.push({
+                    id: 'mine', icon: 'mine', primary: !actions.length,
+                    label: `Mine ${wallName}`,
+                    hint: isAdjacent ? 'Bump into the wall to chip away' : 'Walk adjacent first',
+                    disabled: !isAdjacent,
+                    onSelect: () => handleTileClick(x, y),
+                  });
+                }
+
+                // ---- Stairs ----
+                if (tile.type === 'stairs' || tile.type === 'stairs_up') {
+                  label = tile.type === 'stairs' ? 'Stairs down' : 'Stairs up';
+                  actions.push({
+                    id: 'enter', icon: 'enter', primary: !actions.length,
+                    label: tile.type === 'stairs' ? 'Descend' : 'Ascend',
+                    hint: isAdjacent ? 'Step onto the stairs' : 'Walk to the stairs first',
+                    disabled: !isAdjacent,
+                    onSelect: () => handleTileClick(x, y),
+                  });
+                }
+
+                // ---- Walk here (any reachable tile) ----
+                if (!(tile.type === 'enemy' || tile.type === 'wall' || tile.type === 'mineable_wall')) {
+                  if (!(playerPos.x === x && playerPos.y === y)) {
+                    actions.push({
+                      id: 'walk', icon: 'walk',
+                      label: 'Walk here',
+                      hint: 'Path-walk to this tile',
+                      onSelect: () => handleTileClick(x, y),
+                    });
+                  }
+                }
+
+                // ---- Waypoint pin (always available on any explored, non-enemy tile) ----
+                if (tile.type !== 'enemy') {
+                  const pinned = (dungeon.compassWaypoints || []).some(p => p.x === x && p.y === y);
+                  actions.push({
+                    id: 'pin',
+                    icon: pinned ? 'unpin' : 'pin',
+                    label: pinned ? 'Remove waypoint' : 'Pin waypoint',
+                    hint: pinned ? 'Hide the marker on this tile' : 'Mark this tile on the map',
+                    onSelect: () => {
+                      dispatch({ type: 'TOGGLE_DUNGEON_WAYPOINT', x, y });
+                      if (pinned) {
+                        addLog('📍 Waypoint removed', 'system');
+                      } else {
+                        const ex = dungeon.entryPosition?.x ?? 0;
+                        const ey = dungeon.entryPosition?.y ?? 0;
+                        addLog(`📍 Waypoint pinned at (${x - ex}, ${y - ey})`, 'system');
+                      }
+                    },
+                  });
+                }
+
+                setTileActionMenu({ x, y, label, actions });
               }}
               targetingMode={!!targetingMove}
               targetingTiles={targetingTiles}
@@ -3085,6 +3193,17 @@ function DungeonView({
               }}
             />
             
+            {/* Unified right-click tile action menu */}
+            {tileActionMenu && (
+              <DungeonTileActionMenu
+                worldX={tileActionMenu.x}
+                worldY={tileActionMenu.y}
+                tileLabel={tileActionMenu.label}
+                actions={tileActionMenu.actions}
+                onClose={() => setTileActionMenu(null)}
+              />
+            )}
+
             {/* Targeting mode UI */}
             {targetingMove && (
               <MoveInfoPanel move={targetingMove} onCancel={cancelTargeting} />

@@ -209,7 +209,7 @@ export function PreRunEquipment({
     onDrop: () => handleSlotDrop(slot),
   });
   
-  const totalSelectedItems = selectedItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+  
   
   return (
     <div className="game-container">

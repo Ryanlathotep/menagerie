@@ -1684,7 +1684,7 @@ export function GameProvider({ children }: GameProviderProps) {
           let eqSig = '';
           if (eq) {
             for (const slot of Object.keys(eq).sort()) {
-              const item = (eq as Record<string, { id?: string } | null>)[slot];
+              const item = (eq as unknown as Record<string, { id?: string } | null>)[slot];
               eqSig += `${slot}:${item?.id ?? '_'};`;
             }
           }

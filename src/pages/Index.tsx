@@ -2973,6 +2973,7 @@ function DungeonView({
             setShowRecruitment(false);
             setDefeatedEnemy(null);
           }}
+          unlockedMonsters={state.saveData.unlockedMonsters}
         />
         );
       })()}

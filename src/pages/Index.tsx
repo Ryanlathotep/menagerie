@@ -483,11 +483,14 @@ function CharacterSelect() {
     // so previously equipped gear is still equipped at the pre-run screen.
     const monsters = selectedParty.map(m => {
       const saved = state.saveData.unlockedMonsters.find(u => u.comboId === m.comboId);
+      // Always pull level from the latest saveData entry — `selectedParty`
+      // is captured at mount time and its `m.level` can lag behind levels
+      // gained on previous runs, which would silently downgrade monsters.
       return createMonster(
         m.species,
         m.classType,
         m.element,
-        m.level,
+        saved?.level ?? m.level,
         saved?.equipment,
         saved?.experience,
         saved?.moveMastery,

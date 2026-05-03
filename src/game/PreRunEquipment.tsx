@@ -222,10 +222,23 @@ export function PreRunEquipment({
             <Shirt className="w-5 h-5 text-primary" />
             Prepare for Adventure
           </h2>
+          <div className="ml-auto flex gap-2">
+            <Button variant="outline" size="sm" onClick={onBack}>
+              Back
+            </Button>
+            <Button
+              size="sm"
+              className="bg-gradient-to-r from-primary to-secondary"
+              onClick={handleStart}
+            >
+              <Play className="w-4 h-4 mr-1" />
+              Start Adventure!
+            </Button>
+          </div>
         </div>
-        
+
         <p className="text-center text-muted-foreground text-xs">
-          Equip gear and select consumables from your storage before starting the run.
+          Equip gear before starting the run. All items in town storage are automatically available.
         </p>
 
         {/* Floor skip selector — only shown for dungeon runs when the player has earned the right to skip ahead. */}

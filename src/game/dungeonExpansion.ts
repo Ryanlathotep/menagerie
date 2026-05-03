@@ -204,6 +204,7 @@ export function expandDungeonIfNeeded(dungeon: DungeonState): DungeonState {
   let { tiles, playerPosition, width, height, enemies } = dungeon;
   let entryPosition = dungeon.entryPosition ? { ...dungeon.entryPosition } : undefined;
   let compassWaypoint = dungeon.compassWaypoint ? { ...dungeon.compassWaypoint } : undefined;
+  let compassWaypoints = dungeon.compassWaypoints ? dungeon.compassWaypoints.map(p => ({ ...p })) : undefined;
   const newEnemies = [...enemies];
 
   const theme = dungeon.theme;

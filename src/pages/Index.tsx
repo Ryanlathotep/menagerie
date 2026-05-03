@@ -847,6 +847,10 @@ function DungeonView({
   const aoePendingConfirmRef = useRef<{ x: number; y: number; time: number } | null>(null);
   // Right-click an enemy → opens this attack menu
   const [attackMenuTarget, setAttackMenuTarget] = useState<EnemyAttackTarget | null>(null);
+  // Unified right-click action menu (any tile)
+  const [tileActionMenu, setTileActionMenu] = useState<{
+    x: number; y: number; label: string; actions: TileAction[];
+  } | null>(null);
   
   // Level up screen queue state - supports multiple level-ups (active + passive party members)
   interface LevelUpEntry {

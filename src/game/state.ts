@@ -1133,28 +1133,45 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
     
     case 'STORE_ITEM': {
-      const existingItems = state.saveData.storedItems || [];
-      // Check if item already exists and stack it
-      const existingIdx = existingItems.findIndex(i => i.id === action.item.id);
-      if (existingIdx !== -1) {
-        const updated = [...existingItems];
-        updated[existingIdx] = {
-          ...updated[existingIdx],
-          quantity: updated[existingIdx].quantity + action.item.quantity,
-        };
-        return {
-          ...state,
-          saveData: {
-            ...state.saveData,
-            storedItems: updated,
-          },
-        };
-      }
+      // Stack-by-id helper. Also collapses any pre-existing duplicate
+      // entries with the same id (defensive — older saves may contain
+      // multiple stacks for the same item id).
+      const addQty = action.item.quantity || 1;
+      const stackInto = (list: InventoryItem[]): InventoryItem[] => {
+        const collapsed: InventoryItem[] = [];
+        for (const entry of list) {
+          const idx = collapsed.findIndex(i => i.id === entry.id);
+          if (idx !== -1) {
+            collapsed[idx] = {
+              ...collapsed[idx],
+              quantity: collapsed[idx].quantity + entry.quantity,
+            };
+          } else {
+            collapsed.push({ ...entry });
+          }
+        }
+        const idx = collapsed.findIndex(i => i.id === action.item.id);
+        if (idx !== -1) {
+          collapsed[idx] = {
+            ...collapsed[idx],
+            quantity: collapsed[idx].quantity + addQty,
+          };
+          return collapsed;
+        }
+        return [...collapsed, { ...action.item, quantity: addQty }];
+      };
+
+      // Unified inventory: mirror into both the run and town storage so
+      // mid-run shop buys / workstation crafts stack instead of creating
+      // a parallel entry that the run never sees.
       return {
         ...state,
+        run: state.run
+          ? { ...state.run, inventory: stackInto(state.run.inventory) }
+          : state.run,
         saveData: {
           ...state.saveData,
-          storedItems: [...existingItems, action.item],
+          storedItems: stackInto(state.saveData.storedItems || []),
         },
       };
     }

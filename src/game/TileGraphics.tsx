@@ -307,7 +307,7 @@ export function TerrainTile({
           <>
             {baseShape}
             {isolated && <ellipse cx="12" cy="12" rx="7" ry="7" fill="hsl(270 50% 15%)" opacity={0.5} />}
-            {!isolated && <rect x={left} y={top} width={wWidth} height={wHeight} fill="hsl(270 50% 15%)" opacity={0.35} />}
+            {!isolated && <path d={roundedPath} fill="hsl(270 50% 15%)" opacity={0.35} />}
             <circle cx={cx - 2 + r1 * 4} cy={cy - 2 + r2 * 4} r={2} fill={colors.light} opacity={0.3} />
           </>
         );

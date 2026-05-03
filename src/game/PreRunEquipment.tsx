@@ -88,8 +88,8 @@ export function PreRunEquipment({
     direction: 'desc' 
   });
   
-  // Selected consumables to bring into the run
-  const [selectedItems, setSelectedItems] = useState<InventoryItem[]>([]);
+  // Consumables are no longer chosen here — town storage IS run inventory
+  // (see Unified Inventory). Whatever's stored is automatically available.
 
   // Floor-skip selector. Defaults to the entrance's base floor (no skip).
   const minFloor = Math.max(1, entranceFloor ?? 1);

@@ -11,7 +11,7 @@
 
 import { DungeonState, DungeonTile, Position, Monster, SpeciesType } from './types';
 import { generateRandomMonster } from './utils';
-import { generateLoot } from './dungeon';
+import { generateLoot, updateVisibility } from './dungeon';
 import { getRandomTerrainType } from './terrain';
 import { MineableWallTier } from './tools';
 
@@ -258,6 +258,11 @@ export function expandDungeonIfNeeded(dungeon: DungeonState): DungeonState {
   }
 
   if (!mutated) return dungeon;
+
+  // Recompute visibility on the freshly-expanded grid so newly-carved tiles
+  // within the player's sight range light up immediately rather than waiting
+  // for the next step.
+  updateVisibility(tiles, playerPosition);
 
   return {
     ...dungeon,

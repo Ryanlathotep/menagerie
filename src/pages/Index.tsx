@@ -1582,7 +1582,8 @@ function DungeonView({
     }
 
     // Non-home towers require a Town Portal Scroll to escape.
-    if (!isHomeTower) {
+    // Creative Mode bypasses the scroll requirement entirely.
+    if (!isHomeTower && !isCreativeMode()) {
       const scroll = state.run?.inventory.find(i => i.id === 'town_portal_scroll');
       if (!scroll) {
         toast.error('You need a Town Portal Scroll to flee this tower!', {

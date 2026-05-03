@@ -1,6 +1,6 @@
 // Enhanced Dungeon Renderer with hand-drawn ink/watercolor tile graphics
 
-import { forwardRef, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState, useEffect } from 'react';
 import { DungeonState, DungeonTile, TileType, ElementType, ClassType, Monster, SpeciesType, SPECIES_DATA, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED, TrapType, PlantType, UnlockedMonster, DungeonEntrance } from './types';
 import { CRAFTING_MATERIALS } from './equipment';
 import { MonsterSprite } from './sprites';
@@ -152,6 +152,7 @@ interface TileProps {
   onDisarmTrap?: (x: number, y: number, success: boolean) => void;
   onClick?: () => void;
   playerPickaxeTier?: PickaxeTier; // For mineable wall tooltips
+  forceTooltipOpen?: boolean; // Touch tap-to-preview override
 }
 function Tile({
   tile,
@@ -171,7 +172,10 @@ function Tile({
   onDisarmTrap,
   onClick,
   playerPickaxeTier,
+  forceTooltipOpen,
 }: TileProps) {
+  // When tap-to-preview forces a tooltip open, we still let hover toggle it on desktop.
+  const tooltipOpenProps = forceTooltipOpen ? { open: true } : {};
   const tileStyle = {
     width: `${tileSize}px`,
     height: `${tileSize}px`,
@@ -190,7 +194,7 @@ function Tile({
   // Wall tiles - SVG ink texture (bedrock — unmineable)
   if (tile.type === 'wall') {
     return (
-      <Tooltip>
+      <Tooltip {...tooltipOpenProps}>
         <TooltipTrigger asChild>
           <div className={`flex items-center justify-center overflow-hidden ${pathOverlayClass}`} style={tileStyle}>
             {tile.visible ? (
@@ -218,7 +222,7 @@ function Tile({
     const hits = tile.wallHits || 0;
     const pickaxeName = playerPickaxeTier ? PICKAXE_TIERS[playerPickaxeTier].name : 'a Pickaxe';
     return (
-      <Tooltip>
+      <Tooltip {...tooltipOpenProps}>
         <TooltipTrigger asChild>
           <div className={`flex items-center justify-center overflow-hidden ${pathOverlayClass} ${canMine ? 'cursor-pointer' : ''}`} style={tileStyle} onClick={onClick}>
             {tile.visible ? (
@@ -281,7 +285,7 @@ function Tile({
       const hasWeakness = matchup && (matchup.playerWeakToElement || matchup.playerWeakToClass);
       const hasStrength = matchup && (matchup.playerStrongVsElement || matchup.playerStrongVsClass);
       const captureStatus = isCaptured(enemy, unlockedMonsters);
-      return <Tooltip>
+      return <Tooltip {...tooltipOpenProps}>
           <TooltipTrigger asChild>
             <div 
               className={`flex items-center justify-center relative hover:scale-110 transition-transform cursor-pointer`} 
@@ -445,7 +449,7 @@ function Tile({
       if (longPressTimer) clearTimeout(longPressTimer);
     };
 
-    return <Tooltip>
+    return <Tooltip {...tooltipOpenProps}>
         <TooltipTrigger asChild>
           <div 
             className={`flex items-center justify-center relative ${isTriggered ? 'opacity-50' : 'cursor-pointer hover:scale-105'} transition-transform`} 
@@ -478,7 +482,7 @@ function Tile({
     const plantInfo = getPlantInfo(tile.plantType);
     const isHarvested = tile.harvested;
     
-    return <Tooltip>
+    return <Tooltip {...tooltipOpenProps}>
         <TooltipTrigger asChild>
           <div 
             className={`flex items-center justify-center relative ${isHarvested ? 'opacity-60' : 'cursor-pointer hover:scale-105'} transition-transform ${pathOverlayClass}`} 
@@ -526,7 +530,7 @@ function Tile({
       sameTerrain(x - 1, y),
     );
 
-    return <Tooltip>
+    return <Tooltip {...tooltipOpenProps}>
       <TooltipTrigger asChild>
         <div
           className={`flex items-center justify-center relative ${pathOverlayClass} cursor-pointer hover:brightness-110`}
@@ -620,7 +624,7 @@ function Tile({
   const specialTileGraphic = tile.visible ? renderSpecialTile() : null;
   
   if (tooltipInfo && specialTileGraphic) {
-    return <Tooltip>
+    return <Tooltip {...tooltipOpenProps}>
         <TooltipTrigger asChild>
           <div 
             className={`flex items-center justify-center relative cursor-pointer hover:scale-105 transition-transform ${pathOverlayClass}`} 
@@ -694,15 +698,54 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   // Mobile double-tap → treat as right-click. A second tap on the SAME tile
   // within 300ms calls onTileRightClick instead of onTileClick.
   const lastTapRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  // Touch tap-to-preview: on touch input, the first tap on a tile shows its
+  // tooltip without acting; a second tap on the same tile within ~3s performs
+  // the click. Mouse / keyboard input bypasses this entirely.
+  const lastInputWasTouchRef = useRef(false);
+  const [previewTile, setPreviewTile] = useState<{ x: number; y: number } | null>(null);
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearPreview = () => {
+    if (previewTimerRef.current) {
+      clearTimeout(previewTimerRef.current);
+      previewTimerRef.current = null;
+    }
+    setPreviewTile(null);
+  };
+
+  // Cancel the preview when the player moves (position changes) so a stale
+  // preview tile doesn't linger.
+  useEffect(() => {
+    clearPreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [px, py]);
+
   const handleTileTap = (x: number, y: number) => {
     const now = Date.now();
     const last = lastTapRef.current;
     if (last && last.x === x && last.y === y && now - last.time < 300) {
       lastTapRef.current = null;
+      clearPreview();
       onTileRightClick?.(x, y);
       return;
     }
     lastTapRef.current = { x, y, time: now };
+
+    // Touch input → first tap on a NEW tile previews the tooltip instead of
+    // acting. Second tap on the same previewed tile performs the action.
+    if (lastInputWasTouchRef.current) {
+      const isPreviewed = previewTile && previewTile.x === x && previewTile.y === y;
+      if (!isPreviewed) {
+        if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+        setPreviewTile({ x, y });
+        // Auto-dismiss preview after a few seconds so it doesn't linger.
+        previewTimerRef.current = setTimeout(() => setPreviewTile(null), 3500);
+        return;
+      }
+      // Second tap on previewed tile → act. Clear the preview first.
+      clearPreview();
+    }
+
     onTileClick?.(x, y);
   };
 
@@ -844,18 +887,20 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                       lastTapRef.current = null;
                       onTileRightClick(x, y);
                     }}
-                    onTouchStart={startLongPress}
+                    onTouchStart={() => {
+                      lastInputWasTouchRef.current = true;
+                      startLongPress();
+                    }}
                     onTouchMove={cancelLongPress}
                     onTouchEnd={(e) => {
                       cancelLongPress();
-                      // If long-press fired, swallow the trailing tap so we don't
-                      // also auto-attack/move into the tile.
                       if (longPressFired) {
                         e.preventDefault();
                         e.stopPropagation();
                       }
                     }}
                     onTouchCancel={cancelLongPress}
+                    onMouseDown={() => { lastInputWasTouchRef.current = false; }}
                   >
                     <Tile
                       tile={tile}
@@ -875,6 +920,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                       onDisarmTrap={onDisarmTrap}
                       onClick={tile.explored && tile.type !== 'wall' ? () => handleTileTap(x, y) : undefined}
                       playerPickaxeTier={playerPickaxeTier}
+                      forceTooltipOpen={previewTile?.x === x && previewTile?.y === y}
                     />
                     {/* Targeting overlay */}
                     {targetingMode && isTargetable && (

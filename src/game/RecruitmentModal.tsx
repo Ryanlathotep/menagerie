@@ -47,6 +47,9 @@ interface RecruitmentModalProps {
   queuedRecruits?: number;
   /** Optional: skip every queued recruit at once (also dismisses current). */
   onSkipAll?: () => void;
+  /** Player's full unlocked roster. Used to flag whether this combo is new
+   *  and whether recruiting it would be a stat upgrade. */
+  unlockedMonsters?: UnlockedMonster[];
 }
 
 type Step = 'intro' | 'decision' | 'replace';

@@ -172,7 +172,10 @@ function Tile({
   onDisarmTrap,
   onClick,
   playerPickaxeTier,
+  forceTooltipOpen,
 }: TileProps) {
+  // When tap-to-preview forces a tooltip open, we still let hover toggle it on desktop.
+  const tooltipOpenProps = forceTooltipOpen ? { open: true } : {};
   const tileStyle = {
     width: `${tileSize}px`,
     height: `${tileSize}px`,

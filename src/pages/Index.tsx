@@ -1756,10 +1756,12 @@ function DungeonView({
         isMovingRef.current = true;
         handleMoveRef.current(direction);
         // Hold the move-lock for two frames so React commits the dungeon update
-        // before the next direction is computed.
+        // before the next direction is computed. Add a setTimeout fallback so
+        // the lock can never stay stuck if rAF is paused (mobile background tab).
         requestAnimationFrame(() => requestAnimationFrame(() => {
           isMovingRef.current = false;
         }));
+        setTimeout(() => { isMovingRef.current = false; }, 250);
         lastMoveTime = timestamp;
 
         // Don't slice the path here — the next tick trims based on actual

@@ -11,7 +11,7 @@
 
 import { DungeonState, DungeonTile, Position, Monster, SpeciesType } from './types';
 import { generateRandomMonster } from './utils';
-import { generateLoot } from './dungeon';
+import { generateLoot, updateVisibility } from './dungeon';
 import { getRandomTerrainType } from './terrain';
 import { MineableWallTier } from './tools';
 

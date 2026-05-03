@@ -979,6 +979,18 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                           <span className="relative text-base drop-shadow-[0_0_4px_rgba(251,191,36,0.9)]">🧭</span>
                         </div>
                     )}
+                    {/* Player-pinned waypoints (right-click on tile). Same
+                        pulsing-ring treatment as the compass, in emerald. */}
+                    {(dungeon.compassWaypoints || []).some(p => p.x === x && p.y === y) && (
+                      <div
+                        className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center"
+                        aria-label="Pinned waypoint"
+                      >
+                        <div className="absolute inset-0 rounded-full border-2 border-emerald-400 animate-ping opacity-60" />
+                        <div className="absolute inset-1 rounded-full border-2 border-emerald-300 opacity-90" />
+                        <span className="relative text-sm drop-shadow-[0_0_4px_rgba(52,211,153,0.9)]">📍</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}

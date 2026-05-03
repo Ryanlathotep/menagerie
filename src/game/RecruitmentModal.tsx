@@ -287,9 +287,14 @@ export function RecruitmentModal({
               </div>
             </ScrollArea>
 
-            <Button variant="ghost" className="w-full" onClick={() => setStep('decision')}>
-              ← Back
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="ghost" className="flex-1" onClick={() => setStep('decision')}>
+                ← Back
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={onSendHome}>
+                🏠 Send Home Instead
+              </Button>
+            </div>
           </>
         )}
       </Card>

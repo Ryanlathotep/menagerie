@@ -152,6 +152,7 @@ interface TileProps {
   onDisarmTrap?: (x: number, y: number, success: boolean) => void;
   onClick?: () => void;
   playerPickaxeTier?: PickaxeTier; // For mineable wall tooltips
+  forceTooltipOpen?: boolean; // Touch tap-to-preview override
 }
 function Tile({
   tile,

@@ -742,13 +742,26 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const incoming = { ...action.item, quantity: addQty };
 
       const stackInto = (list: InventoryItem[]): InventoryItem[] => {
-        const idx = list.findIndex(i => i.id === incoming.id);
-        if (idx !== -1) {
-          const next = [...list];
-          next[idx] = { ...next[idx], quantity: next[idx].quantity + addQty };
-          return next;
+        // Collapse any pre-existing duplicate entries with the same id
+        // (defensive — older saves can have multiple stacks for one id).
+        const collapsed: InventoryItem[] = [];
+        for (const entry of list) {
+          const idx = collapsed.findIndex(i => i.id === entry.id);
+          if (idx !== -1) {
+            collapsed[idx] = {
+              ...collapsed[idx],
+              quantity: collapsed[idx].quantity + entry.quantity,
+            };
+          } else {
+            collapsed.push({ ...entry });
+          }
         }
-        return [...list, { ...incoming }];
+        const idx = collapsed.findIndex(i => i.id === incoming.id);
+        if (idx !== -1) {
+          collapsed[idx] = { ...collapsed[idx], quantity: collapsed[idx].quantity + addQty };
+          return collapsed;
+        }
+        return [...collapsed, { ...incoming }];
       };
 
       return {

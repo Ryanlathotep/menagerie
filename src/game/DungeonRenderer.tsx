@@ -830,6 +830,14 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
               <span>
                 Enemies on floor: <span className="text-foreground font-semibold">{aliveEnemies.length}</span>
               </span>
+              <span className="opacity-60">•</span>
+              <span>
+                Pos:{' '}
+                <span className="text-foreground font-semibold tabular-nums">
+                  ({dungeon.playerPosition.x - (dungeon.entryPosition?.x ?? dungeon.playerPosition.x)},{' '}
+                  {dungeon.playerPosition.y - (dungeon.entryPosition?.y ?? dungeon.playerPosition.y)})
+                </span>
+              </span>
             </div>
           </div>
         );

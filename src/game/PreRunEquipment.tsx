@@ -158,7 +158,7 @@ export function PreRunEquipment({
   }, [activeIndex]);
   
   const handleStart = () => {
-    onStart(partyEquipment, equippedIds, selectedItems, showFloorSelector ? selectedStartFloor : undefined);
+    onStart(partyEquipment, equippedIds, [], showFloorSelector ? selectedStartFloor : undefined);
   };
   
   // Drag handlers

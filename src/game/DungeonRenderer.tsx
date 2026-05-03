@@ -194,7 +194,7 @@ function Tile({
   // Wall tiles - SVG ink texture (bedrock — unmineable)
   if (tile.type === 'wall') {
     return (
-      <Tooltip>
+      <Tooltip {...tooltipOpenProps}>
         <TooltipTrigger asChild>
           <div className={`flex items-center justify-center overflow-hidden ${pathOverlayClass}`} style={tileStyle}>
             {tile.visible ? (
@@ -222,7 +222,7 @@ function Tile({
     const hits = tile.wallHits || 0;
     const pickaxeName = playerPickaxeTier ? PICKAXE_TIERS[playerPickaxeTier].name : 'a Pickaxe';
     return (
-      <Tooltip>
+      <Tooltip {...tooltipOpenProps}>
         <TooltipTrigger asChild>
           <div className={`flex items-center justify-center overflow-hidden ${pathOverlayClass} ${canMine ? 'cursor-pointer' : ''}`} style={tileStyle} onClick={onClick}>
             {tile.visible ? (
@@ -285,7 +285,7 @@ function Tile({
       const hasWeakness = matchup && (matchup.playerWeakToElement || matchup.playerWeakToClass);
       const hasStrength = matchup && (matchup.playerStrongVsElement || matchup.playerStrongVsClass);
       const captureStatus = isCaptured(enemy, unlockedMonsters);
-      return <Tooltip>
+      return <Tooltip {...tooltipOpenProps}>
           <TooltipTrigger asChild>
             <div 
               className={`flex items-center justify-center relative hover:scale-110 transition-transform cursor-pointer`} 
@@ -449,7 +449,7 @@ function Tile({
       if (longPressTimer) clearTimeout(longPressTimer);
     };
 
-    return <Tooltip>
+    return <Tooltip {...tooltipOpenProps}>
         <TooltipTrigger asChild>
           <div 
             className={`flex items-center justify-center relative ${isTriggered ? 'opacity-50' : 'cursor-pointer hover:scale-105'} transition-transform`} 
@@ -482,7 +482,7 @@ function Tile({
     const plantInfo = getPlantInfo(tile.plantType);
     const isHarvested = tile.harvested;
     
-    return <Tooltip>
+    return <Tooltip {...tooltipOpenProps}>
         <TooltipTrigger asChild>
           <div 
             className={`flex items-center justify-center relative ${isHarvested ? 'opacity-60' : 'cursor-pointer hover:scale-105'} transition-transform ${pathOverlayClass}`} 
@@ -530,7 +530,7 @@ function Tile({
       sameTerrain(x - 1, y),
     );
 
-    return <Tooltip>
+    return <Tooltip {...tooltipOpenProps}>
       <TooltipTrigger asChild>
         <div
           className={`flex items-center justify-center relative ${pathOverlayClass} cursor-pointer hover:brightness-110`}
@@ -624,7 +624,7 @@ function Tile({
   const specialTileGraphic = tile.visible ? renderSpecialTile() : null;
   
   if (tooltipInfo && specialTileGraphic) {
-    return <Tooltip>
+    return <Tooltip {...tooltipOpenProps}>
         <TooltipTrigger asChild>
           <div 
             className={`flex items-center justify-center relative cursor-pointer hover:scale-105 transition-transform ${pathOverlayClass}`} 

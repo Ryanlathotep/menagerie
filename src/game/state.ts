@@ -606,6 +606,22 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           dungeon: { ...state.run.dungeon, ...action.dungeon },
         },
       };
+
+    case 'TOGGLE_DUNGEON_WAYPOINT': {
+      if (!state.run || !state.run.dungeon) return state;
+      const existing = state.run.dungeon.compassWaypoints || [];
+      const idx = existing.findIndex(p => p.x === action.x && p.y === action.y);
+      const next = idx >= 0
+        ? existing.filter((_, i) => i !== idx)
+        : [...existing, { x: action.x, y: action.y }];
+      return {
+        ...state,
+        run: {
+          ...state.run,
+          dungeon: { ...state.run.dungeon, compassWaypoints: next },
+        },
+      };
+    }
     
     case 'DISARM_TRAP':
       if (!state.run || !state.run.dungeon) return state;

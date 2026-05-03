@@ -231,11 +231,30 @@ export function TerrainTile({
   const wHeight = bottom - top;
   const cx = (left + right) / 2;
   const cy = (top + bottom) / 2;
-  // For isolated tiles we keep the soft round-ish shape; for connected ones we use
-  // a full rect so adjoining edges meet seamlessly.
+  // For isolated tiles we keep the soft round-ish shape; for connected ones
+  // we build a rounded-rect path that only curves the OUTER corners (corners
+  // where both meeting sides are closed). This keeps internal seams flat so
+  // adjacent pool tiles still merge, while the outside silhouette stays soft
+  // instead of squared-off.
+  const corner = 4; // corner radius in viewBox units
+  const rTL = (!n && !w) ? corner : 0;
+  const rTR = (!n && !e) ? corner : 0;
+  const rBR = (!s && !e) ? corner : 0;
+  const rBL = (!s && !w) ? corner : 0;
+  const roundedPath =
+    `M${left + rTL} ${top}` +
+    `H${right - rTR}` +
+    (rTR ? `A${rTR} ${rTR} 0 0 1 ${right} ${top + rTR}` : '') +
+    `V${bottom - rBR}` +
+    (rBR ? `A${rBR} ${rBR} 0 0 1 ${right - rBR} ${bottom}` : '') +
+    `H${left + rBL}` +
+    (rBL ? `A${rBL} ${rBL} 0 0 1 ${left} ${bottom - rBL}` : '') +
+    `V${top + rTL}` +
+    (rTL ? `A${rTL} ${rTL} 0 0 1 ${left + rTL} ${top}` : '') +
+    'Z';
   const baseShape = isolated
     ? <ellipse cx="12" cy="12" rx="10" ry="10" fill={colors.main} opacity={0.55} />
-    : <rect x={left} y={top} width={wWidth} height={wHeight} fill={colors.main} opacity={0.5} />;
+    : <path d={roundedPath} fill={colors.main} opacity={0.5} />;
 
   // Different patterns based on terrain type — decorations only; the watercolor
   // wash above handles the connected silhouette.
@@ -288,7 +307,7 @@ export function TerrainTile({
           <>
             {baseShape}
             {isolated && <ellipse cx="12" cy="12" rx="7" ry="7" fill="hsl(270 50% 15%)" opacity={0.5} />}
-            {!isolated && <rect x={left} y={top} width={wWidth} height={wHeight} fill="hsl(270 50% 15%)" opacity={0.35} />}
+            {!isolated && <path d={roundedPath} fill="hsl(270 50% 15%)" opacity={0.35} />}
             <circle cx={cx - 2 + r1 * 4} cy={cy - 2 + r2 * 4} r={2} fill={colors.light} opacity={0.3} />
           </>
         );

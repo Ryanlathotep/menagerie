@@ -4606,6 +4606,7 @@ function BattleView({
           onReplaceMember={handleRecruitReplaceMember}
           onSendHome={handleRecruitSendHome}
           onDismiss={handleDismissRecruitment}
+          unlockedMonsters={state.saveData.unlockedMonsters}
         />
       )}
       

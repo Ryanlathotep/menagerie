@@ -1219,6 +1219,7 @@ function DungeonView({
         playerPosition: dungeon.playerPosition,
         width: dungeon.width,
         height: dungeon.height,
+        entryPosition: dungeon.entryPosition,
       };
       const nextFloorNum = dungeon.floor + 1;
       const cached = visited[nextFloorNum];
@@ -1233,6 +1234,7 @@ function DungeonView({
           height: cached.height,
           theme: dungeon.theme,
           startingFloor: dungeon.startingFloor,
+          entryPosition: cached.entryPosition ?? cached.playerPosition,
           visitedFloors: visited,
         };
       } else {
@@ -1240,7 +1242,7 @@ function DungeonView({
         const tiles = fresh.tiles.map(row => row.map(t => ({ ...t })));
         const spawn = fresh.playerPosition;
         tiles[spawn.y][spawn.x].stairsBeneath = 'up';
-        newDungeon = { ...fresh, tiles, visitedFloors: visited };
+        newDungeon = { ...fresh, tiles, entryPosition: { ...spawn }, visitedFloors: visited };
       }
       dispatch({ type: 'SET_DUNGEON', dungeon: newDungeon });
       addLog(`⬇️ Descended to Floor ${nextFloorNum}!`, 'system');
@@ -1264,6 +1266,7 @@ function DungeonView({
         playerPosition: dungeon.playerPosition,
         width: dungeon.width,
         height: dungeon.height,
+        entryPosition: dungeon.entryPosition,
       };
       const prevFloorNum = dungeon.floor - 1;
       const cached = visited[prevFloorNum];
@@ -1277,6 +1280,7 @@ function DungeonView({
             height: cached.height,
             theme: dungeon.theme,
             startingFloor: dungeon.startingFloor,
+            entryPosition: cached.entryPosition ?? cached.playerPosition,
             visitedFloors: visited,
           }
         : { ...generateDungeon(prevFloorNum, dungeon.theme, dungeon.startingFloor), visitedFloors: visited };

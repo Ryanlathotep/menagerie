@@ -1375,6 +1375,9 @@ function DungeonView({
           });
           const cfg = TERRAIN_CONFIG[runeType];
           addLog(`🪏 Dug up ${cfg.name}! +${drop.quantity} ${cfg.name} Stone`, 'loot');
+          // Mutate result.dungeon so downstream steps (nest tick, enemy turn)
+          // operate on the post-dig map and don't overwrite the removal.
+          result.dungeon = newDungeon;
         }
       }
     }

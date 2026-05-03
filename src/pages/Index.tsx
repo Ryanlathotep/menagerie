@@ -1487,10 +1487,14 @@ function DungeonView({
         
         isMovingRef.current = true;
         handleMoveRef.current(direction);
-        // Allow next move after a short delay for state to settle
+        // Allow next move after a short delay for state to settle. Use BOTH
+        // rAF and a setTimeout fallback — on mobile, rAF is paused when the
+        // tab/screen goes to background, which would otherwise leave the
+        // movement lock stuck `true` forever and freeze the player.
         requestAnimationFrame(() => {
           isMovingRef.current = false;
         });
+        setTimeout(() => { isMovingRef.current = false; }, 200);
         lastMoveTime = timestamp;
       }
       
@@ -1752,10 +1756,12 @@ function DungeonView({
         isMovingRef.current = true;
         handleMoveRef.current(direction);
         // Hold the move-lock for two frames so React commits the dungeon update
-        // before the next direction is computed.
+        // before the next direction is computed. Add a setTimeout fallback so
+        // the lock can never stay stuck if rAF is paused (mobile background tab).
         requestAnimationFrame(() => requestAnimationFrame(() => {
           isMovingRef.current = false;
         }));
+        setTimeout(() => { isMovingRef.current = false; }, 250);
         lastMoveTime = timestamp;
 
         // Don't slice the path here — the next tick trims based on actual

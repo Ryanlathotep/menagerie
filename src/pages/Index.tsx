@@ -1487,10 +1487,14 @@ function DungeonView({
         
         isMovingRef.current = true;
         handleMoveRef.current(direction);
-        // Allow next move after a short delay for state to settle
+        // Allow next move after a short delay for state to settle. Use BOTH
+        // rAF and a setTimeout fallback — on mobile, rAF is paused when the
+        // tab/screen goes to background, which would otherwise leave the
+        // movement lock stuck `true` forever and freeze the player.
         requestAnimationFrame(() => {
           isMovingRef.current = false;
         });
+        setTimeout(() => { isMovingRef.current = false; }, 200);
         lastMoveTime = timestamp;
       }
       

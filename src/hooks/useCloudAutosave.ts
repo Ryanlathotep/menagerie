@@ -32,7 +32,7 @@ export function useCloudAutosave(saveData: SaveData, opts: Options = {}) {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const flush = async (reason: 'debounce' | 'interval' | 'visibility') => {
+    const flush = async (reason: 'debounce' | 'interval' | 'visibility' | 'milestone') => {
       if (inFlightRef.current) return;
       const json = JSON.stringify(latestRef.current);
       if (json === lastSavedJsonRef.current) return;
@@ -43,7 +43,6 @@ export function useCloudAutosave(saveData: SaveData, opts: Options = {}) {
         if (result.success) {
           lastSavedJsonRef.current = json;
           lastSaveAtRef.current = Date.now();
-          // Silent — no toast — this is autosave.
           // eslint-disable-next-line no-console
           console.debug('[autosave] saved to cloud', { reason });
         }
@@ -52,25 +51,28 @@ export function useCloudAutosave(saveData: SaveData, opts: Options = {}) {
       }
     };
 
-    // Debounced trigger on saveData change (handled below by re-running effect).
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => flush('debounce'), debounceMs);
 
-    // Hard interval: ensure we flush at least every `intervalMs`.
     const intervalId = setInterval(() => flush('interval'), intervalMs);
 
-    // Flush on tab hide / before unload so refreshes don't lose recent state.
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') flush('visibility');
     };
+    const onMilestone = () => {
+      // Immediate flush on level-up / equipment change. Cancel pending debounce.
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      flush('milestone');
+    };
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('beforeunload', () => flush('visibility'));
+    window.addEventListener('cloud-save-request', onMilestone);
 
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       clearInterval(intervalId);
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('cloud-save-request', onMilestone);
     };
-    // Re-run when saveData identity changes so the debounce timer resets.
   }, [saveData, isAuthenticated, saveToCloud, debounceMs, intervalMs]);
 }

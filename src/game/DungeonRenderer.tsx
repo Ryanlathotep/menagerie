@@ -967,9 +967,9 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                     )}
                     {/* Dungeon Compass waypoint: pulsing ring on the pinned tile.
                         Visible even through fog so the player can chase the exit. */}
-                    {dungeon.compassWaypoint
-                      && dungeon.compassWaypoint.x === x
-                      && dungeon.compassWaypoint.y === y && (
+                    {effectiveWaypoint
+                      && effectiveWaypoint.x === x
+                      && effectiveWaypoint.y === y && (
                         <div
                           className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center"
                           aria-label="Compass waypoint"

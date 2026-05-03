@@ -264,13 +264,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const startingInventory: InventoryItem[] = (state.saveData.storedItems || []).map(i => ({ ...i }));
       const remainingStoredItems = state.saveData.storedItems || [];
 
-      // Unified equipment inventory: same pattern as items. The run's loose
-      // equipment IS the town's stored equipment — both lists are mirrored
-      // by ADD/EQUIP/UNEQUIP/BULK_EQUIP/DROP/STORE/WITHDRAW/SELL/DISMANTLE.
-      // Pre-equipped items (action.withdrawnIds) are bound to monsters and
-      // therefore removed from the shared pool.
-      const startingEquipmentInventory: EquipmentItem[] = remainingStorage.map(i => ({ ...i }));
-      
       // Build full party
       const fullParty = action.party && action.party.length > 0
         ? action.party
@@ -288,6 +281,43 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             ) as MonsterEquipment;
           })
         : [boundPreEquipped];
+
+      // RECOVER UNEQUIPPED PERSISTED GEAR.
+      // A monster brought into the run may carry equipment persisted on its
+      // UnlockedMonster record (NOT in town storage). If the player unequipped
+      // any of that gear in the Pre-Run screen, the item would be silently
+      // lost — it's no longer bound to the monster and was never in storage.
+      // Compare each member's incoming persisted equipment against their new
+      // selection and return any removed items to the shared equipment pool
+      // so they're available again.
+      const finalEquippedIds = new Set<string>();
+      for (const eq of fullPartyEquipment) {
+        for (const item of Object.values(eq)) {
+          if (item) finalEquippedIds.add(item.id);
+        }
+      }
+      const recoveredFromUnequip: EquipmentItem[] = [];
+      for (const member of fullParty) {
+        if (!member.equipment) continue;
+        for (const item of Object.values(member.equipment)) {
+          if (
+            item &&
+            !finalEquippedIds.has(item.id) &&
+            !remainingStorage.some(s => s.id === item.id) &&
+            !recoveredFromUnequip.some(r => r.id === item.id)
+          ) {
+            recoveredFromUnequip.push({ ...item, bound: undefined });
+          }
+        }
+      }
+      const mergedStorage = [...remainingStorage, ...recoveredFromUnequip];
+
+      // Unified equipment inventory: same pattern as items. The run's loose
+      // equipment IS the town's stored equipment — both lists are mirrored
+      // by ADD/EQUIP/UNEQUIP/BULK_EQUIP/DROP/STORE/WITHDRAW/SELL/DISMANTLE.
+      // Pre-equipped items (action.withdrawnIds) are bound to monsters and
+      // therefore removed from the shared pool.
+      const startingEquipmentInventory: EquipmentItem[] = mergedStorage.map(i => ({ ...i }));
       
       // Ensure partyEffects matches party size
       const partyEffects = fullParty.map(() => ({ statusEffects: [] as any[], statModifiers: [] as any[] }));
@@ -317,7 +347,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         saveData: {
           ...state.saveData,
           totalRuns: state.saveData.totalRuns + 1,
-          storedEquipment: remainingStorage,
+          storedEquipment: mergedStorage,
         },
       };
     }

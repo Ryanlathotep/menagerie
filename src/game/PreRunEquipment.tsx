@@ -222,10 +222,23 @@ export function PreRunEquipment({
             <Shirt className="w-5 h-5 text-primary" />
             Prepare for Adventure
           </h2>
+          <div className="ml-auto flex gap-2">
+            <Button variant="outline" size="sm" onClick={onBack}>
+              Back
+            </Button>
+            <Button
+              size="sm"
+              className="bg-gradient-to-r from-primary to-secondary"
+              onClick={handleStart}
+            >
+              <Play className="w-4 h-4 mr-1" />
+              Start Adventure!
+            </Button>
+          </div>
         </div>
-        
+
         <p className="text-center text-muted-foreground text-xs">
-          Equip gear and select consumables from your storage before starting the run.
+          Equip gear before starting the run. All items in town storage are automatically available.
         </p>
 
         {/* Floor skip selector — only shown for dungeon runs when the player has earned the right to skip ahead. */}
@@ -318,7 +331,7 @@ export function PreRunEquipment({
           </div>
         )}
         
-        <div className="grid md:grid-cols-3 gap-3">
+        <div className="grid md:grid-cols-2 gap-3">
           {/* Left: Paper doll with monster */}
           <Card className="p-4">
             <div className="flex flex-col items-center gap-4">
@@ -461,60 +474,6 @@ export function PreRunEquipment({
             </p>
           </Card>
           
-          {/* Third column: Consumables (read-only — town storage IS run inventory) */}
-          <Card className="p-3 flex flex-col">
-            <h3 className="font-semibold text-sm mb-2">🧪 Consumables</h3>
-            <p className="text-[10px] text-muted-foreground mb-2">
-              All items in storage are automatically available during the run.
-            </p>
-
-            <ScrollArea className="flex-1 max-h-[280px]">
-              <div className="space-y-1 pr-2">
-                {groupedConsumables.length > 0 ? (
-                  groupedConsumables.map(item => (
-                    <div key={item.id} className="p-2 rounded border text-left">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">
-                          {item.effect === 'heal_hp' ? '❤️' :
-                           item.effect === 'heal_stamina' ? '⚡' :
-                           item.effect?.startsWith('cure_') ? '💊' :
-                           item.effect?.startsWith('boost_') ? '✨' :
-                           item.effect?.startsWith('revive') ? '🌟' : '🧪'}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium truncate">{item.name}</p>
-                          <p className="text-[10px] text-muted-foreground">×{item.quantity}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center text-muted-foreground py-6">
-                    <p className="text-2xl mb-1">🧪</p>
-                    <p className="text-xs">No consumables in storage</p>
-                    <p className="text-[10px] mt-1">Craft potions or buy from the shop!</p>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-
-            <p className="text-[10px] text-muted-foreground text-center mt-2">
-              {groupedConsumables.reduce((sum, i) => sum + (i.quantity || 1), 0)} available
-            </p>
-          </Card>
-        </div>
-        
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={onBack}>
-            Back
-          </Button>
-          <Button 
-            className="flex-1 bg-gradient-to-r from-primary to-secondary" 
-            onClick={handleStart}
-          >
-            <Play className="w-4 h-4 mr-2" />
-            Start Adventure! ✨
-          </Button>
         </div>
       </div>
     </div>

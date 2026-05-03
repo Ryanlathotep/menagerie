@@ -282,6 +282,7 @@ export function expandDungeonIfNeeded(dungeon: DungeonState): DungeonState {
     enemies: newEnemies,
     entryPosition,
     compassWaypoint,
+    compassWaypoints,
   };
 }
 

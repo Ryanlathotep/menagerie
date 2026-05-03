@@ -887,18 +887,20 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                       lastTapRef.current = null;
                       onTileRightClick(x, y);
                     }}
-                    onTouchStart={startLongPress}
+                    onTouchStart={() => {
+                      lastInputWasTouchRef.current = true;
+                      startLongPress();
+                    }}
                     onTouchMove={cancelLongPress}
                     onTouchEnd={(e) => {
                       cancelLongPress();
-                      // If long-press fired, swallow the trailing tap so we don't
-                      // also auto-attack/move into the tile.
                       if (longPressFired) {
                         e.preventDefault();
                         e.stopPropagation();
                       }
                     }}
                     onTouchCancel={cancelLongPress}
+                    onMouseDown={() => { lastInputWasTouchRef.current = false; }}
                   >
                     <Tile
                       tile={tile}
@@ -918,6 +920,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                       onDisarmTrap={onDisarmTrap}
                       onClick={tile.explored && tile.type !== 'wall' ? () => handleTileTap(x, y) : undefined}
                       playerPickaxeTier={playerPickaxeTier}
+                      forceTooltipOpen={previewTile?.x === x && previewTile?.y === y}
                     />
                     {/* Targeting overlay */}
                     {targetingMode && isTargetable && (

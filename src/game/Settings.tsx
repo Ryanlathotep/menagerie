@@ -132,6 +132,14 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { settings, updateSetting, resetSettings } = useSettings();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [adminOpen, setAdminOpen] = useState(false);
+
+  // Listen for admin panel open event (dispatched from the Admin Tools button)
+  useEffect(() => {
+    const handleOpenAdmin = () => setAdminOpen(true);
+    window.addEventListener('open-admin-panel', handleOpenAdmin);
+    return () => window.removeEventListener('open-admin-panel', handleOpenAdmin);
+  }, []);
 
   const handleExportSave = () => {
     try {

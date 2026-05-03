@@ -177,6 +177,47 @@ export function RecruitmentModal({
             {renderHeader('Impressive Victory!', 'The defeated monster is considering joining you!')}
             {renderEnemyPreview()}
 
+            {/* Roster status — tells the player whether this recruit is new,
+                an upgrade over their existing copy, or a duplicate. */}
+            <div
+              className={`p-2 rounded-lg text-center text-xs border ${
+                isBrandNew
+                  ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-300'
+                  : isLevelUpgrade
+                    ? 'bg-amber-500/10 border-amber-500/40 text-amber-700 dark:text-amber-300'
+                    : 'bg-muted/50 border-border text-muted-foreground'
+              }`}
+            >
+              {isBrandNew && (
+                <p className="font-semibold">✨ New combo! Not yet in your roster.</p>
+              )}
+              {!isBrandNew && isLevelUpgrade && (
+                <>
+                  <p className="font-semibold">
+                    ⬆️ Upgrade — your copy is Lv.{existingUnlock!.level}, this one is Lv.{enemy.level}.
+                  </p>
+                  <p className="opacity-80">Recruiting will improve its stats.</p>
+                </>
+              )}
+              {!isBrandNew && !isLevelUpgrade && (
+                <>
+                  <p className="font-semibold">
+                    ✓ Already unlocked at Lv.{existingUnlock!.level}.
+                  </p>
+                  <p className="opacity-80">No stat improvement from this recruit.</p>
+                </>
+              )}
+            </div>
+
+            {/* Auto-skip toggle (persisted) */}
+            <label className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground cursor-pointer select-none">
+              <Checkbox
+                checked={autoSkipUseless}
+                onCheckedChange={(v) => setAutoSkipUseless(v === true)}
+              />
+              <span>Auto-skip recruits that won&apos;t improve or unlock my roster</span>
+            </label>
+
             {/* Passive ability */}
             <div className="p-2 bg-muted/50 rounded-lg text-center">
               <p className="text-xs font-semibold text-primary">{speciesData.passiveAbility}</p>

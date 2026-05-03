@@ -698,15 +698,54 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   // Mobile double-tap → treat as right-click. A second tap on the SAME tile
   // within 300ms calls onTileRightClick instead of onTileClick.
   const lastTapRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  // Touch tap-to-preview: on touch input, the first tap on a tile shows its
+  // tooltip without acting; a second tap on the same tile within ~3s performs
+  // the click. Mouse / keyboard input bypasses this entirely.
+  const lastInputWasTouchRef = useRef(false);
+  const [previewTile, setPreviewTile] = useState<{ x: number; y: number } | null>(null);
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearPreview = () => {
+    if (previewTimerRef.current) {
+      clearTimeout(previewTimerRef.current);
+      previewTimerRef.current = null;
+    }
+    setPreviewTile(null);
+  };
+
+  // Cancel the preview when the player moves (position changes) so a stale
+  // preview tile doesn't linger.
+  useEffect(() => {
+    clearPreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [px, py]);
+
   const handleTileTap = (x: number, y: number) => {
     const now = Date.now();
     const last = lastTapRef.current;
     if (last && last.x === x && last.y === y && now - last.time < 300) {
       lastTapRef.current = null;
+      clearPreview();
       onTileRightClick?.(x, y);
       return;
     }
     lastTapRef.current = { x, y, time: now };
+
+    // Touch input → first tap on a NEW tile previews the tooltip instead of
+    // acting. Second tap on the same previewed tile performs the action.
+    if (lastInputWasTouchRef.current) {
+      const isPreviewed = previewTile && previewTile.x === x && previewTile.y === y;
+      if (!isPreviewed) {
+        if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+        setPreviewTile({ x, y });
+        // Auto-dismiss preview after a few seconds so it doesn't linger.
+        previewTimerRef.current = setTimeout(() => setPreviewTile(null), 3500);
+        return;
+      }
+      // Second tap on previewed tile → act. Clear the preview first.
+      clearPreview();
+    }
+
     onTileClick?.(x, y);
   };
 

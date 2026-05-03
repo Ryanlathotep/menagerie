@@ -2973,6 +2973,7 @@ function DungeonView({
             setShowRecruitment(false);
             setDefeatedEnemy(null);
           }}
+          unlockedMonsters={state.saveData.unlockedMonsters}
         />
         );
       })()}
@@ -4605,6 +4606,7 @@ function BattleView({
           onReplaceMember={handleRecruitReplaceMember}
           onSendHome={handleRecruitSendHome}
           onDismiss={handleDismissRecruitment}
+          unlockedMonsters={state.saveData.unlockedMonsters}
         />
       )}
       

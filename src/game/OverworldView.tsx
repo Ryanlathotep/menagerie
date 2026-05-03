@@ -1728,6 +1728,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           setShowRecruitment(false);
           setDefeatedEnemy(null);
         }}
+        unlockedMonsters={state.saveData.unlockedMonsters}
       />
     )}
     

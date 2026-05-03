@@ -10,12 +10,15 @@
 //        c) Send home (store in roster, no party slot used)
 //   4. "replace" — pick which party member to swap out (sent home).
 
-import { useState } from 'react';
-import { Monster, SPECIES_DATA, ELEMENT_COLORS } from './types';
+import { useState, useEffect } from 'react';
+import { Monster, SPECIES_DATA, ELEMENT_COLORS, UnlockedMonster } from './types';
 import { MonsterSprite } from './sprites';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
+
+const AUTO_SKIP_KEY = 'menagerie-auto-skip-useless-recruits';
 
 interface RecruitmentModalProps {
   enemy: Monster;
@@ -44,6 +47,9 @@ interface RecruitmentModalProps {
   queuedRecruits?: number;
   /** Optional: skip every queued recruit at once (also dismisses current). */
   onSkipAll?: () => void;
+  /** Player's full unlocked roster. Used to flag whether this combo is new
+   *  and whether recruiting it would be a stat upgrade. */
+  unlockedMonsters?: UnlockedMonster[];
 }
 
 type Step = 'intro' | 'decision' | 'replace';
@@ -61,9 +67,36 @@ export function RecruitmentModal({
   onFail,
   queuedRecruits = 0,
   onSkipAll,
+  unlockedMonsters = [],
 }: RecruitmentModalProps) {
   const speciesData = SPECIES_DATA[enemy.species];
   const [step, setStep] = useState<Step>('intro');
+
+  // Persisted "auto-skip useless recruits" toggle.
+  const [autoSkipUseless, setAutoSkipUseless] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem(AUTO_SKIP_KEY) === '1';
+  });
+  useEffect(() => {
+    try { localStorage.setItem(AUTO_SKIP_KEY, autoSkipUseless ? '1' : '0'); } catch { /* noop */ }
+  }, [autoSkipUseless]);
+
+  // Compare against existing unlocked record (matches by species + element + class).
+  const existingUnlock = unlockedMonsters.find(
+    u => u.species === enemy.species && u.element === enemy.element && u.classType === enemy.class,
+  );
+  const isBrandNew = !existingUnlock;
+  const isLevelUpgrade = !!existingUnlock && enemy.level > existingUnlock.level;
+  const isUseful = isBrandNew || isLevelUpgrade;
+
+  // Auto-skip when toggle is on and this recruit wouldn't improve the roster.
+  // Fire onFail() (which the parent treats as "advance the queue") on mount.
+  useEffect(() => {
+    if (autoSkipUseless && !isUseful && step === 'intro') {
+      onFail();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Visual breakdown of what made it impressive
   const impressiveFactors: { icon: string; label: string; detail: string }[] = [];
@@ -143,6 +176,47 @@ export function RecruitmentModal({
           <>
             {renderHeader('Impressive Victory!', 'The defeated monster is considering joining you!')}
             {renderEnemyPreview()}
+
+            {/* Roster status — tells the player whether this recruit is new,
+                an upgrade over their existing copy, or a duplicate. */}
+            <div
+              className={`p-2 rounded-lg text-center text-xs border ${
+                isBrandNew
+                  ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-300'
+                  : isLevelUpgrade
+                    ? 'bg-amber-500/10 border-amber-500/40 text-amber-700 dark:text-amber-300'
+                    : 'bg-muted/50 border-border text-muted-foreground'
+              }`}
+            >
+              {isBrandNew && (
+                <p className="font-semibold">✨ New combo! Not yet in your roster.</p>
+              )}
+              {!isBrandNew && isLevelUpgrade && (
+                <>
+                  <p className="font-semibold">
+                    ⬆️ Upgrade — your copy is Lv.{existingUnlock!.level}, this one is Lv.{enemy.level}.
+                  </p>
+                  <p className="opacity-80">Recruiting will improve its stats.</p>
+                </>
+              )}
+              {!isBrandNew && !isLevelUpgrade && (
+                <>
+                  <p className="font-semibold">
+                    ✓ Already unlocked at Lv.{existingUnlock!.level}.
+                  </p>
+                  <p className="opacity-80">No stat improvement from this recruit.</p>
+                </>
+              )}
+            </div>
+
+            {/* Auto-skip toggle (persisted) */}
+            <label className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground cursor-pointer select-none">
+              <Checkbox
+                checked={autoSkipUseless}
+                onCheckedChange={(v) => setAutoSkipUseless(v === true)}
+              />
+              <span>Auto-skip recruits that won&apos;t improve or unlock my roster</span>
+            </label>
 
             {/* Passive ability */}
             <div className="p-2 bg-muted/50 rounded-lg text-center">

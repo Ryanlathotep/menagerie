@@ -436,8 +436,7 @@ function Tile({
 
     const handleRightClick = (e: React.MouseEvent) => {
       e.preventDefault();
-      // Bubble up so the parent's unified tile menu opens (Disarm / Pin / etc.)
-      // instead of silently disarming AND pinning a waypoint at the same time.
+      handleDisarm();
     };
 
     // Long-press for mobile

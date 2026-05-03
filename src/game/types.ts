@@ -352,6 +352,10 @@ export interface DungeonState {
   // Dungeon Compass: one-shot waypoint pinned to the floor's stairs. Renderer
   // overlays an arrow on this tile so the player can find the exit.
   compassWaypoint?: Position;
+  // Player-pinned waypoints (right-click any explored tile). Behave like the
+  // overworld arrows: each renders a pulsing marker on its tile, plus an
+  // edge-of-screen arrow when off-screen. Persist for the current floor only.
+  compassWaypoints?: Position[];
   // Persistent per-floor snapshots so the player can walk back up the
   // staircase to revisit a previous floor (tile state, enemies, position).
   // Excludes `compassWaypoint` and the active floor itself.

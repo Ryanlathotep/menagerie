@@ -979,12 +979,62 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                           <span className="relative text-base drop-shadow-[0_0_4px_rgba(251,191,36,0.9)]">🧭</span>
                         </div>
                     )}
+                    {/* Player-pinned waypoints (right-click on tile). Same
+                        pulsing-ring treatment as the compass, in emerald. */}
+                    {(dungeon.compassWaypoints || []).some(p => p.x === x && p.y === y) && (
+                      <div
+                        className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center"
+                        aria-label="Pinned waypoint"
+                      >
+                        <div className="absolute inset-0 rounded-full border-2 border-emerald-400 animate-ping opacity-60" />
+                        <div className="absolute inset-1 rounded-full border-2 border-emerald-300 opacity-90" />
+                        <span className="relative text-sm drop-shadow-[0_0_4px_rgba(52,211,153,0.9)]">📍</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
           ))}
         </div>
+        {/* Edge-of-screen arrows pointing to off-screen pinned waypoints. */}
+        {(dungeon.compassWaypoints || []).length > 0 && (
+          <div className="absolute inset-0 pointer-events-none z-30">
+            {(dungeon.compassWaypoints || []).map((wp, i) => {
+              const dx = wp.x - px;
+              const dy = wp.y - py;
+              if (dx === 0 && dy === 0) return null;
+              // Only show arrow if tile is off-screen (rough check via tileSize).
+              // Actual visible range depends on viewport size; approximate with 8 tiles.
+              if (Math.abs(dx) <= 8 && Math.abs(dy) <= 8) return null;
+              const angle = Math.atan2(dy, dx);
+              const ex = wp.x - (dungeon.entryPosition?.x ?? 0);
+              const ey = wp.y - (dungeon.entryPosition?.y ?? 0);
+              const dist = Math.abs(dx) + Math.abs(dy);
+              // Position card at 45% offset from center along the angle.
+              const radius = 42; // % of half-viewport
+              const left = `calc(50% + ${Math.cos(angle) * radius}%)`;
+              const top = `calc(50% + ${Math.sin(angle) * radius}%)`;
+              return (
+                <div
+                  key={i}
+                  className="absolute -translate-x-1/2 -translate-y-1/2"
+                  style={{ left, top }}
+                  title={`Waypoint (${ex}, ${ey}) — ${dist} tiles`}
+                >
+                  <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full border backdrop-blur-sm shadow-md text-[10px] font-medium leading-none text-emerald-300 bg-emerald-500/15 border-emerald-400/60">
+                    <span
+                      className="inline-block text-[12px] leading-none"
+                      style={{ transform: `rotate(${(angle * 180) / Math.PI}deg)` }}
+                    >➤</span>
+                    <span className="text-base leading-none">📍</span>
+                    <span className="tabular-nums opacity-90">{dist}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
       {/* Map key - centered below the grid */}
       <div className="flex items-center justify-center gap-4 mt-2 text-xs text-muted-foreground">

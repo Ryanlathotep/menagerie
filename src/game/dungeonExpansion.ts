@@ -204,6 +204,7 @@ export function expandDungeonIfNeeded(dungeon: DungeonState): DungeonState {
   let { tiles, playerPosition, width, height, enemies } = dungeon;
   let entryPosition = dungeon.entryPosition ? { ...dungeon.entryPosition } : undefined;
   let compassWaypoint = dungeon.compassWaypoint ? { ...dungeon.compassWaypoint } : undefined;
+  let compassWaypoints = dungeon.compassWaypoints ? dungeon.compassWaypoints.map(p => ({ ...p })) : undefined;
   const newEnemies = [...enemies];
 
   const theme = dungeon.theme;
@@ -223,6 +224,7 @@ export function expandDungeonIfNeeded(dungeon: DungeonState): DungeonState {
     playerPosition = { ...playerPosition, x: playerPosition.x + STRIP_WIDTH };
     if (entryPosition) entryPosition = { ...entryPosition, x: entryPosition.x + STRIP_WIDTH };
     if (compassWaypoint) compassWaypoint = { ...compassWaypoint, x: compassWaypoint.x + STRIP_WIDTH };
+    if (compassWaypoints) compassWaypoints = compassWaypoints.map(p => ({ ...p, x: p.x + STRIP_WIDTH }));
     carveStripContent(newTiles, 'west', dungeon.floor, newEnemies, availableSpecies, theme);
     tiles = newTiles;
     mutated = true;
@@ -248,6 +250,7 @@ export function expandDungeonIfNeeded(dungeon: DungeonState): DungeonState {
     playerPosition = { ...playerPosition, y: playerPosition.y + STRIP_WIDTH };
     if (entryPosition) entryPosition = { ...entryPosition, y: entryPosition.y + STRIP_WIDTH };
     if (compassWaypoint) compassWaypoint = { ...compassWaypoint, y: compassWaypoint.y + STRIP_WIDTH };
+    if (compassWaypoints) compassWaypoints = compassWaypoints.map(p => ({ ...p, y: p.y + STRIP_WIDTH }));
     carveStripContent(newTiles, 'north', dungeon.floor, newEnemies, availableSpecies, theme);
     tiles = newTiles;
     mutated = true;
@@ -279,6 +282,7 @@ export function expandDungeonIfNeeded(dungeon: DungeonState): DungeonState {
     enemies: newEnemies,
     entryPosition,
     compassWaypoint,
+    compassWaypoints,
   };
 }
 

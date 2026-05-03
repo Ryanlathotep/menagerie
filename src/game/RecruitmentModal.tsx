@@ -127,7 +127,7 @@ export function RecruitmentModal({
 
   return (
     <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md p-6 space-y-4">
+      <Card className="w-full max-w-md p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         {queuedRecruits > 0 && (
           <div className="flex items-center justify-between gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
             <span className="font-semibold text-amber-700 dark:text-amber-300">
@@ -287,9 +287,14 @@ export function RecruitmentModal({
               </div>
             </ScrollArea>
 
-            <Button variant="ghost" className="w-full" onClick={() => setStep('decision')}>
-              ← Back
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="ghost" className="flex-1" onClick={() => setStep('decision')}>
+                ← Back
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={onSendHome}>
+                🏠 Send Home Instead
+              </Button>
+            </div>
           </>
         )}
       </Card>

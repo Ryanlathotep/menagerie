@@ -16,7 +16,6 @@ import { MonsterSprite } from './sprites';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface RecruitmentModalProps {
   enemy: Monster;
@@ -241,8 +240,8 @@ export function RecruitmentModal({
           <>
             {renderHeader('Choose Who to Send Home', 'They will be safely stored back in town with all their gear.')}
 
-            <ScrollArea className="max-h-[280px] pr-2">
-              <div className="space-y-2">
+            <div className="max-h-[min(48vh,320px)] overflow-y-auto overscroll-contain pr-2 touch-pan-y [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch]">
+              <div className="space-y-2 pb-1">
                 {party.map((m, idx) => {
                   const colors = ELEMENT_COLORS[m.element];
                   const hpPercent = (m.stats.currentHp / m.stats.maxHp) * 100;
@@ -285,7 +284,7 @@ export function RecruitmentModal({
                   );
                 })}
               </div>
-            </ScrollArea>
+            </div>
 
             <div className="flex gap-2">
               <Button variant="ghost" className="flex-1" onClick={() => setStep('decision')}>

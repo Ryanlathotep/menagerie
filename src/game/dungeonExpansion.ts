@@ -259,6 +259,11 @@ export function expandDungeonIfNeeded(dungeon: DungeonState): DungeonState {
 
   if (!mutated) return dungeon;
 
+  // Recompute visibility on the freshly-expanded grid so newly-carved tiles
+  // within the player's sight range light up immediately rather than waiting
+  // for the next step.
+  updateVisibility(tiles, playerPosition);
+
   return {
     ...dungeon,
     tiles,

@@ -24,6 +24,7 @@ import {
 } from './TileGraphics';
 import { OverworldNestTile } from './OverworldTileGraphics';
 import { fitFromNeighbors } from './autoTiling';
+import { isAdminCompass, onAdminCompassChange } from './adminCompass';
 
 // Check if a monster combo has been captured at equal or lower level
 function isCaptured(enemy: Monster, unlockedMonsters: UnlockedMonster[]): {
@@ -695,6 +696,26 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   const gridWidth = dungeon.width;
   const gridHeight = dungeon.height;
 
+  // Admin override: re-render when the always-on-compass toggle flips so the
+  // exit marker appears/disappears immediately.
+  const [adminCompassOn, setAdminCompassOn] = useState(() => isAdminCompass());
+  useEffect(() => onAdminCompassChange(setAdminCompassOn), []);
+
+  // Effective compass waypoint: real one (from item) takes priority; otherwise
+  // if the admin toggle is on we scan the floor for the down-stairs tile.
+  let effectiveWaypoint = dungeon.compassWaypoint;
+  if (!effectiveWaypoint && adminCompassOn) {
+    outer: for (let yy = 0; yy < dungeon.tiles.length; yy++) {
+      const row = dungeon.tiles[yy];
+      for (let xx = 0; xx < row.length; xx++) {
+        if (row[xx].type === 'stairs') {
+          effectiveWaypoint = { x: xx, y: yy };
+          break outer;
+        }
+      }
+    }
+  }
+
   // Mobile double-tap → treat as right-click. A second tap on the SAME tile
   // within 300ms calls onTileRightClick instead of onTileClick.
   const lastTapRef = useRef<{ x: number; y: number; time: number } | null>(null);
@@ -946,9 +967,9 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                     )}
                     {/* Dungeon Compass waypoint: pulsing ring on the pinned tile.
                         Visible even through fog so the player can chase the exit. */}
-                    {dungeon.compassWaypoint
-                      && dungeon.compassWaypoint.x === x
-                      && dungeon.compassWaypoint.y === y && (
+                    {effectiveWaypoint
+                      && effectiveWaypoint.x === x
+                      && effectiveWaypoint.y === y && (
                         <div
                           className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center"
                           aria-label="Compass waypoint"

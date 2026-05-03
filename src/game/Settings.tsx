@@ -594,6 +594,10 @@ function AdminPanelTrigger({ onOpenAdmin }: { onOpenAdmin: () => void }) {
     if (typeof window === 'undefined') return false;
     return sessionStorage.getItem('menagerie_creative_mode') === '1';
   });
+  const [compass, setCompass] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem('menagerie_admin_compass') === '1';
+  });
 
   if (loading || !isAdmin) return null;
 
@@ -602,6 +606,11 @@ function AdminPanelTrigger({ onOpenAdmin }: { onOpenAdmin: () => void }) {
     // Lazy import to avoid pulling creativeMode into Settings' module graph
     // before admin check passes.
     import('./creativeMode').then(({ setCreativeMode }) => setCreativeMode(next));
+  };
+
+  const toggleCompass = (next: boolean) => {
+    setCompass(next);
+    import('./adminCompass').then(({ setAdminCompass }) => setAdminCompass(next));
   };
 
   return (
@@ -619,6 +628,16 @@ function AdminPanelTrigger({ onOpenAdmin }: { onOpenAdmin: () => void }) {
           </p>
         </div>
         <Switch checked={creative} onCheckedChange={toggleCreative} />
+      </div>
+
+      <div className="flex items-center justify-between rounded-md border border-border p-3">
+        <div className="flex-1">
+          <Label className="text-sm font-semibold">🧭 Always-On Dungeon Compass</Label>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Permanently reveal the exit staircase on every dungeon floor. Resets when the tab closes.
+          </p>
+        </div>
+        <Switch checked={compass} onCheckedChange={toggleCompass} />
       </div>
 
       <Button variant="outline" className="w-full gap-2" onClick={onOpenAdmin}>

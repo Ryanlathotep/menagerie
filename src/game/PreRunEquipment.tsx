@@ -88,8 +88,8 @@ export function PreRunEquipment({
     direction: 'desc' 
   });
   
-  // Selected consumables to bring into the run
-  const [selectedItems, setSelectedItems] = useState<InventoryItem[]>([]);
+  // Consumables are no longer chosen here — town storage IS run inventory
+  // (see Unified Inventory). Whatever's stored is automatically available.
 
   // Floor-skip selector. Defaults to the entrance's base floor (no skip).
   const minFloor = Math.max(1, entranceFloor ?? 1);
@@ -140,36 +140,7 @@ export function PreRunEquipment({
     return acc;
   }, [] as InventoryItem[]);
   
-  // Calculate remaining quantities after selection
-  const getRemainingQty = (itemId: string) => {
-    const stored = groupedConsumables.find(i => i.id === itemId);
-    const selected = selectedItems.find(i => i.id === itemId);
-    return (stored?.quantity || 0) - (selected?.quantity || 0);
-  };
-  
-  const handleAddItem = (item: InventoryItem) => {
-    const remaining = getRemainingQty(item.id);
-    if (remaining <= 0) return;
-    
-    setSelectedItems(prev => {
-      const existing = prev.find(i => i.id === item.id);
-      if (existing) {
-        return prev.map(i => i.id === item.id ? { ...i, quantity: (i.quantity || 1) + 1 } : i);
-      }
-      return [...prev, { ...item, quantity: 1 }];
-    });
-  };
-  
-  const handleRemoveItem = (itemId: string) => {
-    setSelectedItems(prev => {
-      const existing = prev.find(i => i.id === itemId);
-      if (!existing) return prev;
-      if ((existing.quantity || 1) <= 1) {
-        return prev.filter(i => i.id !== itemId);
-      }
-      return prev.map(i => i.id === itemId ? { ...i, quantity: (i.quantity || 1) - 1 } : i);
-    });
-  };
+
 
   const handleEquip = useCallback((item: EquipmentItem) => {
     if (monster.level < item.level) return;
@@ -187,7 +158,7 @@ export function PreRunEquipment({
   }, [activeIndex]);
   
   const handleStart = () => {
-    onStart(partyEquipment, equippedIds, selectedItems, showFloorSelector ? selectedStartFloor : undefined);
+    onStart(partyEquipment, equippedIds, [], showFloorSelector ? selectedStartFloor : undefined);
   };
   
   // Drag handlers
@@ -238,7 +209,7 @@ export function PreRunEquipment({
     onDrop: () => handleSlotDrop(slot),
   });
   
-  const totalSelectedItems = selectedItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+  
   
   return (
     <div className="game-container">
@@ -490,78 +461,33 @@ export function PreRunEquipment({
             </p>
           </Card>
           
-          {/* Third column: Consumables */}
+          {/* Third column: Consumables (read-only — town storage IS run inventory) */}
           <Card className="p-3 flex flex-col">
             <h3 className="font-semibold text-sm mb-2">🧪 Consumables</h3>
-            
-            {/* Selected items */}
-            {selectedItems.length > 0 && (
-              <div className="mb-2 p-2 bg-primary/10 rounded border border-primary/20">
-                <p className="text-[10px] font-medium text-muted-foreground mb-1">Selected ({totalSelectedItems})</p>
-                <div className="flex flex-wrap gap-1">
-                  {selectedItems.map(item => (
-                    <button
-                      key={item.id}
-                      onClick={() => handleRemoveItem(item.id)}
-                      className="text-xs px-1.5 py-0.5 bg-background rounded border hover:bg-destructive/20 transition-colors"
-                    >
-                      {item.name} ×{item.quantity}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            
+            <p className="text-[10px] text-muted-foreground mb-2">
+              All items in storage are automatically available during the run.
+            </p>
+
             <ScrollArea className="flex-1 max-h-[280px]">
               <div className="space-y-1 pr-2">
                 {groupedConsumables.length > 0 ? (
-                  groupedConsumables.map(item => {
-                    const remaining = getRemainingQty(item.id);
-                    const selected = selectedItems.find(i => i.id === item.id);
-                    
-                    return (
-                      <div
-                        key={item.id}
-                        className={`p-2 rounded border text-left transition-all ${remaining > 0 ? 'hover:bg-muted/50 cursor-pointer' : 'opacity-50'}`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">
-                            {item.effect === 'heal_hp' ? '❤️' : 
-                             item.effect === 'heal_stamina' ? '⚡' :
-                             item.effect?.startsWith('cure_') ? '💊' :
-                             item.effect?.startsWith('boost_') ? '✨' :
-                             item.effect?.startsWith('revive') ? '🌟' : '🧪'}
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium truncate">{item.name}</p>
-                            <p className="text-[10px] text-muted-foreground">
-                              In storage: {remaining}{selected ? ` (${selected.quantity} selected)` : ''}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              disabled={remaining <= 0}
-                              onClick={() => handleAddItem(item)}
-                            >
-                              +
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              disabled={!selected || (selected.quantity || 0) <= 0}
-                              onClick={() => handleRemoveItem(item.id)}
-                            >
-                              -
-                            </Button>
-                          </div>
+                  groupedConsumables.map(item => (
+                    <div key={item.id} className="p-2 rounded border text-left">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">
+                          {item.effect === 'heal_hp' ? '❤️' :
+                           item.effect === 'heal_stamina' ? '⚡' :
+                           item.effect?.startsWith('cure_') ? '💊' :
+                           item.effect?.startsWith('boost_') ? '✨' :
+                           item.effect?.startsWith('revive') ? '🌟' : '🧪'}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">{item.name}</p>
+                          <p className="text-[10px] text-muted-foreground">×{item.quantity}</p>
                         </div>
                       </div>
-                    );
-                  })
+                    </div>
+                  ))
                 ) : (
                   <div className="text-center text-muted-foreground py-6">
                     <p className="text-2xl mb-1">🧪</p>
@@ -571,9 +497,9 @@ export function PreRunEquipment({
                 )}
               </div>
             </ScrollArea>
-            
+
             <p className="text-[10px] text-muted-foreground text-center mt-2">
-              {groupedConsumables.reduce((sum, i) => sum + (i.quantity || 1), 0)} in storage • {totalSelectedItems} selected
+              {groupedConsumables.reduce((sum, i) => sum + (i.quantity || 1), 0)} available
             </p>
           </Card>
         </div>

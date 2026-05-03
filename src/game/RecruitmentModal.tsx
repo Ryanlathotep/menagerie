@@ -10,12 +10,15 @@
 //        c) Send home (store in roster, no party slot used)
 //   4. "replace" — pick which party member to swap out (sent home).
 
-import { useState } from 'react';
-import { Monster, SPECIES_DATA, ELEMENT_COLORS } from './types';
+import { useState, useEffect } from 'react';
+import { Monster, SPECIES_DATA, ELEMENT_COLORS, UnlockedMonster } from './types';
 import { MonsterSprite } from './sprites';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
+
+const AUTO_SKIP_KEY = 'menagerie-auto-skip-useless-recruits';
 
 interface RecruitmentModalProps {
   enemy: Monster;

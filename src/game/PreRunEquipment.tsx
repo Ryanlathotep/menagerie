@@ -140,36 +140,7 @@ export function PreRunEquipment({
     return acc;
   }, [] as InventoryItem[]);
   
-  // Calculate remaining quantities after selection
-  const getRemainingQty = (itemId: string) => {
-    const stored = groupedConsumables.find(i => i.id === itemId);
-    const selected = selectedItems.find(i => i.id === itemId);
-    return (stored?.quantity || 0) - (selected?.quantity || 0);
-  };
-  
-  const handleAddItem = (item: InventoryItem) => {
-    const remaining = getRemainingQty(item.id);
-    if (remaining <= 0) return;
-    
-    setSelectedItems(prev => {
-      const existing = prev.find(i => i.id === item.id);
-      if (existing) {
-        return prev.map(i => i.id === item.id ? { ...i, quantity: (i.quantity || 1) + 1 } : i);
-      }
-      return [...prev, { ...item, quantity: 1 }];
-    });
-  };
-  
-  const handleRemoveItem = (itemId: string) => {
-    setSelectedItems(prev => {
-      const existing = prev.find(i => i.id === itemId);
-      if (!existing) return prev;
-      if ((existing.quantity || 1) <= 1) {
-        return prev.filter(i => i.id !== itemId);
-      }
-      return prev.map(i => i.id === itemId ? { ...i, quantity: (i.quantity || 1) - 1 } : i);
-    });
-  };
+
 
   const handleEquip = useCallback((item: EquipmentItem) => {
     if (monster.level < item.level) return;

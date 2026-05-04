@@ -885,28 +885,12 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                 const isHovered = hoveredTile?.x === x && hoveredTile?.y === y;
 
                 // Mobile long-press → opens right-click menu (e.g. enemy attack menu).
-                // Uses a ref-based timer per render; cleared on touchend/move/cancel.
-                let longPressTimer: ReturnType<typeof setTimeout> | null = null;
-                let longPressFired = false;
-                const startLongPress = () => {
-                  longPressFired = false;
-                  if (!onTileRightClick || !tile.explored) return;
-                  longPressTimer = setTimeout(() => {
-                    longPressFired = true;
-                    lastTapRef.current = null;
-                    onTileRightClick(x, y);
-                  }, 450);
-                };
-                const cancelLongPress = () => {
-                  if (longPressTimer) {
-                    clearTimeout(longPressTimer);
-                    longPressTimer = null;
-                  }
-                };
+                // Use the dataset on the DOM element so the timer survives any
+                // React re-renders during the 450ms hold.
                 return (
                   <div
                     key={`${x}-${y}`}
-                    className="relative"
+                    className="relative lp-tile"
                     style={{ width: tileSize, height: tileSize }}
                     onMouseEnter={() => targetingMode && onTileHover?.(x, y)}
                     onMouseLeave={() => targetingMode && onTileHoverEnd?.()}
@@ -916,20 +900,51 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                       lastTapRef.current = null;
                       onTileRightClick(x, y);
                     }}
-                    onTouchStart={() => {
+                    onTouchStart={(e) => {
                       lastInputWasTouchRef.current = true;
-                      startLongPress();
+                      if (!onTileRightClick || !tile.explored) return;
+                      const el = e.currentTarget;
+                      const timer = setTimeout(() => {
+                        el.dataset.longPressFired = '1';
+                        lastTapRef.current = null;
+                        onTileRightClick(x, y);
+                      }, 450);
+                      el.dataset.longPressTimer = String(timer);
                     }}
-                    onTouchMove={cancelLongPress}
+                    onTouchMove={(e) => {
+                      const el = e.currentTarget;
+                      if (el.dataset.longPressTimer) {
+                        clearTimeout(Number(el.dataset.longPressTimer));
+                        delete el.dataset.longPressTimer;
+                      }
+                    }}
                     onTouchEnd={(e) => {
-                      cancelLongPress();
-                      if (longPressFired) {
+                      const el = e.currentTarget;
+                      if (el.dataset.longPressTimer) {
+                        clearTimeout(Number(el.dataset.longPressTimer));
+                        delete el.dataset.longPressTimer;
+                      }
+                      if (el.dataset.longPressFired) {
                         e.preventDefault();
                         e.stopPropagation();
                       }
                     }}
-                    onTouchCancel={cancelLongPress}
+                    onTouchCancel={(e) => {
+                      const el = e.currentTarget;
+                      if (el.dataset.longPressTimer) {
+                        clearTimeout(Number(el.dataset.longPressTimer));
+                        delete el.dataset.longPressTimer;
+                      }
+                    }}
                     onMouseDown={() => { lastInputWasTouchRef.current = false; }}
+                    onClickCapture={(e) => {
+                      const el = e.currentTarget as HTMLDivElement;
+                      if (el.dataset.longPressFired) {
+                        delete el.dataset.longPressFired;
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                    }}
                   >
                     <Tile
                       tile={tile}

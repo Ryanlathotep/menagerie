@@ -312,7 +312,7 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
           const tileContent = (
             <div
               key={`${worldX},${worldY}`}
-              className={`absolute cursor-pointer overflow-hidden ${
+              className={`absolute cursor-pointer overflow-hidden lp-tile ${
                 isTargetable && !isAffected ? 'ring-1 ring-red-500/40' : ''
               } ${isAffected ? 'ring-2 ring-red-500' : ''} ${isHovered ? 'ring-2 ring-yellow-400' : ''} ${
                 !tile.visible && tile.explored ? 'opacity-40' : ''
@@ -323,7 +323,17 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
                 width: tileSize,
                 height: tileSize,
               }}
-              onClick={() => handleTileTap(worldX, worldY)}
+              onClick={(e) => {
+                // If a long-press just fired, swallow the synthetic click.
+                const el = e.currentTarget as HTMLDivElement;
+                if (el.dataset.longPressFired) {
+                  delete el.dataset.longPressFired;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  return;
+                }
+                handleTileTap(worldX, worldY);
+              }}
               onContextMenu={(e) => {
                 e.preventDefault();
                 lastTapRef.current = null;
@@ -352,7 +362,8 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
                   delete el.dataset.longPressTimer;
                 }
                 if (el.dataset.longPressFired) {
-                  delete el.dataset.longPressFired;
+                  // Keep the flag for the click handler to swallow, but
+                  // also stop the touchend chain so the menu stays open.
                   e.preventDefault();
                   e.stopPropagation();
                 }

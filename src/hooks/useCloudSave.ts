@@ -83,14 +83,33 @@ export function useCloudSave() {
       return { action: 'uploaded' as const };
     }
 
-    // Compare saves - use the one with more progress
+    // Compare saves - use the one with more progress.
+    // IMPORTANT: count monster LEVELS and overworld exploration too — otherwise
+    // a slightly-newer cloud save (one extra run/floor) can wipe a local save
+    // that has dozens of levels and a fully-explored overworld, and vice versa.
     const cloudData = cloudResult.data;
-    const localProgress = (localSaveData.unlockedMonsters?.length || 0) + 
-                          (localSaveData.highestFloor || 0) + 
-                          (localSaveData.totalRuns || 0);
-    const cloudProgress = (cloudData.unlockedMonsters?.length || 0) + 
-                          (cloudData.highestFloor || 0) + 
-                          (cloudData.totalRuns || 0);
+    const scoreSave = (s: SaveData): number => {
+      const monsterScore = (s.unlockedMonsters || []).reduce(
+        (acc, m) => acc + (m.level || 1) * 5 + Math.floor((m.experience || 0) / 100),
+        0,
+      );
+      const ow = s.overworldState as any;
+      const exploredTiles = ow?.__exploredTiles?.length
+        ?? (ow?.tileOverrides ? Object.keys(ow.tileOverrides).length : 0);
+      const buildings = ow?.playerBuildings?.length || 0;
+      const totalSteps = ow?.totalSteps || 0;
+      return (
+        (s.unlockedMonsters?.length || 0) * 10 +
+        (s.highestFloor || 0) * 3 +
+        (s.totalRuns || 0) +
+        monsterScore +
+        exploredTiles +
+        buildings * 20 +
+        Math.floor(totalSteps / 10)
+      );
+    };
+    const localProgress = scoreSave(localSaveData);
+    const cloudProgress = scoreSave(cloudData);
 
     if (cloudProgress > localProgress) {
       toast.success('Cloud save loaded!');

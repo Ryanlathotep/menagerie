@@ -210,3 +210,13 @@
 /* Hide scrollbars on horizontally scrolling toolbars while keeping scroll behavior. */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Suppress iOS Safari/Android long-press text-selection callout on map tiles
+   so our custom long-press → context-menu can fire reliably. Apply to any tile
+   that wires up onTouchStart for long-press. */
+.lp-tile {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}

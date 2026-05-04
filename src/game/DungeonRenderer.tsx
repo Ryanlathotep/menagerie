@@ -937,6 +937,14 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                       }
                     }}
                     onMouseDown={() => { lastInputWasTouchRef.current = false; }}
+                    onClickCapture={(e) => {
+                      const el = e.currentTarget as HTMLDivElement;
+                      if (el.dataset.longPressFired) {
+                        delete el.dataset.longPressFired;
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                    }}
                   >
                     <Tile
                       tile={tile}

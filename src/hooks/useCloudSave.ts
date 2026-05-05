@@ -90,7 +90,18 @@ export function useCloudSave() {
     const cloudData = cloudResult.data;
     const scoreSave = (s: SaveData): number => {
       const monsterScore = (s.unlockedMonsters || []).reduce(
-        (acc, m) => acc + (m.level || 1) * 5 + Math.floor((m.experience || 0) / 100),
+        (acc, m) => {
+          const masteryUses = Object.values((m as any).moveMastery || {}).reduce(
+            (sum: number, mm: any) => sum + (mm?.uses || 0),
+            0,
+          ) as number;
+          return (
+            acc +
+            (m.level || 1) * 5 +
+            Math.floor((m.experience || 0) / 100) +
+            masteryUses // every move use counts toward progress
+          );
+        },
         0,
       );
       const ow = s.overworldState as any;

@@ -109,6 +109,8 @@ export function useCloudSave() {
         ?? (ow?.tileOverrides ? Object.keys(ow.tileOverrides).length : 0);
       const buildings = ow?.playerBuildings?.length || 0;
       const totalSteps = ow?.totalSteps || 0;
+      const wood = ow?.woodCollected || 0;
+      const stone = ow?.stoneCollected || 0;
       return (
         (s.unlockedMonsters?.length || 0) * 10 +
         (s.highestFloor || 0) * 3 +
@@ -116,7 +118,10 @@ export function useCloudSave() {
         monsterScore +
         exploredTiles +
         buildings * 20 +
-        Math.floor(totalSteps / 10)
+        Math.floor(totalSteps / 10) +
+        // Resources are real progress — losing 100 wood feels just as bad as
+        // losing a level. Weight them so they actually move the needle.
+        Math.floor((wood + stone) / 5)
       );
     };
     const localProgress = scoreSave(localSaveData);

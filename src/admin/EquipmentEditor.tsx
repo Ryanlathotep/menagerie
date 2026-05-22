@@ -178,6 +178,29 @@ export function EquipmentEditor() {
               )}
             </div>
 
+            {/* ----- Set Power Rating ----- */}
+            <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-semibold">Set Power Rating</span>
+                <span className="font-mono">
+                  {ratingInfo.rating}
+                  <span className="text-muted-foreground"> / {ratingInfo.max}</span>
+                </span>
+              </div>
+              <Progress
+                value={Math.min(100, (ratingInfo.rating / Math.max(1, ratingInfo.max)) * 100)}
+                className="h-2"
+              />
+              <div className="text-xs text-muted-foreground flex justify-between">
+                <span>Stronger than {ratingInfo.percentile}% of sets</span>
+                <span>avg {ratingInfo.avg} • min {ratingInfo.min} • max {ratingInfo.max}</span>
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                {formatNumericHint(ratingTrim)}
+              </div>
+            </div>
+
+
             <div>
               <Label>Name</Label>
               <Input

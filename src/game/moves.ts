@@ -117,6 +117,10 @@ export interface Move {
   inheritMonsterClass?: boolean;
   /** If true, the move's AoE triggers traps it overlaps and applies rune backlash to non-favored units it covers. */
   triggersTrapsOnAoe?: boolean;
+  /** For combo moves that define BOTH `movement` and an attack (`customShape` / `power`),
+   *  controls whether the relocation happens before or after the attack resolves.
+   *  Default: 'move_then_attack'. */
+  comboOrder?: 'move_then_attack' | 'attack_then_move';
   /** Per-tier overrides: stat tweaks and per-tier custom shapes that replace
    *  the auto-scaled tier multipliers when present. Tier keys are
    *  'lesser' | 'minor' | 'base' | 'greater' | 'omega'. */

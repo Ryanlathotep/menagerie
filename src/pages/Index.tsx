@@ -2234,6 +2234,43 @@ function DungeonView({
 
     const config = getAttackConfig(targetingMove);
 
+    // ── Movement skill: relocate the player to the chosen offset destination ──
+    if (config.pattern === 'movement') {
+      const monster = state.run.currentMonster;
+      const staminaCost = targetingMove.staminaCost || 0;
+      const curStam = monster.stats.currentStamina ?? monster.stats.stamina ?? 50;
+      if (curStam < staminaCost) {
+        addLog('❌ Not enough stamina!', 'info');
+        return;
+      }
+      // Clone tiles and clear the player's old tile (restore floor/terrain/stairs).
+      const newTiles = dungeon.tiles.map(row => row.map(t => ({ ...t })));
+      const oldP = dungeon.playerPosition;
+      const oldTile = newTiles[oldP.y][oldP.x];
+      if (oldTile.terrainType) oldTile.type = 'terrain';
+      else if (oldTile.stairsBeneath === 'down') { oldTile.type = 'stairs'; oldTile.stairsBeneath = undefined; }
+      else if (oldTile.stairsBeneath === 'up') { oldTile.type = 'stairs_up'; oldTile.stairsBeneath = undefined; }
+      else oldTile.type = 'floor';
+      // Place player on destination (keep underlying type metadata if any).
+      const destTile = newTiles[y][x];
+      if (destTile.type === 'stairs') destTile.stairsBeneath = 'down';
+      else if (destTile.type === 'stairs_up') destTile.stairsBeneath = 'up';
+      destTile.type = 'player';
+      const newDungeon = { ...dungeon, tiles: newTiles, playerPosition: { x, y } };
+      dispatch({ type: 'SET_DUNGEON', dungeon: newDungeon });
+      dispatch({
+        type: 'UPDATE_PARTY_STATS',
+        monsterId: monster.id,
+        stats: { ...monster.stats, currentStamina: curStam - staminaCost },
+      });
+      addLog(`🌀 ${targetingMove.name}! Moved to (${x}, ${y}).`, 'system');
+      setTargetingMove(null);
+      setTargetingTiles([]);
+      setAffectedTiles([]);
+      return;
+    }
+
+
     // Mobile/touch tap-to-preview, tap-again-to-confirm for AoE moves.
     // Skip on hover-capable devices (mouse) and for single-target moves.
     const isTouchDevice = typeof window !== 'undefined'

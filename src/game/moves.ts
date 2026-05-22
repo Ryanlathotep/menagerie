@@ -153,6 +153,8 @@ export interface Move {
     staminaCost?: number;
     speedMod?: number;
     customShape?: CustomShape;
+    /** Per-tier movement pattern (overrides base move's `movement` for that tier). */
+    movement?: MovementPattern;
   }>;
 }
 

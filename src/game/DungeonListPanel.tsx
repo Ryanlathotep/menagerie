@@ -13,6 +13,10 @@ import { TowerLeaderboard } from './TowerLeaderboard';
 interface DungeonListPanelProps {
   dungeonEntrances: Record<string, DungeonEntrance>;
   onLaunch: (entrance: DungeonEntrance) => void;
+  /** Optional: when provided, each row shows a "Start" button that bypasses
+   *  party-select + pre-run prep using the saved party + persisted gear. */
+  onQuickStart?: (entrance: DungeonEntrance) => void;
+  quickStartPartySize?: number;
 }
 
 const ELEMENT_EMOJI: Record<string, string> = {

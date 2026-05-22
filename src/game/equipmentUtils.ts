@@ -325,13 +325,29 @@ const DEFAULT_ICON: EquipmentIconDef = {
 };
 
 export function getEquipmentIcon(itemName: string): EquipmentIconDef {
-  // Strip prefixes and suffixes to find base name
-  const baseName = Object.keys(EQUIPMENT_ICONS).find(name => 
-    itemName.includes(name)
-  );
-  
+  // Lazy import to avoid a circular module dep at load time.
+  // Admin overrides win over built-in icons.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { getEquipmentIconOverride } = require('./equipmentIconOverrides') as typeof import('./equipmentIconOverrides');
+
+  // Exact-match override first (so "Iron Sword +1" can still match "Iron Sword").
+  const baseName = Object.keys(EQUIPMENT_ICONS).find((name) => itemName.includes(name));
+  const key = baseName ?? itemName;
+  const override = getEquipmentIconOverride(key);
+  if (override) return override;
+
   return baseName ? EQUIPMENT_ICONS[baseName] : DEFAULT_ICON;
 }
+
+// Exposed so admin tooling can enumerate every editable icon key.
+export function listEquipmentIconKeys(): string[] {
+  return Object.keys(EQUIPMENT_ICONS);
+}
+
+export function getBuiltInEquipmentIcon(key: string): EquipmentIconDef | undefined {
+  return EQUIPMENT_ICONS[key];
+}
+
 
 // ============= STAT DISPLAY HELPERS =============
 export const STAT_ICONS: Record<keyof EquipmentStats, string> = {

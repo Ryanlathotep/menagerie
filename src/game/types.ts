@@ -792,6 +792,8 @@ export function hydrateDungeonFromSnapshot(
     tiles,
     width: w,
     height: h,
+    playerBuildings: snap.playerBuildings ? snap.playerBuildings.map((b: any) => ({ ...b })) : fresh.playerBuildings,
+    roads: snap.roads ? { ...snap.roads } : fresh.roads,
   };
 }
 

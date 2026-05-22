@@ -702,6 +702,15 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   const [adminCompassOn, setAdminCompassOn] = useState(() => isAdminCompass());
   useEffect(() => onAdminCompassChange(setAdminCompassOn), []);
 
+  // Dowsing Rod: re-render when the buff toggles, and tick every 5s so the
+  // buff auto-clears when its timer expires.
+  const [dowsingOn, setDowsingOn] = useState(() => isDowsingEffective());
+  useEffect(() => {
+    const off = onDowsingChange(() => setDowsingOn(isDowsingEffective()));
+    const interval = setInterval(() => setDowsingOn(isDowsingEffective()), 5000);
+    return () => { off(); clearInterval(interval); };
+  }, []);
+
   // Effective compass waypoint: real one (from item) takes priority; otherwise
   // if the admin toggle is on we scan the floor for the down-stairs tile.
   let effectiveWaypoint = dungeon.compassWaypoint;
@@ -716,6 +725,23 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
       }
     }
   }
+
+  // Compute the set of tile positions to highlight when dowsing is active:
+  // the nearest DOWSING_HIGHLIGHT_COUNT enemy tiles by Manhattan distance.
+  const dowsedTiles = (() => {
+    if (!dowsingOn) return [] as { x: number; y: number }[];
+    const candidates: { x: number; y: number; d: number }[] = [];
+    for (let yy = 0; yy < dungeon.tiles.length; yy++) {
+      const row = dungeon.tiles[yy];
+      for (let xx = 0; xx < row.length; xx++) {
+        if (row[xx].type === 'enemy' && row[xx].enemyId) {
+          candidates.push({ x: xx, y: yy, d: Math.abs(xx - px) + Math.abs(yy - py) });
+        }
+      }
+    }
+    candidates.sort((a, b) => a.d - b.d);
+    return candidates.slice(0, DOWSING_HIGHLIGHT_COUNT).map(c => ({ x: c.x, y: c.y }));
+  })();
 
   // Mobile double-tap → treat as right-click. A second tap on the SAME tile
   // within 300ms calls onTileRightClick instead of onTileClick.

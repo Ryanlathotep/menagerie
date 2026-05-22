@@ -141,12 +141,13 @@ export function buildProgressSnapshot(
     nextSaveData.highestFloor = Math.max(saveData.highestFloor, run.dungeon.floor);
     const activeDungeonId = typeof window !== 'undefined' ? localStorage.getItem('menagerie_active_dungeon_id') : null;
     if (activeDungeonId && nextSaveData.dungeonEntrances[activeDungeonId]) {
+      const baseEntrance = {
+        ...nextSaveData.dungeonEntrances[activeDungeonId],
+        deepestFloor: Math.max(nextSaveData.dungeonEntrances[activeDungeonId].deepestFloor || 0, run.dungeon.floor),
+      };
       nextSaveData.dungeonEntrances = {
         ...nextSaveData.dungeonEntrances,
-        [activeDungeonId]: {
-          ...nextSaveData.dungeonEntrances[activeDungeonId],
-          deepestFloor: Math.max(nextSaveData.dungeonEntrances[activeDungeonId].deepestFloor || 0, run.dungeon.floor),
-        },
+        [activeDungeonId]: snapshotDungeonToEntrance(baseEntrance, run.dungeon),
       };
     }
   }

@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import { useDismissTooltipsOnTap } from "./hooks/useDismissTooltipsOnTap";
 import { supabase } from "@/integrations/supabase/client";
 import { setMoveOverrides } from "@/game/moveOverrides";
+import { FloatingBugButton } from "@/game/FloatingBugButton";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AppRoutes />
+        <FloatingBugButton />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

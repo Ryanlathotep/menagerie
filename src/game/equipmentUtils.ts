@@ -2,6 +2,7 @@
 
 import { EquipmentItem, EquipmentSlot, Rarity, EquipmentStats, MonsterEquipment, createEmptyEquipment, RARITY_MULTIPLIERS, canEquipItem, getAffinityBonusStats } from './equipment';
 import { ClassType, Monster } from './types';
+import { getEquipmentIconOverride } from './equipmentIconOverrides';
 
 // ============= SORTING OPTIONS =============
 export type SortOption = 'rarity' | 'stat' | 'slot' | 'level' | 'set';
@@ -325,10 +326,11 @@ const DEFAULT_ICON: EquipmentIconDef = {
 };
 
 export function getEquipmentIcon(itemName: string): EquipmentIconDef {
-  // Lazy import to avoid a circular module dep at load time.
   // Admin overrides win over built-in icons.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { getEquipmentIconOverride } = require('./equipmentIconOverrides') as typeof import('./equipmentIconOverrides');
+  const baseName = Object.keys(EQUIPMENT_ICONS).find((name) => itemName.includes(name));
+  const key = baseName ?? itemName;
+  const override = getEquipmentIconOverride(key);
+  if (override) return override;
 
   // Exact-match override first (so "Iron Sword +1" can still match "Iron Sword").
   const baseName = Object.keys(EQUIPMENT_ICONS).find((name) => itemName.includes(name));

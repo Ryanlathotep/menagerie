@@ -2433,6 +2433,59 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         title = `Tile (${tile.type})`;
       }
 
+      // ── Universal movement / attack / build affordances ───────────────
+      // Long-press / right-click should always surface every reasonable
+      // action for a tile, not just "Drop waypoint". For any explored
+      // tile we add: pathfind "Walk here", "Attack from here" if a
+      // target is in range, and "Build here" on buildable ground.
+      if (tile && tile.explored) {
+        const hasId = (id: string) => actions.some(a => a.id === id);
+
+        // Walk here via A* (skip if already adjacent — that branch gets
+        // its own "Move here" step action above).
+        if (!hasId('move') && !hasId('path-here') && !isAdjacent && dist > 0) {
+          const path = findOverworldPath(overworld, overworld.playerPosition, { x: unifiedMenu.x, y: unifiedMenu.y });
+          if (path && path.length > 0) {
+            actions.push({
+              id: 'path-here',
+              label: `Walk here (${path.length} step${path.length === 1 ? '' : 's'})`,
+              icon: Footprints,
+              hint: 'Auto-walks along the shortest path',
+              onClick: () => {
+                const p = findOverworldPath(overworld, overworld.playerPosition, { x: unifiedMenu.x, y: unifiedMenu.y });
+                close();
+                if (p && p.length > 0) startAutoWalk(p);
+                else toast.info('No path to that tile.');
+              },
+            });
+          }
+        }
+
+        // Attack from here — only if nothing already attached an attack action.
+        if (!hasId('attack') && !hasId('attack-nest') && !hasId('attack-from') && monster) {
+          const nt = findNearestAttackTarget();
+          if (nt) {
+            actions.push({
+              id: 'attack-from',
+              label: 'Attack from here',
+              icon: Swords,
+              hint: `${nt.enemy.name} in range`,
+              onClick: () => { close(); setAttackMenuTarget(nt); },
+            });
+          }
+        }
+
+        // Build here — only on buildable ground types.
+        if (!hasId('build') && (tile.type === 'grass' || tile.type === 'dirt_road' || tile.type === 'stone_road')) {
+          actions.push({
+            id: 'build',
+            label: 'Build here',
+            icon: Hammer,
+            onClick: () => { close(); setShowBuildPanel(true); },
+          });
+        }
+      }
+
       // ── Universal: Drop / Remove / Rename waypoint ─────────────────────
       // Dungeon-entrance tiles already have their own pin toggle above; skip
       // those to avoid duplicating the action. Allow on every other explored

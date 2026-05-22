@@ -74,10 +74,10 @@ function DungeonRow({ d, onLaunch, onQuickStart, quickStartPartySize }: {
 
   return (
     <div
-      className={`w-full border p-3 transition-colors ${
+      className={`border p-3 transition-colors ${
         d.isHome
-          ? 'border-primary/60 bg-gradient-to-r from-primary/10 to-secondary/10 mx-[5px] rounded-md shadow-none px-[10px]'
-          : 'rounded-md border-border bg-card'
+          ? 'w-[calc(100%-10px)] border-primary/60 bg-gradient-to-r from-primary/10 to-secondary/10 mx-[5px] rounded-md shadow-none px-[10px]'
+          : 'w-full rounded-md border-border bg-card'
       }`}
     >
       <button

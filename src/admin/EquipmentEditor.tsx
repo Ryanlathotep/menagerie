@@ -4,14 +4,34 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress';
 import { useGameDataOverrides } from '@/hooks/useGameDataOverrides';
-import { 
-  EQUIPMENT_SETS, 
-  EquipmentSet, 
-  SetId
+import {
+  EQUIPMENT_SETS,
+  EquipmentSet,
+  SetId,
 } from '@/game/equipment';
 import { Search, Save, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
+import { computeTrimmedStats, formatNumericHint, rateValueAgainst } from './statCompare';
+
+/** Sum every numeric stat across every set-bonus tier, plus a flat bump for
+ *  special / effect strings so sets with utility bonuses don't read as weak. */
+function setPowerRating(set: Partial<EquipmentSet>): number {
+  let total = 0;
+  for (const b of set.bonuses || []) {
+    if (b.stats) {
+      for (const v of Object.values(b.stats)) {
+        if (typeof v === 'number') total += v;
+      }
+    }
+    if (b.special) total += 8;
+    if (b.effect) total += 6;
+    // Higher-piece bonuses are harder to assemble — weight them slightly more.
+    total += Math.max(0, (b.pieces - 2)) * 2;
+  }
+  return Math.round(total);
+}
 
 interface EquipmentSetEditable extends EquipmentSet {
   setId: SetId;
@@ -31,6 +51,16 @@ export function EquipmentEditor() {
     }));
   }, []);
 
+  // Effective pool with overrides applied — drives the comparison ratings.
+  const pool = useMemo(() => {
+    return allSets.map((set) => {
+      const ovr = getOverride('equipment', set.id) as Partial<EquipmentSet> | null;
+      return { ...set, ...(ovr || {}) } as EquipmentSetEditable;
+    });
+  }, [allSets, getOverride]);
+  const poolRatings = useMemo(() => pool.map(setPowerRating), [pool]);
+  const ratingTrim = useMemo(() => computeTrimmedStats(poolRatings), [poolRatings]);
+
   const filteredSets = useMemo(() => {
     if (!search) return allSets;
     const lower = search.toLowerCase();
@@ -45,7 +75,7 @@ export function EquipmentEditor() {
   const handleSelectSet = (set: EquipmentSetEditable) => {
     setSelectedSet(set);
     const override = getOverride('equipment', set.id) as Partial<EquipmentSet> | null;
-    setEditedSet(override || { ...set });
+    setEditedSet(override ? { ...set, ...override } : { ...set });
   };
 
   const handleSave = async () => {
@@ -68,6 +98,10 @@ export function EquipmentEditor() {
   };
 
   const hasOverride = selectedSet ? !!getOverride('equipment', selectedSet.id) : false;
+  const ratingInfo = useMemo(
+    () => rateValueAgainst(setPowerRating(editedSet), poolRatings),
+    [editedSet, poolRatings],
+  );
 
   if (loading) {
     return <div className="text-muted-foreground p-4">Loading equipment...</div>;
@@ -91,6 +125,8 @@ export function EquipmentEditor() {
           <div className="space-y-1">
             {filteredSets.map((set) => {
               const hasOvr = !!getOverride('equipment', set.id);
+              const effective = pool.find((s) => s.id === set.id);
+              const r = setPowerRating(effective || set);
               return (
                 <button
                   key={set.id}
@@ -99,19 +135,20 @@ export function EquipmentEditor() {
                     selectedSet?.id === set.id ? 'bg-primary/20' : ''
                   }`}
                 >
-                  <span>
-                    <span 
+                  <span className="truncate">
+                    <span
                       className="font-medium"
                       style={{ color: `hsl(${set.color})` }}
                     >
                       {set.name}
                     </span>
                   </span>
-                  {hasOvr && (
-                    <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">
-                      Modified
-                    </span>
-                  )}
+                  <span className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs font-mono text-muted-foreground">{r}</span>
+                    {hasOvr && (
+                      <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded">mod</span>
+                    )}
+                  </span>
                 </button>
               );
             })}
@@ -140,6 +177,29 @@ export function EquipmentEditor() {
                 </span>
               )}
             </div>
+
+            {/* ----- Set Power Rating ----- */}
+            <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-semibold">Set Power Rating</span>
+                <span className="font-mono">
+                  {ratingInfo.rating}
+                  <span className="text-muted-foreground"> / {ratingInfo.max}</span>
+                </span>
+              </div>
+              <Progress
+                value={Math.min(100, (ratingInfo.rating / Math.max(1, ratingInfo.max)) * 100)}
+                className="h-2"
+              />
+              <div className="text-xs text-muted-foreground flex justify-between">
+                <span>Stronger than {ratingInfo.percentile}% of sets</span>
+                <span>avg {ratingInfo.avg} • min {ratingInfo.min} • max {ratingInfo.max}</span>
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                {formatNumericHint(ratingTrim)}
+              </div>
+            </div>
+
 
             <div>
               <Label>Name</Label>

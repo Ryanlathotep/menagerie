@@ -4,13 +4,23 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress';
 import { useGameDataOverrides } from '@/hooks/useGameDataOverrides';
 import { SPECIES_DATA, SpeciesType, SpeciesData } from '@/game/types';
 import { Search, Save, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
+import { computeTrimmedStats, formatNumericHint, rateValueAgainst } from './statCompare';
 
 interface SpeciesEditable extends SpeciesData {
   speciesId: SpeciesType;
+}
+
+const STAT_KEYS = ['hp', 'attack', 'defense', 'speed', 'special'] as const;
+type StatKey = typeof STAT_KEYS[number];
+
+function statTotal(s?: SpeciesData['baseStats']): number {
+  if (!s) return 0;
+  return STAT_KEYS.reduce((sum, k) => sum + (s[k] ?? 0), 0);
 }
 
 export function MonstersEditor() {
@@ -26,6 +36,23 @@ export function MonstersEditor() {
     }));
   }, []);
 
+  // Comparison pool: every species' base stats (with overrides applied).
+  const pool = useMemo(() => {
+    return allSpecies.map((sp) => {
+      const ovr = getOverride('monsters', sp.speciesId) as Partial<SpeciesData> | null;
+      return { ...sp, ...(ovr || {}) } as SpeciesEditable;
+    });
+  }, [allSpecies, getOverride]);
+
+  const poolTotals = useMemo(() => pool.map((sp) => statTotal(sp.baseStats)), [pool]);
+  const perStatTrim = useMemo(() => {
+    const out = {} as Record<StatKey, ReturnType<typeof computeTrimmedStats>>;
+    for (const k of STAT_KEYS) {
+      out[k] = computeTrimmedStats(pool.map((sp) => sp.baseStats?.[k] ?? 0));
+    }
+    return out;
+  }, [pool]);
+
   const filteredSpecies = useMemo(() => {
     if (!search) return allSpecies;
     const lower = search.toLowerCase();
@@ -40,21 +67,17 @@ export function MonstersEditor() {
   const handleSelectSpecies = (species: SpeciesEditable) => {
     setSelectedSpecies(species);
     const override = getOverride('monsters', species.speciesId) as Partial<SpeciesData> | null;
-    setEditedSpecies(override || { ...species });
+    setEditedSpecies(override ? { ...species, ...override } : { ...species });
   };
 
   const handleSave = async () => {
     if (!selectedSpecies) return;
-    
     const success = await saveOverride('monsters', selectedSpecies.speciesId, editedSpecies as Record<string, unknown>);
-    if (success) {
-      toast.success(`Saved override for ${selectedSpecies.name}`);
-    }
+    if (success) toast.success(`Saved override for ${selectedSpecies.name}`);
   };
 
   const handleReset = async () => {
     if (!selectedSpecies) return;
-    
     const success = await deleteOverride('monsters', selectedSpecies.speciesId);
     if (success) {
       setEditedSpecies({ ...selectedSpecies });
@@ -62,28 +85,23 @@ export function MonstersEditor() {
     }
   };
 
-  const handleStatChange = (stat: keyof SpeciesData['baseStats'], value: number) => {
+  const handleStatChange = (stat: StatKey, value: number) => {
     const currentStats = editedSpecies.baseStats || selectedSpecies?.baseStats;
     if (!currentStats) return;
-    
     setEditedSpecies({
       ...editedSpecies,
-      baseStats: {
-        hp: currentStats.hp,
-        attack: currentStats.attack,
-        defense: currentStats.defense,
-        speed: currentStats.speed,
-        special: currentStats.special,
-        [stat]: value,
-      },
+      baseStats: { ...currentStats, [stat]: value },
     });
   };
 
   const hasOverride = selectedSpecies ? !!getOverride('monsters', selectedSpecies.speciesId) : false;
 
-  if (loading) {
-    return <div className="text-muted-foreground p-4">Loading monsters...</div>;
-  }
+  const currentStats = editedSpecies.baseStats || selectedSpecies?.baseStats;
+  const currentTotal = statTotal(currentStats);
+  const ratingInfo = useMemo(() => rateValueAgainst(currentTotal, poolTotals), [currentTotal, poolTotals]);
+  const totalTrim = useMemo(() => computeTrimmedStats(poolTotals), [poolTotals]);
+
+  if (loading) return <div className="text-muted-foreground p-4">Loading monsters...</div>;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -103,6 +121,8 @@ export function MonstersEditor() {
           <div className="space-y-1">
             {filteredSpecies.map((species) => {
               const hasOvr = !!getOverride('monsters', species.speciesId);
+              const effective = pool.find((p) => p.speciesId === species.speciesId);
+              const total = statTotal(effective?.baseStats);
               return (
                 <button
                   key={species.speciesId}
@@ -111,17 +131,18 @@ export function MonstersEditor() {
                     selectedSpecies?.speciesId === species.speciesId ? 'bg-primary/20' : ''
                   }`}
                 >
-                  <span>
+                  <span className="truncate">
                     <span className="font-medium">{species.name}</span>
                     <span className="text-muted-foreground ml-2 text-xs">
                       ({species.category})
                     </span>
                   </span>
-                  {hasOvr && (
-                    <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">
-                      Modified
-                    </span>
-                  )}
+                  <span className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs font-mono text-muted-foreground">{total}</span>
+                    {hasOvr && (
+                      <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded">mod</span>
+                    )}
+                  </span>
                 </button>
               );
             })}
@@ -144,6 +165,28 @@ export function MonstersEditor() {
                   Has Override
                 </span>
               )}
+            </div>
+
+            {/* ----- Stat Total Rating ----- */}
+            <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-semibold">Stat Total</span>
+                <span className="font-mono">
+                  {ratingInfo.rating}
+                  <span className="text-muted-foreground"> / {ratingInfo.max}</span>
+                </span>
+              </div>
+              <Progress
+                value={Math.min(100, (ratingInfo.rating / Math.max(1, ratingInfo.max)) * 100)}
+                className="h-2"
+              />
+              <div className="text-xs text-muted-foreground flex justify-between">
+                <span>Stronger than {ratingInfo.percentile}% of species</span>
+                <span>avg {ratingInfo.avg} • min {ratingInfo.min} • max {ratingInfo.max}</span>
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                {formatNumericHint(totalTrim)}
+              </div>
             </div>
 
             <div>
@@ -172,17 +215,25 @@ export function MonstersEditor() {
 
             <div>
               <Label>Base Stats</Label>
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                {(['hp', 'attack', 'defense', 'speed', 'special'] as const).map((stat) => (
-                  <div key={stat} className="flex items-center gap-2">
-                    <span className="text-sm capitalize w-16">{stat}</span>
-                    <Input
-                      type="number"
-                      value={(editedSpecies.baseStats || selectedSpecies.baseStats)?.[stat] ?? 0}
-                      onChange={(e) => handleStatChange(stat, parseInt(e.target.value) || 0)}
-                    />
-                  </div>
-                ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                {STAT_KEYS.map((stat) => {
+                  const trim = perStatTrim[stat];
+                  return (
+                    <div key={stat} className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm capitalize w-16">{stat}</span>
+                        <Input
+                          type="number"
+                          value={currentStats?.[stat] ?? 0}
+                          onChange={(e) => handleStatChange(stat, parseInt(e.target.value) || 0)}
+                        />
+                      </div>
+                      <div className="text-[10px] text-muted-foreground pl-[72px]">
+                        {formatNumericHint(trim)}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

@@ -27,7 +27,9 @@ import { submitTowerFloor, submitDiscoveryCount, submitExplorationCount } from '
 import { countExploredTiles } from '@/game/overworld';
 import { MonsterStatsPreview } from '@/game/MonsterStatsPreview';
 import { LevelUpScreen } from '@/game/LevelUpScreen';
-import { EquipmentItem, MonsterEquipment } from '@/game/equipment';
+import { EquipmentItem, MonsterEquipment, createEmptyEquipment } from '@/game/equipment';
+import { isPickupUpgrade } from '@/game/equipmentUtils';
+
 import { calculateMonsterDrops, getEnemyEquipmentDrops } from '@/game/monsterDrops';
 import { EquipmentView } from '@/game/EquipmentView';
 import { PreRunEquipment } from '@/game/PreRunEquipment';

@@ -2885,6 +2885,50 @@ function DungeonView({
           dodge: state.run.currentMonster.stats.dodge ?? Math.floor(state.run.currentMonster.stats.speed * 0.5),
         } : undefined}
       />
+
+      {stairExitDialogOpen && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setStairExitDialogOpen(false)}
+        >
+          <Card
+            className="w-full max-w-md p-6 space-y-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="space-y-1">
+              <h2 className="text-xl font-bold">Leave the Dungeon?</h2>
+              <p className="text-sm text-muted-foreground">
+                You're on the entrance staircase. Choose where to go — your gold, materials,
+                items, and equipment come with you, but floor progress in this run is lost.
+              </p>
+            </div>
+            <div className="grid gap-2">
+              <Button
+                onClick={() => { setStairExitDialogOpen(false); handleFlee('entrance', true); }}
+              >
+                🚪 Overworld — tower entrance
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => { setStairExitDialogOpen(false); handleFlee('town', true); }}
+              >
+                🏘️ Starting town (home base)
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => { setStairExitDialogOpen(false); handleFlee('menu', true); }}
+              >
+                📜 Main menu
+              </Button>
+              <Button variant="ghost" onClick={() => setStairExitDialogOpen(false)}>
+                Stay in dungeon
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+
       
       {showShop && <ShopView 
         gold={isCreativeMode() ? Number.MAX_SAFE_INTEGER : (state.run?.gold || 0)} 

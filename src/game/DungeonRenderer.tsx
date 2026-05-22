@@ -1033,6 +1033,15 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                         <span className="relative text-sm drop-shadow-[0_0_4px_rgba(52,211,153,0.9)]">📍</span>
                       </div>
                     )}
+                    {/* Dowsing Rod: highlight the nearest 5 enemy tiles. */}
+                    {dowsedTiles.some(p => p.x === x && p.y === y) && (
+                      <div
+                        className="absolute inset-0 pointer-events-none z-20"
+                        aria-label="Dowsed enemy"
+                      >
+                        <div className="absolute inset-0 rounded-md ring-2 ring-fuchsia-400 animate-pulse shadow-[0_0_10px_rgba(232,121,249,0.7)]" />
+                      </div>
+                    )}
                   </div>
                 );
               })}

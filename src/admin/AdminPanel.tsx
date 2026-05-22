@@ -8,7 +8,8 @@ import { EquipmentEditor } from './EquipmentEditor';
 import { RecipesEditor } from './RecipesEditor';
 import { MonstersEditor } from './MonstersEditor';
 import { AdminAccessEditor } from './AdminAccessEditor';
-import { Shield, Swords, Package, Ghost, UserCog } from 'lucide-react';
+import { BugReportsEditor } from './BugReportsEditor';
+import { Shield, Swords, Package, Ghost, UserCog, Bug } from 'lucide-react';
 
 export function AdminPanel() {
   const { isAdmin, loading } = useAdminRole();
@@ -64,6 +65,10 @@ export function AdminPanel() {
             <Ghost className="w-4 h-4" />
             Monsters
           </TabsTrigger>
+          <TabsTrigger value="bugs" className="gap-2">
+            <Bug className="w-4 h-4" />
+            Bug Reports
+          </TabsTrigger>
           <TabsTrigger value="access" className="gap-2">
             <UserCog className="w-4 h-4" />
             Access
@@ -82,6 +87,9 @@ export function AdminPanel() {
           </TabsContent>
           <TabsContent value="monsters" className="p-4 m-0">
             <MonstersEditor />
+          </TabsContent>
+          <TabsContent value="bugs" className="p-4 m-0">
+            <BugReportsEditor />
           </TabsContent>
           <TabsContent value="access" className="p-4 m-0">
             <AdminAccessEditor />

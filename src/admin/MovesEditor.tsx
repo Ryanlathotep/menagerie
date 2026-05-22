@@ -364,7 +364,7 @@ export function MovesEditor() {
               </div>
             </div>
 
-            {/* ----- Rating ----- */}
+            {/* ----- Rating + Target (point-buy balancing) ----- */}
             <div className="rounded-md border bg-muted/30 p-3 space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="font-semibold">Power Rating</span>
@@ -378,7 +378,57 @@ export function MovesEditor() {
                 <span>Stronger than {ratingInfo.percentile}% of moves</span>
                 <span>avg {ratingInfo.avg} • min {ratingInfo.min} • max {ratingInfo.max}</span>
               </div>
+
+              <div className="flex items-end gap-2 pt-2 border-t border-border/50">
+                <div className="flex-1">
+                  <Label className="text-xs">Target Rating</Label>
+                  <Input
+                    type="number"
+                    value={editedMove.targetRating ?? ''}
+                    placeholder={String(savedRating)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setEditedMove({ ...editedMove, targetRating: v === '' ? undefined : parseInt(v, 10) });
+                    }}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="text-xs text-muted-foreground pb-1.5 whitespace-nowrap">
+                  Saved: <span className="font-mono">{savedRating}</span>
+                  {' · '}Gap: <span className={`font-mono ${targetRating - ratingInfo.rating > 0 ? 'text-emerald-500' : targetRating - ratingInfo.rating < 0 ? 'text-amber-500' : ''}`}>
+                    {targetRating - ratingInfo.rating > 0 ? '+' : ''}{targetRating - ratingInfo.rating}
+                  </span>
+                </div>
+              </div>
+
+              {suggestions.length > 0 && (
+                <div className="pt-2 border-t border-border/50 space-y-1">
+                  <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                    Suggestions to reach {targetRating}
+                  </div>
+                  <ul className="space-y-0.5 text-xs">
+                    {suggestions.slice(0, 5).map((s) => (
+                      <li key={s.label} className="flex justify-between gap-2 font-mono">
+                        <span>
+                          <span className="text-muted-foreground">{s.label}</span>
+                          {' '}
+                          <span className={s.delta > 0 ? 'text-emerald-500' : 'text-amber-500'}>
+                            {s.delta > 0 ? '+' : ''}{s.delta}
+                          </span>
+                        </span>
+                        <span className="text-muted-foreground">
+                          ≈ {s.ratingDelta > 0 ? '+' : ''}{s.ratingDelta} rating
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="text-[10px] text-muted-foreground leading-tight pt-1">
+                    Each row is a single-field change that would close the gap on its own. Mix and match for finer tuning.
+                  </div>
+                </div>
+              )}
             </div>
+
 
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -426,14 +476,24 @@ export function MovesEditor() {
                  onChange={(v) => setEditedMove({ ...editedMove, staminaCost: v })} />
             </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+               <NumberField label="Stamina Cost" value={editedMove.staminaCost ?? 0}
+                 hint={formatNumericHint(numericStats.staminaCost)}
+                 onChange={(v) => setEditedMove({ ...editedMove, staminaCost: v })} />
+               <NumberField label="Mana Cost" value={editedMove.manaCost ?? 0}
+                 hint={formatNumericHint(numericStats.manaCost)}
+                 onChange={(v) => setEditedMove({ ...editedMove, manaCost: v || undefined })} />
                <NumberField label="Speed Mod" value={editedMove.speedMod ?? 0}
                  hint={formatNumericHint(numericStats.speedMod)}
                  onChange={(v) => setEditedMove({ ...editedMove, speedMod: v })} />
+            </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                <NumberField label="AoE Radius" value={editedMove.aoeRadius ?? 0}
                  hint={formatNumericHint(numericStats.aoeRadius)}
                  onChange={(v) => setEditedMove({ ...editedMove, aoeRadius: v })} />
             </div>
+
 
             {/* ----- Targeting & Shape (read from the move's existing settings) ----- */}
             <div className="rounded-md border border-border bg-muted/30 p-2 space-y-2">

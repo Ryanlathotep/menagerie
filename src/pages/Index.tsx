@@ -3119,17 +3119,22 @@ function DungeonView({
     handleTileClick(x, y);
   }, [targetingMove, handleTargetingClick, handleTileClick, dungeon, state.run, state.saveData.overworldState, dungeonBuildMode, selectedDungeonBuildType, dispatch, addLog]);
   
-  // ESC to cancel targeting
+  // ESC to cancel targeting or build mode
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && targetingMove) {
+      if (e.key !== 'Escape') return;
+      if (targetingMove) {
         cancelTargeting();
         addLog('❌ Attack cancelled.', 'info');
+      } else if (dungeonBuildMode) {
+        setDungeonBuildMode(false);
+        setSelectedDungeonBuildType(null);
+        addLog('🏗️ Build cancelled.', 'info');
       }
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [targetingMove, cancelTargeting]);
+  }, [targetingMove, cancelTargeting, dungeonBuildMode, addLog]);
 
   // Keybind shortcuts for moves (dungeon exploration)
   const keybindDataRef = useRef(loadKeybinds());

@@ -181,11 +181,8 @@ function Section({ title, items, onLaunch, onQuickStart, quickStartPartySize }: 
   );
 }
 
-export function DungeonListPanel({ dungeonEntrances, onLaunch }: DungeonListPanelProps) {
+export function DungeonListPanel({ dungeonEntrances, onLaunch, onQuickStart, quickStartPartySize }: DungeonListPanelProps) {
   const all = Object.values(dungeonEntrances || {});
-  // A dungeon counts as discovered once the player has physically seen it on
-  // the overworld (or already cleared a floor in it). Home is always visible.
-  // Themed towers no longer auto-reveal — the player must explore to them.
   const isDiscovered = (d: DungeonEntrance) =>
     !!(d.isHome || d.discovered || d.deepestFloor > 0);
 
@@ -203,12 +200,14 @@ export function DungeonListPanel({ dungeonEntrances, onLaunch }: DungeonListPane
 
   const undiscoveredCount = all.length - discovered.length;
 
-  // Defense in depth: never let an undiscovered dungeon be launched, even if
-  // somehow surfaced through stale UI.
   const safeLaunch = (d: DungeonEntrance) => {
     if (!isDiscovered(d)) return;
     onLaunch(d);
   };
+  const safeQuickStart = onQuickStart
+    ? (d: DungeonEntrance) => { if (isDiscovered(d)) onQuickStart(d); }
+    : undefined;
+
 
 
   return (

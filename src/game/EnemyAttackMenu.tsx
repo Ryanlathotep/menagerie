@@ -41,8 +41,12 @@ export function EnemyAttackMenu({
   const distance =
     Math.abs(enemyPos.x - playerPos.x) + Math.abs(enemyPos.y - playerPos.y);
 
-  // Pull persisted sort/filter so this menu mirrors the move panel's view.
-  const { sortOption, filters } = useMemo(() => loadMoveFilters(), []);
+  // Persisted sort/filter, editable inline; changes mirror to the move panel.
+  const initial = useMemo(() => loadMoveFilters(), []);
+  const [sortOption, setSortOption] = useState<MoveSortOption>(initial.sortOption);
+  const [filters, setFilters] = useState<MoveFilterOption[]>(initial.filters);
+  const updateSort = (s: MoveSortOption) => { setSortOption(s); saveMoveFilters({ sortOption: s, filters }); };
+  const updateFilters = (f: MoveFilterOption[]) => { setFilters(f); saveMoveFilters({ sortOption, filters: f }); };
 
   // Only attack-capable moves: melee, ranged, and any status move that targets
   // (i.e. carries a debuff) plus any move with power > 0.

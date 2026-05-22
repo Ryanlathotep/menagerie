@@ -118,38 +118,43 @@ export function createEvolvedMove(
 ): EvolvedMove {
   const tierMult = TIER_MULTIPLIERS[tier];
   const levelScale = getLevelScaling(monsterLevel);
-  
-  // Calculate base stats with tier multipliers
-  let power = Math.round(baseMove.power * tierMult.power);
-  let accuracy = Math.round(baseMove.accuracy * tierMult.accuracy);
-  let staminaCost = Math.round(baseMove.staminaCost * tierMult.staminaCost);
-  
-  // Apply Mass variant modifiers
+  const tierOverride = baseMove.tierOverrides?.[tier];
+
+  // Calculate base stats with tier multipliers (overrides win when present)
+  let power = tierOverride?.power ?? Math.round(baseMove.power * tierMult.power);
+  let accuracy = tierOverride?.accuracy ?? Math.round(baseMove.accuracy * tierMult.accuracy);
+  let staminaCost = tierOverride?.staminaCost ?? Math.round(baseMove.staminaCost * tierMult.staminaCost);
+  const speedMod = tierOverride?.speedMod ?? baseMove.speedMod;
+
+  // Apply Mass variant modifiers (still scale overrides for AoE balance)
   if (variant === 'mass') {
     power = Math.round(power * MASS_MULTIPLIERS.power);
     accuracy = Math.round(accuracy * MASS_MULTIPLIERS.accuracy);
     staminaCost = Math.round(staminaCost * MASS_MULTIPLIERS.staminaCost);
   }
-  
-  // Apply level scaling (additive, not multiplicative)
-  power += levelScale.powerBonus;
-  accuracy = Math.min(100, accuracy + Math.round(levelScale.accuracyBonus));
-  
+
+  // Apply level scaling (additive, not multiplicative) — skip when an explicit
+  // override was provided, since admin numbers are taken literally.
+  if (tierOverride?.power === undefined) power += levelScale.powerBonus;
+  if (tierOverride?.accuracy === undefined) {
+    accuracy = Math.min(100, accuracy + Math.round(levelScale.accuracyBonus));
+  }
+
   // Generate evolved name
   const tierPrefix = TIER_PREFIXES[tier];
   const massPrefix = variant === 'mass' ? 'Mass ' : '';
   const name = `${tierPrefix}${tierPrefix ? ' ' : ''}${massPrefix}${baseMove.name}`.trim();
-  
+
   // Generate evolved ID
   const tierId = tier === 'base' ? '' : `_${tier}`;
   const variantId = variant === 'mass' ? '_mass' : '';
   const id = `${baseMove.id}${tierId}${variantId}`;
-  
+
   // Update description
   const tierDesc = tier !== 'base' ? ` [${TIER_PREFIXES[tier] || 'Standard'} tier]` : '';
   const massDesc = variant === 'mass' ? ' Hits all enemies.' : '';
   const description = `${baseMove.description}${tierDesc}${massDesc}`;
-  
+
   return {
     ...baseMove,
     id,
@@ -158,6 +163,9 @@ export function createEvolvedMove(
     power,
     accuracy,
     staminaCost,
+    speedMod,
+    // Per-tier custom shape wins, otherwise fall back to the base move's shape.
+    customShape: tierOverride?.customShape ?? baseMove.customShape,
     tier,
     variant,
     baseMoveId: baseMove.id,

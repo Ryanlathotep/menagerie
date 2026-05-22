@@ -54,6 +54,10 @@ export function AdminPanel() {
             <Swords className="w-4 h-4" />
             Moves
           </TabsTrigger>
+          <TabsTrigger value="shapes" className="gap-2">
+            <Crosshair className="w-4 h-4" />
+            Shapes
+          </TabsTrigger>
           <TabsTrigger value="equipment" className="gap-2">
             <Shield className="w-4 h-4" />
             Equipment
@@ -79,6 +83,9 @@ export function AdminPanel() {
         <ScrollArea className="flex-1">
           <TabsContent value="moves" className="p-4 m-0">
             <MovesEditor />
+          </TabsContent>
+          <TabsContent value="shapes" className="p-4 m-0">
+            <ShapeDesigner />
           </TabsContent>
           <TabsContent value="equipment" className="p-4 m-0">
             <EquipmentEditor />

@@ -590,6 +590,10 @@ export function ShapeDesigner() {
                   <input type="checkbox" checked={blink} onChange={(e) => setBlink(e.target.checked)} />
                   Blink (ignore walls / line-of-sight)
                 </label>
+                <label className="flex items-center gap-2 text-xs">
+                  <input type="checkbox" checked={rotateMovement} onChange={(e) => setRotateMovement(e.target.checked)} />
+                  Rotate destinations to aimed direction
+                </label>
               </div>
             )}
 

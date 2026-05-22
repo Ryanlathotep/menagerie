@@ -22,17 +22,46 @@ export type TargetingPattern =
   | 'self'       // Self-targeting only
   | 'custom';    // Designer-defined shape (see customShape)
 
-/** Designer-defined AoE shape. Offsets are relative cells (dx, dy from origin).
- *  origin = 'self'   → shape centers on the caster (melee-style burst)
- *  origin = 'target' → shape centers on the targeted square (ranged-style strike)
- */
+/** Where a custom shape anchors. */
+export type ShapeOriginType =
+  | 'self'             // Centered on caster (melee burst)
+  | 'target'           // Legacy alias for target_tile
+  | 'target_tile'      // Any tile in range
+  | 'target_enemy'     // Must target an enemy unit
+  | 'target_ally'      // Must target an ally unit
+  | 'target_resource'  // Must target a harvestable resource (tree/stone/plant)
+  | 'target_trap'      // Must target a trap
+  | 'target_terrain';  // Must target a terrain rune tile
+
+/** Harvestable resource categories a shape can collect. */
+export type HarvestableKind = 'tree' | 'stone' | 'plant' | 'trap' | 'terrain';
+
+/** Designer-defined AoE shape. Offsets are relative cells (dx, dy from origin). */
 export interface CustomShape {
   offsets: { dx: number; dy: number }[];
+  /** Legacy: 'self' | 'target'. Kept for old overrides. Prefer originType. */
   origin: 'self' | 'target';
-  /** Max distance the target square may sit from the caster (target origin only). */
+  /** New richer origin selector. Overrides `origin` when set. */
+  originType?: ShapeOriginType;
+  /** Max distance the target square may sit from the caster (target origins only). */
   range?: number;
-  /** If true, shape ignores walls. */
+  /** If true, shape ignores walls entirely. */
   wallPenetrate?: boolean;
+  /** If true, walls inside the shape stop propagation beyond them. */
+  blockedByWalls?: boolean;
+  /** If true, units inside the shape stop propagation beyond them. */
+  blockedByUnits?: boolean;
+  // ----- Effect toggles (what the shape DOES to each cell it covers) -----
+  /** Deal the move's power as damage to enemies in shape. Default true. */
+  damagesEnemies?: boolean;
+  /** Deal damage to allies in shape (friendly fire). Default false. */
+  damagesAllies?: boolean;
+  /** Damage traps in shape (destroy them). Default false. */
+  damagesTraps?: boolean;
+  /** Resource categories this move harvests inside shape. */
+  harvestsResources?: HarvestableKind[];
+  /** Terrain rune to place on empty/air tiles inside shape. */
+  placesTerrain?: import('./terrain').TerrainType;
 }
 
 /** Designer-defined movement pattern. Each offset is a legal destination

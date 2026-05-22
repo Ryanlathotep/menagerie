@@ -3242,10 +3242,11 @@ function DungeonView({
 
               // Waypoint pin/unpin on any explored tile
               const existing = dungeon.compassWaypoints || [];
-              const isPinned = existing.some(p => p.x === x && p.y === y);
+              const pinnedWp = existing.find(p => p.x === x && p.y === y);
+              const isPinned = !!pinnedWp;
               actions.push({
                 id: 'waypoint',
-                label: isPinned ? 'Remove waypoint' : 'Drop waypoint',
+                label: isPinned ? `Remove waypoint${pinnedWp?.name ? ` "${pinnedWp.name}"` : ''}` : 'Drop waypoint',
                 icon: isPinned ? FlagOff : Flag,
                 onClick: () => {
                   dispatch({ type: 'TOGGLE_DUNGEON_WAYPOINT', x, y });
@@ -3259,6 +3260,24 @@ function DungeonView({
                   close();
                 },
               });
+              if (isPinned) {
+                actions.push({
+                  id: 'rename-waypoint',
+                  label: 'Rename waypoint…',
+                  icon: Flag,
+                  onClick: () => {
+                    const current = pinnedWp?.name || '';
+                    const next = window.prompt('Waypoint name (leave blank to clear):', current);
+                    if (next !== null) {
+                      dispatch({ type: 'RENAME_DUNGEON_WAYPOINT', x, y, name: next });
+                      addLog(next.trim() ? `📍 Renamed to "${next.trim()}"` : `📍 Waypoint name cleared`, 'system');
+                    }
+                    close();
+                  },
+                });
+              }
+
+
 
               return (
                 <UnifiedTileMenu

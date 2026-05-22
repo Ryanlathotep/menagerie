@@ -347,6 +347,12 @@ export function MovesEditor() {
                  onChange={(v) => setEditedMove({ ...editedMove, aoeRadius: v })} />
             </div>
 
+            <TierOverridesPanel
+              base={editedMove}
+              onChange={(tierOverrides) => setEditedMove({ ...editedMove, tierOverrides })}
+            />
+
+
             {/* ----- Learned-at-level slider ----- */}
             <div>
               <div className="flex justify-between mb-1">

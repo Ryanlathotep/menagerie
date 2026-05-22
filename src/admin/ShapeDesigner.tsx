@@ -554,37 +554,42 @@ export function ShapeDesigner() {
             )}
 
             {/* Grid */}
-            <div
-              className="grid gap-1 mx-auto"
-              style={{ gridTemplateColumns: `repeat(${GRID}, 1fr)`, maxWidth: 360 }}
-            >
-              {Array.from({ length: GRID * GRID }).map((_, i) => {
-                const gx = i % GRID;
-                const gy = Math.floor(i / GRID);
-                const dx = gx - HALF;
-                const dy = gy - HALF;
-                const isAnchor = dx === 0 && dy === 0;
-                const on = cells.has(`${dx},${dy}`);
-                return (
-                  <button
-                    key={i}
-                    onClick={() => toggleCell(dx, dy)}
-                    className={`aspect-square rounded text-[10px] border transition-colors ${
-                      isAnchor
-                        ? 'bg-foreground text-background border-foreground'
-                        : on
-                          ? mode === 'shape'
-                            ? 'bg-destructive/70 border-destructive'
-                            : 'bg-sky-500/70 border-sky-500'
-                          : 'bg-muted hover:bg-muted-foreground/20 border-border'
-                    }`}
-                    title={`(${dx}, ${dy})`}
-                  >
-                    {isAnchor ? '⦿' : ''}
-                  </button>
-                );
-              })}
-            </div>
+            {(() => {
+              const half = Math.floor(gridSize / 2);
+              return (
+                <div
+                  className="grid gap-1 mx-auto w-full overflow-x-auto"
+                  style={{ gridTemplateColumns: `repeat(${gridSize}, minmax(0,1fr))`, maxWidth: 480 }}
+                >
+                  {Array.from({ length: gridSize * gridSize }).map((_, i) => {
+                    const gx = i % gridSize;
+                    const gy = Math.floor(i / gridSize);
+                    const dx = gx - half;
+                    const dy = gy - half;
+                    const isAnchor = dx === 0 && dy === 0;
+                    const on = cells.has(`${dx},${dy}`);
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => toggleCell(dx, dy)}
+                        className={`aspect-square rounded text-[9px] border transition-colors ${
+                          isAnchor
+                            ? 'bg-foreground text-background border-foreground'
+                            : on
+                              ? mode === 'shape'
+                                ? 'bg-destructive/70 border-destructive'
+                                : 'bg-sky-500/70 border-sky-500'
+                              : 'bg-muted hover:bg-muted-foreground/20 border-border'
+                        }`}
+                        title={`(${dx}, ${dy})`}
+                      >
+                        {isAnchor ? '⦿' : ''}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
             <div className="flex gap-2 pt-2">
               <Button onClick={handleSave} className="flex-1 gap-2">

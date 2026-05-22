@@ -612,3 +612,39 @@ export function ShapeDesigner() {
     </div>
   );
 }
+
+function TierStatField({
+  label, value, onChange, placeholder,
+}: {
+  label: string;
+  value: number | '' | undefined;
+  onChange: (v: number | '') => void;
+  placeholder?: string;
+}) {
+  const [text, setText] = useState<string>(value === '' || value === undefined ? '' : String(value));
+  return (
+    <div>
+      <Label className="text-xs">{label}</Label>
+      <Input
+        type="text"
+        inputMode="numeric"
+        pattern="-?[0-9]*"
+        value={text}
+        placeholder={placeholder ? `base: ${placeholder}` : ''}
+        onChange={(e) => {
+          const v = e.target.value;
+          setText(v);
+          if (v === '') onChange('');
+          else if (/^-?\d+$/.test(v)) onChange(parseInt(v, 10));
+        }}
+        onBlur={() => {
+          if (text === '') { onChange(''); return; }
+          const n = parseInt(text, 10);
+          if (Number.isFinite(n)) { onChange(n); setText(String(n)); }
+          else { onChange(''); setText(''); }
+        }}
+        className="h-8"
+      />
+    </div>
+  );
+}

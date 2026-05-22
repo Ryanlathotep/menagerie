@@ -389,62 +389,110 @@ export function getValidTargets(
   return validTiles;
 }
 
-// Enemy AI - Simple behavior patterns
+// Enemy AI — behavior patterns. Kept for back-compat; new code should use
+// archetype + IQ from src/game/enemyAI.ts.
 export type EnemyBehavior = 'aggressive' | 'defensive' | 'ranged' | 'support';
 
 export interface EnemyAction {
   type: 'move' | 'attack' | 'idle';
   direction?: 'up' | 'down' | 'left' | 'right';
   target?: Position;
-  move?: Move;
+  move?: Move; // chosen attack move (when type === 'attack' and AI picked one)
 }
 
-// Determine enemy behavior based on species
+// Legacy helper retained — overworld and dungeon still call this to classify
+// movement behavior. New move/tactic decisions flow through enemyAI.ts.
 export function getEnemyBehavior(monster: Monster): EnemyBehavior {
-  // Ranged species prefer distance
   const rangedSpecies = ['wisp', 'crow', 'bat', 'spider', 'jellyfish'];
   if (rangedSpecies.includes(monster.species)) return 'ranged';
-  
-  // Tanky species are aggressive
+
   const aggressiveSpecies = ['golem', 'dragon', 'wolf', 'shark', 'beetle'];
   if (aggressiveSpecies.includes(monster.species)) return 'aggressive';
-  
-  // Support species stay back
+
   const supportSpecies = ['mushroom', 'ghost', 'slime'];
   if (supportSpecies.includes(monster.species)) return 'support';
-  
+
   return 'aggressive';
 }
 
-// Calculate enemy's next action
+// Optional context allowing AI to factor player state into decisions.
+export interface EnemyAIContext {
+  playerMonster?: Monster; // used to compute element matchup & HP ratio
+}
+
+// Calculate enemy's next action. Now archetype + IQ aware (enemyAI.ts).
+// Falls back to legacy positional logic if context is missing.
 export function calculateEnemyAction(
   enemy: Monster,
   enemyPos: Position,
   playerPos: Position,
   tiles: DungeonTile[][],
   width: number,
-  height: number
+  height: number,
+  ctx?: EnemyAIContext,
 ): EnemyAction {
+  // Lazy require to avoid circular import surface
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const ai = require('./enemyAI') as typeof import('./enemyAI');
+
   const distance = Math.abs(playerPos.x - enemyPos.x) + Math.abs(playerPos.y - enemyPos.y);
-  const behavior = getEnemyBehavior(enemy);
-  
-  // Check if player is in attack range (1 for melee, more for ranged)
-  const attackRange = behavior === 'ranged' ? 4 : 1;
-  
-  if (distance <= attackRange) {
-    // In range - attack!
-    return { type: 'attack', target: playerPos };
-  }
-  
-  // Not in range - move towards player (or away for ranged)
-  if (behavior === 'ranged' && distance < 3) {
-    // Move away from player
+  const archetype = ai.getEnemyArchetype(enemy);
+  const iq = ai.getEnemyIQ(enemy.level);
+  const hint = ai.getMovementHint(archetype, iq);
+
+  const enemyHpRatio = enemy.stats.currentHp / Math.max(1, enemy.stats.maxHp);
+  const enemyStaminaRatio = (enemy.stats.currentStamina ?? enemy.stats.stamina ?? 0) /
+                            Math.max(1, enemy.stats.stamina ?? 1);
+
+  // Retreat if HP is below archetype threshold — but only if smart enough to know better
+  const shouldRetreat = enemyHpRatio < hint.retreatHpThreshold && iq > 0.25;
+  if (shouldRetreat) {
     return getMovementAway(enemyPos, playerPos, tiles, width, height);
   }
-  
-  // Move towards player
+
+  // Pick the best affordable move for the situation
+  const tacticCtx = ctx?.playerMonster
+    ? {
+        distance,
+        iq,
+        archetype,
+        enemyHpRatio,
+        enemyStaminaRatio,
+        playerHpRatio: ctx.playerMonster.stats.currentHp / Math.max(1, ctx.playerMonster.stats.maxHp),
+        playerElement: ctx.playerMonster.element,
+      }
+    : {
+        distance,
+        iq,
+        archetype,
+        enemyHpRatio,
+        enemyStaminaRatio,
+        playerHpRatio: 1,
+        playerElement: enemy.element,
+      };
+  const decision = ai.chooseEnemyMove(enemy, tacticCtx);
+  const chosen = decision.move ?? undefined;
+
+  // Determine effective attack range from chosen move (or archetype fallback)
+  let attackRange = 1;
+  if (chosen) {
+    attackRange = chosen.type === 'ranged' ? 4 : 1;
+  } else {
+    attackRange = hint.idealRange > 1 ? 4 : 1;
+  }
+
+  if (distance <= attackRange) {
+    return { type: 'attack', target: playerPos, move: chosen };
+  }
+
+  // Out of range → archetype-driven movement
+  if (hint.prefer === 'retreat' && distance < hint.idealRange) {
+    return getMovementAway(enemyPos, playerPos, tiles, width, height);
+  }
+
   return getMovementTowards(enemyPos, playerPos, tiles, width, height);
 }
+
 
 // Get movement direction towards a target
 function getMovementTowards(

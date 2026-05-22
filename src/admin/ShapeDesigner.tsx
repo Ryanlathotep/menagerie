@@ -295,7 +295,7 @@ export function ShapeDesigner() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* Move picker */}
-      <Card className="p-3 lg:order-1">
+      <Card className="p-3 order-2 lg:order-1">
 
         <div className="flex items-center gap-2 mb-2">
           <Search className="w-4 h-4 text-muted-foreground shrink-0" />

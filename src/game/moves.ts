@@ -103,6 +103,16 @@ export interface Move {
   availableClasses?: ClassType[];
   /** Marks moves created entirely by the admin (not present in source code). */
   custom?: boolean;
+  /** Per-tier overrides: stat tweaks and per-tier custom shapes that replace
+   *  the auto-scaled tier multipliers when present. Tier keys are
+   *  'lesser' | 'minor' | 'base' | 'greater' | 'omega'. */
+  tierOverrides?: Record<string, {
+    power?: number;
+    accuracy?: number;
+    staminaCost?: number;
+    speedMod?: number;
+    customShape?: CustomShape;
+  }>;
 }
 
 

@@ -49,36 +49,38 @@ export function AdminPanel() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-        <TabsList className="w-full justify-start p-2 bg-muted/50 rounded-none">
-          <TabsTrigger value="moves" className="gap-2">
-            <Swords className="w-4 h-4" />
-            Moves
-          </TabsTrigger>
-          <TabsTrigger value="shapes" className="gap-2">
-            <Crosshair className="w-4 h-4" />
-            Shapes
-          </TabsTrigger>
-          <TabsTrigger value="equipment" className="gap-2">
-            <Shield className="w-4 h-4" />
-            Equipment
-          </TabsTrigger>
-          <TabsTrigger value="recipes" className="gap-2">
-            <Package className="w-4 h-4" />
-            Recipes
-          </TabsTrigger>
-          <TabsTrigger value="monsters" className="gap-2">
-            <Ghost className="w-4 h-4" />
-            Monsters
-          </TabsTrigger>
-          <TabsTrigger value="bugs" className="gap-2">
-            <Bug className="w-4 h-4" />
-            Bug Reports
-          </TabsTrigger>
-          <TabsTrigger value="access" className="gap-2">
-            <UserCog className="w-4 h-4" />
-            Access
-          </TabsTrigger>
-        </TabsList>
+        <div className="w-full overflow-x-auto overflow-y-hidden bg-muted/50">
+          <TabsList className="inline-flex w-max min-w-full justify-start p-2 rounded-none bg-transparent">
+            <TabsTrigger value="moves" className="gap-2 shrink-0">
+              <Swords className="w-4 h-4" />
+              Moves
+            </TabsTrigger>
+            <TabsTrigger value="shapes" className="gap-2 shrink-0">
+              <Crosshair className="w-4 h-4" />
+              Shapes
+            </TabsTrigger>
+            <TabsTrigger value="equipment" className="gap-2 shrink-0">
+              <Shield className="w-4 h-4" />
+              Equipment
+            </TabsTrigger>
+            <TabsTrigger value="recipes" className="gap-2 shrink-0">
+              <Package className="w-4 h-4" />
+              Recipes
+            </TabsTrigger>
+            <TabsTrigger value="monsters" className="gap-2 shrink-0">
+              <Ghost className="w-4 h-4" />
+              Monsters
+            </TabsTrigger>
+            <TabsTrigger value="bugs" className="gap-2 shrink-0">
+              <Bug className="w-4 h-4" />
+              Bug Reports
+            </TabsTrigger>
+            <TabsTrigger value="access" className="gap-2 shrink-0">
+              <UserCog className="w-4 h-4" />
+              Access
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <ScrollArea className="flex-1">
           <TabsContent value="moves" className="p-4 m-0">

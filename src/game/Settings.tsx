@@ -46,6 +46,10 @@ export interface GameSettings {
   // Auto-equip preferences (used by Equipment screens and pickup auto-equip)
   autoEquipFocus: import('./equipmentUtils').AutoEquipFocus;
   autoEquipOnPickup: boolean;
+
+  // Keep mining an adjacent rock until it's exhausted or a visible enemy
+  // appears. Mirrors the auto-run "halt on enemy spotted" behaviour.
+  autoMine: boolean;
 }
 
 const DEFAULT_SETTINGS: GameSettings = {
@@ -63,7 +67,10 @@ const DEFAULT_SETTINGS: GameSettings = {
 
   autoEquipFocus: 'class',
   autoEquipOnPickup: false,
+
+  autoMine: false,
 };
+
 
 
 // Settings Context
@@ -446,7 +453,21 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 onCheckedChange={(v) => updateSetting('autoEquipOnPickup', v)}
               />
             </div>
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <Label htmlFor="auto-mine" className="cursor-pointer">Auto-Mine</Label>
+                <span className="text-xs text-muted-foreground">
+                  Keep mining an adjacent rock until it's exhausted or a visible enemy appears.
+                </span>
+              </div>
+              <Switch
+                id="auto-mine"
+                checked={settings.autoMine}
+                onCheckedChange={(v) => updateSetting('autoMine', v)}
+              />
+            </div>
           </div>
+
 
           {/* Public Username (for tower leaderboards) */}
           <UsernameEditor />

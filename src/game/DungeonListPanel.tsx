@@ -211,7 +211,7 @@ export function DungeonListPanel({ dungeonEntrances, onLaunch, onQuickStart, qui
 
 
   return (
-    <Card className="p-3 w-full max-w-md mx-auto">
+    <Card className="p-3 w-full max-w-md mx-0 py-0">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <span>🗼</span> Known Dungeons

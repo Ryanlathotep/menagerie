@@ -83,6 +83,16 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('monster-roguelike-settings', JSON.stringify(settings));
   }, [settings]);
 
+  useEffect(() => {
+    const onImportSettings = (event: Event) => {
+      const detail = (event as CustomEvent<Partial<GameSettings> | null>).detail;
+      if (!detail) return;
+      setSettings({ ...DEFAULT_SETTINGS, ...detail });
+    };
+    window.addEventListener('menagerie-import-settings', onImportSettings);
+    return () => window.removeEventListener('menagerie-import-settings', onImportSettings);
+  }, []);
+
   // Apply theme to <html> — light/dark/system (follows browser preference)
   useEffect(() => {
     const root = document.documentElement;
@@ -131,6 +141,7 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { settings, updateSetting, resetSettings } = useSettings();
+  const { state, dispatch } = useGame();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [adminOpen, setAdminOpen] = useState(false);
@@ -145,14 +156,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   const handleExportSave = () => {
     try {
-      const saveData = localStorage.getItem('monster-roguelike-save');
-      const settingsData = localStorage.getItem('monster-roguelike-settings');
+      const liveSave = buildProgressSnapshot(state.saveData, state.run, state.saveData.overworldState);
       
       const backup = {
         version: 1,
         exportedAt: new Date().toISOString(),
-        saveData: saveData ? JSON.parse(saveData) : null,
-        settings: settingsData ? JSON.parse(settingsData) : null,
+        saveData: liveSave,
+        settings,
       };
       
       const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
@@ -171,6 +181,38 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     }
   };
 
+  const handleShareBackup = async () => {
+    try {
+      const liveSave = buildProgressSnapshot(state.saveData, state.run, state.saveData.overworldState);
+      const backup = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        saveData: liveSave,
+        settings,
+      };
+
+      const file = new File(
+        [JSON.stringify(backup, null, 2)],
+        `monster-roguelike-backup-${new Date().toISOString().split('T')[0]}.json`,
+        { type: 'application/json' },
+      );
+
+      if (typeof navigator === 'undefined' || !('share' in navigator)) {
+        throw new Error('Sharing not supported');
+      }
+
+      await (navigator as Navigator & { share: (data: ShareData) => Promise<void> }).share({
+        title: 'Menagerie Backup',
+        text: 'Game backup',
+        files: [file],
+      });
+
+      toast({ title: 'Backup ready to send!', description: 'You can save it to Google Drive from the share menu.' });
+    } catch (e) {
+      toast({ title: 'Share unavailable', description: 'Use Export Backup if your device does not support file sharing.', variant: 'destructive' });
+    }
+  };
+
   const handleImportSave = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -180,16 +222,18 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       try {
         const backup = JSON.parse(event.target?.result as string);
         
-        if (!backup.version || !backup.saveData) {
+         if (!backup.version || !backup.saveData) {
           throw new Error('Invalid backup file');
         }
         
         localStorage.setItem('monster-roguelike-save', JSON.stringify(backup.saveData));
+         dispatch({ type: 'LOAD_SAVE', saveData: backup.saveData });
         if (backup.settings) {
           localStorage.setItem('monster-roguelike-settings', JSON.stringify(backup.settings));
+           window.dispatchEvent(new CustomEvent('menagerie-import-settings', { detail: backup.settings }));
         }
         
-        toast({ title: 'Backup restored!', description: 'Refresh the page to load your save.' });
+         toast({ title: 'Backup restored!', description: 'Save and settings were restored immediately.' });
       } catch (e) {
         toast({ title: 'Import failed', description: 'Invalid or corrupted backup file.', variant: 'destructive' });
       }
@@ -354,10 +398,14 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
           <div className="space-y-3 pt-4 border-t">
             <Label className="text-base">Save Data</Label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button variant="outline" size="sm" onClick={handleExportSave} className="flex-1">
                 <Download className="w-4 h-4 mr-1" />
                 Export Backup
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleShareBackup} className="flex-1">
+                <Download className="w-4 h-4 mr-1" />
+                Share Backup
               </Button>
               <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="flex-1">
                 <Upload className="w-4 h-4 mr-1" />
@@ -372,7 +420,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Export your save to a file or restore from a backup. Refresh after importing.
+              Export to a local file, share to apps like Google Drive on supported devices, or restore from a backup.
             </p>
           </div>
 

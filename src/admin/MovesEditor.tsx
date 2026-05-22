@@ -402,7 +402,7 @@ export function MovesEditor() {
 // Helpers
 // ============================================================================
 
-function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+function NumberField({ label, value, onChange, hint }: { label: string; value: number; onChange: (v: number) => void; hint?: string }) {
   // Keep a local string so iOS users can clear the field, type "-", "12", etc.
   // without each keystroke being coerced to 0 (which previously made it feel
   // like the keyboard wasn't working).
@@ -425,7 +425,10 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
 
   return (
     <div>
-      <Label>{label}</Label>
+      <div className="flex items-start justify-between gap-2 mb-1">
+        <Label>{label}</Label>
+        {hint && <span className="text-[11px] text-muted-foreground text-right">{hint}</span>}
+      </div>
       <Input
         type="text"
         inputMode="numeric"

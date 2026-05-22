@@ -247,7 +247,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
+    <>
+    <div className={`fixed inset-0 bg-black/50 flex items-center justify-center z-[100] ${adminOpen ? 'hidden' : ''}`}>
+
       <Card className="w-full max-w-md p-6 m-4 animate-scale-in max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold flex items-center gap-2">
@@ -450,11 +452,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           </Button>
         </div>
       </Card>
-      <AdminPanelDialog isOpen={adminOpen} onClose={() => setAdminOpen(false)} />
       <ReportBugDialog isOpen={bugOpen} onClose={() => setBugOpen(false)} />
     </div>
+    <AdminPanelDialog isOpen={adminOpen} onClose={() => setAdminOpen(false)} />
+    </>
   );
 }
+
 
 // ─── Rebuild Overworld ───
 // Lets the player wipe the procedural map (terrain, biomes, dungeons, nests,

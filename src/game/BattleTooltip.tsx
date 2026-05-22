@@ -6,6 +6,7 @@ import { Monster } from './types';
 import { calculateHitChance, calculateExpectedDamage, getEffectiveness } from './combat';
 import { getMasteryProgress, getHighestTier, TIER_COLORS, getTierDisplayName, MoveMastery } from './moveMastery';
 import { MasteryDisplay, TierBadge } from './MasteryDisplay';
+import { MoveShapeThumbnail } from './MoveShapeThumbnail';
 
 interface MoveTooltipProps {
   move: Move;
@@ -50,7 +51,10 @@ export function MoveTooltip({ move, attacker, defender, children, mastery }: Mov
           <div className="font-bold text-sm">{move.name}</div>
           <TierBadge tier={masteryProgress.tier} />
         </div>
-        <p className="text-xs text-muted-foreground">{move.description}</p>
+        <div className="flex items-start gap-2">
+          <p className="text-xs text-muted-foreground flex-1">{move.description}</p>
+          <MoveShapeThumbnail move={move} />
+        </div>
         
         <div className="border-t border-border pt-2 space-y-1 text-xs">
           {/* Damage after defense */}

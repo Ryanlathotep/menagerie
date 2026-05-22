@@ -33,6 +33,7 @@ import {
   filterMoves 
 } from './MoveSortFilter';
 import { loadMoveFilters, saveMoveFilters } from './persistedFilters';
+import { MoveShapeThumbnail } from './MoveShapeThumbnail';
 import { 
   loadKeybinds, saveKeybinds, getMonsterKeybinds, setMoveKeybind, 
   removeMoveKeybind, VALID_KEYBIND_KEYS 
@@ -292,7 +293,10 @@ export function UnifiedMovePanel({
           </Badge>
         </div>
         
-        <p className="text-xs text-muted-foreground">{move.description}</p>
+        <div className="flex items-start gap-2">
+          <p className="text-xs text-muted-foreground flex-1">{move.description}</p>
+          <MoveShapeThumbnail move={move} />
+        </div>
         
         {/* Single Target Versions */}
         <div className="space-y-2">
@@ -796,7 +800,10 @@ function UnifiedMoveCard({
             </Badge>
           )}
         </div>
-        <p className="text-xs text-muted-foreground">{move.description}</p>
+        <div className="flex items-start gap-2">
+          <p className="text-xs text-muted-foreground flex-1">{move.description}</p>
+          <MoveShapeThumbnail move={move} />
+        </div>
         
         {/* Combat Stats - shown when enemy is present */}
         {enemyMonster && (

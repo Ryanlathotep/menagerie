@@ -354,12 +354,40 @@ export function MovesEditor() {
             />
 
             {/* ----- Availability toggles ----- */}
+            <div className="rounded-md border border-border bg-muted/30 p-2 space-y-1">
+              <div className="text-xs font-semibold">Availability Logic</div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={(editedMove.availabilityMode ?? 'all') === 'all' ? 'default' : 'outline'}
+                  className="h-7 text-xs flex-1"
+                  onClick={() => setEditedMove({ ...editedMove, availabilityMode: 'all' })}
+                >
+                  Requires ALL (AND)
+                </Button>
+                <Button
+                  size="sm"
+                  variant={editedMove.availabilityMode === 'any' ? 'default' : 'outline'}
+                  className="h-7 text-xs flex-1"
+                  onClick={() => setEditedMove({ ...editedMove, availabilityMode: 'any' })}
+                >
+                  Any match (OR)
+                </Button>
+              </div>
+              <div className="text-[10px] text-muted-foreground leading-tight">
+                {(editedMove.availabilityMode ?? 'all') === 'all'
+                  ? 'Monster must match every populated list below (species AND element AND class).'
+                  : 'Monster qualifies if it matches at least one populated list below.'}
+                {' '}Empty lists are ignored either way.
+              </div>
+            </div>
+
             <AvailabilityToggles
               title="Available Species"
               options={ALL_SPECIES}
               selected={(editedMove.availableSpecies as SpeciesType[]) || []}
               onChange={(v) => setEditedMove({ ...editedMove, availableSpecies: v })}
-              hint={selected.isCustom ? 'Empty = no species can use this' : 'Empty = inherit built-in pool (originally in ' + (selected.source === 'Species' ? selected.sourceId : '—') + ')'}
+              hint={selected.isCustom ? 'Empty = no species restriction' : 'Empty = inherit built-in pool (originally in ' + (selected.source === 'Species' ? selected.sourceId : '—') + ')'}
             />
             <AvailabilityToggles
               title="Available Elements"

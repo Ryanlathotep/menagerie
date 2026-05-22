@@ -101,6 +101,10 @@ export interface Move {
   availableSpecies?: SpeciesType[];
   availableElements?: ElementType[];
   availableClasses?: ClassType[];
+  /** How the three availability lists combine.
+   *  'all' (default) = monster must match every populated list (AND / prerequisite).
+   *  'any'           = monster qualifies if it matches at least one populated list (OR). */
+  availabilityMode?: 'all' | 'any';
   /** Marks moves created entirely by the admin (not present in source code). */
   custom?: boolean;
   /** Per-tier overrides: stat tweaks and per-tier custom shapes that replace
@@ -624,6 +628,32 @@ export const TRIPLE_ASPECT_MOVES: Record<string, Move> = {
   },
 };
 
+// Shared availability check: AND across populated lists by default ('all'),
+// OR across populated lists when availabilityMode === 'any'. Empty lists are
+// always treated as "no restriction" for that axis.
+export function passesAvailability(
+  m: Partial<Move>,
+  species: SpeciesType,
+  element: ElementType,
+  classType: ClassType,
+): boolean {
+  const sList = m.availableSpecies?.length ? m.availableSpecies : null;
+  const eList = m.availableElements?.length ? m.availableElements : null;
+  const cList = m.availableClasses?.length ? m.availableClasses : null;
+  if (!sList && !eList && !cList) return true;
+  if (m.availabilityMode === 'any') {
+    return (
+      (sList?.includes(species) ?? false) ||
+      (eList?.includes(element) ?? false) ||
+      (cList?.includes(classType) ?? false)
+    );
+  }
+  if (sList && !sList.includes(species)) return false;
+  if (eList && !eList.includes(element)) return false;
+  if (cList && !cList.includes(classType)) return false;
+  return true;
+}
+
 // Get all moves available to a monster based on its aspects and level.
 // Honors admin-registered overrides + custom moves.
 export function getMonsterMoves(species: SpeciesType, element: ElementType, classType: ClassType, level: number = 99): Move[] {
@@ -636,10 +666,7 @@ export function getMonsterMoves(species: SpeciesType, element: ElementType, clas
     for (const m of list) {
       const merged = applyMoveOverride(m);
       // Override can also re-target the move via availableSpecies/Elements/Classes.
-      // When that's set we filter the move out if this monster isn't allowed.
-      if (merged.availableSpecies?.length && !merged.availableSpecies.includes(species)) continue;
-      if (merged.availableElements?.length && !merged.availableElements.includes(element)) continue;
-      if (merged.availableClasses?.length && !merged.availableClasses.includes(classType)) continue;
+      if (!passesAvailability(merged, species, element, classType)) continue;
       if (filterByLevel(merged)) moves.push(merged);
     }
   };

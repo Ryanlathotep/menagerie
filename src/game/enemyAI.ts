@@ -27,10 +27,10 @@ const SUPPORT_SPECIES: SpeciesType[] = ['mushroom', 'ghost', 'slime'] as Species
 const BRUISER_SPECIES: SpeciesType[] = ['dragon', 'wolf'] as SpeciesType[];
 
 // Class tags are best-effort; missing classes just fall through to bruiser.
-const TANK_CLASSES: ClassType[]     = ['military', 'industrial'] as ClassType[];
-const MAGE_CLASSES: ClassType[]     = ['chemical', 'religious', 'occult'] as ClassType[];
-const ASSASSIN_CLASSES: ClassType[] = ['criminal', 'political'] as ClassType[];
-const SUPPORT_CLASSES: ClassType[]  = ['academic', 'pastoral', 'medical'] as ClassType[];
+const TANK_CLASSES: ClassType[]     = ['kinetic'];
+const MAGE_CLASSES: ClassType[]     = ['chemical', 'energy'];
+const ASSASSIN_CLASSES: ClassType[] = ['political'];
+const SUPPORT_CLASSES: ClassType[]  = ['biological'];
 
 export function getEnemyArchetype(m: Monster): EnemyArchetype {
   if (TANK_SPECIES.includes(m.species)) return 'tank';

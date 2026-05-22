@@ -45,7 +45,7 @@ export function MovesEditor() {
     return overrides
       .filter((o) => (o.data_value as Partial<Move>)?.custom)
       .map((o) => ({
-        move: o.data_value as Move,
+        move: o.data_value as unknown as Move,
         source: 'Custom',
         sourceId: 'admin',
         isCustom: true,

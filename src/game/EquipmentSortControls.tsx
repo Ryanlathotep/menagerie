@@ -9,15 +9,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ArrowDownAZ, ArrowUpAZ, Sparkles, SortAsc } from 'lucide-react';
-import { SortConfig, SortOption } from './equipmentUtils';
+import { ArrowDownAZ, ArrowUpAZ, Sparkles, SortAsc, Target } from 'lucide-react';
+import { SortConfig, SortOption, AutoEquipFocus, AUTO_EQUIP_FOCUS_LABELS } from './equipmentUtils';
 import { EquipmentStats } from './equipment';
 
 interface EquipmentSortControlsProps {
   sortConfig: SortConfig;
   onSortChange: (config: SortConfig) => void;
   onAutoEquip: () => void;
+  focus?: AutoEquipFocus;
+  onFocusChange?: (focus: AutoEquipFocus) => void;
 }
+
 
 const SORT_OPTIONS: { value: SortOption; label: string; icon: string }[] = [
   { value: 'rarity', label: 'Rarity', icon: '💎' },

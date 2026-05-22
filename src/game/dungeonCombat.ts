@@ -546,11 +546,42 @@ export function getValidTargets(
   }
 
 
-  // ── Custom self-anchored shape: only valid target is the caster's own tile ──
+  // ── Custom self-anchored shape ──
+  // If rotateToFacing: valid targets are the 4 cardinal-adjacent tiles so the
+  // player can pick a direction. Otherwise: include the caster's tile AND
+  // every tile inside the static shape, so clicking a covered enemy fires.
   if (config.pattern === 'custom' && config.customOrigin === 'self') {
-    validTiles.push({ x: origin.x, y: origin.y });
+    if (config.rotateToFacing) {
+      const dirs = [[0, -1], [1, 0], [0, 1], [-1, 0]] as const;
+      for (const [dx, dy] of dirs) {
+        const x = origin.x + dx;
+        const y = origin.y + dy;
+        if (x < 0 || x >= width || y < 0 || y >= height) continue;
+        validTiles.push({ x, y });
+      }
+      // Always allow clicking self too (fires with no rotation).
+      validTiles.push({ x: origin.x, y: origin.y });
+      return validTiles;
+    }
+    // Static self-anchored shape — accept clicks anywhere in the shape.
+    const covered = getAffectedTiles(
+      origin,
+      origin,
+      config,
+      width,
+      height,
+      tiles,
+    );
+    const seen = new Set<string>();
+    for (const t of [{ x: origin.x, y: origin.y }, ...covered]) {
+      const k = `${t.x},${t.y}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      validTiles.push(t);
+    }
     return validTiles;
   }
+
 
   
   for (let y = 0; y < height; y++) {

@@ -39,9 +39,8 @@ import { detectConnectorDir, nextConnectorDir } from './wallTop';
 import { OverworldRenderer, OverworldRendererHandle } from './OverworldRenderer';
 import { findOverworldPath } from './overworldPathfinding';
 import { OverworldDirectionArrows } from './OverworldDirectionArrows';
-import { DungeonWaypointMenu } from './DungeonWaypointMenu';
-import { WaterTileContextMenu } from './WaterTileContextMenu';
-import { RoadContextMenu } from './RoadContextMenu';
+import { UnifiedTileMenu, UnifiedTileAction, UnifiedTileInfo, UnifiedTileCreature } from './UnifiedTileMenu';
+import { Flag, FlagOff, DoorOpen, Hammer, Footprints, Swords, Shovel, Droplet, Trash2, Settings as SettingsIcon, Pickaxe, TreePine, Wheat, Wrench, Users, Sparkles } from 'lucide-react';
 import { useSettings } from './Settings';
 import { GameSidebar } from './GameSidebar';
 import { CraftingWorkshop } from './CraftingWorkshop';
@@ -68,7 +67,7 @@ import { EvolvedMove } from './moveMastery';
 import { CombatEffects } from './statusEffects';
 import { BuildingAssignModal } from './BuildingAssignModal';
 import { BuildingContextMenu } from './BuildingContextMenu';
-import { TileContextMenu } from './TileContextMenu';
+
 import { EnemyAttackMenu, EnemyAttackTarget } from './EnemyAttackMenu';
 import { isAutoShovelEnabled, toggleAutoShovel, onAutoShovelChange } from './autoShovel';
 import { FARM_OUTPUTS, FARM_GROWTH_STEPS } from './buildings';
@@ -191,16 +190,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [assignBuilding, setAssignBuilding] = useState<PlayerBuilding | null>(null);
   // Right-click context menu state for player buildings
   const [contextMenuBuilding, setContextMenuBuilding] = useState<PlayerBuilding | null>(null);
-  // Right-click context menu state for plain tiles (grass / harvested grass)
-  const [tileContextMenu, setTileContextMenu] = useState<{ x: number; y: number } | null>(null);
-  // Right-click context menu state for enemy/nest tiles (attack picker)
+  // Unified right-click / long-press menu (one menu for every tile type).
+  const [unifiedMenu, setUnifiedMenu] = useState<{ x: number; y: number } | null>(null);
+  // Attack picker is opened FROM the unified menu when the tile has an enemy/nest
+  // or when "Attack from here" is chosen on a plain tile.
   const [attackMenuTarget, setAttackMenuTarget] = useState<EnemyAttackTarget | null>(null);
-  // Right-click context menu for dungeon entrance tiles (waypoint pin / enter)
-  const [dungeonMenu, setDungeonMenu] = useState<{ entrance: DungeonEntrance; worldX: number; worldY: number } | null>(null);
-  // Right-click context menu for water tiles (fill with grass)
-  const [waterMenu, setWaterMenu] = useState<{ x: number; y: number } | null>(null);
-  // Right-click context menu for road tiles (disassemble)
-  const [roadMenu, setRoadMenu] = useState<{ x: number; y: number; roadType: 'dirt_road' | 'stone_road' } | null>(null);
   // Session-only Auto-Shovel toggle (mirrored into local state for re-render).
   const [autoShovelOn, setAutoShovelOn] = useState<boolean>(isAutoShovelEnabled());
   useEffect(() => onAutoShovelChange(setAutoShovelOn), []);
@@ -1029,81 +1023,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   
   // Right-click → context menu for player buildings, or auto-attack for enemies/nests
   const handleTileRightClick = useCallback((worldX: number, worldY: number) => {
-    const tile = getOverworldTile(overworld, worldX, worldY);
-    
-    // Player building → open context menu (assign / repair / disassemble)
-    if (tile?.type === 'player_building' && tile.playerBuildingId) {
-      const building = overworld.playerBuildings?.find(b => b.id === tile.playerBuildingId);
-      if (building) {
-        setContextMenuBuilding(building);
-        return;
-      }
-    }
-    
-    // Enemy or nest → open the attack picker (sorted by user move-panel prefs)
-    if (tile?.type === 'enemy' && tile.enemyId && monster) {
-      const enemy = getOverworldEnemy(overworld, tile.enemyId);
-      if (enemy) {
-        setAttackMenuTarget({
-          enemy,
-          enemyPos: { x: worldX, y: worldY },
-          playerPos: overworld.playerPosition,
-        });
-      }
-      return;
-    }
-    if (tile?.type === 'nest' && tile.nestId && monster) {
-      const nest = overworld.nests?.[tile.nestId];
-      if (nest) {
-        // Build a synthetic Monster-like target so the attack menu can show
-        // effectiveness/HP info against the nest itself.
-        const nestAsMonster: Monster = {
-          ...monster,
-          id: nest.id,
-          name: `${nest.element[0].toUpperCase()}${nest.element.slice(1)} Nest`,
-          element: nest.element,
-          level: nest.level,
-          stats: {
-            ...monster.stats,
-            currentHp: nest.hp,
-            maxHp: nest.maxHp,
-          },
-        };
-        setAttackMenuTarget({
-          enemy: nestAsMonster,
-          enemyPos: { x: worldX, y: worldY },
-          playerPos: overworld.playerPosition,
-        });
-      }
-      return;
-    }
-
-    // Dungeon entrance → waypoint pin / enter menu
-    if (tile?.type === 'dungeon_entrance' && tile.dungeonId) {
-      const entrance = overworld.dungeonEntrances?.[tile.dungeonId];
-      if (entrance) {
-        setDungeonMenu({ entrance, worldX, worldY });
-        return;
-      }
-    }
-
-    // Water → offer to fill it in with grass for resources
-    if (tile?.type === 'water') {
-      setWaterMenu({ x: worldX, y: worldY });
-      return;
-    }
-
-    // Road → offer to disassemble (refund partial materials)
-    if (tile?.type === 'dirt_road' || tile?.type === 'stone_road') {
-      setRoadMenu({ x: worldX, y: worldY, roadType: tile.type });
-      return;
-    }
-
-    // Plain grass / harvested grass → open tile context menu (Build, etc.)
-    if (tile?.type === 'grass') {
-      setTileContextMenu({ x: worldX, y: worldY });
-    }
-  }, [overworld, monster, handleTargetingClick]);
+    // One menu for every tile — the unified menu reads the tile itself and
+    // builds the action list at render time. Long-press on touch and
+    // right-click on desktop both land here.
+    setUnifiedMenu({ x: worldX, y: worldY });
+  }, []);
   
   // ─── Keyboard ───
   useEffect(() => {
@@ -2116,182 +2040,289 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       />
     )}
 
-    {/* Tile Right-Click Context Menu (grass / harvested grass) */}
-    {tileContextMenu && (() => {
-      const tile = getOverworldTile(overworld, tileContextMenu.x, tileContextMenu.y);
-      const tileLabel = tile?.harvested ? 'Bare ground (dirt)' : 'Open ground';
-      const dist = Math.abs(tileContextMenu.x - overworld.playerPosition.x) + Math.abs(tileContextMenu.y - overworld.playerPosition.y);
-      const moveAvailable = dist === 1;
+    {/* ─── Unified Tile Menu (right-click on PC, long-press on touch) ───
+        One menu, every tile. Reads the tile and builds an action list
+        on the fly so the same shell works for grass, water, road,
+        dungeons, enemies, buildings, nests, trees, rocks, etc. */}
+    {unifiedMenu && (() => {
+      const tile = getOverworldTile(overworld, unifiedMenu.x, unifiedMenu.y);
+      const close = () => setUnifiedMenu(null);
+      const px = overworld.playerPosition.x;
+      const py = overworld.playerPosition.y;
+      const dist = Math.abs(unifiedMenu.x - px) + Math.abs(unifiedMenu.y - py);
+      const isAdjacent = dist === 1;
 
-      // Find the closest visible enemy or nest within Manhattan range 6 of
-      // *this* tile so the player can preview attack options "from here".
-      let nearestTarget: EnemyAttackTarget | null = null;
-      let bestDist = Infinity;
-      const SEARCH_R = 6;
-      for (let dy = -SEARCH_R; dy <= SEARCH_R; dy++) {
-        for (let dx = -SEARCH_R; dx <= SEARCH_R; dx++) {
-          const tx = tileContextMenu.x + dx;
-          const ty = tileContextMenu.y + dy;
-          const t = getOverworldTile(overworld, tx, ty);
-          if (!t || !t.visible) continue;
-          const d = Math.abs(dx) + Math.abs(dy);
-          if (d > SEARCH_R || d >= bestDist) continue;
-          if (t.type === 'enemy' && t.enemyId) {
-            const enemy = getOverworldEnemy(overworld, t.enemyId);
-            if (enemy) {
-              nearestTarget = { enemy, enemyPos: { x: tx, y: ty }, playerPos: overworld.playerPosition };
-              bestDist = d;
-            }
-          } else if (t.type === 'nest' && t.nestId && monster) {
-            const nest = overworld.nests?.[t.nestId];
-            if (nest) {
-              const nestAsMonster: Monster = {
-                ...monster,
-                id: nest.id,
-                name: `${nest.element[0].toUpperCase()}${nest.element.slice(1)} Nest`,
-                element: nest.element,
-                level: nest.level,
-                stats: { ...monster.stats, currentHp: nest.hp, maxHp: nest.maxHp },
-              };
-              nearestTarget = { enemy: nestAsMonster, enemyPos: { x: tx, y: ty }, playerPos: overworld.playerPosition };
-              bestDist = d;
+      // Build everything for the menu
+      let title = '🍃 Unknown tile';
+      let subtitle: string | undefined;
+      const info: UnifiedTileInfo[] = [];
+      let creature: UnifiedTileCreature | undefined;
+      const actions: UnifiedTileAction[] = [];
+      let footnote: string | undefined;
+
+      // Helper: nearest visible enemy/nest within range 6 of this tile,
+      // shared by the "Attack from here" affordance on plain tiles.
+      const findNearestAttackTarget = (): EnemyAttackTarget | null => {
+        if (!monster) return null;
+        let best: EnemyAttackTarget | null = null;
+        let bestD = Infinity;
+        const R = 6;
+        for (let dy = -R; dy <= R; dy++) {
+          for (let dx = -R; dx <= R; dx++) {
+            const tx = unifiedMenu.x + dx;
+            const ty = unifiedMenu.y + dy;
+            const t = getOverworldTile(overworld, tx, ty);
+            if (!t || !t.visible) continue;
+            const d = Math.abs(dx) + Math.abs(dy);
+            if (d > R || d >= bestD) continue;
+            if (t.type === 'enemy' && t.enemyId) {
+              const e = getOverworldEnemy(overworld, t.enemyId);
+              if (e) { best = { enemy: e, enemyPos: { x: tx, y: ty }, playerPos: overworld.playerPosition }; bestD = d; }
+            } else if (t.type === 'nest' && t.nestId && monster) {
+              const nest = overworld.nests?.[t.nestId];
+              if (nest) {
+                const nestAsMonster: Monster = {
+                  ...monster, id: nest.id,
+                  name: `${nest.element[0].toUpperCase()}${nest.element.slice(1)} Nest`,
+                  element: nest.element, level: nest.level,
+                  stats: { ...monster.stats, currentHp: nest.hp, maxHp: nest.maxHp },
+                };
+                best = { enemy: nestAsMonster, enemyPos: { x: tx, y: ty }, playerPos: overworld.playerPosition };
+                bestD = d;
+              }
             }
           }
         }
-      }
+        return best;
+      };
 
-      return (
-        <TileContextMenu
-          worldX={tileContextMenu.x}
-          worldY={tileContextMenu.y}
-          tileLabel={tileLabel}
-          autoShovelEnabled={autoShovelOn}
-          attackAvailable={!!nearestTarget && !!monster}
-          moveAvailable={moveAvailable}
-          onAttack={nearestTarget ? () => {
-            setAttackMenuTarget(nearestTarget);
-            setTileContextMenu(null);
-          } : undefined}
-          onBuild={() => {
-            setTileContextMenu(null);
-            setShowBuildPanel(true);
-          }}
-          onMoveHere={moveAvailable ? () => {
-            const dx = tileContextMenu.x - overworld.playerPosition.x;
-            const dy = tileContextMenu.y - overworld.playerPosition.y;
-            setTileContextMenu(null);
-            handleMove(dx, dy);
-          } : undefined}
-          onToggleAutoShovel={() => {
-            const next = toggleAutoShovel();
-            toast.info(`Auto-Shovel ${next ? 'enabled' : 'disabled'}`);
-          }}
-          onClose={() => setTileContextMenu(null)}
-        />
-      );
-    })()}
-
-    {/* Dungeon Right-Click Waypoint / Enter Menu */}
-    {dungeonMenu && (
-      <DungeonWaypointMenu
-        worldX={dungeonMenu.worldX}
-        worldY={dungeonMenu.worldY}
-        dungeon={dungeonMenu.entrance}
-        isWaypointed={!!settings.dungeonWaypoints?.[dungeonMenu.entrance.id]}
-        onToggleWaypoint={() => {
-          const id = dungeonMenu.entrance.id;
-          const current = { ...(settings.dungeonWaypoints || {}) };
-          if (current[id]) {
-            delete current[id];
-            toast.info(`Waypoint hidden: ${dungeonMenu.entrance.name || 'dungeon'}`);
-          } else {
-            current[id] = true;
-            toast.success(`Waypoint pinned: ${dungeonMenu.entrance.name || 'dungeon'}`);
+      // ── Per-tile-type setup ──
+      if (!tile) {
+        title = '🌫 Unexplored';
+        info.push({ label: 'Status', value: 'Not yet seen' });
+      } else if (tile.type === 'dungeon_entrance' && tile.dungeonId) {
+        const entrance = overworld.dungeonEntrances?.[tile.dungeonId];
+        const name = entrance?.name || `Dungeon (${unifiedMenu.x},${unifiedMenu.y})`;
+        title = `🏰 ${name}`;
+        subtitle = `Start F${entrance?.difficulty || 1}${entrance && entrance.deepestFloor > 0 ? ` · Best F${entrance.deepestFloor}` : ''}`;
+        if (entrance?.category && entrance.category !== 'procedural') {
+          info.push({ label: 'Tower', value: entrance.category });
+        }
+        const pinned = !!(entrance && settings.dungeonWaypoints?.[entrance.id]);
+        if (entrance) {
+          actions.push({
+            id: 'enter', label: 'Enter dungeon', icon: DoorOpen, variant: 'default',
+            onClick: () => { close(); setSelectedDungeon(entrance); setShowDungeonPrompt(true); },
+          });
+          actions.push({
+            id: 'waypoint', label: pinned ? 'Hide waypoint arrow' : 'Show waypoint arrow',
+            icon: pinned ? FlagOff : Flag,
+            onClick: () => {
+              const id = entrance.id;
+              const cur = { ...(settings.dungeonWaypoints || {}) };
+              if (cur[id]) { delete cur[id]; toast.info(`Waypoint hidden: ${entrance.name || 'dungeon'}`); }
+              else { cur[id] = true; toast.success(`Waypoint pinned: ${entrance.name || 'dungeon'}`); }
+              updateSetting('dungeonWaypoints', cur);
+              close();
+            },
+          });
+          footnote = entrance.category && entrance.category !== 'procedural'
+            ? 'Major towers also have a global toggle in Settings → Overworld Arrows.'
+            : 'Pinned waypoints show an edge-of-screen arrow.';
+        }
+      } else if (tile.type === 'player_building' && tile.playerBuildingId) {
+        const b = overworld.playerBuildings?.find(pb => pb.id === tile.playerBuildingId);
+        if (b) {
+          const def = BUILDING_DEFINITIONS[b.type];
+          title = `🏚 ${def?.name || b.type}`;
+          subtitle = b.assignedMonsterId ? 'Staffed' : 'Unstaffed';
+          info.push({ label: 'Health', value: `${b.hp ?? '?'} / ${b.maxHp ?? '?'}` });
+          if (b.type === 'farm' && b.harvestReady) info.push({ label: 'Status', value: 'Ready to harvest' });
+          actions.push({
+            id: 'open-building', label: 'Building options…',
+            hint: 'Assign / repair / disassemble',
+            icon: Wrench, variant: 'default',
+            onClick: () => { close(); setContextMenuBuilding(b); },
+          });
+        }
+      } else if (tile.type === 'enemy' && tile.enemyId) {
+        const enemy = getOverworldEnemy(overworld, tile.enemyId);
+        if (enemy) {
+          title = `⚔ ${enemy.name}`;
+          subtitle = `Hostile creature`;
+          creature = {
+            name: enemy.name, level: enemy.level, element: enemy.element,
+            klass: (enemy as any).class,
+            hp: enemy.stats.currentHp, maxHp: enemy.stats.maxHp,
+          };
+          if (monster) {
+            actions.push({
+              id: 'attack', label: 'Pick a move to attack', icon: Swords, variant: 'default',
+              onClick: () => {
+                close();
+                setAttackMenuTarget({ enemy, enemyPos: { x: unifiedMenu.x, y: unifiedMenu.y }, playerPos: overworld.playerPosition });
+              },
+            });
           }
-          updateSetting('dungeonWaypoints', current);
-          setDungeonMenu(null);
-        }}
-        onEnter={() => {
-          const entrance = dungeonMenu.entrance;
-          setDungeonMenu(null);
-          setSelectedDungeon(entrance);
-          setShowDungeonPrompt(true);
-        }}
-        onClose={() => setDungeonMenu(null)}
-      />
-    )}
-
-    {/* Water Right-Click Fill-with-Grass Menu */}
-    {waterMenu && (() => {
-      const COST_WOOD = 2;
-      const COST_STONE = 5;
-      return (
-        <WaterTileContextMenu
-          worldX={waterMenu.x}
-          worldY={waterMenu.y}
-          costWood={COST_WOOD}
-          costStone={COST_STONE}
-          haveWood={overworld.woodCollected}
-          haveStone={overworld.stoneCollected}
-          onClose={() => setWaterMenu(null)}
-          onFill={() => {
-            const { x, y } = waterMenu;
-            if (overworld.woodCollected < COST_WOOD || overworld.stoneCollected < COST_STONE) {
-              toast.error('Not enough resources!');
-              return;
-            }
+        }
+      } else if (tile.type === 'nest' && tile.nestId) {
+        const nest = overworld.nests?.[tile.nestId];
+        if (nest) {
+          title = `🪺 ${nest.element[0].toUpperCase()}${nest.element.slice(1)} Nest`;
+          subtitle = `Spawner — Lv ${nest.level}`;
+          creature = {
+            name: `${nest.element[0].toUpperCase()}${nest.element.slice(1)} Nest`,
+            level: nest.level, element: nest.element,
+            hp: nest.hp, maxHp: nest.maxHp,
+          };
+          if (monster) {
+            const nestAsMonster: Monster = {
+              ...monster, id: nest.id,
+              name: `${nest.element[0].toUpperCase()}${nest.element.slice(1)} Nest`,
+              element: nest.element, level: nest.level,
+              stats: { ...monster.stats, currentHp: nest.hp, maxHp: nest.maxHp },
+            };
+            actions.push({
+              id: 'attack-nest', label: 'Pick a move to attack', icon: Swords, variant: 'default',
+              onClick: () => {
+                close();
+                setAttackMenuTarget({ enemy: nestAsMonster, enemyPos: { x: unifiedMenu.x, y: unifiedMenu.y }, playerPos: overworld.playerPosition });
+              },
+            });
+          }
+        }
+      } else if (tile.type === 'water') {
+        const COST_WOOD = 2, COST_STONE = 5;
+        title = '💧 Water';
+        subtitle = 'Impassable';
+        info.push({ label: 'Wood', value: `${overworld.woodCollected} / ${COST_WOOD}` });
+        info.push({ label: 'Stone', value: `${overworld.stoneCollected} / ${COST_STONE}` });
+        const canFill = overworld.woodCollected >= COST_WOOD && overworld.stoneCollected >= COST_STONE;
+        actions.push({
+          id: 'fill-water', label: `Fill with grass (🪵${COST_WOOD} 🪨${COST_STONE})`,
+          icon: Droplet, variant: 'default',
+          disabled: !canFill,
+          disabledReason: 'Not enough resources',
+          onClick: () => {
+            const { x, y } = unifiedMenu;
             setOverworld(prev => {
               const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
               const t = getOverworldTile(newOw, x, y);
-              if (!t || t.type !== 'water') {
-                toast.error('Tile is no longer water.');
-                return prev;
-              }
+              if (!t || t.type !== 'water') { toast.error('Tile is no longer water.'); return prev; }
+              if (newOw.woodCollected < COST_WOOD || newOw.stoneCollected < COST_STONE) { toast.error('Not enough resources!'); return prev; }
               newOw.woodCollected -= COST_WOOD;
               newOw.stoneCollected -= COST_STONE;
-              setOverworldTile(newOw, x, y, {
-                type: 'grass',
-                explored: true,
-                visible: true,
-                harvested: true,
-              });
+              setOverworldTile(newOw, x, y, { type: 'grass', explored: true, visible: true, harvested: true });
               addLog(`🌱 Filled water at (${x},${y}) with grass. (-${COST_WOOD}🪵 -${COST_STONE}🪨)`, 'system');
               toast.success('Water filled in!');
               saveOverworld(newOw);
               return newOw;
             });
-            setWaterMenu(null);
-          }}
+            close();
+          },
+        });
+      } else if (tile.type === 'dirt_road' || tile.type === 'stone_road') {
+        const roadType = tile.type;
+        const def = ROAD_DEFINITIONS[roadType];
+        const refund = getRoadRefund(roadType);
+        title = `🛤 ${def?.name || 'Road'}`;
+        subtitle = roadType === 'stone_road' ? 'Stone — bonus step every other tile' : 'Dirt — slight speed bonus';
+        info.push({ label: 'Refund on remove', value: `🪵${refund.wood} 🪨${refund.stone}` });
+        // Roads are walkable, so include the standard move/attack rows.
+        const nt = findNearestAttackTarget();
+        if (isAdjacent) actions.push({
+          id: 'move', label: 'Move here', icon: Footprints,
+          onClick: () => { const dx = unifiedMenu.x - px, dy = unifiedMenu.y - py; close(); handleMove(dx, dy); },
+        });
+        if (nt) actions.push({
+          id: 'attack-from', label: 'Attack from here', icon: Swords,
+          hint: `${nt.enemy.name} in range`,
+          onClick: () => { close(); setAttackMenuTarget(nt); },
+        });
+        actions.push({
+          id: 'remove-road', label: 'Disassemble road', icon: Trash2, variant: 'destructive',
+          hint: `Recovers 🪵${refund.wood} 🪨${refund.stone}`,
+          onClick: () => {
+            const { x, y } = unifiedMenu;
+            setOverworld(prev => {
+              const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
+              if (!removeRoad(newOw, x, y)) { toast.error('No road to disassemble here.'); return prev; }
+              addLog(`♻️ Disassembled ${def.name} at (${x},${y}). Recovered 🪵${refund.wood} 🪨${refund.stone}.`, 'loot');
+              toast.success(`Road removed! +🪵${refund.wood} +🪨${refund.stone}`);
+              saveOverworld(newOw);
+              return newOw;
+            });
+            close();
+          },
+        });
+      } else if (tile.type === 'tree') {
+        title = '🌳 Tree';
+        subtitle = 'Step onto it to chop for wood';
+        const tier = (tile as any).treeTier as TreeTier | undefined;
+        if (tier && TREE_TIER_DATA[tier]) info.push({ label: 'Tier', value: TREE_TIER_DATA[tier].name });
+        if (isAdjacent) actions.push({
+          id: 'chop', label: 'Chop tree', icon: TreePine, variant: 'default',
+          onClick: () => { const dx = unifiedMenu.x - px, dy = unifiedMenu.y - py; close(); handleMove(dx, dy); },
+        });
+      } else if (tile.type === 'rock') {
+        title = '🪨 Rock';
+        subtitle = 'Step onto it to mine for stone';
+        const tier = (tile as any).stoneTier as StoneTier | undefined;
+        if (tier && STONE_TIER_DATA[tier]) info.push({ label: 'Tier', value: STONE_TIER_DATA[tier].name });
+        if (isAdjacent) actions.push({
+          id: 'mine', label: 'Mine rock', icon: Pickaxe, variant: 'default',
+          onClick: () => { const dx = unifiedMenu.x - px, dy = unifiedMenu.y - py; close(); handleMove(dx, dy); },
+        });
+      } else if (tile.type === 'cliff' || tile.type === 'waterfall') {
+        title = tile.type === 'cliff' ? '⛰ Cliff' : '🌊 Waterfall';
+        subtitle = 'Impassable terrain';
+      } else if (tile.type === 'grass') {
+        const harvested = !!tile.harvested;
+        title = harvested ? '🟫 Bare ground' : '🍃 Open ground';
+        subtitle = harvested ? 'Dirt — can be built on' : 'Grass — can be built on';
+        const nt = findNearestAttackTarget();
+        if (isAdjacent) actions.push({
+          id: 'move', label: 'Move here', icon: Footprints,
+          onClick: () => { const dx = unifiedMenu.x - px, dy = unifiedMenu.y - py; close(); handleMove(dx, dy); },
+        });
+        actions.push({
+          id: 'attack-from', label: 'Attack from here', icon: Swords,
+          hint: nt ? `${nt.enemy.name} in range` : undefined,
+          disabled: !nt || !monster,
+          disabledReason: 'No target in range of this tile',
+          onClick: () => { if (nt) { close(); setAttackMenuTarget(nt); } },
+        });
+        actions.push({
+          id: 'build', label: 'Build here', icon: Hammer,
+          onClick: () => { close(); setShowBuildPanel(true); },
+        });
+        actions.push({
+          id: 'auto-shovel', label: autoShovelOn ? 'Disable Auto-Shovel' : 'Enable Auto-Shovel',
+          icon: Shovel, variant: 'outline',
+          hint: 'Session-only; auto-digs runes as you walk',
+          onClick: () => {
+            const next = toggleAutoShovel();
+            toast.info(`Auto-Shovel ${next ? 'enabled' : 'disabled'}`);
+          },
+        });
+      } else {
+        title = `Tile (${tile.type})`;
+      }
+
+      return (
+        <UnifiedTileMenu
+          worldX={unifiedMenu.x}
+          worldY={unifiedMenu.y}
+          title={title}
+          subtitle={subtitle}
+          info={info.length > 0 ? info : undefined}
+          creature={creature}
+          actions={actions}
+          footnote={footnote}
+          onClose={close}
         />
       );
     })()}
-
-    {/* Road Right-Click Disassemble Menu */}
-    {roadMenu && (
-      <RoadContextMenu
-        worldX={roadMenu.x}
-        worldY={roadMenu.y}
-        roadType={roadMenu.roadType}
-        onClose={() => setRoadMenu(null)}
-        onDisassemble={() => {
-          const { x, y, roadType } = roadMenu;
-          setOverworld(prev => {
-            const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
-            if (!removeRoad(newOw, x, y)) {
-              toast.error('No road to disassemble here.');
-              return prev;
-            }
-            const refund = getRoadRefund(roadType);
-            const def = ROAD_DEFINITIONS[roadType];
-            addLog(`♻️ Disassembled ${def.name} at (${x},${y}). Recovered 🪵${refund.wood} 🪨${refund.stone}.`, 'loot');
-            toast.success(`Road removed! +🪵${refund.wood} +🪨${refund.stone}`);
-            saveOverworld(newOw);
-            return newOw;
-          });
-          setRoadMenu(null);
-        }}
-      />
-    )}
 
     {attackMenuTarget && monster && (
       <EnemyAttackMenu

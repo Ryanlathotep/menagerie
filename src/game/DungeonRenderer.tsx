@@ -25,6 +25,7 @@ import {
 import { OverworldNestTile } from './OverworldTileGraphics';
 import { fitFromNeighbors } from './autoTiling';
 import { isAdminCompass, onAdminCompassChange } from './adminCompass';
+import { isDowsingEffective, onDowsingChange, DOWSING_HIGHLIGHT_COUNT } from './dowsingRod';
 
 // Check if a monster combo has been captured at equal or lower level
 function isCaptured(enemy: Monster, unlockedMonsters: UnlockedMonster[]): {
@@ -701,6 +702,15 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   const [adminCompassOn, setAdminCompassOn] = useState(() => isAdminCompass());
   useEffect(() => onAdminCompassChange(setAdminCompassOn), []);
 
+  // Dowsing Rod: re-render when the buff toggles, and tick every 5s so the
+  // buff auto-clears when its timer expires.
+  const [dowsingOn, setDowsingOn] = useState(() => isDowsingEffective());
+  useEffect(() => {
+    const off = onDowsingChange(() => setDowsingOn(isDowsingEffective()));
+    const interval = setInterval(() => setDowsingOn(isDowsingEffective()), 5000);
+    return () => { off(); clearInterval(interval); };
+  }, []);
+
   // Effective compass waypoint: real one (from item) takes priority; otherwise
   // if the admin toggle is on we scan the floor for the down-stairs tile.
   let effectiveWaypoint = dungeon.compassWaypoint;
@@ -715,6 +725,23 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
       }
     }
   }
+
+  // Compute the set of tile positions to highlight when dowsing is active:
+  // the nearest DOWSING_HIGHLIGHT_COUNT enemy tiles by Manhattan distance.
+  const dowsedTiles = (() => {
+    if (!dowsingOn) return [] as { x: number; y: number }[];
+    const candidates: { x: number; y: number; d: number }[] = [];
+    for (let yy = 0; yy < dungeon.tiles.length; yy++) {
+      const row = dungeon.tiles[yy];
+      for (let xx = 0; xx < row.length; xx++) {
+        if (row[xx].type === 'enemy' && row[xx].enemyId) {
+          candidates.push({ x: xx, y: yy, d: Math.abs(xx - px) + Math.abs(yy - py) });
+        }
+      }
+    }
+    candidates.sort((a, b) => a.d - b.d);
+    return candidates.slice(0, DOWSING_HIGHLIGHT_COUNT).map(c => ({ x: c.x, y: c.y }));
+  })();
 
   // Mobile double-tap → treat as right-click. A second tap on the SAME tile
   // within 300ms calls onTileRightClick instead of onTileClick.
@@ -1004,6 +1031,15 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                         <div className="absolute inset-0 rounded-full border-2 border-emerald-400 animate-ping opacity-60" />
                         <div className="absolute inset-1 rounded-full border-2 border-emerald-300 opacity-90" />
                         <span className="relative text-sm drop-shadow-[0_0_4px_rgba(52,211,153,0.9)]">📍</span>
+                      </div>
+                    )}
+                    {/* Dowsing Rod: highlight the nearest 5 enemy tiles. */}
+                    {dowsedTiles.some(p => p.x === x && p.y === y) && (
+                      <div
+                        className="absolute inset-0 pointer-events-none z-20"
+                        aria-label="Dowsed enemy"
+                      >
+                        <div className="absolute inset-0 rounded-md ring-2 ring-fuchsia-400 animate-pulse shadow-[0_0_10px_rgba(232,121,249,0.7)]" />
                       </div>
                     )}
                   </div>

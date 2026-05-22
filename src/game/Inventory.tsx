@@ -8,7 +8,7 @@ import { FullMonster, ExpandedStats } from './CharacterSheet';
 
 // Item types
 export type ItemType = 'consumable' | 'key' | 'material';
-export type ConsumableEffect = 'heal_hp' | 'heal_stamina' | 'cure_poison' | 'cure_burn' | 'cure_freeze' | 'cure_all' | 'boost_attack' | 'boost_defense' | 'boost_speed' | 'revive' | 'revive_full' | 'town_portal';
+export type ConsumableEffect = 'heal_hp' | 'heal_stamina' | 'cure_poison' | 'cure_burn' | 'cure_freeze' | 'cure_all' | 'boost_attack' | 'boost_defense' | 'boost_speed' | 'revive' | 'revive_full' | 'town_portal' | 'dowse';
 
 export interface Item {
   id: string;
@@ -235,6 +235,19 @@ export const ITEMS: Record<string, Item> = {
     icon: '📜',
     rarity: 'uncommon',
     effect: 'town_portal',
+  },
+  // Dowsing Rod - reveals nearest 5 enemies for 5 minutes (persistent)
+  dowsing_rod: {
+    id: 'dowsing_rod',
+    name: 'Dowsing Rod',
+    description: 'Highlights the nearest 5 enemies for 5 minutes. Persists across floors and the overworld.',
+    type: 'consumable',
+    stackable: true,
+    maxStack: 10,
+    icon: '🔮',
+    rarity: 'uncommon',
+    effect: 'dowse',
+    effectValue: 5 * 60,
   },
 };
 

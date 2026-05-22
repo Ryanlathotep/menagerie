@@ -21,6 +21,7 @@ import { ElementType, ClassType } from './types';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { BuildingTooltipContent } from './BuildingTooltip';
 import { OverworldTooltipContent } from './OverworldTooltip';
+import { isDowsingEffective, onDowsingChange, DOWSING_HIGHLIGHT_COUNT } from './dowsingRod';
 
 interface OverworldRendererProps {
   overworld: OverworldState;
@@ -219,6 +220,14 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
     return () => mql.removeEventListener('change', update);
   }, []);
 
+  // Dowsing Rod: re-render on toggle + tick every 5s so the buff auto-clears.
+  const [dowsingOn, setDowsingOn] = useState(() => isDowsingEffective());
+  useEffect(() => {
+    const off = onDowsingChange(() => setDowsingOn(isDowsingEffective()));
+    const interval = setInterval(() => setDowsingOn(isDowsingEffective()), 5000);
+    return () => { off(); clearInterval(interval); };
+  }, []);
+
   const scale = zoom / 100;
   const tileSize = Math.floor(TILE_SIZE * scale);
 
@@ -254,9 +263,30 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
       }
     }
   }
-  
+
   const gridSize = VIEW_RANGE * 2 + 1;
-  
+
+  // Dowsed enemy positions: nearest 5 enemy tiles by Manhattan distance.
+  // Scans a wider square around the player than the visible viewport so
+  // off-screen targets still count toward the 5.
+  const dowsedKeys = (() => {
+    if (!dowsingOn) return new Set<string>();
+    const SCAN = VIEW_RANGE * 3;
+    const candidates: { x: number; y: number; d: number }[] = [];
+    for (let dy = -SCAN; dy <= SCAN; dy++) {
+      for (let dx = -SCAN; dx <= SCAN; dx++) {
+        const wx = px + dx;
+        const wy = py + dy;
+        const t = getOverworldTile(overworld, wx, wy);
+        if (t && t.type === 'enemy' && t.enemyId) {
+          candidates.push({ x: wx, y: wy, d: Math.abs(dx) + Math.abs(dy) });
+        }
+      }
+    }
+    candidates.sort((a, b) => a.d - b.d);
+    return new Set(candidates.slice(0, DOWSING_HIGHLIGHT_COUNT).map(c => `${c.x},${c.y}`));
+  })();
+
   // Find enemies for rendering
   const getEnemy = (enemyId: string): Monster | null => {
     for (const chunk of Object.values(overworld.chunks)) {

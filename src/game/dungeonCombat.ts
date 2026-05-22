@@ -3,6 +3,7 @@
 import { DungeonState, Monster, Position, DungeonTile } from './types';
 import { Move, TargetingPattern } from './moves';
 import { EvolvedMove } from './moveMastery';
+import * as enemyAI from './enemyAI';
 
 // Attack pattern shapes (internal representation)
 export type AttackPattern = 'single' | 'line' | 'cone' | 'cross' | 'area' | 'aura' | 'self' | 'custom' | 'movement';

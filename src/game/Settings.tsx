@@ -134,6 +134,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [bugOpen, setBugOpen] = useState(false);
 
   // Listen for admin panel open event (dispatched from the Admin Tools button)
   useEffect(() => {
@@ -375,6 +376,16 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             </p>
           </div>
 
+          {/* Report a Bug */}
+          <div className="pt-2 border-t">
+            <Button variant="outline" className="w-full" onClick={() => setBugOpen(true)}>
+              <Bug className="w-4 h-4 mr-2" /> Report a Bug
+            </Button>
+            <p className="text-xs text-muted-foreground mt-1 text-center">
+              Send a bug report to the dev team. No account required.
+            </p>
+          </div>
+
           {/* Admin Panel Access */}
           <AdminPanelTrigger onOpenAdmin={() => {
             onClose();
@@ -384,6 +395,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             }, 50);
           }} />
         </div>
+
 
         <div className="flex gap-2 mt-6">
           <Button variant="outline" onClick={resetSettings} className="flex-1">

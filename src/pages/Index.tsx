@@ -4984,10 +4984,12 @@ function Game() {
 }
 export default function Index() {
   return (
-    <SettingsProvider>
-      <GameProvider>
-        <Game />
-      </GameProvider>
-    </SettingsProvider>
+    <main>
+      <SettingsProvider>
+        <GameProvider>
+          <Game />
+        </GameProvider>
+      </SettingsProvider>
+    </main>
   );
 }

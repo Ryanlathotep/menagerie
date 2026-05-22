@@ -74,7 +74,30 @@ export interface MovementPattern {
   blink?: boolean;
   /** If true, rotate the offsets to match the cardinal direction the player aimed. */
   rotateToFacing?: boolean;
+  /** Max tile distance from caster the destination may sit (defaults to furthest offset). */
+  range?: number;
+  /** If true, walls along the path stop the movement before reaching the destination. */
+  blockedByWalls?: boolean;
+  /** If true, units along the path stop the movement before reaching the destination. */
+  blockedByUnits?: boolean;
+  // ----- Pass-through rules (override the default blockers when true) -----
+  /** Movement can pass over / through enemy units. */
+  passThroughEnemies?: boolean;
+  /** Movement can pass over trap tiles without triggering them. */
+  passThroughTraps?: boolean;
+  /** Movement can pass over terrain rune tiles without triggering their effect. */
+  passThroughTerrain?: boolean;
+  /** Movement can ascend cliff tiles (otherwise blocked by elevation jumps). */
+  canClimbCliffs?: boolean;
+  /** Movement can cross water tiles (otherwise blocked). */
+  canCrossWater?: boolean;
+  // ----- Effects triggered along the path / on landing -----
+  /** If true, traps and terrain runes the movement path overlaps still trigger. */
+  triggersTrapsOnPath?: boolean;
+  /** Resource categories the movement harvests as it travels (tree/stone/plant/trap/terrain). */
+  harvestsResources?: HarvestableKind[];
 }
+
 
 export interface Move {
   id: string;

@@ -40,8 +40,12 @@ const STAT_OPTIONS: { value: keyof EquipmentStats; label: string }[] = [
   { value: 'stamina', label: 'Stamina' },
 ];
 
-export function EquipmentSortControls({ sortConfig, onSortChange, onAutoEquip }: EquipmentSortControlsProps) {
+const FOCUS_OPTIONS: AutoEquipFocus[] = ['class', 'tank', 'dps', 'aoe', 'speed', 'support', 'set'];
+
+export function EquipmentSortControls({ sortConfig, onSortChange, onAutoEquip, focus, onFocusChange }: EquipmentSortControlsProps) {
   const currentOption = SORT_OPTIONS.find(o => o.value === sortConfig.option);
+
+
   
   return (
     <div className="flex items-center gap-2">

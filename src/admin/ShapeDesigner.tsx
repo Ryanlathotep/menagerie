@@ -75,6 +75,8 @@ export function ShapeDesigner() {
   const [mode, setMode] = useState<Mode>('shape');
   const [gridSize, setGridSize] = useState<number>(13);
   const [tier, setTier] = useState<TierKey>('base');
+  const [sortOption, setSortOption] = useState<MoveSortOption>('custom');
+  const [moveFilters, setMoveFilters] = useState<MoveFilterOption[]>(['all']);
 
   // Shape state (for currently selected tier)
   const [originType, setOriginType] = useState<ShapeOriginType>('self');

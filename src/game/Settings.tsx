@@ -38,6 +38,9 @@ export interface GameSettings {
   // Per-dungeon waypoint pins (id → enabled). Used for procedural / minor
   // dungeons that don't have a global toggle. Right-click a dungeon to pin.
   dungeonWaypoints: Record<string, boolean>;
+  // Auto-equip preferences (used by Equipment screens and pickup auto-equip)
+  autoEquipFocus: import('./equipmentUtils').AutoEquipFocus;
+  autoEquipOnPickup: boolean;
 }
 
 const DEFAULT_SETTINGS: GameSettings = {
@@ -51,7 +54,10 @@ const DEFAULT_SETTINGS: GameSettings = {
   showHomeTowerArrow: true,
   showMajorDungeonArrows: true,
   dungeonWaypoints: {},
+  autoEquipFocus: 'class',
+  autoEquipOnPickup: false,
 };
+
 
 // Settings Context
 interface SettingsContextType {
@@ -381,8 +387,49 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             </div>
           </div>
 
+          {/* Auto-Equip Preferences */}
+          <div className="space-y-3 pt-4 border-t">
+            <Label className="text-base">Auto-Equip</Label>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Pick how the <strong>Auto-Equip</strong> button optimises gear, and
+              whether new pickups should auto-equip themselves to your active
+              monster when they're an upgrade.
+            </p>
+            <div className="space-y-1">
+              <Label htmlFor="auto-equip-focus" className="text-sm">Focus</Label>
+              <select
+                id="auto-equip-focus"
+                value={settings.autoEquipFocus}
+                onChange={(e) => updateSetting('autoEquipFocus', e.target.value as GameSettings['autoEquipFocus'])}
+                className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value="class">Class Optimal (default)</option>
+                <option value="tank">Tank — defense / HP</option>
+                <option value="dps">DPS — attack / special</option>
+                <option value="aoe">AoE — special / stamina</option>
+                <option value="speed">Speed — speed / dodge</option>
+                <option value="support">Support — stamina / utility</option>
+                <option value="set">Build Sets — favor set pieces</option>
+              </select>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <Label htmlFor="auto-equip-pickup" className="cursor-pointer">Auto-equip on pickup</Label>
+                <span className="text-xs text-muted-foreground">
+                  Equip new items to your active monster if they beat the current piece under the focus above.
+                </span>
+              </div>
+              <Switch
+                id="auto-equip-pickup"
+                checked={settings.autoEquipOnPickup}
+                onCheckedChange={(v) => updateSetting('autoEquipOnPickup', v)}
+              />
+            </div>
+          </div>
+
           {/* Public Username (for tower leaderboards) */}
           <UsernameEditor />
+
 
           {/* Global discovery leaderboard (top 10 by unique monsters unlocked) */}
           <DiscoveryLeaderboard limit={10} />

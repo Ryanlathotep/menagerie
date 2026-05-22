@@ -9,15 +9,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ArrowDownAZ, ArrowUpAZ, Sparkles, SortAsc } from 'lucide-react';
-import { SortConfig, SortOption } from './equipmentUtils';
+import { ArrowDownAZ, ArrowUpAZ, Sparkles, SortAsc, Target } from 'lucide-react';
+import { SortConfig, SortOption, AutoEquipFocus, AUTO_EQUIP_FOCUS_LABELS } from './equipmentUtils';
 import { EquipmentStats } from './equipment';
 
 interface EquipmentSortControlsProps {
   sortConfig: SortConfig;
   onSortChange: (config: SortConfig) => void;
   onAutoEquip: () => void;
+  focus?: AutoEquipFocus;
+  onFocusChange?: (focus: AutoEquipFocus) => void;
 }
+
 
 const SORT_OPTIONS: { value: SortOption; label: string; icon: string }[] = [
   { value: 'rarity', label: 'Rarity', icon: '💎' },
@@ -37,8 +40,12 @@ const STAT_OPTIONS: { value: keyof EquipmentStats; label: string }[] = [
   { value: 'stamina', label: 'Stamina' },
 ];
 
-export function EquipmentSortControls({ sortConfig, onSortChange, onAutoEquip }: EquipmentSortControlsProps) {
+const FOCUS_OPTIONS: AutoEquipFocus[] = ['class', 'tank', 'dps', 'aoe', 'speed', 'support', 'set'];
+
+export function EquipmentSortControls({ sortConfig, onSortChange, onAutoEquip, focus, onFocusChange }: EquipmentSortControlsProps) {
   const currentOption = SORT_OPTIONS.find(o => o.value === sortConfig.option);
+
+
   
   return (
     <div className="flex items-center gap-2">
@@ -97,10 +104,34 @@ export function EquipmentSortControls({ sortConfig, onSortChange, onAutoEquip }:
         )}
       </Button>
       
+      {focus !== undefined && onFocusChange && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 text-xs ml-auto" title="Auto-equip focus">
+              <Target className="w-3 h-3 mr-1" />
+              {AUTO_EQUIP_FOCUS_LABELS[focus]}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuLabel className="text-xs">Auto-Equip Focus</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {FOCUS_OPTIONS.map(f => (
+              <DropdownMenuItem
+                key={f}
+                onClick={() => onFocusChange(f)}
+                className={focus === f ? 'bg-accent' : ''}
+              >
+                {AUTO_EQUIP_FOCUS_LABELS[f]}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
       <Button
         variant="secondary"
         size="sm"
-        className="h-8 text-xs ml-auto"
+        className={`h-8 text-xs ${focus !== undefined && onFocusChange ? '' : 'ml-auto'}`}
         onClick={onAutoEquip}
       >
         <Sparkles className="w-3 h-3 mr-1" />
@@ -109,3 +140,4 @@ export function EquipmentSortControls({ sortConfig, onSortChange, onAutoEquip }:
     </div>
   );
 }
+

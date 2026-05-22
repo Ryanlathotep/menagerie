@@ -27,7 +27,9 @@ import { submitTowerFloor, submitDiscoveryCount, submitExplorationCount } from '
 import { countExploredTiles } from '@/game/overworld';
 import { MonsterStatsPreview } from '@/game/MonsterStatsPreview';
 import { LevelUpScreen } from '@/game/LevelUpScreen';
-import { EquipmentItem, MonsterEquipment } from '@/game/equipment';
+import { EquipmentItem, MonsterEquipment, createEmptyEquipment } from '@/game/equipment';
+import { isPickupUpgrade } from '@/game/equipmentUtils';
+
 import { calculateMonsterDrops, getEnemyEquipmentDrops } from '@/game/monsterDrops';
 import { EquipmentView } from '@/game/EquipmentView';
 import { PreRunEquipment } from '@/game/PreRunEquipment';
@@ -828,6 +830,47 @@ function DungeonView({
   // Cloud save hook for admin save button
   const { saveToCloud, syncing: cloudSyncing, isAuthenticated } = useCloudSave();
   const { isAdmin } = useAdminRole();
+
+  // ── Auto-equip on pickup ─────────────────────────────────────────────────
+  // Watches run.equipmentInventory for newly added items. When the setting is
+  // on, each new pickup is compared against the active monster's current piece
+  // in that slot under the chosen focus and equipped if it's an upgrade. The
+  // displaced item flows back into inventory automatically via EQUIP_ITEM.
+  const prevInventoryIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const inv = state.run?.equipmentInventory;
+    if (!inv) {
+      prevInventoryIdsRef.current = new Set();
+      return;
+    }
+    const prev = prevInventoryIdsRef.current;
+    const currentIds = new Set(inv.map(i => i.id));
+    if (!settings.autoEquipOnPickup) {
+      prevInventoryIdsRef.current = currentIds;
+      return;
+    }
+    const activeIdx = state.run.activePartyIndex;
+    const activeMonster = state.run.party[activeIdx];
+    if (!activeMonster || activeMonster.stats.currentHp <= 0) {
+      prevInventoryIdsRef.current = currentIds;
+      return;
+    }
+    const currentEquipment = state.run.partyEquipment[activeIdx] || createEmptyEquipment();
+    const newItems = inv.filter(i => !prev.has(i.id));
+    // Track slots already auto-equipped in this batch so two pickups in the
+    // same tick don't both try to overwrite the same slot.
+    const claimedSlots = new Set<string>();
+    for (const item of newItems) {
+      if (claimedSlots.has(item.slot)) continue;
+      if (isPickupUpgrade(item, activeMonster, currentEquipment, settings.autoEquipFocus)) {
+        claimedSlots.add(item.slot);
+        dispatch({ type: 'EQUIP_ITEM', item, partyIndex: activeIdx });
+      }
+    }
+    prevInventoryIdsRef.current = currentIds;
+  }, [state.run?.equipmentInventory, settings.autoEquipOnPickup, settings.autoEquipFocus, state.run?.activePartyIndex, state.run?.party, state.run?.partyEquipment, dispatch]);
+
+
   
   // Click-to-move state
   const [targetPath, setTargetPath] = useState<Position[]>([]);

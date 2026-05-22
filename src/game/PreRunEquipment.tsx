@@ -19,6 +19,8 @@ import { Slider } from '@/components/ui/slider';
 import { EquippedSlotDisplay, DraggableEquipmentItem, DragData } from './DraggableEquipmentItem';
 import { EquipmentSortControls } from './EquipmentSortControls';
 import { sortEquipment, autoEquip, SortConfig } from './equipmentUtils';
+import { useSettings } from './Settings';
+
 import { toast } from '@/hooks/use-toast';
 
 interface PreRunEquipmentProps {
@@ -186,14 +188,23 @@ export function PreRunEquipment({
   }, [draggedItem, handleEquip]);
   
   // Auto-equip handler
+  const { settings, updateSetting } = useSettings();
   const handleAutoEquip = useCallback(() => {
-    const result = autoEquip(availableItems, monster.class, monster.level);
+    const result = autoEquip(
+      availableItems,
+      monster.class,
+      monster.level,
+      monster,
+      settings.autoEquipFocus,
+      equipment,
+    );
     setPartyEquipment(prev => prev.map((eq, i) => i === activeIndex ? result.equipment : eq));
     toast({
       title: "Auto-Equipped!",
-      description: `Equipped ${result.usedItemIds.length} items optimized for ${monster.class} class.`,
+      description: `Equipped ${result.usedItemIds.length} items (${settings.autoEquipFocus} focus).`,
     });
-  }, [availableItems, monster.class, monster.level]);
+  }, [availableItems, monster, equipment, activeIndex, settings.autoEquipFocus]);
+
   
   const totalBonuses = calculateEquipmentBonuses(equipment);
   const equippedCount = Object.values(equipment).filter(Boolean).length;
@@ -430,8 +441,11 @@ export function PreRunEquipment({
                 sortConfig={sortConfig}
                 onSortChange={setSortConfig}
                 onAutoEquip={handleAutoEquip}
+                focus={settings.autoEquipFocus}
+                onFocusChange={(f) => updateSetting('autoEquipFocus', f)}
               />
             </div>
+
             
             <ScrollArea className="flex-1 max-h-[280px]">
               <div className="space-y-2 pr-2">

@@ -17,6 +17,8 @@ import { MonsterSprite } from './sprites';
 import { EquippedSlotDisplay, DraggableEquipmentItem, DragData } from './DraggableEquipmentItem';
 import { EquipmentSortControls } from './EquipmentSortControls';
 import { sortEquipment, autoEquip, SortConfig } from './equipmentUtils';
+import { useSettings } from './Settings';
+
 import { SetBonusDisplay, SetBonusSummary } from './SetBonusDisplay';
 import { toast } from '@/hooks/use-toast';
 
@@ -146,17 +148,25 @@ export function EquipmentView({
     }
   }, [draggedItem, onEquip, selectedPartyIndex]);
   
-  // Auto-equip handler
+  const { settings, updateSetting } = useSettings();
   const handleAutoEquip = useCallback(() => {
-    const result = autoEquip(inventory, monster.class, monster.level);
-    
+    const result = autoEquip(
+      inventory,
+      monster.class,
+      monster.level,
+      monster,
+      settings.autoEquipFocus,
+      partyEquipment[selectedPartyIndex],
+    );
+
     onBulkEquip(selectedPartyIndex, result.equipment, result.usedItemIds);
     toast({
       title: "Auto-Equipped!",
-      description: `Equipped ${result.usedItemIds.length} items optimized for ${monster.class} class.`,
+      description: `Equipped ${result.usedItemIds.length} items (${settings.autoEquipFocus} focus).`,
     });
-    onLog?.(`🧰 Auto-equipped ${result.usedItemIds.length} items for ${monster.class}.`);
-  }, [inventory, monster.class, monster.level, onBulkEquip, onLog, selectedPartyIndex]);
+    onLog?.(`🧰 Auto-equipped ${result.usedItemIds.length} items (${settings.autoEquipFocus}).`);
+  }, [inventory, monster, partyEquipment, onBulkEquip, onLog, selectedPartyIndex, settings.autoEquipFocus]);
+
   
   return (
     <div
@@ -355,8 +365,11 @@ export function EquipmentView({
                 sortConfig={sortConfig}
                 onSortChange={setSortConfig}
                 onAutoEquip={handleAutoEquip}
+                focus={settings.autoEquipFocus}
+                onFocusChange={(f) => updateSetting('autoEquipFocus', f)}
               />
             </div>
+
 
             <div className="space-y-2">
               {sortedInventory.length > 0 ? (

@@ -277,7 +277,8 @@ function MainMenu() {
                   variant="default"
                   size="sm"
                   onClick={async () => {
-                    const result = await saveToCloud(state.saveData);
+                    const snapshot = buildProgressSnapshot(state.saveData, state.run, state.saveData.overworldState);
+                    const result = await saveToCloud(snapshot);
                     if (result.success) {
                       toast.success('Quick saved to cloud!');
                     } else {
@@ -292,7 +293,8 @@ function MainMenu() {
                   variant="outline"
                   size="sm"
                   onClick={async () => {
-                    const result = await syncSave(state.saveData);
+                    const snapshot = buildProgressSnapshot(state.saveData, state.run, state.saveData.overworldState);
+                    const result = await syncSave(snapshot);
                     if (result.action === 'downloaded' && result.data) {
                       dispatch({ type: 'LOAD_SAVE', saveData: result.data });
                     }
@@ -4921,7 +4923,7 @@ function Game() {
   const { state } = useGame();
 
   // Periodic + debounced cloud autosave (silent, only when signed in).
-  useCloudAutosave(state.saveData);
+  useCloudAutosave(buildProgressSnapshot(state.saveData, state.run, state.saveData.overworldState));
 
   // Unified run log (dungeon + battle + notable UI events)
   const [gameLog, setGameLog] = useState<LogMessage[]>([]);

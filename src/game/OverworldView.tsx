@@ -1101,11 +1101,13 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   
   // Right-click → context menu for player buildings, or auto-attack for enemies/nests
   const handleTileRightClick = useCallback((worldX: number, worldY: number) => {
+    // Ensure the tapped tile is generated before the unified menu reads it.
+    ensureChunksLoaded(overworld, worldX, worldY);
     // One menu for every tile — the unified menu reads the tile itself and
     // builds the action list at render time. Long-press on touch and
     // right-click on desktop both land here.
     setUnifiedMenu({ x: worldX, y: worldY });
-  }, []);
+  }, [overworld]);
   
   // ─── Keyboard ───
   useEffect(() => {

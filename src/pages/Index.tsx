@@ -4186,6 +4186,11 @@ function BattleView({
       setPendingReviveItem(item);
       setShowReviveModal(true);
       return; // Don't consume item yet - wait for selection
+    } else if (item.effect === 'dowse') {
+      import('@/game/dowsingRod').then(({ activateDowsing, DOWSING_DURATION_MS }) => {
+        activateDowsing(DOWSING_DURATION_MS);
+      });
+      message = '🔮 Dowsing Rod activated! Nearest threats will glow.';
     } else {
       message = `Used ${item.name}!`;
     }

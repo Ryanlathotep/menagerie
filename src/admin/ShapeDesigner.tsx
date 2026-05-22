@@ -513,6 +513,14 @@ export function ShapeDesigner() {
                     />
                     Units block cells past them
                   </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={rotateShape}
+                      onChange={(e) => setRotateShape(e.target.checked)}
+                    />
+                    Rotate shape to aimed direction (N/E/S/W)
+                  </label>
                 </div>
 
                 {/* Effects */}

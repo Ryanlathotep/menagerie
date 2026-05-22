@@ -1376,7 +1376,12 @@ function DungeonView({
           visitedFloors: visited,
         };
       } else {
-        const fresh = generateDungeon(nextFloorNum, dungeon.theme, dungeon.startingFloor);
+        const activeId = typeof window !== 'undefined' ? localStorage.getItem('menagerie_active_dungeon_id') : null;
+        const entrance = activeId ? state.saveData.dungeonEntrances?.[activeId] : undefined;
+        const fresh = hydrateDungeonFromSnapshot(
+          generateDungeon(nextFloorNum, dungeon.theme, dungeon.startingFloor),
+          entrance,
+        );
         const tiles = fresh.tiles.map(row => row.map(t => ({ ...t })));
         const spawn = fresh.playerPosition;
         tiles[spawn.y][spawn.x].stairsBeneath = 'up';

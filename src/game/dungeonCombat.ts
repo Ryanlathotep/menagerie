@@ -20,7 +20,33 @@ export interface AttackConfig {
   customOrigin?: 'self' | 'target';
   /** For 'movement' pattern: blink ignores wall/unit blockers between caster and destination. */
   blink?: boolean;
+  /** If true, offsets rotate to the cardinal direction from origin → target. */
+  rotateToFacing?: boolean;
 }
+
+/** Cardinal facing derived from origin → target vector. North = default (no rotation). */
+export type Facing = 'N' | 'E' | 'S' | 'W';
+
+export function facingFrom(origin: Position, target: Position): Facing {
+  const dx = target.x - origin.x;
+  const dy = target.y - origin.y;
+  if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? 'E' : 'W';
+  return dy >= 0 ? 'S' : 'N';
+}
+
+/** Rotate offsets 0/90/180/270° clockwise around the anchor. North = identity. */
+export function rotateOffsets(
+  offsets: { dx: number; dy: number }[],
+  facing: Facing,
+): { dx: number; dy: number }[] {
+  switch (facing) {
+    case 'N': return offsets;
+    case 'E': return offsets.map(o => ({ dx: -o.dy, dy:  o.dx }));
+    case 'S': return offsets.map(o => ({ dx: -o.dx, dy: -o.dy }));
+    case 'W': return offsets.map(o => ({ dx:  o.dy, dy: -o.dx }));
+  }
+}
+
 
 // Check line of sight between two positions (returns true if unblocked)
 export function hasLineOfSight(

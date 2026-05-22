@@ -521,29 +521,7 @@ function NumberField({ label, value, onChange, hint }: { label: string; value: n
     const parsed = parseInt(text, 10);
     if (Number.isNaN(parsed) || parsed !== value) {
       setText(String(value ?? 0));
-}
-
-function ToggleRow({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!checked)}
-      className={`w-full text-left flex items-start gap-2 p-2 rounded border transition-colors ${
-        checked ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted/50'
-      }`}
-    >
-      <div className={`mt-0.5 h-4 w-4 rounded border flex items-center justify-center shrink-0 ${
-        checked ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40'
-      }`}>
-        {checked ? '✓' : ''}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-xs font-medium">{label}</div>
-        {hint && <div className="text-[10px] text-muted-foreground leading-tight">{hint}</div>}
-      </div>
-    </button>
-  );
-}
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 

@@ -191,16 +191,69 @@ export function ShapeDesigner() {
     }
   };
 
+  // Resolve which MovementPattern + stat tweaks are stored for a given tier.
+  const readMovementTier = (merged: Move, t: TierKey): { movement?: import('@/game/moves').MovementPattern; stats: TierStats } => {
+    if (t === 'base') {
+      return {
+        movement: merged.movement,
+        stats: {
+          power: merged.power, accuracy: merged.accuracy,
+          staminaCost: merged.staminaCost, speedMod: merged.speedMod,
+        },
+      };
+    }
+    const ov = merged.tierOverrides?.[t];
+    return {
+      movement: ov?.movement,
+      stats: {
+        power: ov?.power ?? '', accuracy: ov?.accuracy ?? '',
+        staminaCost: ov?.staminaCost ?? '', speedMod: ov?.speedMod ?? '',
+      },
+    };
+  };
+
+  const applyMovementTierToUI = (merged: Move, t: TierKey) => {
+    const { movement, stats } = readMovementTier(merged, t);
+    setTierStats(stats);
+    if (movement) {
+      setCells(new Set(movement.offsets.map((o) => `${o.dx},${o.dy}`)));
+      setBlink(!!movement.blink);
+      setRotateMovement(!!movement.rotateToFacing);
+      setMoveRange(movement.range ?? 5);
+      setMoveBlockedByWalls(movement.blockedByWalls ?? true);
+      setMoveBlockedByUnits(movement.blockedByUnits ?? false);
+      setMovePassEnemies(!!movement.passThroughEnemies);
+      setMovePassTraps(!!movement.passThroughTraps);
+      setMovePassTerrain(!!movement.passThroughTerrain);
+      setMoveClimbCliffs(!!movement.canClimbCliffs);
+      setMoveCrossWater(!!movement.canCrossWater);
+      setMoveTriggersTrapsOnPath(!!movement.triggersTrapsOnPath);
+      setMoveHarvests(new Set(movement.harvestsResources ?? []));
+    } else {
+      setCells(new Set());
+      setBlink(false);
+      setRotateMovement(false);
+      setMoveRange(5);
+      setMoveBlockedByWalls(true);
+      setMoveBlockedByUnits(false);
+      setMovePassEnemies(false);
+      setMovePassTraps(false);
+      setMovePassTerrain(false);
+      setMoveClimbCliffs(false);
+      setMoveCrossWater(false);
+      setMoveTriggersTrapsOnPath(false);
+      setMoveHarvests(new Set());
+    }
+  };
+
   const loadMove = (move: Move) => {
     setSelected(move);
     const override = (getOverride('moves', move.id) as Partial<Move> | null) || {};
     const merged: Move = { ...move, ...override };
     if (merged.movement) {
       setMode('movement');
-      setCells(new Set(merged.movement.offsets.map((o) => `${o.dx},${o.dy}`)));
-      setBlink(!!merged.movement.blink);
-      setRotateMovement(!!merged.movement.rotateToFacing);
       setTier('base');
+      applyMovementTierToUI(merged, 'base');
     } else {
       setMode('shape');
       setTier('base');
@@ -213,15 +266,14 @@ export function ShapeDesigner() {
   // When the user switches tier tabs, persist current edits into the move
   // (in memory) then load the new tier's data.
   const switchTier = (next: TierKey) => {
-    if (!selected || mode !== 'shape') { setTier(next); return; }
-    // Snapshot current edits into a merged Move so the next tier sees them.
+    if (!selected) { setTier(next); return; }
     const override = (getOverride('moves', selected.id) as Partial<Move> | null) || {};
     const merged: Move = { ...selected, ...override };
-    // Don't actually mutate here — just re-read what's persisted. Edits not yet
-    // saved to a tier are intentionally tier-local; admin must hit Save to keep.
     setTier(next);
-    applyTierToUI(merged, next);
+    if (mode === 'movement') applyMovementTierToUI(merged, next);
+    else applyTierToUI(merged, next);
   };
+
 
   const toggleCell = (dx: number, dy: number) => {
     if (dx === 0 && dy === 0) return;

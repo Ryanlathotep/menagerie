@@ -138,6 +138,20 @@ export function BugReportsEditor() {
                     <div className="text-xs font-semibold text-muted-foreground mb-1">Description</div>
                     <pre className="whitespace-pre-wrap text-sm bg-muted/40 p-2 rounded border">{r.description}</pre>
                   </div>
+                  {Array.isArray((r.context as any)?.screenshots) && (r.context as any).screenshots.length > 0 && (
+                    <div>
+                      <div className="text-xs font-semibold text-muted-foreground mb-1">
+                        Screenshots ({(r.context as any).screenshots.length})
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {((r.context as any).screenshots as string[]).map((url, i) => (
+                          <a key={i} href={url} target="_blank" rel="noreferrer" className="block border rounded overflow-hidden hover:opacity-80">
+                            <img src={url} alt={`screenshot ${i + 1}`} className="w-full h-32 object-cover" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {r.context && (
                     <div>
                       <div className="text-xs font-semibold text-muted-foreground mb-1">Context</div>

@@ -236,6 +236,19 @@ export const ITEMS: Record<string, Item> = {
     rarity: 'uncommon',
     effect: 'town_portal',
   },
+  // Dowsing Rod - reveals nearest 5 enemies for 5 minutes (persistent)
+  dowsing_rod: {
+    id: 'dowsing_rod',
+    name: 'Dowsing Rod',
+    description: 'Highlights the nearest 5 enemies for 5 minutes. Persists across floors and the overworld.',
+    type: 'consumable',
+    stackable: true,
+    maxStack: 10,
+    icon: '🔮',
+    rarity: 'uncommon',
+    effect: 'dowse',
+    effectValue: 5 * 60,
+  },
 };
 
 // Rarity colors

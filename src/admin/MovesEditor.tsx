@@ -722,3 +722,131 @@ function ToggleRow({ label, hint, checked, onChange }: { label: string; hint?: s
     </button>
   );
 }
+
+// ============================================================================
+// Per-tier stat overrides editor.
+// Empty input → tier auto-scales from the base stats via TIER_MULTIPLIERS.
+// Filled input → that tier uses the literal value (consumed by createEvolvedMove).
+// ============================================================================
+type TierOverrides = NonNullable<Move['tierOverrides']>;
+type TierStatKey = 'power' | 'accuracy' | 'staminaCost' | 'speedMod';
+const TIER_STAT_KEYS: TierStatKey[] = ['power', 'accuracy', 'staminaCost', 'speedMod'];
+
+function autoScaledTierStat(base: Partial<Move>, tier: MoveTier, key: TierStatKey): number {
+  const mult = TIER_MULTIPLIERS[tier];
+  const basePower = base.power ?? 0;
+  const baseAcc = base.accuracy ?? 100;
+  const baseStam = base.staminaCost ?? 0;
+  const baseSpeed = base.speedMod ?? 0;
+  switch (key) {
+    case 'power':       return Math.round(basePower * mult.power);
+    case 'accuracy':    return Math.round(baseAcc * mult.accuracy);
+    case 'staminaCost': return Math.round(baseStam * mult.staminaCost);
+    case 'speedMod':    return baseSpeed; // speedMod is not auto-scaled
+  }
+}
+
+function TierOverridesPanel({
+  base,
+  onChange,
+}: {
+  base: Partial<Move>;
+  onChange: (next: TierOverrides | undefined) => void;
+}) {
+  const overrides: TierOverrides = base.tierOverrides ?? {};
+
+  const setCell = (tier: MoveTier, key: TierStatKey, raw: string) => {
+    const trimmed = raw.trim();
+    const tierEntry = { ...(overrides[tier] ?? {}) };
+    if (trimmed === '') {
+      delete (tierEntry as Record<string, unknown>)[key];
+    } else {
+      const n = parseInt(trimmed, 10);
+      if (Number.isFinite(n)) (tierEntry as Record<string, number>)[key] = n;
+    }
+    const nextOverrides: TierOverrides = { ...overrides };
+    // Preserve any customShape that already exists for the tier.
+    if (Object.keys(tierEntry).length === 0) {
+      delete (nextOverrides as Record<string, unknown>)[tier];
+    } else {
+      nextOverrides[tier] = tierEntry;
+    }
+    onChange(Object.keys(nextOverrides).length === 0 ? undefined : nextOverrides);
+  };
+
+  const clearTier = (tier: MoveTier) => {
+    const next: TierOverrides = { ...overrides };
+    // Keep customShape if present, drop stat overrides only.
+    const existingShape = overrides[tier]?.customShape;
+    if (existingShape) {
+      next[tier] = { customShape: existingShape };
+    } else {
+      delete (next as Record<string, unknown>)[tier];
+    }
+    onChange(Object.keys(next).length === 0 ? undefined : next);
+  };
+
+  return (
+    <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <Label>Per-Tier Stat Overrides</Label>
+          <div className="text-[11px] text-muted-foreground">
+            Leave a cell blank to auto-scale from base stats. Fill it to lock that tier's value.
+          </div>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="text-muted-foreground">
+              <th className="text-left py-1 pr-2 font-medium">Tier</th>
+              {TIER_STAT_KEYS.map((k) => (
+                <th key={k} className="text-left py-1 pr-2 font-medium capitalize">{k}</th>
+              ))}
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {TIER_ORDER.map((tier) => {
+              const row = overrides[tier] ?? {};
+              const label = TIER_PREFIXES[tier] || 'Base';
+              return (
+                <tr key={tier} className="border-t border-border/50">
+                  <td className="py-1 pr-2 font-medium">{label}</td>
+                  {TIER_STAT_KEYS.map((key) => {
+                    const value = (row as Record<string, number | undefined>)[key];
+                    const placeholder = String(autoScaledTierStat(base, tier, key));
+                    return (
+                      <td key={key} className="py-1 pr-2">
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          className="h-7 px-2 text-xs"
+                          value={value === undefined ? '' : String(value)}
+                          placeholder={placeholder}
+                          onChange={(e) => setCell(tier, key, e.target.value)}
+                        />
+                      </td>
+                    );
+                  })}
+                  <td className="py-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-[11px]"
+                      onClick={() => clearTier(tier)}
+                      disabled={TIER_STAT_KEYS.every((k) => (row as Record<string, unknown>)[k] === undefined)}
+                    >
+                      Reset
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

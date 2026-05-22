@@ -355,7 +355,9 @@ export interface DungeonState {
   // Player-pinned waypoints (right-click any explored tile). Behave like the
   // overworld arrows: each renders a pulsing marker on its tile, plus an
   // edge-of-screen arrow when off-screen. Persist for the current floor only.
-  compassWaypoints?: Position[];
+  // `name` is an optional player-supplied label.
+  compassWaypoints?: DungeonWaypoint[];
+
   // Persistent per-floor snapshots so the player can walk back up the
   // staircase to revisit a previous floor (tile state, enemies, position).
   // Excludes `compassWaypoint` and the active floor itself.

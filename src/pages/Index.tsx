@@ -1621,7 +1621,7 @@ function DungeonView({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [handleMove, showShop, isAutoRunning, isPathWalking, settings.autoRunDelay]);
-  const handleFlee = () => {
+  const handleFlee = (destination: 'entrance' | 'town' | 'menu' = 'entrance', skipConfirm = false) => {
     const origin = typeof window !== 'undefined'
       ? localStorage.getItem('menagerie_run_origin')
       : null;
@@ -1633,11 +1633,13 @@ function DungeonView({
 
     // Confirm before leaving — exiting abandons floor progress in this run.
     const currentFloor = dungeon?.floor ?? 1;
-    const confirmMsg =
-      `Exit the dungeon on Floor ${currentFloor}?\n\n` +
-      `You'll keep your gold, materials, items, and equipment, but you'll lose your place on every floor of this run. Stairs you've placed will be regenerated next time.`;
-    if (typeof window !== 'undefined' && !window.confirm(confirmMsg)) {
-      return;
+    if (!skipConfirm) {
+      const confirmMsg =
+        `Exit the dungeon on Floor ${currentFloor}?\n\n` +
+        `You'll keep your gold, materials, items, and equipment, but you'll lose your place on every floor of this run. Stairs you've placed will be regenerated next time.`;
+      if (typeof window !== 'undefined' && !window.confirm(confirmMsg)) {
+        return;
+      }
     }
 
     // Non-home towers require a Town Portal Scroll to escape.
@@ -1656,8 +1658,30 @@ function DungeonView({
     }
 
     dispatch({ type: 'FLEE_DUNGEON' });
+
+    if (destination === 'menu') {
+      dispatch({ type: 'SET_PHASE', phase: 'main_menu' });
+      addLog('🚪 Exited the dungeon — returned to the main menu.', 'system');
+      return;
+    }
+
+    if (destination === 'town') {
+      // Move overworld player to home base, then enter overworld.
+      const ow = state.saveData.overworldState;
+      if (ow?.homeBase?.position) {
+        dispatch({
+          type: 'UPDATE_OVERWORLD',
+          overworld: { ...ow, playerPosition: { ...ow.homeBase.position } },
+        });
+      }
+      dispatch({ type: 'SET_PHASE', phase: 'overworld' });
+      addLog('🚪 Exited the dungeon — back to the starting town.', 'system');
+      return;
+    }
+
+    // destination === 'entrance' (default)
     if (origin === 'overworld') {
-      // Return to the overworld next to the dungeon entrance we came from.
+      // FLEE_DUNGEON already respawns the player next to the entrance.
       dispatch({ type: 'SET_PHASE', phase: 'overworld' });
       addLog('🚪 Exited the dungeon — back to the overworld.', 'system');
     } else {
@@ -1665,6 +1689,7 @@ function DungeonView({
       addLog('🚪 Escaped safely! Materials and equipment kept.', 'system');
     }
   };
+
   
   // Click-to-move handler
   const handleTileClick = useCallback((x: number, y: number) => {

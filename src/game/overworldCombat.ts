@@ -217,11 +217,13 @@ export function getVisibleOverworldEnemies(
   return result;
 }
 
-// Enemy AI for overworld - enemies move toward or away from player
+// Enemy AI for overworld - enemies move toward or away from player.
+// Now archetype + IQ aware via src/game/enemyAI.ts.
 export interface OverworldEnemyAction {
   type: 'move' | 'attack' | 'idle';
   dx: number;
   dy: number;
+  move?: import('./moves').Move; // chosen attack move
 }
 
 export function calculateOverworldEnemyAction(
@@ -229,25 +231,53 @@ export function calculateOverworldEnemyAction(
   enemyPos: Position,
   playerPos: Position,
   overworld: OverworldState,
+  playerMonster?: Monster,
 ): OverworldEnemyAction {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const ai = require('./enemyAI') as typeof import('./enemyAI');
+
   const dist = Math.abs(playerPos.x - enemyPos.x) + Math.abs(playerPos.y - enemyPos.y);
-  const behavior = getEnemyBehavior(enemy);
-  const attackRange = behavior === 'ranged' ? 4 : 1;
+  const archetype = ai.getEnemyArchetype(enemy);
+  const iq = ai.getEnemyIQ(enemy.level);
+  const hint = ai.getMovementHint(archetype, iq);
 
-  if (dist <= attackRange) {
-    return { type: 'attack', dx: 0, dy: 0 };
-  }
+  const enemyHpRatio = enemy.stats.currentHp / Math.max(1, enemy.stats.maxHp);
+  const enemyStaminaRatio = (enemy.stats.currentStamina ?? enemy.stats.stamina ?? 0) /
+                            Math.max(1, enemy.stats.stamina ?? 1);
 
-  // Move toward or away
-  const dirX = Math.sign(playerPos.x - enemyPos.x);
-  const dirY = Math.sign(playerPos.y - enemyPos.y);
-
-  if (behavior === 'ranged' && dist < 3) {
-    // Move away
+  // Smart retreat
+  if (enemyHpRatio < hint.retreatHpThreshold && iq > 0.25) {
+    const dirX = Math.sign(playerPos.x - enemyPos.x);
+    const dirY = Math.sign(playerPos.y - enemyPos.y);
     return tryOverworldMove(overworld, enemyPos, -dirX, -dirY);
   }
 
-  // Aggressive / move toward
+  // Pick best move for situation
+  const decision = ai.chooseEnemyMove(enemy, {
+    distance: dist,
+    iq,
+    archetype,
+    enemyHpRatio,
+    enemyStaminaRatio,
+    playerHpRatio: playerMonster
+      ? playerMonster.stats.currentHp / Math.max(1, playerMonster.stats.maxHp)
+      : 1,
+    playerElement: playerMonster?.element ?? enemy.element,
+  });
+  const chosen = decision.move ?? undefined;
+  const attackRange = chosen ? (chosen.type === 'ranged' ? 4 : 1) : 1;
+
+  if (dist <= attackRange) {
+    return { type: 'attack', dx: 0, dy: 0, move: chosen };
+  }
+
+  const dirX = Math.sign(playerPos.x - enemyPos.x);
+  const dirY = Math.sign(playerPos.y - enemyPos.y);
+
+  if (hint.prefer === 'retreat' && dist < hint.idealRange) {
+    return tryOverworldMove(overworld, enemyPos, -dirX, -dirY);
+  }
+
   if (dist <= 6) {
     return tryOverworldMove(overworld, enemyPos, dirX, dirY);
   }

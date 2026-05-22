@@ -163,6 +163,7 @@ export function ShapeDesigner() {
       setDamagesTraps(shape.damagesTraps ?? false);
       setHarvests(new Set(shape.harvestsResources ?? []));
       setPlacesTerrain(shape.placesTerrain ?? '');
+      setRotateShape(!!shape.rotateToFacing);
     } else {
       setCells(new Set());
       setOriginType(merged.type === 'melee' ? 'self' : 'target_tile');

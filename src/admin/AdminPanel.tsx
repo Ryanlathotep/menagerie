@@ -9,7 +9,8 @@ import { RecipesEditor } from './RecipesEditor';
 import { MonstersEditor } from './MonstersEditor';
 import { AdminAccessEditor } from './AdminAccessEditor';
 import { BugReportsEditor } from './BugReportsEditor';
-import { Shield, Swords, Package, Ghost, UserCog, Bug } from 'lucide-react';
+import { ShapeDesigner } from './ShapeDesigner';
+import { Shield, Swords, Package, Ghost, UserCog, Bug, Crosshair } from 'lucide-react';
 
 export function AdminPanel() {
   const { isAdmin, loading } = useAdminRole();

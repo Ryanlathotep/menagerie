@@ -176,6 +176,7 @@ export function ShapeDesigner() {
       setDamagesTraps(false);
       setHarvests(new Set());
       setPlacesTerrain('');
+      setRotateShape(false);
     }
   };
 

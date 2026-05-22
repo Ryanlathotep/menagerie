@@ -69,7 +69,17 @@ export function sortEquipment(items: EquipmentItem[], config: SortConfig): Equip
 }
 
 // ============= AUTO-EQUIP =============
-// Class-optimized stat priorities
+// Focus modes let players steer the auto-equip / pickup-upgrade scoring.
+//   - class:   default — use the class stat priorities below
+//   - tank:    defense / HP / stamina
+//   - dps:     attack / special / speed
+//   - aoe:     special / attack / stamina (favors AoE-friendly stats)
+//   - speed:   speed / dodge / stamina (turn-economy build)
+//   - support: stamina / special / maxHp / defense
+//   - set:     prioritize completing equipment sets (matching setId / affinity)
+export type AutoEquipFocus = 'class' | 'tank' | 'dps' | 'aoe' | 'speed' | 'support' | 'set';
+
+// Class-optimized stat priorities (used when focus === 'class')
 const CLASS_STAT_PRIORITY: Record<ClassType, (keyof EquipmentStats)[]> = {
   normal: ['attack', 'defense', 'maxHp', 'speed', 'dodge', 'special', 'stamina'],
   kinetic: ['attack', 'maxHp', 'defense', 'speed', 'stamina', 'dodge', 'special'],
@@ -79,28 +89,68 @@ const CLASS_STAT_PRIORITY: Record<ClassType, (keyof EquipmentStats)[]> = {
   political: ['special', 'defense', 'dodge', 'maxHp', 'stamina', 'speed', 'attack'],
 };
 
-function calculateItemScore(item: EquipmentItem, priorities: (keyof EquipmentStats)[], monster?: Monster): number {
+const FOCUS_STAT_PRIORITY: Record<Exclude<AutoEquipFocus, 'class' | 'set'>, (keyof EquipmentStats)[]> = {
+  tank:    ['defense', 'maxHp', 'stamina', 'dodge', 'special', 'speed', 'attack'],
+  dps:     ['attack', 'special', 'speed', 'dodge', 'stamina', 'maxHp', 'defense'],
+  aoe:     ['special', 'attack', 'stamina', 'speed', 'maxHp', 'dodge', 'defense'],
+  speed:   ['speed', 'dodge', 'stamina', 'attack', 'special', 'maxHp', 'defense'],
+  support: ['stamina', 'special', 'maxHp', 'defense', 'dodge', 'speed', 'attack'],
+};
+
+function getPriorities(focus: AutoEquipFocus, classType: ClassType): (keyof EquipmentStats)[] {
+  if (focus === 'class' || focus === 'set') return CLASS_STAT_PRIORITY[classType];
+  return FOCUS_STAT_PRIORITY[focus];
+}
+
+export const AUTO_EQUIP_FOCUS_LABELS: Record<AutoEquipFocus, string> = {
+  class:   'Class Optimal',
+  tank:    'Tank',
+  dps:     'DPS',
+  aoe:     'AoE',
+  speed:   'Speed',
+  support: 'Support',
+  set:     'Build Sets',
+};
+
+function calculateItemScore(
+  item: EquipmentItem,
+  priorities: (keyof EquipmentStats)[],
+  monster?: Monster,
+  focus: AutoEquipFocus = 'class',
+  partySetIds?: Set<string>,
+): number {
   let score = 0;
-  
+
   // Base stats scoring
   priorities.forEach((stat, index) => {
     const value = item.stats[stat] || 0;
-    const weight = (priorities.length - index) / priorities.length; // Higher priority = higher weight
+    const weight = (priorities.length - index) / priorities.length;
     score += value * weight * RARITY_MULTIPLIERS[item.rarity];
   });
-  
-  // Add affinity bonus stats if monster matches
+
+  // Affinity bonus stats if monster matches
   if (monster) {
     const bonusStats = getAffinityBonusStats(item, monster);
     if (bonusStats) {
       priorities.forEach((stat, index) => {
         const value = bonusStats[stat] || 0;
         const weight = (priorities.length - index) / priorities.length;
-        score += value * weight * 1.5; // Bonus stats are weighted extra
+        score += value * weight * 1.5;
       });
+      // Slight extra nudge for any affinity match
+      score += 5;
     }
   }
-  
+
+  // Set-building bias: large bonus if the item belongs to a set the monster
+  // is already wearing pieces of, smaller bonus for any set item at all.
+  if (focus === 'set' && item.setId) {
+    score += 25; // any set piece is preferred over a setless one
+    if (partySetIds && partySetIds.has(item.setId)) {
+      score += 100; // strong preference for completing an in-progress set
+    }
+  }
+
   return score;
 }
 
@@ -108,61 +158,87 @@ export function autoEquip(
   inventory: EquipmentItem[],
   classType: ClassType,
   monsterLevel: number,
-  monster?: Monster
+  monster?: Monster,
+  focus: AutoEquipFocus = 'class',
+  currentEquipment?: MonsterEquipment,
 ): { equipment: MonsterEquipment; usedItemIds: string[] } {
   const equipment = createEmptyEquipment();
   const usedItemIds: string[] = [];
-  const priorities = CLASS_STAT_PRIORITY[classType];
-  
+  const priorities = getPriorities(focus, classType);
+
+  // Collect set IDs already on this monster for set-focus weighting
+  const partySetIds = new Set<string>();
+  if (focus === 'set' && currentEquipment) {
+    Object.values(currentEquipment).forEach(piece => {
+      if (piece?.setId) partySetIds.add(piece.setId);
+    });
+  }
+
   // Filter equippable items (level + affinity requirements)
   const equippable = inventory.filter(item => {
     if (item.level > monsterLevel) return false;
-    
-    // Check affinity requirements if monster is provided
     if (monster && item.affinityRequired) {
       const result = canEquipItem(item, monster);
       if (!result.canEquip) return false;
     }
-    
     return true;
   });
-  
+
   // Group by slot
   const bySlot: Record<EquipmentSlot, EquipmentItem[]> = {
-    helmet: [],
-    armor: [],
-    gloves: [],
-    boots: [],
-    mainHand: [],
-    offHand: [],
-    accessory: [],
-    back: [],
+    helmet: [], armor: [], gloves: [], boots: [],
+    mainHand: [], offHand: [], accessory: [], back: [],
   };
-  
   equippable.forEach(item => bySlot[item.slot].push(item));
-  
+
   // For each slot, pick the best item
   (Object.keys(bySlot) as EquipmentSlot[]).forEach(slot => {
     const items = bySlot[slot];
     if (items.length === 0) return;
-    
-    // Score each item (consider affinity bonuses if monster provided)
     const scored = items.map(item => ({
       item,
-      score: calculateItemScore(item, priorities, monster),
+      score: calculateItemScore(item, priorities, monster, focus, partySetIds),
     }));
-    
-    // Sort by score descending
     scored.sort((a, b) => b.score - a.score);
-    
-    // Equip the best
     const best = scored[0].item;
     equipment[slot] = best;
     usedItemIds.push(best.id);
   });
-  
+
   return { equipment, usedItemIds };
 }
+
+/**
+ * Evaluate whether a single newly-picked-up item is an upgrade over what the
+ * monster currently has in that slot, scored under the chosen focus.
+ * Returns true when the new item beats the currently equipped item (or the
+ * slot is empty and the item is wearable).
+ */
+export function isPickupUpgrade(
+  item: EquipmentItem,
+  monster: Monster,
+  currentEquipment: MonsterEquipment,
+  focus: AutoEquipFocus = 'class',
+): boolean {
+  if (item.level > monster.level) return false;
+  if (item.affinityRequired) {
+    const result = canEquipItem(item, monster);
+    if (!result.canEquip) return false;
+  }
+  const priorities = getPriorities(focus, monster.class);
+  const partySetIds = new Set<string>();
+  if (focus === 'set') {
+    Object.values(currentEquipment).forEach(piece => {
+      if (piece?.setId) partySetIds.add(piece.setId);
+    });
+  }
+  const newScore = calculateItemScore(item, priorities, monster, focus, partySetIds);
+  const current = currentEquipment[item.slot];
+  if (!current) return true;
+  const curScore = calculateItemScore(current, priorities, monster, focus, partySetIds);
+  return newScore > curScore;
+}
+
 
 // ============= SVG EQUIPMENT ICONS =============
 // Simple, clean SVG paths for each equipment template

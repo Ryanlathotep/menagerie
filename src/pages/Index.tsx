@@ -1,7 +1,7 @@
 import { GameProvider, useGame, buildProgressSnapshot } from '@/game/state';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { getComboId, UnlockedMonster, InventoryItem, MonsterStats, Monster, Position, DungeonState } from '@/game/types';
+import { getComboId, UnlockedMonster, InventoryItem, MonsterStats, Monster, Position, DungeonState, hydrateDungeonFromSnapshot } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
 import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, hasVisibleEnemy, LOOT_TABLE, mineWall, mineableWallName, digRune, damageDungeonNest, tickDungeonNests } from '@/game/dungeon';
 import { spawnNestMonster, getNestDestroyRewards } from '@/game/nests';
@@ -1049,16 +1049,19 @@ function DungeonView({
         localStorage.removeItem('menagerie_selected_start_floor');
       }
 
-      const newDungeon = generateDungeon(startingFloor, entrance?.theme, startingFloor);
+      const freshDungeon = generateDungeon(startingFloor, entrance?.theme, startingFloor);
+      // Hydrate from persistent floor snapshot (mined walls, opened tiles,
+      // collected chests survive across runs). Enemies stay fresh from gen.
+      const hydrated = hydrateDungeonFromSnapshot(freshDungeon, entrance);
       // Mark the entry tile so an "up" staircase appears beneath the player —
       // stepping back onto it exits the dungeon to the overworld / summary.
-      const spawn = newDungeon.playerPosition;
-      const entryTiles = newDungeon.tiles.map((row, y) =>
+      const spawn = hydrated.playerPosition;
+      const entryTiles = hydrated.tiles.map((row, y) =>
         row.map((t, x) => (x === spawn.x && y === spawn.y ? { ...t, stairsBeneath: 'up' as const } : t))
       );
       dispatch({
         type: 'SET_DUNGEON',
-        dungeon: { ...newDungeon, tiles: entryTiles }
+        dungeon: { ...hydrated, tiles: entryTiles }
       });
     }
   }, [dungeon, dispatch, state.saveData.dungeonEntrances, state.saveData.unlockedMonsters]);
@@ -1373,7 +1376,12 @@ function DungeonView({
           visitedFloors: visited,
         };
       } else {
-        const fresh = generateDungeon(nextFloorNum, dungeon.theme, dungeon.startingFloor);
+        const activeId = typeof window !== 'undefined' ? localStorage.getItem('menagerie_active_dungeon_id') : null;
+        const entrance = activeId ? state.saveData.dungeonEntrances?.[activeId] : undefined;
+        const fresh = hydrateDungeonFromSnapshot(
+          generateDungeon(nextFloorNum, dungeon.theme, dungeon.startingFloor),
+          entrance,
+        );
         const tiles = fresh.tiles.map(row => row.map(t => ({ ...t })));
         const spawn = fresh.playerPosition;
         tiles[spawn.y][spawn.x].stairsBeneath = 'up';
@@ -1418,7 +1426,15 @@ function DungeonView({
             entryPosition: cached.entryPosition ?? cached.playerPosition,
             visitedFloors: visited,
           }
-        : { ...generateDungeon(prevFloorNum, dungeon.theme, dungeon.startingFloor), visitedFloors: visited };
+        : (() => {
+            const activeId = typeof window !== 'undefined' ? localStorage.getItem('menagerie_active_dungeon_id') : null;
+            const entrance = activeId ? state.saveData.dungeonEntrances?.[activeId] : undefined;
+            const fresh = hydrateDungeonFromSnapshot(
+              generateDungeon(prevFloorNum, dungeon.theme, dungeon.startingFloor),
+              entrance,
+            );
+            return { ...fresh, visitedFloors: visited };
+          })();
       dispatch({ type: 'SET_DUNGEON', dungeon: newDungeon });
       addLog(`⬆️ Ascended to Floor ${prevFloorNum}.`, 'system');
       return;

@@ -15,6 +15,7 @@ import {
   HOME_TOWER_ID,
   createHomeTowerEntrance,
   createAllThemedTowers,
+  snapshotDungeonToEntrance,
 } from './types';
 import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot, dismantleEquipment, getRecipeFromEquipment, getConsumableRecipeFromItem } from './equipment';
 import type { PickaxeTier, ShovelTier } from './tools';
@@ -140,12 +141,13 @@ export function buildProgressSnapshot(
     nextSaveData.highestFloor = Math.max(saveData.highestFloor, run.dungeon.floor);
     const activeDungeonId = typeof window !== 'undefined' ? localStorage.getItem('menagerie_active_dungeon_id') : null;
     if (activeDungeonId && nextSaveData.dungeonEntrances[activeDungeonId]) {
+      const baseEntrance = {
+        ...nextSaveData.dungeonEntrances[activeDungeonId],
+        deepestFloor: Math.max(nextSaveData.dungeonEntrances[activeDungeonId].deepestFloor || 0, run.dungeon.floor),
+      };
       nextSaveData.dungeonEntrances = {
         ...nextSaveData.dungeonEntrances,
-        [activeDungeonId]: {
-          ...nextSaveData.dungeonEntrances[activeDungeonId],
-          deepestFloor: Math.max(nextSaveData.dungeonEntrances[activeDungeonId].deepestFloor || 0, run.dungeon.floor),
-        },
+        [activeDungeonId]: snapshotDungeonToEntrance(baseEntrance, run.dungeon),
       };
     }
   }
@@ -420,12 +422,11 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       let updatedDungeonEntrances = { ...(state.saveData.dungeonEntrances || {}) };
       if (activeDungeonId && updatedDungeonEntrances[activeDungeonId] && state.run.dungeon) {
         const currentFloor = state.run.dungeon.floor;
-        if (currentFloor > (updatedDungeonEntrances[activeDungeonId].deepestFloor || 0)) {
-          updatedDungeonEntrances[activeDungeonId] = {
-            ...updatedDungeonEntrances[activeDungeonId],
-            deepestFloor: currentFloor,
-          };
-        }
+        const base = {
+          ...updatedDungeonEntrances[activeDungeonId],
+          deepestFloor: Math.max(updatedDungeonEntrances[activeDungeonId].deepestFloor || 0, currentFloor),
+        };
+        updatedDungeonEntrances[activeDungeonId] = snapshotDungeonToEntrance(base, state.run.dungeon);
       }
 
       // Respawn the overworld player at the nearest empty tile to the town (0,0)
@@ -547,12 +548,11 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       let fleeUpdatedEntrances = { ...(state.saveData.dungeonEntrances || {}) };
       if (fleeDungeonId && fleeUpdatedEntrances[fleeDungeonId] && state.run.dungeon) {
         const fleeFloor = state.run.dungeon.floor;
-        if (fleeFloor > (fleeUpdatedEntrances[fleeDungeonId].deepestFloor || 0)) {
-          fleeUpdatedEntrances[fleeDungeonId] = {
-            ...fleeUpdatedEntrances[fleeDungeonId],
-            deepestFloor: fleeFloor,
-          };
-        }
+        const base = {
+          ...fleeUpdatedEntrances[fleeDungeonId],
+          deepestFloor: Math.max(fleeUpdatedEntrances[fleeDungeonId].deepestFloor || 0, fleeFloor),
+        };
+        fleeUpdatedEntrances[fleeDungeonId] = snapshotDungeonToEntrance(base, state.run.dungeon);
       }
       
       // If the run was launched from the overworld, respawn the player at the

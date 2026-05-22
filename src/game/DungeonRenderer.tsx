@@ -1043,6 +1043,23 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                         <div className="absolute inset-0 rounded-md ring-2 ring-fuchsia-400 animate-pulse shadow-[0_0_10px_rgba(232,121,249,0.7)]" />
                       </div>
                     )}
+                    {/* Player-placed buildings on this dungeon floor */}
+                    {(() => {
+                      const b = ((dungeon as any).playerBuildings as any[] || [])
+                        .find(pb => pb.worldX === x && pb.worldY === y);
+                      if (!b) return null;
+                      const def = BUILDING_DEFINITIONS[b.type as keyof typeof BUILDING_DEFINITIONS];
+                      if (!def) return null;
+                      return (
+                        <div
+                          className="absolute inset-0 pointer-events-none z-15 flex items-center justify-center"
+                          aria-label={def.name}
+                          title={def.name}
+                        >
+                          <span style={{ fontSize: Math.round(tileSize * 0.7) }}>{def.emoji}</span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}

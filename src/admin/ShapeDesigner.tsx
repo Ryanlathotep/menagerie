@@ -880,7 +880,7 @@ export function ShapeDesigner() {
               );
             })()}
 
-            {mode === 'shape' && (
+            {(
               <p className="text-[10px] text-muted-foreground text-center">
                 Cell letters mark which tier(s) include that offset: <b>L</b>esser · <b>M</b>inor · <b>B</b>ase · <b>G</b>reater · <b>O</b>mega.
               </p>

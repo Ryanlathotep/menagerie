@@ -2327,10 +2327,31 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         subtitle = 'Step onto it to chop for wood';
         const tier = (tile as any).treeTier as TreeTier | undefined;
         if (tier && TREE_TIER_DATA[tier]) info.push({ label: 'Tier', value: TREE_TIER_DATA[tier].name });
-        if (isAdjacent) actions.push({
-          id: 'chop', label: 'Chop tree', icon: TreePine, variant: 'default',
-          onClick: () => { const dx = unifiedMenu.x - px, dy = unifiedMenu.y - py; close(); handleMove(dx, dy); },
-        });
+        if (isAdjacent) {
+          const autoOn = !!settings.autoMine;
+          actions.push({
+            id: 'chop',
+            label: autoOn ? 'Auto-Chop until done/attacked' : 'Chop tree (one swing)',
+            icon: TreePine, variant: 'default',
+            hint: autoOn ? 'Halts on enemy spotted or exhaustion' : undefined,
+            onClick: () => {
+              const tx = unifiedMenu.x, ty = unifiedMenu.y;
+              close();
+              if (autoOn) startAutoMine(tx, ty);
+              else handleMove(tx - px, ty - py);
+            },
+          });
+          actions.push({
+            id: 'toggle-auto-harvest',
+            label: autoOn ? 'Disable Auto-Harvest' : 'Enable Auto-Harvest',
+            icon: TreePine, variant: 'outline',
+            hint: 'Applies to all harvestables; persisted in Settings',
+            onClick: () => {
+              updateSetting('autoMine', !autoOn);
+              toast.info(`Auto-Harvest ${!autoOn ? 'enabled' : 'disabled'}`);
+            },
+          });
+        }
       } else if (tile.type === 'rock') {
         title = '🪨 Rock';
         subtitle = 'Step onto it to mine for stone';
@@ -2351,16 +2372,17 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             },
           });
           actions.push({
-            id: 'toggle-auto-mine',
-            label: autoMineOn ? 'Disable Auto-Mine' : 'Enable Auto-Mine',
+            id: 'toggle-auto-harvest',
+            label: autoMineOn ? 'Disable Auto-Harvest' : 'Enable Auto-Harvest',
             icon: Pickaxe, variant: 'outline',
-            hint: 'Persisted in Settings',
+            hint: 'Applies to all harvestables; persisted in Settings',
             onClick: () => {
               updateSetting('autoMine', !autoMineOn);
-              toast.info(`Auto-Mine ${!autoMineOn ? 'enabled' : 'disabled'}`);
+              toast.info(`Auto-Harvest ${!autoMineOn ? 'enabled' : 'disabled'}`);
             },
           });
         }
+
 
       } else if (tile.type === 'cliff' || tile.type === 'waterfall') {
         title = tile.type === 'cliff' ? '⛰ Cliff' : '🌊 Waterfall';

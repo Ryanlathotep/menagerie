@@ -1307,8 +1307,8 @@ function DungeonView({
       }
       return;
     } else if (result.stairsUp && dungeon.floor <= (dungeon.startingFloor ?? 1)) {
-      // Stepped onto the entry staircase — exit the dungeon.
-      handleFlee();
+      // Stepped onto the entry staircase — ask where to exit to.
+      setStairExitDialogOpen(true);
       return;
     } else if (result.stairsUp && dungeon.floor > 1) {
       const visited = { ...(dungeon.visitedFloors || {}) };

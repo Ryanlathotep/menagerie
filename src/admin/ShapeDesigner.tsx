@@ -93,9 +93,20 @@ export function ShapeDesigner() {
   const [rotateShape, setRotateShape] = useState(false);
   const [tierStats, setTierStats] = useState<TierStats>({});
 
-  // Movement state
+  // Movement state (mirrors AoE shape options, plus movement-specific flags)
   const [blink, setBlink] = useState(false);
   const [rotateMovement, setRotateMovement] = useState(false);
+  const [moveRange, setMoveRange] = useState(5);
+  const [moveBlockedByWalls, setMoveBlockedByWalls] = useState(true);
+  const [moveBlockedByUnits, setMoveBlockedByUnits] = useState(false);
+  const [movePassEnemies, setMovePassEnemies] = useState(false);
+  const [movePassTraps, setMovePassTraps] = useState(false);
+  const [movePassTerrain, setMovePassTerrain] = useState(false);
+  const [moveClimbCliffs, setMoveClimbCliffs] = useState(false);
+  const [moveCrossWater, setMoveCrossWater] = useState(false);
+  const [moveTriggersTrapsOnPath, setMoveTriggersTrapsOnPath] = useState(false);
+  const [moveHarvests, setMoveHarvests] = useState<Set<HarvestableKind>>(new Set());
+
 
 
   const allMoves = useMemo(() => {

@@ -80,6 +80,7 @@ import {
   ENEMY_ATTACK_STAMINA_COST,
   ENEMY_REST_STAMINA_REGEN,
   enemyHasStaminaToAttack,
+  getPathTiles,
 } from '@/game/dungeonCombat';
 import { MoveInfoPanel } from '@/game/AttackTargeting';
 import { loadKeybinds, getMonsterKeybinds as getMonsterKeybindsImport } from '@/game/keybinds';

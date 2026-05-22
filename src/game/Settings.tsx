@@ -46,6 +46,10 @@ export interface GameSettings {
   // Auto-equip preferences (used by Equipment screens and pickup auto-equip)
   autoEquipFocus: import('./equipmentUtils').AutoEquipFocus;
   autoEquipOnPickup: boolean;
+
+  // Keep mining an adjacent rock until it's exhausted or a visible enemy
+  // appears. Mirrors the auto-run "halt on enemy spotted" behaviour.
+  autoMine: boolean;
 }
 
 const DEFAULT_SETTINGS: GameSettings = {
@@ -63,7 +67,10 @@ const DEFAULT_SETTINGS: GameSettings = {
 
   autoEquipFocus: 'class',
   autoEquipOnPickup: false,
+
+  autoMine: false,
 };
+
 
 
 // Settings Context

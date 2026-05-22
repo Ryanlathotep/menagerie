@@ -147,6 +147,7 @@ export function getAttackConfig(move: Move | EvolvedMove): AttackConfig {
       customOffsets: movement.offsets,
       blink: !!movement.blink,
       wallPenetrate: !!movement.blink,
+      rotateToFacing: !!movement.rotateToFacing,
     };
   }
 
@@ -161,8 +162,10 @@ export function getAttackConfig(move: Move | EvolvedMove): AttackConfig {
       customOffsets: customShape.offsets,
       customOrigin: customShape.origin,
       wallPenetrate: !!customShape.wallPenetrate,
+      rotateToFacing: !!customShape.rotateToFacing,
     };
   }
+
 
   // Self-targeting for buffs and heals (unless they target enemies)
   if (move.type === 'heal') {

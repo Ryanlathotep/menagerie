@@ -230,14 +230,11 @@ export function MovesEditor() {
               </div>
             </div>
 
-            <div>
-              <Label>Effect</Label>
-              <Input
-                value={(editedMove.effect as string) || ''}
-                onChange={(e) => setEditedMove({ ...editedMove, effect: e.target.value || undefined })}
-                placeholder="e.g., poison, heal_self, lower_defense"
-              />
-            </div>
+            <EffectPicker
+              value={(editedMove.effect as string) || ''}
+              onChange={(v) => setEditedMove({ ...editedMove, effect: v || undefined })}
+            />
+
 
             <div className="flex gap-2">
               <Button onClick={handleSave} className="flex-1 gap-2">

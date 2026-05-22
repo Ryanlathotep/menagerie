@@ -588,6 +588,31 @@ export function ShapeDesigner() {
             {/* Grid */}
             {(() => {
               const half = Math.floor(gridSize / 2);
+              // Build per-tier offset sets so each cell can show which tiers it
+              // belongs to (L/M/B/G/O). The currently-editing tier uses the
+              // unsaved in-memory `cells`; other tiers read from the saved move.
+              const TIER_LETTERS: Record<TierKey, string> = {
+                lesser: 'L', minor: 'M', base: 'B', greater: 'G', omega: 'O',
+              };
+              const mergedForGrid: Move | null = selected
+                ? { ...selected, ...((getOverride('moves', selected.id) as Partial<Move>) || {}) }
+                : null;
+              const tierSets: Record<TierKey, Set<string>> = {
+                lesser: new Set(), minor: new Set(), base: new Set(),
+                greater: new Set(), omega: new Set(),
+              };
+              if (mode === 'shape' && mergedForGrid) {
+                for (const t of TIER_KEYS) {
+                  if (t === tier) {
+                    tierSets[t] = new Set(cells);
+                  } else {
+                    const { shape } = readTier(mergedForGrid, t);
+                    if (shape?.offsets) {
+                      tierSets[t] = new Set(shape.offsets.map((o) => `${o.dx},${o.dy}`));
+                    }
+                  }
+                }
+              }
               return (
                 <div
                   className="grid gap-1 mx-auto w-full overflow-x-auto"
@@ -599,29 +624,42 @@ export function ShapeDesigner() {
                     const dx = gx - half;
                     const dy = gy - half;
                     const isAnchor = dx === 0 && dy === 0;
-                    const on = cells.has(`${dx},${dy}`);
+                    const key = `${dx},${dy}`;
+                    const on = cells.has(key);
+                    const letters = mode === 'shape'
+                      ? TIER_KEYS.filter((t) => tierSets[t].has(key)).map((t) => TIER_LETTERS[t])
+                      : [];
                     return (
                       <button
                         key={i}
                         onClick={() => toggleCell(dx, dy)}
-                        className={`aspect-square rounded text-[9px] border transition-colors ${
+                        className={`aspect-square rounded text-[9px] font-bold leading-none border transition-colors flex items-center justify-center ${
                           isAnchor
                             ? 'bg-foreground text-background border-foreground'
                             : on
                               ? mode === 'shape'
-                                ? 'bg-destructive/70 border-destructive'
-                                : 'bg-sky-500/70 border-sky-500'
-                              : 'bg-muted hover:bg-muted-foreground/20 border-border'
+                                ? 'bg-destructive/70 border-destructive text-destructive-foreground'
+                                : 'bg-sky-500/70 border-sky-500 text-white'
+                              : letters.length > 0
+                                ? 'bg-muted/70 border-primary/40 text-foreground/80'
+                                : 'bg-muted hover:bg-muted-foreground/20 border-border'
                         }`}
-                        title={`(${dx}, ${dy})`}
+                        title={`(${dx}, ${dy})${letters.length ? ` — tiers: ${letters.join('')}` : ''}`}
                       >
-                        {isAnchor ? '⦿' : ''}
+                        {isAnchor ? '⦿' : letters.length > 0 ? letters.join('') : ''}
                       </button>
                     );
                   })}
                 </div>
               );
             })()}
+
+            {mode === 'shape' && (
+              <p className="text-[10px] text-muted-foreground text-center">
+                Cell letters mark which tier(s) include that offset: <b>L</b>esser · <b>M</b>inor · <b>B</b>ase · <b>G</b>reater · <b>O</b>mega.
+              </p>
+            )}
+
 
             <div className="flex gap-2 pt-2">
               <Button onClick={handleSave} className="flex-1 gap-2">

@@ -2,6 +2,9 @@
 // Moves now have unlock levels for progression
 
 import { SpeciesType, ElementType, ClassType } from './types';
+import { applyMoveOverride, getCustomMovesFor, getCustomMoves } from './moveOverrides';
+
+
 
 export type MoveType = 'melee' | 'ranged' | 'status' | 'heal' | 'movement';
 
@@ -63,7 +66,16 @@ export interface Move {
   customShape?: CustomShape;
   /** Admin-designable movement pattern; when set, move is treated as a relocation. */
   movement?: MovementPattern;
+  /** Admin override: explicit availability lists. When present these win over
+   *  the built-in SPECIES_/ELEMENT_/CLASS_MOVES pool the move appears in. Used
+   *  for custom moves and for re-targeting an existing move to a new pool. */
+  availableSpecies?: SpeciesType[];
+  availableElements?: ElementType[];
+  availableClasses?: ClassType[];
+  /** Marks moves created entirely by the admin (not present in source code). */
+  custom?: boolean;
 }
+
 
 // ============= SPECIES-ONLY MOVES (1 aspect) =============
 export const SPECIES_MOVES: Record<SpeciesType, Move[]> = {
@@ -573,42 +585,50 @@ export const TRIPLE_ASPECT_MOVES: Record<string, Move> = {
   },
 };
 
-// Get all moves available to a monster based on its aspects and level
+// Get all moves available to a monster based on its aspects and level.
+// Honors admin-registered overrides + custom moves.
 export function getMonsterMoves(species: SpeciesType, element: ElementType, classType: ClassType, level: number = 99): Move[] {
   const moves: Move[] = [];
-  
-  // Filter by unlock level
+
   const filterByLevel = (m: Move) => (m.unlockLevel || 1) <= level;
-  
-  // Single aspect moves
-  moves.push(...SPECIES_MOVES[species].filter(filterByLevel));
-  moves.push(...ELEMENT_MOVES[element].filter(filterByLevel));
-  moves.push(...CLASS_MOVES[classType].filter(filterByLevel));
-  
-  // Dual aspect moves (if defined)
+
+  // Built-in moves, each merged with any admin override on the way out.
+  const pushAll = (list: Move[]) => {
+    for (const m of list) {
+      const merged = applyMoveOverride(m);
+      // Override can also re-target the move via availableSpecies/Elements/Classes.
+      // When that's set we filter the move out if this monster isn't allowed.
+      if (merged.availableSpecies?.length && !merged.availableSpecies.includes(species)) continue;
+      if (merged.availableElements?.length && !merged.availableElements.includes(element)) continue;
+      if (merged.availableClasses?.length && !merged.availableClasses.includes(classType)) continue;
+      if (filterByLevel(merged)) moves.push(merged);
+    }
+  };
+
+  pushAll(SPECIES_MOVES[species]);
+  pushAll(ELEMENT_MOVES[element]);
+  pushAll(CLASS_MOVES[classType]);
+
   const speciesElementKey = `${species}_${element}`;
-  if (SPECIES_ELEMENT_MOVES[speciesElementKey]) {
-    moves.push(...SPECIES_ELEMENT_MOVES[speciesElementKey].filter(filterByLevel));
-  }
-  
+  if (SPECIES_ELEMENT_MOVES[speciesElementKey]) pushAll(SPECIES_ELEMENT_MOVES[speciesElementKey]);
+
   const speciesClassKey = `${species}_${classType}`;
-  if (SPECIES_CLASS_MOVES[speciesClassKey]) {
-    moves.push(...SPECIES_CLASS_MOVES[speciesClassKey].filter(filterByLevel));
-  }
-  
+  if (SPECIES_CLASS_MOVES[speciesClassKey]) pushAll(SPECIES_CLASS_MOVES[speciesClassKey]);
+
   const elementClassKey = `${element}_${classType}`;
-  if (ELEMENT_CLASS_MOVES[elementClassKey]) {
-    moves.push(...ELEMENT_CLASS_MOVES[elementClassKey].filter(filterByLevel));
-  }
-  
-  // Triple aspect move (if defined - unique signature move)
+  if (ELEMENT_CLASS_MOVES[elementClassKey]) pushAll(ELEMENT_CLASS_MOVES[elementClassKey]);
+
   const tripleKey = `${species}_${element}_${classType}`;
-  if (TRIPLE_ASPECT_MOVES[tripleKey] && filterByLevel(TRIPLE_ASPECT_MOVES[tripleKey])) {
-    moves.push(TRIPLE_ASPECT_MOVES[tripleKey]);
+  if (TRIPLE_ASPECT_MOVES[tripleKey]) pushAll([TRIPLE_ASPECT_MOVES[tripleKey]]);
+
+  // Admin-defined custom moves (data_type='moves' rows with custom:true).
+  for (const m of getCustomMovesFor(species, element, classType, level)) {
+    moves.push(m);
   }
-  
+
   return moves;
 }
+
 
 // Get moves that were just unlocked at a specific level
 export function getNewMovesAtLevel(species: SpeciesType, element: ElementType, classType: ClassType, level: number): Move[] {
@@ -638,5 +658,10 @@ export function getMoveById(id: string): Move | undefined {
     ...Object.values(ELEMENT_CLASS_MOVES).flat(),
     ...Object.values(TRIPLE_ASPECT_MOVES),
   ];
-  return allMoves.find(m => m.id === id);
+  const found = allMoves.find(m => m.id === id);
+  if (found) return applyMoveOverride(found);
+  return getCustomMoves().find((m) => m.id === id);
 }
+
+
+

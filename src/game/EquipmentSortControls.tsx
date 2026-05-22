@@ -104,10 +104,34 @@ export function EquipmentSortControls({ sortConfig, onSortChange, onAutoEquip, f
         )}
       </Button>
       
+      {focus !== undefined && onFocusChange && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 text-xs ml-auto" title="Auto-equip focus">
+              <Target className="w-3 h-3 mr-1" />
+              {AUTO_EQUIP_FOCUS_LABELS[focus]}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuLabel className="text-xs">Auto-Equip Focus</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {FOCUS_OPTIONS.map(f => (
+              <DropdownMenuItem
+                key={f}
+                onClick={() => onFocusChange(f)}
+                className={focus === f ? 'bg-accent' : ''}
+              >
+                {AUTO_EQUIP_FOCUS_LABELS[f]}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
       <Button
         variant="secondary"
         size="sm"
-        className="h-8 text-xs ml-auto"
+        className={`h-8 text-xs ${focus !== undefined && onFocusChange ? '' : 'ml-auto'}`}
         onClick={onAutoEquip}
       >
         <Sparkles className="w-3 h-3 mr-1" />
@@ -116,3 +140,4 @@ export function EquipmentSortControls({ sortConfig, onSortChange, onAutoEquip, f
     </div>
   );
 }
+

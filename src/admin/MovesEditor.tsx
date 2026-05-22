@@ -1,48 +1,69 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Slider } from '@/components/ui/slider';
+import { Progress } from '@/components/ui/progress';
 import { useGameDataOverrides } from '@/hooks/useGameDataOverrides';
 import { SPECIES_MOVES, ELEMENT_MOVES, CLASS_MOVES, Move } from '@/game/moves';
-import { Search, Save, RotateCcw } from 'lucide-react';
+import { rateAgainst, setSingleMoveOverride } from '@/game/moveOverrides';
+import { SpeciesType, ElementType, ClassType } from '@/game/types';
+import { Search, Save, RotateCcw, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+
+const ALL_SPECIES: SpeciesType[] = [
+  'slime', 'skeleton', 'goblin', 'mushroom', 'ghost',
+  'imp', 'golem', 'wisp', 'chimera', 'dragon',
+  'rat', 'spider', 'bat', 'snake', 'wolf',
+  'beetle', 'crow', 'shark', 'frog', 'jellyfish',
+];
+const ALL_ELEMENTS: ElementType[] = ['normal', 'fire', 'water', 'earth', 'air', 'void'];
+const ALL_CLASSES: ClassType[] = ['normal', 'kinetic', 'energy', 'biological', 'chemical', 'political'];
+
+type SourcedMove = { move: Move; source: string; sourceId: string; isCustom: boolean };
 
 export function MovesEditor() {
   const { overrides, saveOverride, deleteOverride, getOverride, loading } = useGameDataOverrides('moves');
   const [search, setSearch] = useState('');
-  const [selectedMove, setSelectedMove] = useState<Move | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editedMove, setEditedMove] = useState<Partial<Move>>({});
 
-  // Gather all moves from code
-  const allMoves = useMemo(() => {
-    const moves: { move: Move; source: string; sourceId: string }[] = [];
-
-    // Species moves
-    Object.entries(SPECIES_MOVES).forEach(([species, speciesMoves]) => {
-      speciesMoves.forEach((move) => {
-        moves.push({ move, source: 'Species', sourceId: species });
-      });
-    });
-
-    // Element moves
-    Object.entries(ELEMENT_MOVES).forEach(([element, elementMoves]) => {
-      elementMoves.forEach((move) => {
-        moves.push({ move, source: 'Element', sourceId: element });
-      });
-    });
-
-    // Class moves
-    Object.entries(CLASS_MOVES).forEach(([classType, classMoves]) => {
-      classMoves.forEach((move) => {
-        moves.push({ move, source: 'Class', sourceId: classType });
-      });
-    });
-
-    return moves;
+  // Built-in moves (with their built-in pool as the inferred default availability).
+  const builtIns = useMemo<SourcedMove[]>(() => {
+    const out: SourcedMove[] = [];
+    Object.entries(SPECIES_MOVES).forEach(([s, list]) => list.forEach((m) => out.push({ move: m, source: 'Species', sourceId: s, isCustom: false })));
+    Object.entries(ELEMENT_MOVES).forEach(([e, list]) => list.forEach((m) => out.push({ move: m, source: 'Element', sourceId: e, isCustom: false })));
+    Object.entries(CLASS_MOVES).forEach(([c, list]) => list.forEach((m) => out.push({ move: m, source: 'Class', sourceId: c, isCustom: false })));
+    return out;
   }, []);
+
+  // Custom (admin-created) moves come from overrides that carry `custom: true`.
+  const customMoves = useMemo<SourcedMove[]>(() => {
+    return overrides
+      .filter((o) => (o.data_value as Partial<Move>)?.custom)
+      .map((o) => ({
+        move: o.data_value as Move,
+        source: 'Custom',
+        sourceId: 'admin',
+        isCustom: true,
+      }));
+  }, [overrides]);
+
+  const allMoves: SourcedMove[] = useMemo(() => {
+    // De-duplicate built-ins by id (they appear in multiple pools if shared).
+    const seen = new Set<string>();
+    const uniq: SourcedMove[] = [];
+    for (const sm of builtIns) {
+      if (!seen.has(sm.move.id)) {
+        seen.add(sm.move.id);
+        uniq.push(sm);
+      }
+    }
+    return [...customMoves, ...uniq];
+  }, [builtIns, customMoves]);
 
   const filteredMoves = useMemo(() => {
     if (!search) return allMoves;
@@ -52,79 +73,126 @@ export function MovesEditor() {
         move.name.toLowerCase().includes(lower) ||
         move.id.toLowerCase().includes(lower) ||
         source.toLowerCase().includes(lower) ||
-        sourceId.toLowerCase().includes(lower)
+        sourceId.toLowerCase().includes(lower) ||
+        (move.effect ?? '').toLowerCase().includes(lower)
     );
   }, [allMoves, search]);
 
-  const handleSelectMove = (moveData: { move: Move; source: string; sourceId: string }) => {
-    setSelectedMove(moveData.move);
-    // Check for existing override
-    const override = getOverride('moves', moveData.move.id) as Partial<Move> | null;
-    setEditedMove(override || { ...moveData.move });
+  // The comparison pool for rating = every move in the game.
+  const ratingPool: Move[] = useMemo(() => allMoves.map((m) => m.move), [allMoves]);
+
+  const selected = useMemo(() => allMoves.find((m) => m.move.id === selectedId) ?? null, [allMoves, selectedId]);
+
+  useEffect(() => {
+    if (!selected) return;
+    const ovr = getOverride('moves', selected.move.id) as Partial<Move> | null;
+    // Merge: built-in base + override on top. For customs the override IS the move.
+    setEditedMove(ovr ? { ...selected.move, ...ovr } : { ...selected.move });
+  }, [selected, getOverride]);
+
+  const handleSelect = (id: string) => setSelectedId(id);
+
+  const handleAddNew = () => {
+    const id = `custom_${Date.now().toString(36)}`;
+    const draft: Move = {
+      id,
+      name: 'New Move',
+      description: 'A custom admin-designed move.',
+      type: 'melee',
+      power: 25,
+      accuracy: 95,
+      staminaCost: 6,
+      speedMod: 0,
+      aspects: ['species'],
+      unlockLevel: 1,
+      availableSpecies: [],
+      availableElements: [],
+      availableClasses: [],
+      custom: true,
+    };
+    setSingleMoveOverride(id, draft); // optimistic local
+    saveOverride('moves', id, draft as unknown as Record<string, unknown>).then((ok) => {
+      if (ok) {
+        setSelectedId(id);
+        setEditedMove(draft);
+      }
+    });
   };
 
   const handleSave = async () => {
-    if (!selectedMove) return;
-    
-    const success = await saveOverride('moves', selectedMove.id, editedMove as Record<string, unknown>);
-    if (success) {
-      toast.success(`Saved override for ${selectedMove.name}`);
+    if (!selected) return;
+    const payload = { ...editedMove } as Move;
+    // Preserve `custom: true` for admin-created moves so the boot loader keeps
+    // routing them to the custom registry.
+    if (selected.isCustom) payload.custom = true;
+    const ok = await saveOverride('moves', selected.move.id, payload as unknown as Record<string, unknown>);
+    if (ok) {
+      setSingleMoveOverride(selected.move.id, payload);
+      toast.success(`Saved ${payload.name}`);
     }
   };
 
   const handleReset = async () => {
-    if (!selectedMove) return;
-    
-    const success = await deleteOverride('moves', selectedMove.id);
-    if (success) {
-      setEditedMove({ ...selectedMove });
-      toast.success(`Reset ${selectedMove.name} to defaults`);
+    if (!selected) return;
+    const ok = await deleteOverride('moves', selected.move.id);
+    if (ok) {
+      setSingleMoveOverride(selected.move.id, null);
+      if (selected.isCustom) setSelectedId(null);
+      else setEditedMove({ ...selected.move });
+      toast.success(selected.isCustom ? 'Deleted custom move' : `Reset ${selected.move.name}`);
     }
   };
 
-  const hasOverride = selectedMove ? !!getOverride('moves', selectedMove.id) : false;
+  const hasOverride = selected ? !!getOverride('moves', selected.move.id) : false;
+  const ratingInfo = useMemo(() => rateAgainst(editedMove, ratingPool), [editedMove, ratingPool]);
 
-  if (loading) {
-    return <div className="text-muted-foreground p-4">Loading moves...</div>;
-  }
+  if (loading) return <div className="text-muted-foreground p-4">Loading moves...</div>;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {/* Move List */}
+      {/* ============ Move List ============ */}
       <Card className="p-4">
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-3">
           <Search className="w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search moves..."
+            placeholder="Search by name, id, source, effect…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="flex-1"
           />
+          <Button size="sm" onClick={handleAddNew} className="gap-1">
+            <Plus className="w-4 h-4" /> New
+          </Button>
         </div>
 
-        <ScrollArea className="h-[400px]">
+        <ScrollArea className="h-[480px]">
           <div className="space-y-1">
-            {filteredMoves.map(({ move, source, sourceId }) => {
+            {filteredMoves.map(({ move, source, sourceId, isCustom }) => {
               const hasOvr = !!getOverride('moves', move.id);
+              const r = rateAgainst(move, ratingPool).rating;
               return (
                 <button
                   key={move.id}
-                  onClick={() => handleSelectMove({ move, source, sourceId })}
+                  onClick={() => handleSelect(move.id)}
                   className={`w-full text-left p-2 rounded text-sm hover:bg-muted transition-colors flex justify-between items-center ${
-                    selectedMove?.id === move.id ? 'bg-primary/20' : ''
+                    selectedId === move.id ? 'bg-primary/20' : ''
                   }`}
                 >
-                  <span>
+                  <span className="truncate">
                     <span className="font-medium">{move.name}</span>
                     <span className="text-muted-foreground ml-2 text-xs">
-                      ({source}: {sourceId})
+                      ({isCustom ? 'Custom' : `${source}: ${sourceId}`})
                     </span>
                   </span>
-                  {hasOvr && (
-                    <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">
-                      Modified
-                    </span>
-                  )}
+                  <span className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs font-mono text-muted-foreground">{r}</span>
+                    {hasOvr && !isCustom && (
+                      <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded">mod</span>
+                    )}
+                    {isCustom && (
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-600 px-1.5 py-0.5 rounded">new</span>
+                    )}
+                  </span>
                 </button>
               );
             })}
@@ -132,21 +200,40 @@ export function MovesEditor() {
         </ScrollArea>
 
         <div className="mt-2 text-xs text-muted-foreground">
-          {filteredMoves.length} moves • {overrides.length} overrides
+          {filteredMoves.length} moves • {customMoves.length} custom • {overrides.length - customMoves.length} overrides
         </div>
       </Card>
 
-      {/* Move Editor */}
+      {/* ============ Move Editor ============ */}
       <Card className="p-4">
-        {selectedMove ? (
+        {selected ? (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-lg">{selectedMove.name}</h3>
-              {hasOverride && (
-                <span className="text-xs bg-amber-500/20 text-amber-500 px-2 py-1 rounded">
-                  Has Override
+              <h3 className="font-bold text-lg truncate">{(editedMove.name as string) || selected.move.name}</h3>
+              <div className="flex items-center gap-2 shrink-0">
+                {selected.isCustom && (
+                  <span className="text-xs bg-emerald-500/20 text-emerald-600 px-2 py-1 rounded">Custom</span>
+                )}
+                {hasOverride && !selected.isCustom && (
+                  <span className="text-xs bg-amber-500/20 text-amber-500 px-2 py-1 rounded">Has Override</span>
+                )}
+              </div>
+            </div>
+
+            {/* ----- Rating ----- */}
+            <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-semibold">Power Rating</span>
+                <span className="font-mono">
+                  {ratingInfo.rating}
+                  <span className="text-muted-foreground"> / {ratingInfo.max}</span>
                 </span>
-              )}
+              </div>
+              <Progress value={Math.min(100, (ratingInfo.rating / Math.max(1, ratingInfo.max)) * 100)} className="h-2" />
+              <div className="text-xs text-muted-foreground flex justify-between">
+                <span>Stronger than {ratingInfo.percentile}% of moves</span>
+                <span>avg {ratingInfo.avg} • min {ratingInfo.min} • max {ratingInfo.max}</span>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -163,14 +250,13 @@ export function MovesEditor() {
                   value={(editedMove.type as string) || 'melee'}
                   onValueChange={(v) => setEditedMove({ ...editedMove, type: v as Move['type'] })}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="melee">Melee</SelectItem>
                     <SelectItem value="ranged">Ranged</SelectItem>
                     <SelectItem value="status">Status</SelectItem>
                     <SelectItem value="heal">Heal</SelectItem>
+                    <SelectItem value="movement">Movement</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -185,49 +271,34 @@ export function MovesEditor() {
             </div>
 
             <div className="grid grid-cols-3 gap-3">
-              <div>
-                <Label>Power</Label>
-                <Input
-                  type="number"
-                  value={(editedMove.power as number) ?? 0}
-                  onChange={(e) => setEditedMove({ ...editedMove, power: parseInt(e.target.value) || 0 })}
-                />
-              </div>
-              <div>
-                <Label>Accuracy</Label>
-                <Input
-                  type="number"
-                  value={(editedMove.accuracy as number) ?? 100}
-                  onChange={(e) => setEditedMove({ ...editedMove, accuracy: parseInt(e.target.value) || 100 })}
-                />
-              </div>
-              <div>
-                <Label>Stamina Cost</Label>
-                <Input
-                  type="number"
-                  value={(editedMove.staminaCost as number) ?? 0}
-                  onChange={(e) => setEditedMove({ ...editedMove, staminaCost: parseInt(e.target.value) || 0 })}
-                />
-              </div>
+              <NumberField label="Power" value={editedMove.power ?? 0}
+                onChange={(v) => setEditedMove({ ...editedMove, power: v })} />
+              <NumberField label="Accuracy" value={editedMove.accuracy ?? 100}
+                onChange={(v) => setEditedMove({ ...editedMove, accuracy: v })} />
+              <NumberField label="Stamina Cost" value={editedMove.staminaCost ?? 0}
+                onChange={(v) => setEditedMove({ ...editedMove, staminaCost: v })} />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Speed Mod</Label>
-                <Input
-                  type="number"
-                  value={(editedMove.speedMod as number) ?? 0}
-                  onChange={(e) => setEditedMove({ ...editedMove, speedMod: parseInt(e.target.value) || 0 })}
-                />
+              <NumberField label="Speed Mod" value={editedMove.speedMod ?? 0}
+                onChange={(v) => setEditedMove({ ...editedMove, speedMod: v })} />
+              <NumberField label="AoE Radius" value={editedMove.aoeRadius ?? 0}
+                onChange={(v) => setEditedMove({ ...editedMove, aoeRadius: v })} />
+            </div>
+
+            {/* ----- Learned-at-level slider ----- */}
+            <div>
+              <div className="flex justify-between mb-1">
+                <Label>Learned at Level</Label>
+                <span className="text-sm font-mono">{editedMove.unlockLevel ?? 1}</span>
               </div>
-              <div>
-                <Label>Unlock Level</Label>
-                <Input
-                  type="number"
-                  value={(editedMove.unlockLevel as number) ?? 1}
-                  onChange={(e) => setEditedMove({ ...editedMove, unlockLevel: parseInt(e.target.value) || 1 })}
-                />
-              </div>
+              <Slider
+                min={1}
+                max={50}
+                step={1}
+                value={[editedMove.unlockLevel ?? 1]}
+                onValueChange={([v]) => setEditedMove({ ...editedMove, unlockLevel: v })}
+              />
             </div>
 
             <EffectPicker
@@ -235,23 +306,44 @@ export function MovesEditor() {
               onChange={(v) => setEditedMove({ ...editedMove, effect: v || undefined })}
             />
 
+            {/* ----- Availability toggles ----- */}
+            <AvailabilityToggles
+              title="Available Species"
+              options={ALL_SPECIES}
+              selected={(editedMove.availableSpecies as SpeciesType[]) || []}
+              onChange={(v) => setEditedMove({ ...editedMove, availableSpecies: v })}
+              hint={selected.isCustom ? 'Empty = no species can use this' : 'Empty = inherit built-in pool (originally in ' + (selected.source === 'Species' ? selected.sourceId : '—') + ')'}
+            />
+            <AvailabilityToggles
+              title="Available Elements"
+              options={ALL_ELEMENTS}
+              selected={(editedMove.availableElements as ElementType[]) || []}
+              onChange={(v) => setEditedMove({ ...editedMove, availableElements: v })}
+              hint={selected.isCustom ? 'Empty = any element' : 'Empty = inherit built-in pool'}
+            />
+            <AvailabilityToggles
+              title="Available Classes"
+              options={ALL_CLASSES}
+              selected={(editedMove.availableClasses as ClassType[]) || []}
+              onChange={(v) => setEditedMove({ ...editedMove, availableClasses: v })}
+              hint={selected.isCustom ? 'Empty = any class' : 'Empty = inherit built-in pool'}
+            />
 
             <div className="flex gap-2">
               <Button onClick={handleSave} className="flex-1 gap-2">
-                <Save className="w-4 h-4" />
-                Save Override
+                <Save className="w-4 h-4" /> Save
               </Button>
-              {hasOverride && (
+              {(hasOverride || selected.isCustom) && (
                 <Button variant="outline" onClick={handleReset} className="gap-2">
-                  <RotateCcw className="w-4 h-4" />
-                  Reset
+                  {selected.isCustom ? <Trash2 className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
+                  {selected.isCustom ? 'Delete' : 'Reset'}
                 </Button>
               )}
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-center h-64 text-muted-foreground">
-            Select a move to edit
+          <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
+            Select a move to edit — or click <span className="mx-1 inline-flex items-center gap-1 rounded border px-1.5 py-0.5"><Plus className="w-3 h-3" />New</span> to design one.
           </div>
         )}
       </Card>
@@ -259,46 +351,81 @@ export function MovesEditor() {
   );
 }
 
+// ============================================================================
+// Helpers
+// ============================================================================
+
+function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <div>
+      <Label>{label}</Label>
+      <Input
+        type="number"
+        value={value}
+        onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+      />
+    </div>
+  );
+}
+
+function AvailabilityToggles<T extends string>({
+  title, options, selected, onChange, hint,
+}: {
+  title: string;
+  options: T[];
+  selected: T[];
+  onChange: (v: T[]) => void;
+  hint?: string;
+}) {
+  const toggle = (opt: T) => {
+    if (selected.includes(opt)) onChange(selected.filter((s) => s !== opt));
+    else onChange([...selected, opt]);
+  };
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <Label>{title}</Label>
+        <div className="flex gap-1">
+          <button type="button" className="text-[11px] text-muted-foreground hover:text-foreground" onClick={() => onChange([...options])}>all</button>
+          <span className="text-[11px] text-muted-foreground">·</span>
+          <button type="button" className="text-[11px] text-muted-foreground hover:text-foreground" onClick={() => onChange([])}>none</button>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((opt) => {
+          const active = selected.includes(opt);
+          return (
+            <Button
+              key={opt}
+              type="button"
+              size="sm"
+              variant={active ? 'default' : 'outline'}
+              onClick={() => toggle(opt)}
+              className="h-7 text-xs capitalize"
+            >
+              {opt}
+            </Button>
+          );
+        })}
+      </div>
+      {hint && <div className="text-[11px] text-muted-foreground mt-1">{hint}</div>}
+    </div>
+  );
+}
+
 // All known move effects, grouped for readability.
 const EFFECT_GROUPS: { label: string; effects: string[] }[] = [
-  {
-    label: 'Status / DoT',
-    effects: ['poison', 'burn', 'paralyze', 'confuse'],
-  },
-  {
-    label: 'Self Buffs',
-    effects: [
-      'raise_attack', 'raise_defense', 'raise_special', 'raise_speed',
-      'raise_accuracy', 'raise_dodge', 'raise_all_stats',
-    ],
-  },
-  {
-    label: 'Debuffs',
-    effects: [
-      'lower_attack', 'lower_defense', 'lower_special', 'lower_speed',
-      'lower_accuracy', 'lower_all_stats',
-    ],
-  },
-  {
-    label: 'Resource',
-    effects: ['heal_self', 'restore_stamina', 'drain_stamina', 'drain_enemy_stamina'],
-  },
-  {
-    label: 'Special',
-    effects: [
-      'crit_chance', 'crit_vs_wounded', 'bonus_vs_wounded',
-      'charge_next', 'double_next', 'copy_type',
-      'steal_buff', 'steal_item', 'find_item', 'reveal_stats',
-    ],
-  },
+  { label: 'Status / DoT', effects: ['poison', 'burn', 'paralyze', 'confuse'] },
+  { label: 'Self Buffs', effects: ['raise_attack', 'raise_defense', 'raise_special', 'raise_speed', 'raise_accuracy', 'raise_dodge', 'raise_all_stats'] },
+  { label: 'Debuffs', effects: ['lower_attack', 'lower_defense', 'lower_special', 'lower_speed', 'lower_accuracy', 'lower_all_stats'] },
+  { label: 'Resource', effects: ['heal_self', 'restore_stamina', 'drain_stamina', 'drain_enemy_stamina'] },
+  { label: 'Special', effects: ['crit_chance', 'crit_vs_wounded', 'bonus_vs_wounded', 'charge_next', 'double_next', 'copy_type', 'steal_buff', 'steal_item', 'find_item', 'reveal_stats'] },
 ];
-
 const ALL_EFFECTS = Array.from(new Set(EFFECT_GROUPS.flatMap((g) => g.effects))).sort();
 
 function EffectPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [query, setQuery] = useState('');
   const q = query.trim().toLowerCase();
-
   const matches = (e: string) => !q || e.toLowerCase().includes(q) || e.replace(/_/g, ' ').includes(q);
   const isCustom = value && !ALL_EFFECTS.includes(value);
 
@@ -313,16 +440,11 @@ function EffectPicker({ value, onChange }: { value: string; onChange: (v: string
 
       <div className="relative">
         <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search effects… (or type a custom effect ID)"
-          className="pl-8"
-        />
+        <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search effects… (or type a custom ID)" className="pl-8" />
       </div>
 
-      <ScrollArea className="h-56 rounded-md border p-2">
-        <div className="space-y-3">
+      <ScrollArea className="h-40 rounded-md border p-2">
+        <div className="space-y-2">
           {EFFECT_GROUPS.map((group) => {
             const shown = group.effects.filter(matches);
             if (shown.length === 0) return null;
@@ -333,14 +455,8 @@ function EffectPicker({ value, onChange }: { value: string; onChange: (v: string
                   {shown.map((eff) => {
                     const active = value === eff;
                     return (
-                      <Button
-                        key={eff}
-                        type="button"
-                        size="sm"
-                        variant={active ? 'default' : 'outline'}
-                        onClick={() => onChange(active ? '' : eff)}
-                        className="h-7 text-xs"
-                      >
+                      <Button key={eff} type="button" size="sm" variant={active ? 'default' : 'outline'}
+                        onClick={() => onChange(active ? '' : eff)} className="h-7 text-xs">
                         {eff.replace(/_/g, ' ')}
                       </Button>
                     );
@@ -349,27 +465,16 @@ function EffectPicker({ value, onChange }: { value: string; onChange: (v: string
               </div>
             );
           })}
-
           {q && !ALL_EFFECTS.some(matches) && (
-            <Button
-              type="button"
-              size="sm"
-              variant={value === query.trim() ? 'default' : 'secondary'}
-              onClick={() => onChange(query.trim())}
-              className="h-7 text-xs"
-            >
+            <Button type="button" size="sm" variant={value === query.trim() ? 'default' : 'secondary'}
+              onClick={() => onChange(query.trim())} className="h-7 text-xs">
               Use custom: "{query.trim()}"
             </Button>
           )}
         </div>
       </ScrollArea>
 
-      {isCustom && (
-        <div className="text-xs text-amber-600">
-          Custom effect ID — make sure combat logic handles "{value}".
-        </div>
-      )}
-
+      {isCustom && <div className="text-xs text-amber-600">Custom effect ID — combat logic must handle "{value}".</div>}
       {value && (
         <Button type="button" size="sm" variant="ghost" onClick={() => onChange('')} className="h-7 text-xs">
           Clear effect
@@ -378,4 +483,3 @@ function EffectPicker({ value, onChange }: { value: string; onChange: (v: string
     </div>
   );
 }
-

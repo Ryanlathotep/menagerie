@@ -560,6 +560,55 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   // Cancel auto-walk on unmount.
   useEffect(() => () => cancelAutoWalk(), [cancelAutoWalk]);
 
+  // ─── Auto-Mine loop ─────────────────────────────────────────────────────
+  // Repeatedly steps the player into an adjacent rock tile to harvest it,
+  // halting on enemy sighting, when the tile is no longer a rock, or when
+  // the player moves out of range.
+  const autoMineTargetRef = useRef<Position | null>(null);
+  const autoMineTimerRef = useRef<number | null>(null);
+  const cancelAutoMine = useCallback((reason?: string) => {
+    if (autoMineTimerRef.current !== null) {
+      window.clearInterval(autoMineTimerRef.current);
+      autoMineTimerRef.current = null;
+    }
+    if (autoMineTargetRef.current && reason) addLog(reason, 'info');
+    autoMineTargetRef.current = null;
+  }, [addLog]);
+
+  const startAutoMine = useCallback((targetX: number, targetY: number) => {
+    cancelAutoWalk();
+    cancelAutoMine();
+    autoMineTargetRef.current = { x: targetX, y: targetY };
+    const stepDelay = Math.max(120, settings.autoRunSpeed || 100);
+    autoMineTimerRef.current = window.setInterval(() => {
+      const target = autoMineTargetRef.current;
+      const ow = overworldRef.current;
+      if (!target || !ow) { cancelAutoMine(); return; }
+      // Halt on visible enemies — same rule as auto-walk.
+      const enemiesNearby = getVisibleOverworldEnemies(ow, 6);
+      if (enemiesNearby.length > 0) {
+        cancelAutoMine('⚠️ Auto-Mine stopped — enemy spotted!');
+        return;
+      }
+      const t = getOverworldTile(ow, target.x, target.y);
+      if (!t || t.type !== 'rock') {
+        cancelAutoMine('⛏️ Auto-Mine finished — rock exhausted.');
+        return;
+      }
+      const dx = target.x - ow.playerPosition.x;
+      const dy = target.y - ow.playerPosition.y;
+      if (Math.abs(dx) + Math.abs(dy) !== 1) {
+        cancelAutoMine('⛏️ Auto-Mine stopped — moved out of range.');
+        return;
+      }
+      handleMoveRef.current(dx, dy);
+    }, stepDelay);
+  }, [cancelAutoMine, cancelAutoWalk, settings.autoRunSpeed]);
+
+  useEffect(() => () => cancelAutoMine(), [cancelAutoMine]);
+
+
+
   // ─── Attack targeting ───
   const handleUseMoveOnMap = useCallback((move: Move | EvolvedMove) => {
     if (!state.run || !monster) return;

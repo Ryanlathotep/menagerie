@@ -158,6 +158,22 @@ export function RecipesEditor() {
               )}
             </div>
 
+            <CopyFromPicker
+              sources={CRAFTING_RECIPES.map((r) => ({ id: r.id, name: `${r.icon} ${r.name}` }))}
+              excludeId={selectedRecipe.id}
+              onPick={(sourceId) => {
+                const src = CRAFTING_RECIPES.find((r) => r.id === sourceId);
+                if (!src) return;
+                const cloned = JSON.parse(JSON.stringify(src)) as CraftingRecipe;
+                setEditedRecipe({
+                  ...cloned,
+                  id: selectedRecipe.id,
+                  name: selectedRecipe.name,
+                });
+              }}
+              label={`Copy fields into "${selectedRecipe.name}" from`}
+            />
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Name</Label>

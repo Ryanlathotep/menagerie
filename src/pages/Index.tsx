@@ -2467,24 +2467,75 @@ function DungeonView({
       else if (oldTile.stairsBeneath === 'down') { oldTile.type = 'stairs'; oldTile.stairsBeneath = undefined; }
       else if (oldTile.stairsBeneath === 'up') { oldTile.type = 'stairs_up'; oldTile.stairsBeneath = undefined; }
       else oldTile.type = 'floor';
+
+      // ── Path traversal effects (traps fire, plants harvest) ──
+      let pathDamage = 0;
+      const harvested: string[] = [];
+      const harvestKinds = new Set(config.harvestsResources ?? []);
+      const path = getPathTiles(oldP, { x, y });
+      // Walk intermediate tiles (skip origin & destination — destination handled below).
+      for (let i = 1; i < path.length - 1; i++) {
+        const pt = newTiles[path[i].y]?.[path[i].x];
+        if (!pt) continue;
+        if (config.triggersTrapsOnPath && pt.type === 'trap' && !pt.triggered) {
+          const dmg = pt.trapType === 'spike' ? 10 + Math.floor((dungeon.floor ?? 1) * 2) : 0;
+          pathDamage += dmg;
+          pt.triggered = true;
+          addLog(`💥 Trap triggered on path! (-${dmg} HP)`, 'damage');
+        }
+        if (harvestKinds.has('plant') && pt.type === 'plant' && !pt.harvested && pt.plantType) {
+          pt.harvested = true;
+          harvested.push(pt.plantType);
+        }
+        if (harvestKinds.has('trap') && pt.type === 'trap' && !pt.triggered) {
+          pt.triggered = true;
+          harvested.push('trap');
+        }
+        if (harvestKinds.has('terrain') && pt.type === 'terrain' && pt.terrainType) {
+          harvested.push(pt.terrainType);
+          pt.terrainType = undefined;
+          pt.type = 'floor';
+        }
+      }
+
       // Place player on destination (keep underlying type metadata if any).
       const destTile = newTiles[y][x];
+      // Destination trap auto-triggers unless explicitly passed through.
+      if (destTile.type === 'trap' && !destTile.triggered && !config.passThroughTraps) {
+        const dmg = destTile.trapType === 'spike' ? 10 + Math.floor((dungeon.floor ?? 1) * 2) : 0;
+        pathDamage += dmg;
+        destTile.triggered = true;
+        addLog(`💥 Landed on a trap! (-${dmg} HP)`, 'damage');
+      }
+      // Harvest plant on landing if configured.
+      if (harvestKinds.has('plant') && destTile.type === 'plant' && !destTile.harvested && destTile.plantType) {
+        destTile.harvested = true;
+        harvested.push(destTile.plantType);
+      }
       if (destTile.type === 'stairs') destTile.stairsBeneath = 'down';
       else if (destTile.type === 'stairs_up') destTile.stairsBeneath = 'up';
       destTile.type = 'player';
       const newDungeon = { ...dungeon, tiles: newTiles, playerPosition: { x, y } };
       dispatch({ type: 'SET_DUNGEON', dungeon: newDungeon });
+      const newHp = Math.max(0, (monster.stats.currentHp ?? monster.stats.hp) - pathDamage);
       dispatch({
         type: 'UPDATE_PLAYER_MONSTER',
         monster: {
           ...monster,
-          stats: { ...monster.stats, currentStamina: curStam - staminaCost },
+          stats: { ...monster.stats, currentStamina: curStam - staminaCost, currentHp: newHp },
         },
       });
+      if (harvested.length > 0) {
+        for (const matId of harvested) {
+          dispatch({ type: 'ADD_MATERIAL', materialId: matId, quantity: 1 });
+        }
+        addLog(`🌿 Harvested along path: ${harvested.join(', ')}`, 'system');
+      }
       addLog(`🌀 ${targetingMove.name}! Moved to (${x}, ${y}).`, 'system');
       setTargetingMove(null);
       setTargetingTiles([]);
       setAffectedTiles([]);
+
 
       // ── Combo chaining: if this movement was Phase 1 of a move_then_attack
       // combo, re-enter targeting with the attack phase from the new position.

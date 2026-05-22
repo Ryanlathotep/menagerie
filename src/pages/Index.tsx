@@ -1018,7 +1018,7 @@ function DungeonView({
   // Dungeon build mode (per-floor buildings persisted via snapshots)
   const [dungeonBuildPanelOpen, setDungeonBuildPanelOpen] = useState(false);
   const [dungeonBuildMode, setDungeonBuildMode] = useState(false);
-  const [selectedDungeonBuildType, setSelectedDungeonBuildType] = useState<import('@/game/buildings').PlayerBuildingType | null>(null);
+  const [selectedDungeonBuildType, setSelectedDungeonBuildType] = useState<PlayerBuildingType | null>(null);
   
   // Respawn state - tracks steps and threshold for step-based spawning
   const [stepsSinceLastSpawn, setStepsSinceLastSpawn] = useState(0);

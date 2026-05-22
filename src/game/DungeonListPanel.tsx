@@ -157,13 +157,25 @@ function DungeonRow({ d, onLaunch, onQuickStart, quickStartPartySize }: {
   );
 }
 
-function Section({ title, items, onLaunch }: { title: string; items: DungeonEntrance[]; onLaunch: (e: DungeonEntrance) => void }) {
+function Section({ title, items, onLaunch, onQuickStart, quickStartPartySize }: {
+  title: string;
+  items: DungeonEntrance[];
+  onLaunch: (e: DungeonEntrance) => void;
+  onQuickStart?: (e: DungeonEntrance) => void;
+  quickStartPartySize?: number;
+}) {
   if (items.length === 0) return null;
   return (
     <div className="space-y-2">
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground/80 px-1">{title}</div>
       {items.map(d => (
-        <DungeonRow key={d.id} d={d} onLaunch={onLaunch} />
+        <DungeonRow
+          key={d.id}
+          d={d}
+          onLaunch={onLaunch}
+          onQuickStart={onQuickStart}
+          quickStartPartySize={quickStartPartySize}
+        />
       ))}
     </div>
   );

@@ -59,19 +59,23 @@ export function useCloudAutosave(saveData: SaveData, opts: Options = {}) {
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') flush('visibility');
     };
+    const onBeforeUnload = () => {
+      void flush('visibility');
+    };
     const onMilestone = () => {
       // Immediate flush on level-up / equipment change. Cancel pending debounce.
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       flush('milestone');
     };
     document.addEventListener('visibilitychange', onVisibility);
-    window.addEventListener('beforeunload', () => flush('visibility'));
+    window.addEventListener('beforeunload', onBeforeUnload);
     window.addEventListener('cloud-save-request', onMilestone);
 
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       clearInterval(intervalId);
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('beforeunload', onBeforeUnload);
       window.removeEventListener('cloud-save-request', onMilestone);
     };
   }, [saveData, isAuthenticated, saveToCloud, debounceMs, intervalMs]);

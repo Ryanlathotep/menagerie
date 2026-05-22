@@ -21,6 +21,7 @@ import { ElementType, ClassType } from './types';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { BuildingTooltipContent } from './BuildingTooltip';
 import { OverworldTooltipContent } from './OverworldTooltip';
+import { isDowsingEffective, onDowsingChange, DOWSING_HIGHLIGHT_COUNT } from './dowsingRod';
 
 interface OverworldRendererProps {
   overworld: OverworldState;

@@ -211,8 +211,8 @@ export function calculateExpectedDamage(
   }
   
   // Apply element and class multipliers
-  const elementMult = move.element ? getElementMultiplier(move.element, defender.element) : 1.0;
-  const classMult = move.classBonus ? getClassMultiplier(move.classBonus, defender.class) : 1.0;
+  const elementMult = (() => { const e = getMoveElement(move, attacker); return e ? getElementMultiplier(e, defender.element) : 1.0; })() : 1.0;
+  const classMult = (() => { const c = getMoveClass(move, attacker); return c ? getClassMultiplier(c, defender.class) : 1.0; })() : 1.0;
   
   return Math.floor(damageAfterDefense * elementMult * classMult);
 }
@@ -227,8 +227,8 @@ export function getEffectiveness(move: Move, attacker: Monster, defender: Monste
   class: 'super' | 'normal' | 'weak';
   overall: 'super-effective' | 'effective' | 'normal' | 'weak';
 } {
-  const elementMult = move.element ? getElementMultiplier(move.element, defender.element) : 1.0;
-  const classMult = move.classBonus ? getClassMultiplier(move.classBonus, defender.class) : 1.0;
+  const elementMult = (() => { const e = getMoveElement(move, attacker); return e ? getElementMultiplier(e, defender.element) : 1.0; })() : 1.0;
+  const classMult = (() => { const c = getMoveClass(move, attacker); return c ? getClassMultiplier(c, defender.class) : 1.0; })() : 1.0;
 
   const getLevel = (mult: number): 'super' | 'normal' | 'weak' => {
     if (mult > 1.1) return 'super';
@@ -313,8 +313,8 @@ export function executeCombat(
   // Calculate damage with passive modifiers and terrain bonus
   const damage = calculateExpectedDamage(move, attacker, defender, isFirstHitThisTurn, [], attackerTerrain);
   const effectiveness = getEffectiveness(move, attacker, defender);
-  const elementMult = move.element ? getElementMultiplier(move.element, defender.element) : 1.0;
-  const classMult = move.classBonus ? getClassMultiplier(move.classBonus, defender.class) : 1.0;
+  const elementMult = (() => { const e = getMoveElement(move, attacker); return e ? getElementMultiplier(e, defender.element) : 1.0; })() : 1.0;
+  const classMult = (() => { const c = getMoveClass(move, attacker); return c ? getClassMultiplier(c, defender.class) : 1.0; })() : 1.0;
   
   // Critical hit chance (10% base, +25% for Goblin's Cunning)
   let critChance = 10;

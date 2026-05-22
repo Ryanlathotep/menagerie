@@ -115,9 +115,17 @@ export function MovesEditor() {
     return (overrides.find((entry) => entry.data_type === 'moves' && entry.data_key === selected.move.id)?.data_value as Partial<Move>) ?? null;
   }, [overrides, selected]);
 
+  // Only re-seed editedMove when the SELECTION changes, not on every overrides
+  // refetch. Refetches (which happen after each save) were wiping in-progress
+  // edits and causing empty `{}` payloads on the next Save click.
+  const loadedForIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!selected) return;
-    // Merge: built-in base + override on top. For customs the override IS the move.
+    if (!selected) {
+      loadedForIdRef.current = null;
+      return;
+    }
+    if (loadedForIdRef.current === selected.move.id) return;
+    loadedForIdRef.current = selected.move.id;
     setEditedMove(selectedOverride ? { ...selected.move, ...selectedOverride } : { ...selected.move });
   }, [selected, selectedOverride]);
 
@@ -144,6 +152,7 @@ export function MovesEditor() {
     setSingleMoveOverride(id, draft); // optimistic local
     saveOverride('moves', id, draft as unknown as Record<string, unknown>).then((ok) => {
       if (ok) {
+        loadedForIdRef.current = id; // we've already seeded editedMove below
         setSelectedId(id);
         setEditedMove(draft);
       }
@@ -152,14 +161,21 @@ export function MovesEditor() {
 
   const handleSave = async () => {
     if (!selected) return;
-    const payload = { ...editedMove } as Move;
-    // Preserve `custom: true` for admin-created moves so the boot loader keeps
-    // routing them to the custom registry.
-    if (selected.isCustom) payload.custom = true;
-    const ok = await saveOverride('moves', selected.move.id, payload as unknown as Record<string, unknown>);
+    // Guard against saving an empty payload (e.g. if state was wiped mid-edit).
+    // Always start from the currently-selected move so required fields persist.
+    const base = selected.move as Move;
+    const merged: Move = { ...base, ...editedMove, id: base.id } as Move;
+    if (selected.isCustom) merged.custom = true;
+    // Refuse obviously broken saves rather than overwriting with junk.
+    if (!merged.name || !merged.type) {
+      toast.error('Move is missing required fields');
+      return;
+    }
+    const ok = await saveOverride('moves', base.id, merged as unknown as Record<string, unknown>);
     if (ok) {
-      setSingleMoveOverride(selected.move.id, payload);
-      toast.success(`Saved ${payload.name}`);
+      setSingleMoveOverride(base.id, merged);
+      setEditedMove(merged);
+      toast.success(`Saved ${merged.name}`);
     }
   };
 

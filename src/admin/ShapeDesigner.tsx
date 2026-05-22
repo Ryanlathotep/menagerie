@@ -880,11 +880,10 @@ export function ShapeDesigner() {
               );
             })()}
 
-            {(
-              <p className="text-[10px] text-muted-foreground text-center">
-                Cell letters mark which tier(s) include that offset: <b>L</b>esser · <b>M</b>inor · <b>B</b>ase · <b>G</b>reater · <b>O</b>mega.
-              </p>
-            )}
+            <p className="text-[10px] text-muted-foreground text-center">
+              Cell letters mark which tier(s) include that offset: <b>L</b>esser · <b>M</b>inor · <b>B</b>ase · <b>G</b>reater · <b>O</b>mega.
+            </p>
+
 
 
             <div className="flex gap-2 pt-2">

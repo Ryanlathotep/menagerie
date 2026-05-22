@@ -17,6 +17,8 @@ import { MonsterSprite } from './sprites';
 import { EquippedSlotDisplay, DraggableEquipmentItem, DragData } from './DraggableEquipmentItem';
 import { EquipmentSortControls } from './EquipmentSortControls';
 import { sortEquipment, autoEquip, SortConfig } from './equipmentUtils';
+import { useSettings } from './Settings';
+
 import { SetBonusDisplay, SetBonusSummary } from './SetBonusDisplay';
 import { toast } from '@/hooks/use-toast';
 

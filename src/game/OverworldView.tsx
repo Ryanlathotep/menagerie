@@ -2325,6 +2325,76 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         title = `Tile (${tile.type})`;
       }
 
+      // ── Universal: Drop / Remove / Rename waypoint ─────────────────────
+      // Dungeon-entrance tiles already have their own pin toggle above; skip
+      // those to avoid duplicating the action. Allow on every other explored
+      // tile (including water/cliff/etc) — players use these to mark places
+      // they want to find again.
+      if (tile && tile.explored && tile.type !== 'dungeon_entrance') {
+        const wps = overworld.waypoints || [];
+        const existingIdx = wps.findIndex(w => w.x === unifiedMenu.x && w.y === unifiedMenu.y);
+        const existing = existingIdx >= 0 ? wps[existingIdx] : null;
+        const isPinned = !!existing;
+        actions.push({
+          id: 'tile-waypoint',
+          label: isPinned
+            ? `Remove waypoint${existing?.name ? ` "${existing.name}"` : ''}`
+            : 'Drop waypoint',
+          icon: isPinned ? FlagOff : Flag,
+          onClick: () => {
+            const { x, y } = unifiedMenu;
+            setOverworld(prev => {
+              const list = prev.waypoints ? [...prev.waypoints] : [];
+              const i = list.findIndex(w => w.x === x && w.y === y);
+              if (i >= 0) list.splice(i, 1);
+              else list.push({ x, y });
+              const next = { ...prev, waypoints: list };
+              saveOverworld(next);
+              return next;
+            });
+            addLog(
+              isPinned
+                ? `📍 Waypoint removed at (${unifiedMenu.x}, ${unifiedMenu.y})`
+                : `📍 Waypoint dropped at (${unifiedMenu.x}, ${unifiedMenu.y})`,
+              'system',
+            );
+            close();
+          },
+        });
+        if (isPinned) {
+          actions.push({
+            id: 'rename-tile-waypoint',
+            label: 'Rename waypoint…',
+            icon: Flag,
+            onClick: () => {
+              const { x, y } = unifiedMenu;
+              const current = existing?.name || '';
+              const next = window.prompt('Waypoint name (leave blank to clear):', current);
+              if (next === null) return;
+              const trimmed = next.trim().slice(0, 32);
+              setOverworld(prev => {
+                const list = (prev.waypoints || []).map(w =>
+                  w.x === x && w.y === y ? { ...w, name: trimmed || undefined } : w,
+                );
+                const updated = { ...prev, waypoints: list };
+                saveOverworld(updated);
+                return updated;
+              });
+              addLog(
+                trimmed
+                  ? `📍 Waypoint renamed to "${trimmed}"`
+                  : `📍 Waypoint name cleared`,
+                'system',
+              );
+              close();
+            },
+          });
+        }
+        if (!footnote) footnote = 'Pinned waypoints show an edge-of-screen arrow.';
+      }
+
+
+
       return (
         <UnifiedTileMenu
           worldX={unifiedMenu.x}

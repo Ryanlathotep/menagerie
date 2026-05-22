@@ -422,12 +422,11 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       let updatedDungeonEntrances = { ...(state.saveData.dungeonEntrances || {}) };
       if (activeDungeonId && updatedDungeonEntrances[activeDungeonId] && state.run.dungeon) {
         const currentFloor = state.run.dungeon.floor;
-        if (currentFloor > (updatedDungeonEntrances[activeDungeonId].deepestFloor || 0)) {
-          updatedDungeonEntrances[activeDungeonId] = {
-            ...updatedDungeonEntrances[activeDungeonId],
-            deepestFloor: currentFloor,
-          };
-        }
+        const base = {
+          ...updatedDungeonEntrances[activeDungeonId],
+          deepestFloor: Math.max(updatedDungeonEntrances[activeDungeonId].deepestFloor || 0, currentFloor),
+        };
+        updatedDungeonEntrances[activeDungeonId] = snapshotDungeonToEntrance(base, state.run.dungeon);
       }
 
       // Respawn the overworld player at the nearest empty tile to the town (0,0)

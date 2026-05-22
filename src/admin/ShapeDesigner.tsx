@@ -245,6 +245,7 @@ export function ShapeDesigner() {
       damagesTraps,
       harvestsResources: [...harvests],
       ...(placesTerrain ? { placesTerrain } : {}),
+      ...(rotateShape ? { rotateToFacing: true } : {}),
     };
   };
 

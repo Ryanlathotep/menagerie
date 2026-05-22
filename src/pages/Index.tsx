@@ -9,7 +9,8 @@ import { expandDungeonIfNeeded, findStairsPosition } from '@/game/dungeonExpansi
 import { PICKAXE_TIERS, hitsToBreak } from '@/game/tools';
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScrollText } from 'lucide-react';
+import { ScrollText, Flag, FlagOff, Swords } from 'lucide-react';
+import { UnifiedTileMenu, UnifiedTileAction } from '@/game/UnifiedTileMenu';
 import { MonsterSprite } from '@/game/sprites';
 import { DungeonRenderer } from '@/game/DungeonRenderer';
 import { GameSidebar } from '@/game/GameSidebar';

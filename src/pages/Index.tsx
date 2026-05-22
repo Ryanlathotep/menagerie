@@ -31,6 +31,7 @@ import { EquipmentItem, MonsterEquipment, createEmptyEquipment } from '@/game/eq
 import { isPickupUpgrade } from '@/game/equipmentUtils';
 
 import { calculateMonsterDrops, getEnemyEquipmentDrops } from '@/game/monsterDrops';
+import { rollEnemyMoveDamage } from '@/game/enemyAI';
 import { EquipmentView } from '@/game/EquipmentView';
 import { PreRunEquipment } from '@/game/PreRunEquipment';
 import { OverworldView } from '@/game/OverworldView';

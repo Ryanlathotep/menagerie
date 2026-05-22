@@ -317,8 +317,6 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         const playerMon = state.run.currentMonster;
         const playerDef = playerMon.stats.defense;
         if (move) {
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
-          const { rollEnemyMoveDamage } = require('@/game/enemyAI') as typeof import('@/game/enemyAI');
           const roll = rollEnemyMoveDamage(enemy, move, playerDef, playerMon.element);
           if (!roll.hit) {
             addLog(`👹 ${enemy.name} uses ${move.name} — but misses!`, 'system');

@@ -25,6 +25,33 @@ const ALL_CLASSES: ClassType[] = ['normal', 'kinetic', 'energy', 'biological', '
 
 type SourcedMove = { move: Move; source: string; sourceId: string; isCustom: boolean };
 
+type NumericFieldKey = 'power' | 'accuracy' | 'staminaCost' | 'speedMod' | 'aoeRadius' | 'unlockLevel';
+
+type NumericFieldStats = {
+  min: number;
+  max: number;
+  avg: number;
+};
+
+function computeTrimmedStats(values: number[]): NumericFieldStats {
+  const clean = values.filter((value) => Number.isFinite(value)).sort((a, b) => a - b);
+  if (clean.length === 0) return { min: 0, max: 0, avg: 0 };
+
+  const trim = Math.floor(clean.length * 0.1);
+  const trimmed = trim * 2 < clean.length ? clean.slice(trim, clean.length - trim) : clean;
+  const avg = Math.round(trimmed.reduce((sum, value) => sum + value, 0) / trimmed.length);
+
+  return {
+    min: trimmed[0],
+    max: trimmed[trimmed.length - 1],
+    avg,
+  };
+}
+
+function formatNumericHint(stats: NumericFieldStats) {
+  return `Typical ${stats.min}–${stats.max} • avg ${stats.avg}`;
+}
+
 export function MovesEditor() {
   const { overrides, saveOverride, deleteOverride, getOverride, loading } = useGameDataOverrides('moves');
   const [search, setSearch] = useState('');
@@ -83,12 +110,16 @@ export function MovesEditor() {
 
   const selected = useMemo(() => allMoves.find((m) => m.move.id === selectedId) ?? null, [allMoves, selectedId]);
 
+  const selectedOverride = useMemo(() => {
+    if (!selected) return null;
+    return (overrides.find((entry) => entry.data_type === 'moves' && entry.data_key === selected.move.id)?.data_value as Partial<Move>) ?? null;
+  }, [overrides, selected]);
+
   useEffect(() => {
     if (!selected) return;
-    const ovr = getOverride('moves', selected.move.id) as Partial<Move> | null;
     // Merge: built-in base + override on top. For customs the override IS the move.
-    setEditedMove(ovr ? { ...selected.move, ...ovr } : { ...selected.move });
-  }, [selected, getOverride]);
+    setEditedMove(selectedOverride ? { ...selected.move, ...selectedOverride } : { ...selected.move });
+  }, [selected, selectedOverride]);
 
   const handleSelect = (id: string) => setSelectedId(id);
 
@@ -145,13 +176,21 @@ export function MovesEditor() {
 
   const hasOverride = selected ? !!getOverride('moves', selected.move.id) : false;
   const ratingInfo = useMemo(() => rateAgainst(editedMove, ratingPool), [editedMove, ratingPool]);
+  const numericStats = useMemo<Record<NumericFieldKey, NumericFieldStats>>(() => ({
+    power: computeTrimmedStats(ratingPool.map((move) => move.power ?? 0)),
+    accuracy: computeTrimmedStats(ratingPool.map((move) => move.accuracy ?? 100)),
+    staminaCost: computeTrimmedStats(ratingPool.map((move) => move.staminaCost ?? 0)),
+    speedMod: computeTrimmedStats(ratingPool.map((move) => move.speedMod ?? 0)),
+    aoeRadius: computeTrimmedStats(ratingPool.map((move) => move.aoeRadius ?? 0)),
+    unlockLevel: computeTrimmedStats(ratingPool.map((move) => move.unlockLevel ?? 1)),
+  }), [ratingPool]);
 
   if (loading) return <div className="text-muted-foreground p-4">Loading moves...</div>;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* ============ Move List ============ */}
-      <Card className="p-4">
+      <Card className="order-2 lg:order-1 p-4">
         <div className="flex items-center gap-2 mb-3">
           <Search className="w-4 h-4 text-muted-foreground" />
           <Input
@@ -165,7 +204,7 @@ export function MovesEditor() {
           </Button>
         </div>
 
-        <ScrollArea className="h-[480px]">
+          <ScrollArea className="h-[260px] lg:h-[480px]">
           <div className="space-y-1">
             {filteredMoves.map(({ move, source, sourceId, isCustom }) => {
               const hasOvr = !!getOverride('moves', move.id);
@@ -205,7 +244,7 @@ export function MovesEditor() {
       </Card>
 
       {/* ============ Move Editor ============ */}
-      <Card className="p-4">
+      <Card className="order-1 lg:order-2 p-4">
         {selected ? (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -270,26 +309,34 @@ export function MovesEditor() {
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <NumberField label="Power" value={editedMove.power ?? 0}
-                onChange={(v) => setEditedMove({ ...editedMove, power: v })} />
-              <NumberField label="Accuracy" value={editedMove.accuracy ?? 100}
-                onChange={(v) => setEditedMove({ ...editedMove, accuracy: v })} />
-              <NumberField label="Stamina Cost" value={editedMove.staminaCost ?? 0}
-                onChange={(v) => setEditedMove({ ...editedMove, staminaCost: v })} />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+               <NumberField label="Power" value={editedMove.power ?? 0}
+                 hint={formatNumericHint(numericStats.power)}
+                 onChange={(v) => setEditedMove({ ...editedMove, power: v })} />
+               <NumberField label="Accuracy" value={editedMove.accuracy ?? 100}
+                 hint={formatNumericHint(numericStats.accuracy)}
+                 onChange={(v) => setEditedMove({ ...editedMove, accuracy: v })} />
+               <NumberField label="Stamina Cost" value={editedMove.staminaCost ?? 0}
+                 hint={formatNumericHint(numericStats.staminaCost)}
+                 onChange={(v) => setEditedMove({ ...editedMove, staminaCost: v })} />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <NumberField label="Speed Mod" value={editedMove.speedMod ?? 0}
-                onChange={(v) => setEditedMove({ ...editedMove, speedMod: v })} />
-              <NumberField label="AoE Radius" value={editedMove.aoeRadius ?? 0}
-                onChange={(v) => setEditedMove({ ...editedMove, aoeRadius: v })} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+               <NumberField label="Speed Mod" value={editedMove.speedMod ?? 0}
+                 hint={formatNumericHint(numericStats.speedMod)}
+                 onChange={(v) => setEditedMove({ ...editedMove, speedMod: v })} />
+               <NumberField label="AoE Radius" value={editedMove.aoeRadius ?? 0}
+                 hint={formatNumericHint(numericStats.aoeRadius)}
+                 onChange={(v) => setEditedMove({ ...editedMove, aoeRadius: v })} />
             </div>
 
             {/* ----- Learned-at-level slider ----- */}
             <div>
               <div className="flex justify-between mb-1">
-                <Label>Learned at Level</Label>
+                <div>
+                  <Label>Learned at Level</Label>
+                  <div className="text-[11px] text-muted-foreground">{formatNumericHint(numericStats.unlockLevel)}</div>
+                </div>
                 <span className="text-sm font-mono">{editedMove.unlockLevel ?? 1}</span>
               </div>
               <Slider

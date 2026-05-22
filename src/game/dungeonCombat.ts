@@ -637,9 +637,7 @@ export function calculateEnemyAction(
   height: number,
   ctx?: EnemyAIContext,
 ): EnemyAction {
-  // Lazy require to avoid circular import surface
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const ai = require('./enemyAI') as typeof import('./enemyAI');
+  const ai = enemyAI;
 
   const distance = Math.abs(playerPos.x - enemyPos.x) + Math.abs(playerPos.y - enemyPos.y);
   const archetype = ai.getEnemyArchetype(enemy);

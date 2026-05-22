@@ -9,7 +9,8 @@ import { expandDungeonIfNeeded, findStairsPosition } from '@/game/dungeonExpansi
 import { PICKAXE_TIERS, hitsToBreak } from '@/game/tools';
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScrollText } from 'lucide-react';
+import { ScrollText, Flag, FlagOff, Swords } from 'lucide-react';
+import { UnifiedTileMenu, UnifiedTileAction } from '@/game/UnifiedTileMenu';
 import { MonsterSprite } from '@/game/sprites';
 import { DungeonRenderer } from '@/game/DungeonRenderer';
 import { GameSidebar } from '@/game/GameSidebar';
@@ -848,6 +849,8 @@ function DungeonView({
   const aoePendingConfirmRef = useRef<{ x: number; y: number; time: number } | null>(null);
   // Right-click an enemy → opens this attack menu
   const [attackMenuTarget, setAttackMenuTarget] = useState<EnemyAttackTarget | null>(null);
+  // Right-click any other tile → opens the unified tile menu (waypoint, etc.)
+  const [dungeonTileMenu, setDungeonTileMenu] = useState<{ x: number; y: number } | null>(null);
   
   // Level up screen queue state - supports multiple level-ups (active + passive party members)
   interface LevelUpEntry {
@@ -3042,30 +3045,10 @@ function DungeonView({
               onTileRightClick={(x, y) => {
                 if (!dungeon || !state.run) return;
                 const tile = dungeon.tiles[y]?.[x];
-                if (tile?.type === 'enemy' && tile.enemyId) {
-                  const enemy = dungeon.enemies.find(e => e.id === tile.enemyId);
-                  if (enemy) {
-                    setAttackMenuTarget({
-                      enemy,
-                      enemyPos: { x, y },
-                      playerPos: dungeon.playerPosition,
-                    });
-                  }
-                  return;
-                }
-                // Right-click any other explored tile → toggle a waypoint pin.
                 if (!tile?.explored) return;
-                const existing = dungeon.compassWaypoints || [];
-                const isPinned = existing.some(p => p.x === x && p.y === y);
-                dispatch({ type: 'TOGGLE_DUNGEON_WAYPOINT', x, y });
-                if (isPinned) {
-                  addLog(`📍 Waypoint removed`, 'system');
-                } else {
-                  // Show coordinates relative to entry stairs (matches the HUD).
-                  const ex = dungeon.entryPosition?.x ?? 0;
-                  const ey = dungeon.entryPosition?.y ?? 0;
-                  addLog(`📍 Waypoint pinned at (${x - ex}, ${y - ey})`, 'system');
-                }
+                // Open the unified tile menu — waypoint is now an action inside it
+                // rather than firing immediately on right-click.
+                setDungeonTileMenu({ x, y });
               }}
               targetingMode={!!targetingMove}
               targetingTiles={targetingTiles}
@@ -3138,7 +3121,77 @@ function DungeonView({
                 }}
               />
             )}
+
+            {/* Unified tile menu (right-click / long-press on any explored tile) */}
+            {dungeonTileMenu && dungeon && state.run && (() => {
+              const { x, y } = dungeonTileMenu;
+              const tile = dungeon.tiles[y]?.[x];
+              const close = () => setDungeonTileMenu(null);
+              if (!tile) { close(); return null; }
+              const actions: UnifiedTileAction[] = [];
+              let title = '🟫 Tile';
+              let subtitle: string | undefined;
+
+              // Attack action if the tile holds an enemy
+              if (tile.type === 'enemy' && tile.enemyId) {
+                const enemy = dungeon.enemies.find(e => e.id === tile.enemyId);
+                if (enemy) {
+                  title = `⚔ ${enemy.name}`;
+                  subtitle = `Lv ${enemy.level} · ${enemy.element}`;
+                  actions.push({
+                    id: 'attack', label: 'Pick a move to attack',
+                    icon: Swords, variant: 'default',
+                    onClick: () => {
+                      close();
+                      setAttackMenuTarget({
+                        enemy,
+                        enemyPos: { x, y },
+                        playerPos: dungeon.playerPosition,
+                      });
+                    },
+                  });
+                }
+              } else {
+                title = `📍 Tile`;
+                const ex = dungeon.entryPosition?.x ?? 0;
+                const ey = dungeon.entryPosition?.y ?? 0;
+                subtitle = `Relative (${x - ex}, ${y - ey})`;
+              }
+
+              // Waypoint pin/unpin on any explored tile
+              const existing = dungeon.compassWaypoints || [];
+              const isPinned = existing.some(p => p.x === x && p.y === y);
+              actions.push({
+                id: 'waypoint',
+                label: isPinned ? 'Remove waypoint' : 'Drop waypoint',
+                icon: isPinned ? FlagOff : Flag,
+                onClick: () => {
+                  dispatch({ type: 'TOGGLE_DUNGEON_WAYPOINT', x, y });
+                  if (isPinned) {
+                    addLog(`📍 Waypoint removed`, 'system');
+                  } else {
+                    const ex = dungeon.entryPosition?.x ?? 0;
+                    const ey = dungeon.entryPosition?.y ?? 0;
+                    addLog(`📍 Waypoint pinned at (${x - ex}, ${y - ey})`, 'system');
+                  }
+                  close();
+                },
+              });
+
+              return (
+                <UnifiedTileMenu
+                  worldX={x}
+                  worldY={y}
+                  title={title}
+                  subtitle={subtitle}
+                  actions={actions}
+                  footnote="Pinned waypoints show an edge-of-screen arrow."
+                  onClose={close}
+                />
+              );
+            })()}
           </div>
+
 
           {/* Bottom bar with controls and game log - resizable */}
           <div className="bg-card border-t-2 border-primary/20 z-40 flex flex-col flex-shrink-0" style={{ height: `${controlsBarHeight}px` }}>

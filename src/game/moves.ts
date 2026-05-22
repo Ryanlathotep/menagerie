@@ -62,6 +62,8 @@ export interface CustomShape {
   harvestsResources?: HarvestableKind[];
   /** Terrain rune to place on empty/air tiles inside shape. */
   placesTerrain?: import('./terrain').TerrainType;
+  /** If true, rotate the offsets 0/90/180/270° to match the cardinal direction the player aimed. */
+  rotateToFacing?: boolean;
 }
 
 /** Designer-defined movement pattern. Each offset is a legal destination
@@ -70,6 +72,8 @@ export interface MovementPattern {
   offsets: { dx: number; dy: number }[];
   /** If true, ignores walls / units between caster and destination (teleport). */
   blink?: boolean;
+  /** If true, rotate the offsets to match the cardinal direction the player aimed. */
+  rotateToFacing?: boolean;
 }
 
 export interface Move {
@@ -113,6 +117,10 @@ export interface Move {
   inheritMonsterClass?: boolean;
   /** If true, the move's AoE triggers traps it overlaps and applies rune backlash to non-favored units it covers. */
   triggersTrapsOnAoe?: boolean;
+  /** For combo moves that define BOTH `movement` and an attack (`customShape` / `power`),
+   *  controls whether the relocation happens before or after the attack resolves.
+   *  Default: 'move_then_attack'. */
+  comboOrder?: 'move_then_attack' | 'attack_then_move';
   /** Per-tier overrides: stat tweaks and per-tier custom shapes that replace
    *  the auto-scaled tier multipliers when present. Tier keys are
    *  'lesser' | 'minor' | 'base' | 'greater' | 'omega'. */

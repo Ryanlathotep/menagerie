@@ -20,7 +20,33 @@ export interface AttackConfig {
   customOrigin?: 'self' | 'target';
   /** For 'movement' pattern: blink ignores wall/unit blockers between caster and destination. */
   blink?: boolean;
+  /** If true, offsets rotate to the cardinal direction from origin → target. */
+  rotateToFacing?: boolean;
 }
+
+/** Cardinal facing derived from origin → target vector. North = default (no rotation). */
+export type Facing = 'N' | 'E' | 'S' | 'W';
+
+export function facingFrom(origin: Position, target: Position): Facing {
+  const dx = target.x - origin.x;
+  const dy = target.y - origin.y;
+  if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? 'E' : 'W';
+  return dy >= 0 ? 'S' : 'N';
+}
+
+/** Rotate offsets 0/90/180/270° clockwise around the anchor. North = identity. */
+export function rotateOffsets(
+  offsets: { dx: number; dy: number }[],
+  facing: Facing,
+): { dx: number; dy: number }[] {
+  switch (facing) {
+    case 'N': return offsets;
+    case 'E': return offsets.map(o => ({ dx: -o.dy, dy:  o.dx }));
+    case 'S': return offsets.map(o => ({ dx: -o.dx, dy: -o.dy }));
+    case 'W': return offsets.map(o => ({ dx:  o.dy, dy: -o.dx }));
+  }
+}
+
 
 // Check line of sight between two positions (returns true if unblocked)
 export function hasLineOfSight(
@@ -121,6 +147,7 @@ export function getAttackConfig(move: Move | EvolvedMove): AttackConfig {
       customOffsets: movement.offsets,
       blink: !!movement.blink,
       wallPenetrate: !!movement.blink,
+      rotateToFacing: !!movement.rotateToFacing,
     };
   }
 
@@ -135,8 +162,10 @@ export function getAttackConfig(move: Move | EvolvedMove): AttackConfig {
       customOffsets: customShape.offsets,
       customOrigin: customShape.origin,
       wallPenetrate: !!customShape.wallPenetrate,
+      rotateToFacing: !!customShape.rotateToFacing,
     };
   }
+
 
   // Self-targeting for buffs and heals (unless they target enemies)
   if (move.type === 'heal') {
@@ -368,7 +397,13 @@ export function getAffectedTiles(
       if (config.customOrigin !== 'self' && tiles && !config.wallPenetrate) {
         if (!hasLineOfSight(origin, target, tiles, dungeonWidth, dungeonHeight, false)) break;
       }
-      for (const o of config.customOffsets ?? []) {
+      // Auto-rotate the shape to the cardinal direction the player aimed
+      // (origin → target) when the designer opted in.
+      const rawOffsets = config.customOffsets ?? [];
+      const offsets = (config.rotateToFacing && (target.x !== origin.x || target.y !== origin.y))
+        ? rotateOffsets(rawOffsets, facingFrom(origin, target))
+        : rawOffsets;
+      for (const o of offsets) {
         const x = anchor.x + o.dx;
         const y = anchor.y + o.dy;
         if (x < 0 || x >= dungeonWidth || y < 0 || y >= dungeonHeight) continue;
@@ -380,6 +415,7 @@ export function getAffectedTiles(
       }
       break;
     }
+
 
     case 'movement': {
       // Movement skill: the only "affected" tile is the chosen destination.

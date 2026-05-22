@@ -90,10 +90,13 @@ export function ShapeDesigner() {
   const [damagesTraps, setDamagesTraps] = useState(false);
   const [harvests, setHarvests] = useState<Set<HarvestableKind>>(new Set());
   const [placesTerrain, setPlacesTerrain] = useState<TerrainType | ''>('');
+  const [rotateShape, setRotateShape] = useState(false);
   const [tierStats, setTierStats] = useState<TierStats>({});
 
   // Movement state
   const [blink, setBlink] = useState(false);
+  const [rotateMovement, setRotateMovement] = useState(false);
+
 
   const allMoves = useMemo(() => {
     const out: Move[] = [];
@@ -160,6 +163,7 @@ export function ShapeDesigner() {
       setDamagesTraps(shape.damagesTraps ?? false);
       setHarvests(new Set(shape.harvestsResources ?? []));
       setPlacesTerrain(shape.placesTerrain ?? '');
+      setRotateShape(!!shape.rotateToFacing);
     } else {
       setCells(new Set());
       setOriginType(merged.type === 'melee' ? 'self' : 'target_tile');
@@ -172,6 +176,7 @@ export function ShapeDesigner() {
       setDamagesTraps(false);
       setHarvests(new Set());
       setPlacesTerrain('');
+      setRotateShape(false);
     }
   };
 
@@ -183,12 +188,14 @@ export function ShapeDesigner() {
       setMode('movement');
       setCells(new Set(merged.movement.offsets.map((o) => `${o.dx},${o.dy}`)));
       setBlink(!!merged.movement.blink);
+      setRotateMovement(!!merged.movement.rotateToFacing);
       setTier('base');
     } else {
       setMode('shape');
       setTier('base');
       applyTierToUI(merged, 'base');
       setBlink(false);
+      setRotateMovement(false);
     }
   };
 
@@ -238,6 +245,7 @@ export function ShapeDesigner() {
       damagesTraps,
       harvestsResources: [...harvests],
       ...(placesTerrain ? { placesTerrain } : {}),
+      ...(rotateShape ? { rotateToFacing: true } : {}),
     };
   };
 
@@ -252,7 +260,7 @@ export function ShapeDesigner() {
         return { dx, dy };
       });
       if (offsets.length === 0) { toast.error('Select at least one cell.'); return; }
-      patch.movement = { offsets, blink };
+      patch.movement = { offsets, blink, ...(rotateMovement ? { rotateToFacing: true } : {}) };
       patch.type = 'movement';
       delete patch.customShape;
     } else {
@@ -505,6 +513,14 @@ export function ShapeDesigner() {
                     />
                     Units block cells past them
                   </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={rotateShape}
+                      onChange={(e) => setRotateShape(e.target.checked)}
+                    />
+                    Rotate shape to aimed direction (N/E/S/W)
+                  </label>
                 </div>
 
                 {/* Effects */}
@@ -581,6 +597,10 @@ export function ShapeDesigner() {
                 <label className="flex items-center gap-2 text-xs">
                   <input type="checkbox" checked={blink} onChange={(e) => setBlink(e.target.checked)} />
                   Blink (ignore walls / line-of-sight)
+                </label>
+                <label className="flex items-center gap-2 text-xs">
+                  <input type="checkbox" checked={rotateMovement} onChange={(e) => setRotateMovement(e.target.checked)} />
+                  Rotate destinations to aimed direction
                 </label>
               </div>
             )}

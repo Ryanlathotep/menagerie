@@ -220,6 +220,14 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
     return () => mql.removeEventListener('change', update);
   }, []);
 
+  // Dowsing Rod: re-render on toggle + tick every 5s so the buff auto-clears.
+  const [dowsingOn, setDowsingOn] = useState(() => isDowsingEffective());
+  useEffect(() => {
+    const off = onDowsingChange(() => setDowsingOn(isDowsingEffective()));
+    const interval = setInterval(() => setDowsingOn(isDowsingEffective()), 5000);
+    return () => { off(); clearInterval(interval); };
+  }, []);
+
   const scale = zoom / 100;
   const tileSize = Math.floor(TILE_SIZE * scale);
 

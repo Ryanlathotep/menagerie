@@ -221,11 +221,11 @@ export function DungeonListPanel({ dungeonEntrances, onLaunch, onQuickStart, qui
 
       <ScrollArea className="h-[360px] pr-2">
         <div className="space-y-4">
-          <Section title="Home" items={home} onLaunch={safeLaunch} />
-          <Section title="Elemental Towers" items={elementTowers} onLaunch={safeLaunch} />
-          <Section title="Class Towers" items={classTowers} onLaunch={safeLaunch} />
-          <Section title="Species Towers" items={speciesTowers} onLaunch={safeLaunch} />
-          <Section title="Overworld Dungeons" items={overworldDungeons} onLaunch={safeLaunch} />
+          <Section title="Home" items={home} onLaunch={safeLaunch} onQuickStart={safeQuickStart} quickStartPartySize={quickStartPartySize} />
+          <Section title="Elemental Towers" items={elementTowers} onLaunch={safeLaunch} onQuickStart={safeQuickStart} quickStartPartySize={quickStartPartySize} />
+          <Section title="Class Towers" items={classTowers} onLaunch={safeLaunch} onQuickStart={safeQuickStart} quickStartPartySize={quickStartPartySize} />
+          <Section title="Species Towers" items={speciesTowers} onLaunch={safeLaunch} onQuickStart={safeQuickStart} quickStartPartySize={quickStartPartySize} />
+          <Section title="Overworld Dungeons" items={overworldDungeons} onLaunch={safeLaunch} onQuickStart={safeQuickStart} quickStartPartySize={quickStartPartySize} />
 
           {undiscoveredCount > 0 && (
             <div className="rounded-md border border-dashed border-muted-foreground/30 p-3 text-center text-xs text-muted-foreground">

@@ -188,6 +188,7 @@ export function ShapeDesigner() {
       setMode('movement');
       setCells(new Set(merged.movement.offsets.map((o) => `${o.dx},${o.dy}`)));
       setBlink(!!merged.movement.blink);
+      setRotateMovement(!!merged.movement.rotateToFacing);
       setTier('base');
     } else {
       setMode('shape');

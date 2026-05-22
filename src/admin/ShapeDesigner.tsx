@@ -491,48 +491,48 @@ export function ShapeDesigner() {
               </Button>
             </div>
 
-            {/* Tier selector (shape mode only) */}
-            {mode === 'shape' && (
-              <div className="space-y-1">
-                <Label className="text-xs uppercase text-muted-foreground">Editing tier</Label>
-                <div className="flex flex-wrap gap-1">
-                  {TIER_KEYS.map((t) => {
-                    const merged: Move = { ...selected, ...((getOverride('moves', selected.id) as Partial<Move>) || {}) };
-                    const has = readTier(merged, t).shape !== undefined ||
-                      (t !== 'base' && merged.tierOverrides?.[t] !== undefined);
-                    return (
-                      <Button
-                        key={t}
-                        size="sm"
-                        variant={tier === t ? 'default' : 'outline'}
-                        onClick={() => switchTier(t)}
-                        className="text-xs h-7 gap-1"
-                      >
-                        {TIER_LABELS[t]}
-                        {has && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
-                      </Button>
-                    );
-                  })}
-                </div>
-                <p className="text-[10px] text-muted-foreground">
-                  Each tier can have its own shape + stat tweaks. Base tier writes to the move itself; higher tiers write to <code>tierOverrides[{tier}]</code>. Switching tiers loads saved data — unsaved edits in the previous tier are discarded.
-                </p>
+            {/* Tier selector (both modes) */}
+            <div className="space-y-1">
+              <Label className="text-xs uppercase text-muted-foreground">Editing tier</Label>
+              <div className="flex flex-wrap gap-1">
+                {TIER_KEYS.map((t) => {
+                  const merged: Move = { ...selected, ...((getOverride('moves', selected.id) as Partial<Move>) || {}) };
+                  const has = mode === 'movement'
+                    ? (readMovementTier(merged, t).movement !== undefined
+                       || (t !== 'base' && merged.tierOverrides?.[t]?.movement !== undefined))
+                    : (readTier(merged, t).shape !== undefined
+                       || (t !== 'base' && merged.tierOverrides?.[t] !== undefined));
+                  return (
+                    <Button
+                      key={t}
+                      size="sm"
+                      variant={tier === t ? 'default' : 'outline'}
+                      onClick={() => switchTier(t)}
+                      className="text-xs h-7 gap-1"
+                    >
+                      {TIER_LABELS[t]}
+                      {has && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                    </Button>
+                  );
+                })}
               </div>
-            )}
+              <p className="text-[10px] text-muted-foreground">
+                Each tier can have its own {mode === 'movement' ? 'movement pattern' : 'shape'} + stat tweaks. Base writes to the move itself; higher tiers write to <code>tierOverrides[{tier}]</code>. Switching tiers discards unsaved edits.
+              </p>
+            </div>
 
-            {/* Per-tier stat overrides (shape mode only) */}
-            {mode === 'shape' && (
-              <div className="grid grid-cols-2 gap-2 border-t border-border pt-2">
-                <TierStatField label="Power" value={tierStats.power} placeholder={String(selected.power)}
-                  onChange={(v) => setTierStats({ ...tierStats, power: v })} />
-                <TierStatField label="Accuracy" value={tierStats.accuracy} placeholder={String(selected.accuracy)}
-                  onChange={(v) => setTierStats({ ...tierStats, accuracy: v })} />
-                <TierStatField label="Stamina" value={tierStats.staminaCost} placeholder={String(selected.staminaCost)}
-                  onChange={(v) => setTierStats({ ...tierStats, staminaCost: v })} />
-                <TierStatField label="Speed Mod" value={tierStats.speedMod} placeholder={String(selected.speedMod)}
-                  onChange={(v) => setTierStats({ ...tierStats, speedMod: v })} />
-              </div>
-            )}
+            {/* Per-tier stat overrides (both modes) */}
+            <div className="grid grid-cols-2 gap-2 border-t border-border pt-2">
+              <TierStatField label="Power" value={tierStats.power} placeholder={String(selected.power)}
+                onChange={(v) => setTierStats({ ...tierStats, power: v })} />
+              <TierStatField label="Accuracy" value={tierStats.accuracy} placeholder={String(selected.accuracy)}
+                onChange={(v) => setTierStats({ ...tierStats, accuracy: v })} />
+              <TierStatField label="Stamina" value={tierStats.staminaCost} placeholder={String(selected.staminaCost)}
+                onChange={(v) => setTierStats({ ...tierStats, staminaCost: v })} />
+              <TierStatField label="Speed Mod" value={tierStats.speedMod} placeholder={String(selected.speedMod)}
+                onChange={(v) => setTierStats({ ...tierStats, speedMod: v })} />
+            </div>
+
 
             {/* Grid size selector */}
             <div className="flex items-center gap-2 border-t border-border pt-2">

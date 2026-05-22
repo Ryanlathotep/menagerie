@@ -495,8 +495,42 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
           );
         })}
       </div>
+      {/* Edge-of-screen arrows for off-screen player waypoints. */}
+      {(overworld.waypoints || []).length > 0 && (
+        <div className="absolute inset-0 pointer-events-none z-30">
+          {(overworld.waypoints || []).map((wp, i) => {
+            const dx = wp.x - px;
+            const dy = wp.y - py;
+            if (dx === 0 && dy === 0) return null;
+            if (Math.abs(dx) <= VIEW_RANGE && Math.abs(dy) <= VIEW_RANGE) return null;
+            const angle = Math.atan2(dy, dx);
+            const dist = Math.abs(dx) + Math.abs(dy);
+            const radius = 42;
+            const left = `calc(50% + ${Math.cos(angle) * radius}%)`;
+            const top = `calc(50% + ${Math.sin(angle) * radius}%)`;
+            return (
+              <div
+                key={i}
+                className="absolute -translate-x-1/2 -translate-y-1/2"
+                style={{ left, top }}
+                title={`${wp.name ? wp.name + ' — ' : 'Waypoint '}(${wp.x}, ${wp.y}) — ${dist} tiles`}
+              >
+                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full border backdrop-blur-sm shadow-md text-[10px] font-medium leading-none text-emerald-300 bg-emerald-500/15 border-emerald-400/60">
+                  <span
+                    className="inline-block text-[12px] leading-none"
+                    style={{ transform: `rotate(${(angle * 180) / Math.PI}deg)` }}
+                  >➤</span>
+                  <span className="text-base leading-none">📍</span>
+                  <span className="tabular-nums opacity-90">{dist}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 });
+
 
 OverworldRenderer.displayName = 'OverworldRenderer';

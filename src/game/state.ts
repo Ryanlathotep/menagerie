@@ -170,6 +170,10 @@ type GameAction =
   | { type: 'SET_DUNGEON'; dungeon: DungeonState }
   | { type: 'UPDATE_DUNGEON'; dungeon: Partial<DungeonState> }
   | { type: 'TOGGLE_DUNGEON_WAYPOINT'; x: number; y: number }
+  | { type: 'RENAME_DUNGEON_WAYPOINT'; x: number; y: number; name: string }
+  | { type: 'REMOVE_DUNGEON_WAYPOINT'; x: number; y: number }
+  | { type: 'CLEAR_DUNGEON_WAYPOINTS' }
+
   | { type: 'DISARM_TRAP'; x: number; y: number; success: boolean }
   | { type: 'START_BATTLE'; enemy: Monster }
   | { type: 'UPDATE_BATTLE'; battle: Partial<BattleState> }

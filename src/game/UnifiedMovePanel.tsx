@@ -552,6 +552,7 @@ function UnifiedMoveCard({
     ranged: 'bg-blue-500/20 text-blue-600',
     status: 'bg-purple-500/20 text-purple-600',
     heal: 'bg-green-500/20 text-green-600',
+    movement: 'bg-sky-500/20 text-sky-600',
   };
   
   const typeIcons: Record<Move['type'], React.ReactNode> = {
@@ -559,6 +560,7 @@ function UnifiedMoveCard({
     ranged: <Target className="w-3 h-3" />,
     status: <Sparkles className="w-3 h-3" />,
     heal: <Heart className="w-3 h-3" />,
+    movement: <Target className="w-3 h-3" />,
   };
   
   const mastery = monster.moveMastery?.[move.id];

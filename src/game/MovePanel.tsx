@@ -250,6 +250,7 @@ function DraggableMoveCard({
     ranged: 'bg-blue-500/20 text-blue-600',
     status: 'bg-purple-500/20 text-purple-600',
     heal: 'bg-green-500/20 text-green-600',
+    movement: 'bg-sky-500/20 text-sky-600',
   };
   
   const attackStat = move.type === 'melee' 

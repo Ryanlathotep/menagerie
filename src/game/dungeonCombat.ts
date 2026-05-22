@@ -5,7 +5,7 @@ import { Move, TargetingPattern } from './moves';
 import { EvolvedMove } from './moveMastery';
 
 // Attack pattern shapes (internal representation)
-export type AttackPattern = 'single' | 'line' | 'cone' | 'cross' | 'area' | 'aura' | 'self';
+export type AttackPattern = 'single' | 'line' | 'cone' | 'cross' | 'area' | 'aura' | 'self' | 'custom' | 'movement';
 
 // Attack range and pattern configuration
 export interface AttackConfig {
@@ -14,6 +14,12 @@ export interface AttackConfig {
   width?: number;           // For cone/area patterns
   piercing?: boolean;       // Hits all enemies in line
   wallPenetrate?: boolean;  // Can pass through walls (very rare)
+  /** Custom-shape offsets relative to origin (used when pattern === 'custom' or 'movement'). */
+  customOffsets?: { dx: number; dy: number }[];
+  /** For 'custom' pattern: whether offsets are anchored to the caster ('self') or target tile ('target'). */
+  customOrigin?: 'self' | 'target';
+  /** For 'movement' pattern: blink ignores wall/unit blockers between caster and destination. */
+  blink?: boolean;
 }
 
 // Check line of sight between two positions (returns true if unblocked)
@@ -103,6 +109,35 @@ export function getAttackConfig(move: Move | EvolvedMove): AttackConfig {
   const piercing = 'piercing' in move ? (move as Move).piercing : false;
   const wallPenetrate = 'wallPenetrate' in move ? (move as Move).wallPenetrate : false;
   
+  const customShape = 'customShape' in move ? (move as Move).customShape : undefined;
+  const movement = 'movement' in move ? (move as Move).movement : undefined;
+
+  // Admin-designed movement skill: caster picks one of the listed offsets as a destination.
+  if (movement && movement.offsets.length > 0) {
+    const maxR = Math.max(...movement.offsets.map(o => Math.max(Math.abs(o.dx), Math.abs(o.dy))));
+    return {
+      pattern: 'movement',
+      range: maxR,
+      customOffsets: movement.offsets,
+      blink: !!movement.blink,
+      wallPenetrate: !!movement.blink,
+    };
+  }
+
+  // Admin-designed AoE shape (origin = self for melee bursts, target for ranged strikes).
+  if (customShape && customShape.offsets.length > 0) {
+    const maxR = Math.max(...customShape.offsets.map(o => Math.max(Math.abs(o.dx), Math.abs(o.dy))));
+    return {
+      pattern: 'custom',
+      // For self-origin, range bounds the shape itself; for target-origin, range bounds
+      // how far the player can place the target tile from themselves.
+      range: customShape.origin === 'self' ? maxR : (customShape.range ?? (move.type === 'melee' ? 1 : 5)),
+      customOffsets: customShape.offsets,
+      customOrigin: customShape.origin,
+      wallPenetrate: !!customShape.wallPenetrate,
+    };
+  }
+
   // Self-targeting for buffs and heals (unless they target enemies)
   if (move.type === 'heal') {
     return { pattern: 'self', range: 0 };
@@ -325,6 +360,32 @@ export function getAffectedTiles(
       }
       break;
     }
+
+    case 'custom': {
+      // Designer-defined shape. Anchor = caster (self) or target tile.
+      const anchor = config.customOrigin === 'self' ? origin : target;
+      // If anchored to target and we can't see it, bail (unless wall-penetrating).
+      if (config.customOrigin !== 'self' && tiles && !config.wallPenetrate) {
+        if (!hasLineOfSight(origin, target, tiles, dungeonWidth, dungeonHeight, false)) break;
+      }
+      for (const o of config.customOffsets ?? []) {
+        const x = anchor.x + o.dx;
+        const y = anchor.y + o.dy;
+        if (x < 0 || x >= dungeonWidth || y < 0 || y >= dungeonHeight) continue;
+        if (tiles && !config.wallPenetrate) {
+          // Walls block propagation outward from the anchor.
+          if (!hasLineOfSight(anchor, { x, y }, tiles, dungeonWidth, dungeonHeight, false)) continue;
+        }
+        affectedTiles.push({ x, y });
+      }
+      break;
+    }
+
+    case 'movement': {
+      // Movement skill: the only "affected" tile is the chosen destination.
+      affectedTiles.push(target);
+      break;
+    }
   }
   
   return affectedTiles;
@@ -346,6 +407,30 @@ export function getValidTargets(
   targetEnemies: boolean = true // true = player attacking enemies, false = enemy attacking player
 ): Position[] {
   const validTiles: Position[] = [];
+
+  // ── Movement skill: caster picks one of the offset destinations (relative to self) ──
+  if (config.pattern === 'movement' && config.customOffsets) {
+    for (const o of config.customOffsets) {
+      const x = origin.x + o.dx;
+      const y = origin.y + o.dy;
+      if (x < 0 || x >= width || y < 0 || y >= height) continue;
+      const tile = tiles[y][x];
+      // Destination must be empty / walkable. Blink ignores LOS; otherwise need LOS.
+      if (tile.type !== 'floor' && tile.type !== 'plant') continue;
+      if (!config.blink) {
+        if (!hasLineOfSight(origin, { x, y }, tiles, width, height, false)) continue;
+      }
+      validTiles.push({ x, y });
+    }
+    return validTiles;
+  }
+
+  // ── Custom self-anchored shape: only valid target is the caster's own tile ──
+  if (config.pattern === 'custom' && config.customOrigin === 'self') {
+    validTiles.push({ x: origin.x, y: origin.y });
+    return validTiles;
+  }
+
   
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {

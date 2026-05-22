@@ -3,7 +3,7 @@
 
 import { SpeciesType, ElementType, ClassType } from './types';
 
-export type MoveType = 'melee' | 'ranged' | 'status' | 'heal';
+export type MoveType = 'melee' | 'ranged' | 'status' | 'heal' | 'movement';
 
 // Aspect source types
 export type AspectSource = 'species' | 'element' | 'class';
@@ -16,14 +16,36 @@ export type TargetingPattern =
   | 'aura'       // Circle around the caster
   | 'area'       // Target a specific area in line of sight
   | 'arc'        // Curved projectile that ignores walls (rare!)
-  | 'self';      // Self-targeting only
+  | 'self'       // Self-targeting only
+  | 'custom';    // Designer-defined shape (see customShape)
+
+/** Designer-defined AoE shape. Offsets are relative cells (dx, dy from origin).
+ *  origin = 'self'   → shape centers on the caster (melee-style burst)
+ *  origin = 'target' → shape centers on the targeted square (ranged-style strike)
+ */
+export interface CustomShape {
+  offsets: { dx: number; dy: number }[];
+  origin: 'self' | 'target';
+  /** Max distance the target square may sit from the caster (target origin only). */
+  range?: number;
+  /** If true, shape ignores walls. */
+  wallPenetrate?: boolean;
+}
+
+/** Designer-defined movement pattern. Each offset is a legal destination
+ *  relative to the caster (chess-like jumps). Pick one when targeting. */
+export interface MovementPattern {
+  offsets: { dx: number; dy: number }[];
+  /** If true, ignores walls / units between caster and destination (teleport). */
+  blink?: boolean;
+}
 
 export interface Move {
   id: string;
   name: string;
   description: string;
   type: MoveType;
-  power: number;        // Base damage (0 for status/heal)
+  power: number;        // Base damage (0 for status/heal/movement)
   accuracy: number;     // 0-100 base accuracy
   staminaCost: number;  // Stamina consumed
   speedMod: number;     // Speed modifier: negative = slower, positive = faster (priority)
@@ -37,6 +59,10 @@ export interface Move {
   aoeRadius?: number;            // For area/aura patterns - radius of effect
   piercing?: boolean;            // Hits all enemies in line (for 'single' pattern)
   wallPenetrate?: boolean;       // Can pass through walls (very rare - arc, psychic, ghost moves)
+  /** Admin-designable shape; when set, overrides `targeting` for AoE resolution. */
+  customShape?: CustomShape;
+  /** Admin-designable movement pattern; when set, move is treated as a relocation. */
+  movement?: MovementPattern;
 }
 
 // ============= SPECIES-ONLY MOVES (1 aspect) =============

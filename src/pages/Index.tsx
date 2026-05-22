@@ -1049,16 +1049,19 @@ function DungeonView({
         localStorage.removeItem('menagerie_selected_start_floor');
       }
 
-      const newDungeon = generateDungeon(startingFloor, entrance?.theme, startingFloor);
+      const freshDungeon = generateDungeon(startingFloor, entrance?.theme, startingFloor);
+      // Hydrate from persistent floor snapshot (mined walls, opened tiles,
+      // collected chests survive across runs). Enemies stay fresh from gen.
+      const hydrated = hydrateDungeonFromSnapshot(freshDungeon, entrance);
       // Mark the entry tile so an "up" staircase appears beneath the player —
       // stepping back onto it exits the dungeon to the overworld / summary.
-      const spawn = newDungeon.playerPosition;
-      const entryTiles = newDungeon.tiles.map((row, y) =>
+      const spawn = hydrated.playerPosition;
+      const entryTiles = hydrated.tiles.map((row, y) =>
         row.map((t, x) => (x === spawn.x && y === spawn.y ? { ...t, stairsBeneath: 'up' as const } : t))
       );
       dispatch({
         type: 'SET_DUNGEON',
-        dungeon: { ...newDungeon, tiles: entryTiles }
+        dungeon: { ...hydrated, tiles: entryTiles }
       });
     }
   }, [dungeon, dispatch, state.saveData.dungeonEntrances, state.saveData.unlockedMonsters]);

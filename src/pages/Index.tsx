@@ -927,6 +927,7 @@ function DungeonView({
   // Dungeon revive modal state
   const [showDungeonReviveModal, setShowDungeonReviveModal] = useState(false);
   const [pendingDungeonReviveItem, setPendingDungeonReviveItem] = useState<InventoryItem | null>(null);
+  const [stairExitDialogOpen, setStairExitDialogOpen] = useState(false);
   
   // Respawn state - tracks steps and threshold for step-based spawning
   const [stepsSinceLastSpawn, setStepsSinceLastSpawn] = useState(0);
@@ -1306,8 +1307,8 @@ function DungeonView({
       }
       return;
     } else if (result.stairsUp && dungeon.floor <= (dungeon.startingFloor ?? 1)) {
-      // Stepped onto the entry staircase — exit the dungeon.
-      handleFlee();
+      // Stepped onto the entry staircase — ask where to exit to.
+      setStairExitDialogOpen(true);
       return;
     } else if (result.stairsUp && dungeon.floor > 1) {
       const visited = { ...(dungeon.visitedFloors || {}) };
@@ -1620,7 +1621,7 @@ function DungeonView({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [handleMove, showShop, isAutoRunning, isPathWalking, settings.autoRunDelay]);
-  const handleFlee = () => {
+  const handleFlee = (destination: 'entrance' | 'town' | 'menu' = 'entrance', skipConfirm = false) => {
     const origin = typeof window !== 'undefined'
       ? localStorage.getItem('menagerie_run_origin')
       : null;
@@ -1632,11 +1633,13 @@ function DungeonView({
 
     // Confirm before leaving — exiting abandons floor progress in this run.
     const currentFloor = dungeon?.floor ?? 1;
-    const confirmMsg =
-      `Exit the dungeon on Floor ${currentFloor}?\n\n` +
-      `You'll keep your gold, materials, items, and equipment, but you'll lose your place on every floor of this run. Stairs you've placed will be regenerated next time.`;
-    if (typeof window !== 'undefined' && !window.confirm(confirmMsg)) {
-      return;
+    if (!skipConfirm) {
+      const confirmMsg =
+        `Exit the dungeon on Floor ${currentFloor}?\n\n` +
+        `You'll keep your gold, materials, items, and equipment, but you'll lose your place on every floor of this run. Stairs you've placed will be regenerated next time.`;
+      if (typeof window !== 'undefined' && !window.confirm(confirmMsg)) {
+        return;
+      }
     }
 
     // Non-home towers require a Town Portal Scroll to escape.
@@ -1655,8 +1658,30 @@ function DungeonView({
     }
 
     dispatch({ type: 'FLEE_DUNGEON' });
+
+    if (destination === 'menu') {
+      dispatch({ type: 'SET_PHASE', phase: 'main_menu' });
+      addLog('🚪 Exited the dungeon — returned to the main menu.', 'system');
+      return;
+    }
+
+    if (destination === 'town') {
+      // Move overworld player to home base, then enter overworld.
+      const ow = state.saveData.overworldState;
+      if (ow?.homeBase?.position) {
+        dispatch({
+          type: 'UPDATE_OVERWORLD',
+          overworld: { ...ow, playerPosition: { ...ow.homeBase.position } },
+        });
+      }
+      dispatch({ type: 'SET_PHASE', phase: 'overworld' });
+      addLog('🚪 Exited the dungeon — back to the starting town.', 'system');
+      return;
+    }
+
+    // destination === 'entrance' (default)
     if (origin === 'overworld') {
-      // Return to the overworld next to the dungeon entrance we came from.
+      // FLEE_DUNGEON already respawns the player next to the entrance.
       dispatch({ type: 'SET_PHASE', phase: 'overworld' });
       addLog('🚪 Exited the dungeon — back to the overworld.', 'system');
     } else {
@@ -1664,6 +1689,7 @@ function DungeonView({
       addLog('🚪 Escaped safely! Materials and equipment kept.', 'system');
     }
   };
+
   
   // Click-to-move handler
   const handleTileClick = useCallback((x: number, y: number) => {
@@ -2859,6 +2885,50 @@ function DungeonView({
           dodge: state.run.currentMonster.stats.dodge ?? Math.floor(state.run.currentMonster.stats.speed * 0.5),
         } : undefined}
       />
+
+      {stairExitDialogOpen && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setStairExitDialogOpen(false)}
+        >
+          <Card
+            className="w-full max-w-md p-6 space-y-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="space-y-1">
+              <h2 className="text-xl font-bold">Leave the Dungeon?</h2>
+              <p className="text-sm text-muted-foreground">
+                You're on the entrance staircase. Choose where to go — your gold, materials,
+                items, and equipment come with you, but floor progress in this run is lost.
+              </p>
+            </div>
+            <div className="grid gap-2">
+              <Button
+                onClick={() => { setStairExitDialogOpen(false); handleFlee('entrance', true); }}
+              >
+                🚪 Overworld — tower entrance
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => { setStairExitDialogOpen(false); handleFlee('town', true); }}
+              >
+                🏘️ Starting town (home base)
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => { setStairExitDialogOpen(false); handleFlee('menu', true); }}
+              >
+                📜 Main menu
+              </Button>
+              <Button variant="ghost" onClick={() => setStairExitDialogOpen(false)}>
+                Stay in dungeon
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+
       
       {showShop && <ShopView 
         gold={isCreativeMode() ? Number.MAX_SAFE_INTEGER : (state.run?.gold || 0)} 

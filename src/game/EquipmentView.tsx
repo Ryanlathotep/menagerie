@@ -365,8 +365,11 @@ export function EquipmentView({
                 sortConfig={sortConfig}
                 onSortChange={setSortConfig}
                 onAutoEquip={handleAutoEquip}
+                focus={settings.autoEquipFocus}
+                onFocusChange={(f) => updateSetting('autoEquipFocus', f)}
               />
             </div>
+
 
             <div className="space-y-2">
               {sortedInventory.length > 0 ? (

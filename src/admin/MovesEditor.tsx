@@ -369,6 +369,69 @@ export function MovesEditor() {
               onChange={(v) => setEditedMove({ ...editedMove, effect: v || undefined })}
             />
 
+            {/* ----- Damage-type toggles ----- */}
+            <div className="rounded-md border border-border bg-muted/30 p-2 space-y-2">
+              <div className="text-xs font-semibold">Damage Types</div>
+
+              <ToggleRow
+                label="Inherit caster's element"
+                hint="Move uses the caster's own element for elemental matchups (overrides the fixed element below)."
+                checked={!!editedMove.inheritMonsterElement}
+                onChange={(v) => setEditedMove({ ...editedMove, inheritMonsterElement: v })}
+              />
+              <ToggleRow
+                label="Inherit caster's class"
+                hint="Move uses the caster's own class for class matchups (overrides the fixed class below)."
+                checked={!!editedMove.inheritMonsterClass}
+                onChange={(v) => setEditedMove({ ...editedMove, inheritMonsterClass: v })}
+              />
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs">Fixed Element</Label>
+                  <Select
+                    value={(editedMove.element as string) ?? 'none'}
+                    onValueChange={(v) => setEditedMove({ ...editedMove, element: v === 'none' ? undefined : (v as ElementType) })}
+                  >
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None (typeless)</SelectItem>
+                      {ALL_ELEMENTS.map((e) => (
+                        <SelectItem key={e} value={e} className="capitalize">{e}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Fixed Class</Label>
+                  <Select
+                    value={(editedMove.classBonus as string) ?? 'none'}
+                    onValueChange={(v) => setEditedMove({ ...editedMove, classBonus: v === 'none' ? undefined : (v as ClassType) })}
+                  >
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None (typeless)</SelectItem>
+                      {ALL_CLASSES.map((c) => (
+                        <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="text-[10px] text-muted-foreground leading-tight">
+                Use the dropdowns to force a damage type outside the caster's usual element/class.
+                Inherit toggles take priority when on.
+              </div>
+
+              <ToggleRow
+                label="Triggers traps & rune effects on AoE overlap"
+                hint="When the move's AoE covers a trap, the trap fires; non-favored creatures on rune tiles take backlash damage."
+                checked={!!editedMove.triggersTrapsOnAoe}
+                onChange={(v) => setEditedMove({ ...editedMove, triggersTrapsOnAoe: v })}
+              />
+            </div>
+
+
             {/* ----- Availability toggles ----- */}
             <div className="rounded-md border border-border bg-muted/30 p-2 space-y-1">
               <div className="text-xs font-semibold">Availability Logic</div>
@@ -607,5 +670,27 @@ function EffectPicker({ value, onChange }: { value: string; onChange: (v: string
         </Button>
       )}
     </div>
+  );
+}
+
+function ToggleRow({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={`w-full text-left flex items-start gap-2 p-2 rounded border transition-colors ${
+        checked ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted/50'
+      }`}
+    >
+      <div className={`mt-0.5 h-4 w-4 rounded border flex items-center justify-center shrink-0 ${
+        checked ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40'
+      }`}>
+        {checked ? '\u2713' : ''}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-medium">{label}</div>
+        {hint && <div className="text-[10px] text-muted-foreground leading-tight">{hint}</div>}
+      </div>
+    </button>
   );
 }

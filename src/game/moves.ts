@@ -107,6 +107,12 @@ export interface Move {
   availabilityMode?: 'all' | 'any';
   /** Marks moves created entirely by the admin (not present in source code). */
   custom?: boolean;
+  /** If true, the move uses the CASTER's element for matchup calc instead of (or in addition to) `element`. */
+  inheritMonsterElement?: boolean;
+  /** If true, the move uses the CASTER's class for matchup calc instead of (or in addition to) `classBonus`. */
+  inheritMonsterClass?: boolean;
+  /** If true, the move's AoE triggers traps it overlaps and applies rune backlash to non-favored units it covers. */
+  triggersTrapsOnAoe?: boolean;
   /** Per-tier overrides: stat tweaks and per-tier custom shapes that replace
    *  the auto-scaled tier multipliers when present. Tier keys are
    *  'lesser' | 'minor' | 'base' | 'greater' | 'omega'. */

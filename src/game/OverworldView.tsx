@@ -190,16 +190,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [assignBuilding, setAssignBuilding] = useState<PlayerBuilding | null>(null);
   // Right-click context menu state for player buildings
   const [contextMenuBuilding, setContextMenuBuilding] = useState<PlayerBuilding | null>(null);
-  // Right-click context menu state for plain tiles (grass / harvested grass)
-  const [tileContextMenu, setTileContextMenu] = useState<{ x: number; y: number } | null>(null);
-  // Right-click context menu state for enemy/nest tiles (attack picker)
+  // Unified right-click / long-press menu (one menu for every tile type).
+  const [unifiedMenu, setUnifiedMenu] = useState<{ x: number; y: number } | null>(null);
+  // Attack picker is opened FROM the unified menu when the tile has an enemy/nest
+  // or when "Attack from here" is chosen on a plain tile.
   const [attackMenuTarget, setAttackMenuTarget] = useState<EnemyAttackTarget | null>(null);
-  // Right-click context menu for dungeon entrance tiles (waypoint pin / enter)
-  const [dungeonMenu, setDungeonMenu] = useState<{ entrance: DungeonEntrance; worldX: number; worldY: number } | null>(null);
-  // Right-click context menu for water tiles (fill with grass)
-  const [waterMenu, setWaterMenu] = useState<{ x: number; y: number } | null>(null);
-  // Right-click context menu for road tiles (disassemble)
-  const [roadMenu, setRoadMenu] = useState<{ x: number; y: number; roadType: 'dirt_road' | 'stone_road' } | null>(null);
   // Session-only Auto-Shovel toggle (mirrored into local state for re-render).
   const [autoShovelOn, setAutoShovelOn] = useState<boolean>(isAutoShovelEnabled());
   useEffect(() => onAutoShovelChange(setAutoShovelOn), []);

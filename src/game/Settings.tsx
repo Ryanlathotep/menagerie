@@ -38,6 +38,9 @@ export interface GameSettings {
   // Per-dungeon waypoint pins (id → enabled). Used for procedural / minor
   // dungeons that don't have a global toggle. Right-click a dungeon to pin.
   dungeonWaypoints: Record<string, boolean>;
+  // Optional player-supplied names for overworld dungeon waypoints (id → name)
+  dungeonWaypointNames: Record<string, string>;
+
   // Auto-equip preferences (used by Equipment screens and pickup auto-equip)
   autoEquipFocus: import('./equipmentUtils').AutoEquipFocus;
   autoEquipOnPickup: boolean;

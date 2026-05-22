@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, GripVertical, Eye, EyeOff } from 'lucide-react';
 import { Move } from './moves';
+import { MoveShapeThumbnail } from './MoveShapeThumbnail';
 import { Monster } from './types';
 import { ExpandedStats } from './CharacterSheet';
 

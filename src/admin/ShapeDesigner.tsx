@@ -853,9 +853,8 @@ export function ShapeDesigner() {
                     const isAnchor = dx === 0 && dy === 0;
                     const key = `${dx},${dy}`;
                     const on = cells.has(key);
-                    const letters = mode === 'shape'
-                      ? TIER_KEYS.filter((t) => tierSets[t].has(key)).map((t) => TIER_LETTERS[t])
-                      : [];
+                    const letters = TIER_KEYS.filter((t) => tierSets[t].has(key)).map((t) => TIER_LETTERS[t]);
+
                     return (
                       <button
                         key={i}

@@ -159,6 +159,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [adminOpen, setAdminOpen] = useState(false);
   const [bugOpen, setBugOpen] = useState(false);
+  const [waypointMgrOpen, setWaypointMgrOpen] = useState(false);
+
 
   // Listen for admin panel open event (dispatched from the Admin Tools button)
   useEffect(() => {

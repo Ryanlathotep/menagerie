@@ -74,6 +74,15 @@ export interface OverworldState {
   // Procedural seed mixed into every world hash (biomes, elevation, dungeon
   // placement, nests). 0 = legacy default. Set via Settings → Rebuild Overworld.
   worldSeed?: number;
+  // Player-dropped waypoints on arbitrary overworld tiles. Distinct from
+  // dungeon-entrance pins (those live in settings.dungeonWaypoints).
+  waypoints?: OverworldWaypoint[];
+}
+
+export interface OverworldWaypoint {
+  x: number;
+  y: number;
+  name?: string;
 }
 
 // ============= CONSTANTS =============

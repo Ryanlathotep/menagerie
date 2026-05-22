@@ -1066,7 +1066,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
                   key={i}
                   className="absolute -translate-x-1/2 -translate-y-1/2"
                   style={{ left, top }}
-                  title={`Waypoint (${ex}, ${ey}) — ${dist} tiles`}
+                  title={`${wp.name ? wp.name + ' — ' : 'Waypoint '}(${ex}, ${ey}) — ${dist} tiles`}
                 >
                   <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full border backdrop-blur-sm shadow-md text-[10px] font-medium leading-none text-emerald-300 bg-emerald-500/15 border-emerald-400/60">
                     <span

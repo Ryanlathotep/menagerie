@@ -1,7 +1,7 @@
 import { GameProvider, useGame, buildProgressSnapshot } from '@/game/state';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { getComboId, UnlockedMonster, InventoryItem, MonsterStats, Monster, Position, DungeonState } from '@/game/types';
+import { getComboId, UnlockedMonster, InventoryItem, MonsterStats, Monster, Position, DungeonState, hydrateDungeonFromSnapshot } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
 import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, hasVisibleEnemy, LOOT_TABLE, mineWall, mineableWallName, digRune, damageDungeonNest, tickDungeonNests } from '@/game/dungeon';
 import { spawnNestMonster, getNestDestroyRewards } from '@/game/nests';

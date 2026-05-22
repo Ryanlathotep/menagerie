@@ -2259,9 +2259,11 @@ function DungeonView({
       const newDungeon = { ...dungeon, tiles: newTiles, playerPosition: { x, y } };
       dispatch({ type: 'SET_DUNGEON', dungeon: newDungeon });
       dispatch({
-        type: 'UPDATE_PARTY_STATS',
-        monsterId: monster.id,
-        stats: { ...monster.stats, currentStamina: curStam - staminaCost },
+        type: 'UPDATE_PLAYER_MONSTER',
+        monster: {
+          ...monster,
+          stats: { ...monster.stats, currentStamina: curStam - staminaCost },
+        },
       });
       addLog(`🌀 ${targetingMove.name}! Moved to (${x}, ${y}).`, 'system');
       setTargetingMove(null);

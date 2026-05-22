@@ -2309,14 +2309,62 @@ function DungeonView({
     addLog(`✨ ${message} (⚡-${staminaCost})`, 'heal');
   };
   
-  // Cancel targeting mode
+  // Cancel targeting mode (and abort any pending combo phase)
   const cancelTargeting = useCallback(() => {
     setTargetingMove(null);
+    setPendingComboMove(null);
     setTargetingTiles([]);
     setAffectedTiles([]);
     setHoveredTile(null);
     aoePendingConfirmRef.current = null;
   }, []);
+
+  // ── Combo move helpers ─────────────────────────────────────────────────────
+  // A move is a combo when it has BOTH a movement pattern AND an attack shape
+  // (custom AoE, explicit AoE radius, or any non-self targeting with power>0).
+  const hasMovementPhase = (m: Move) =>
+    !!(m.movement && m.movement.offsets && m.movement.offsets.length > 0);
+  const hasAttackPhase = (m: Move) => {
+    if (m.customShape && m.customShape.offsets.length > 0) return true;
+    if ((m.aoeRadius ?? 0) > 0) return true;
+    if (m.type === 'melee' || m.type === 'ranged') return m.power > 0;
+    if (m.type === 'status' && m.effect?.includes('lower_')) return true;
+    return false;
+  };
+  const isComboMove = (m: Move) => hasMovementPhase(m) && hasAttackPhase(m);
+  // Strip movement so getAttackConfig falls through to the attack shape branch.
+  const stripMovement = (m: Move): Move => ({ ...m, movement: undefined, staminaCost: 0 });
+  // Strip attack data so getAttackConfig hits the movement branch.
+  const stripAttack = (m: Move): Move => ({
+    ...m,
+    customShape: undefined,
+    aoeRadius: 0,
+    targeting: undefined,
+    staminaCost: 0,
+  });
+
+  // Begin a targeting phase for an arbitrary move (used to re-enter targeting
+  // for the second half of a combo). Returns false if no valid targets exist.
+  const enterTargetingFor = useCallback((move: Move, label?: string): boolean => {
+    if (!dungeon) return false;
+    const config = getAttackConfig(move);
+    const validTargets = getValidTargets(
+      dungeon.playerPosition,
+      config,
+      dungeon.tiles,
+      dungeon.width,
+      dungeon.height,
+      true,
+    );
+    if (validTargets.length === 0) return false;
+    setTargetingMove(move);
+    setTargetingTiles(validTargets);
+    setAffectedTiles([]);
+    setHoveredTile(null);
+    aoePendingConfirmRef.current = null;
+    if (label) addLog(label, 'system');
+    return true;
+  }, [dungeon]);
 
   // While aiming a skill, recompute valid target tiles (and the AoE preview
   // under the cursor) whenever the player moves. This lets the player walk

@@ -313,6 +313,14 @@ export interface Position {
   z?: number;
 }
 
+// A player-pinned waypoint in a dungeon. Behaves as a Position but can also
+// carry an optional human-friendly name set via the Waypoint Manager.
+export interface DungeonWaypoint extends Position {
+  name?: string;
+}
+
+
+
 // ============= GAME STATE =============
 export type GamePhase = 'main_menu' | 'character_select' | 'dungeon' | 'battle' | 'victory' | 'defeat' | 'run_summary' | 'overworld';
 

@@ -3,7 +3,7 @@
 // preferences as the main move panel. Out-of-range and unaffordable moves are
 // shown but disabled, so the player can see the full picture at a glance.
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,8 +12,8 @@ import { X, Zap, Target, Shield, Coins } from 'lucide-react';
 import { Monster } from './types';
 import { Move, getMonsterMoves } from './moves';
 import { getAttackConfig } from './dungeonCombat';
-import { sortMoves, filterMoves } from './MoveSortFilter';
-import { loadMoveFilters } from './persistedFilters';
+import { MoveSortFilter, MoveSortOption, MoveFilterOption, sortMoves, filterMoves } from './MoveSortFilter';
+import { loadMoveFilters, saveMoveFilters } from './persistedFilters';
 import { getEffectiveness } from './combat';
 
 export interface EnemyAttackTarget {
@@ -41,8 +41,12 @@ export function EnemyAttackMenu({
   const distance =
     Math.abs(enemyPos.x - playerPos.x) + Math.abs(enemyPos.y - playerPos.y);
 
-  // Pull persisted sort/filter so this menu mirrors the move panel's view.
-  const { sortOption, filters } = useMemo(() => loadMoveFilters(), []);
+  // Persisted sort/filter, editable inline; changes mirror to the move panel.
+  const initial = useMemo(() => loadMoveFilters(), []);
+  const [sortOption, setSortOption] = useState<MoveSortOption>(initial.sortOption);
+  const [filters, setFilters] = useState<MoveFilterOption[]>(initial.filters);
+  const updateSort = (s: MoveSortOption) => { setSortOption(s); saveMoveFilters({ sortOption: s, filters }); };
+  const updateFilters = (f: MoveFilterOption[]) => { setFilters(f); saveMoveFilters({ sortOption, filters: f }); };
 
   // Only attack-capable moves: melee, ranged, and any status move that targets
   // (i.e. carries a debuff) plus any move with power > 0.
@@ -110,6 +114,16 @@ export function EnemyAttackMenu({
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
+        </div>
+
+        {/* Sort + filter controls (persist with main move panel) */}
+        <div className="flex-shrink-0">
+          <MoveSortFilter
+            sortOption={sortOption}
+            filters={filters}
+            onSortChange={updateSort}
+            onFilterChange={updateFilters}
+          />
         </div>
 
         {/* Move list */}

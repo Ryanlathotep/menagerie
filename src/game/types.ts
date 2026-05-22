@@ -366,6 +366,13 @@ export interface DungeonState {
   // `name` is an optional player-supplied label.
   compassWaypoints?: DungeonWaypoint[];
 
+  // Player-placed buildings & roads on this floor. Use the same PlayerBuilding
+  // shape as the overworld so all sprites / behaviors / context menus work.
+  // Note: `any[]` here avoids a circular import with buildings.ts; consumers
+  // cast to `PlayerBuilding[]`.
+  playerBuildings?: any[];
+  roads?: Record<string, 'dirt_road' | 'stone_road'>;
+
   // Persistent per-floor snapshots so the player can walk back up the
   // staircase to revisit a previous floor (tile state, enemies, position).
   // Excludes `compassWaypoint` and the active floor itself.
@@ -376,6 +383,8 @@ export interface DungeonState {
     width: number;
     height: number;
     entryPosition?: Position;
+    playerBuildings?: any[];
+    roads?: Record<string, 'dirt_road' | 'stone_road'>;
   }>;
 }
 
@@ -726,19 +735,19 @@ export function snapshotDungeonToEntrance(
         tiles: snap.tiles.map(row => row.map(snapshotTile)),
         width: snap.width,
         height: snap.height,
-        playerBuildings: existing[floor]?.playerBuildings,
-        roads: existing[floor]?.roads,
+        playerBuildings: snap.playerBuildings ? snap.playerBuildings.map(b => ({ ...b })) : existing[floor]?.playerBuildings,
+        roads: snap.roads ? { ...snap.roads } : existing[floor]?.roads,
       };
     }
   }
 
-  // Snapshot the currently-active floor.
+  // Snapshot the currently-active floor (live buildings/roads on dungeon).
   next[dungeon.floor] = {
     tiles: dungeon.tiles.map(row => row.map(snapshotTile)),
     width: dungeon.width,
     height: dungeon.height,
-    playerBuildings: existing[dungeon.floor]?.playerBuildings,
-    roads: existing[dungeon.floor]?.roads,
+    playerBuildings: dungeon.playerBuildings ? dungeon.playerBuildings.map(b => ({ ...b })) : existing[dungeon.floor]?.playerBuildings,
+    roads: dungeon.roads ? { ...dungeon.roads } : existing[dungeon.floor]?.roads,
   };
 
   // Cap size: keep the 50 deepest snapshots (deepest = most interesting).
@@ -783,6 +792,8 @@ export function hydrateDungeonFromSnapshot(
     tiles,
     width: w,
     height: h,
+    playerBuildings: snap.playerBuildings ? snap.playerBuildings.map((b: any) => ({ ...b })) : fresh.playerBuildings,
+    roads: snap.roads ? { ...snap.roads } : fresh.roads,
   };
 }
 

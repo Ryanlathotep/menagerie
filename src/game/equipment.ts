@@ -1712,6 +1712,8 @@ export const CONSUMABLE_RECIPES: ConsumableRecipe[] = [
     ],
     icon: '📜',
     description: 'Tears open a portal back to town. Required to flee any tower other than the Tower of the Infinite.',
+    effect: 'town_portal',
+  },
   {
     id: 'craft_dowsing_rod',
     name: 'Dowsing Rod',

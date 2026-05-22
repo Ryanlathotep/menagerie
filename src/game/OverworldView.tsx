@@ -67,7 +67,7 @@ import { EvolvedMove } from './moveMastery';
 import { CombatEffects } from './statusEffects';
 import { BuildingAssignModal } from './BuildingAssignModal';
 import { BuildingContextMenu } from './BuildingContextMenu';
-import { TileContextMenu } from './TileContextMenu';
+
 import { EnemyAttackMenu, EnemyAttackTarget } from './EnemyAttackMenu';
 import { isAutoShovelEnabled, toggleAutoShovel, onAutoShovelChange } from './autoShovel';
 import { FARM_OUTPUTS, FARM_GROWTH_STEPS } from './buildings';

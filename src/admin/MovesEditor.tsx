@@ -378,6 +378,116 @@ export function MovesEditor() {
                  onChange={(v) => setEditedMove({ ...editedMove, aoeRadius: v })} />
             </div>
 
+            {/* ----- Targeting & Shape (read from the move's existing settings) ----- */}
+            <div className="rounded-md border border-border bg-muted/30 p-2 space-y-2">
+              <div className="text-xs font-semibold">Targeting & Shape</div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs">Targeting Pattern</Label>
+                  <Select
+                    value={(editedMove.targeting as string) ?? 'none'}
+                    onValueChange={(v) =>
+                      setEditedMove({
+                        ...editedMove,
+                        targeting: v === 'none' ? undefined : (v as Move['targeting']),
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None (default)</SelectItem>
+                      <SelectItem value="single">Single (line, first hit)</SelectItem>
+                      <SelectItem value="piercing">Piercing (line, all)</SelectItem>
+                      <SelectItem value="cone">Cone</SelectItem>
+                      <SelectItem value="aura">Aura (around caster)</SelectItem>
+                      <SelectItem value="area">Area (in line of sight)</SelectItem>
+                      <SelectItem value="arc">Arc (ignores walls)</SelectItem>
+                      <SelectItem value="self">Self</SelectItem>
+                      <SelectItem value="custom">Custom shape (see below)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1 justify-end pb-0.5">
+                  <ToggleRow
+                    label="Piercing"
+                    hint="Hits every enemy in a straight line (for 'single' targeting)."
+                    checked={!!editedMove.piercing}
+                    onChange={(v) => setEditedMove({ ...editedMove, piercing: v || undefined })}
+                  />
+                  <ToggleRow
+                    label="Wall Penetrate"
+                    hint="Passes through walls (arc / psychic / ghost moves)."
+                    checked={!!editedMove.wallPenetrate}
+                    onChange={(v) => setEditedMove({ ...editedMove, wallPenetrate: v || undefined })}
+                  />
+                </div>
+              </div>
+
+              {/* Custom shape summary */}
+              <div className="rounded border border-dashed p-2 text-[11px] space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">Custom Shape</span>
+                  {editedMove.customShape ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 text-[10px] text-destructive"
+                      onClick={() =>
+                        setEditedMove({ ...editedMove, customShape: undefined })
+                      }
+                    >
+                      Clear shape
+                    </Button>
+                  ) : (
+                    <span className="text-muted-foreground">None</span>
+                  )}
+                </div>
+                {editedMove.customShape && (
+                  <div className="text-muted-foreground leading-tight">
+                    Origin: <span className="font-mono">{editedMove.customShape.originType ?? editedMove.customShape.origin}</span>
+                    {' · '}cells: <span className="font-mono">{editedMove.customShape.offsets?.length ?? 0}</span>
+                    {typeof editedMove.customShape.range === 'number' && (<>{' · '}range: <span className="font-mono">{editedMove.customShape.range}</span></>)}
+                    {editedMove.customShape.rotateToFacing && ' · rotates to facing'}
+                    {editedMove.customShape.wallPenetrate && ' · wall-penetrate'}
+                    <div className="mt-1">Edit the shape grid in the <span className="font-semibold">Shapes</span> tab.</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Movement pattern summary */}
+              <div className="rounded border border-dashed p-2 text-[11px] space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">Movement Pattern</span>
+                  {editedMove.movement ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 text-[10px] text-destructive"
+                      onClick={() =>
+                        setEditedMove({ ...editedMove, movement: undefined })
+                      }
+                    >
+                      Clear movement
+                    </Button>
+                  ) : (
+                    <span className="text-muted-foreground">None</span>
+                  )}
+                </div>
+                {editedMove.movement && (
+                  <div className="text-muted-foreground leading-tight">
+                    Cells: <span className="font-mono">{editedMove.movement.offsets?.length ?? 0}</span>
+                    {typeof editedMove.movement.range === 'number' && (<>{' · '}range: <span className="font-mono">{editedMove.movement.range}</span></>)}
+                    {editedMove.movement.blink && ' · blink'}
+                    {editedMove.movement.rotateToFacing && ' · rotates to facing'}
+                    <div className="mt-1">Edit the movement grid in the <span className="font-semibold">Shapes</span> tab.</div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <TierOverridesPanel
               base={editedMove}
               onChange={(tierOverrides) => setEditedMove({ ...editedMove, tierOverrides })}

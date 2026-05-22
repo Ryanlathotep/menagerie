@@ -294,38 +294,60 @@ export function ShapeDesigner() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Designer (rendered first so it appears at top on mobile) */}
+      <div className="lg:order-2">
+        {/* placeholder — actual designer card moved below via order */}
+      </div>
+
       {/* Move picker */}
-      <Card className="p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Search className="w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search moves…" value={search} onChange={(e) => setSearch(e.target.value)} />
+      <Card className="p-3 lg:order-1">
+        <div className="flex items-center gap-2 mb-2">
+          <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+          <Input
+            placeholder="Search moves…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-8 text-sm"
+          />
         </div>
-        <ScrollArea className="h-[460px]">
-          <div className="space-y-1">
+        <div className="mb-2">
+          <MoveSortFilter
+            sortOption={sortOption}
+            filters={moveFilters}
+            onSortChange={setSortOption}
+            onFilterChange={setMoveFilters}
+          />
+        </div>
+        <ScrollArea className="h-[300px] lg:h-[460px]">
+          <div className="space-y-0.5">
             {filtered.map((m) => {
               const ovr = getOverride('moves', m.id) as Partial<Move> | null;
-              const tag = ovr?.movement ? 'Move' : ovr?.customShape ? 'Shape' : null;
+              const tag = ovr?.movement ? 'Move' : ovr?.customShape ? 'Shape' : (m as Move & { custom?: boolean }).custom ? 'New' : null;
               return (
                 <button
                   key={m.id}
                   onClick={() => loadMove(m)}
-                  className={`w-full text-left p-2 rounded text-sm hover:bg-muted transition-colors flex justify-between items-center ${
+                  className={`w-full text-left px-2 py-1 rounded text-xs hover:bg-muted transition-colors flex justify-between items-center gap-2 ${
                     selected?.id === m.id ? 'bg-primary/20' : ''
                   }`}
                 >
-                  <span>
+                  <span className="truncate">
                     <span className="font-medium">{m.name}</span>
-                    <span className="text-muted-foreground ml-2 text-xs">{m.type}</span>
+                    <span className="text-muted-foreground ml-1.5 text-[10px]">{m.type}</span>
                   </span>
                   {tag && (
-                    <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">{tag}</span>
+                    <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0 rounded shrink-0">{tag}</span>
                   )}
                 </button>
               );
             })}
+            {filtered.length === 0 && (
+              <div className="text-xs text-muted-foreground italic p-2">No moves match.</div>
+            )}
           </div>
         </ScrollArea>
       </Card>
+
 
       {/* Designer */}
       <Card className="p-4">

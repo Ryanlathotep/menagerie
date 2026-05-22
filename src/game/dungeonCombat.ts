@@ -133,7 +133,55 @@ export function getLineHitTiles(
     
     // If not piercing and we hit an enemy, stop
     if (!piercing && tile.type === 'enemy') break;
+}
+
+// Bresenham path between two points (inclusive of both endpoints).
+export function getPathTiles(from: Position, to: Position): Position[] {
+  const path: Position[] = [];
+  let x0 = from.x, y0 = from.y;
+  const x1 = to.x, y1 = to.y;
+  const dx = Math.abs(x1 - x0);
+  const dy = Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1;
+  const sy = y0 < y1 ? 1 : -1;
+  let err = dx - dy;
+  while (true) {
+    path.push({ x: x0, y: y0 });
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err;
+    if (e2 > -dy) { err -= dy; x0 += sx; }
+    if (e2 <  dx) { err += dx; y0 += sy; }
   }
+  return path;
+}
+
+// Walks the path from origin → target (excluding endpoints) and verifies every
+// intermediate tile is traversable under the movement config's traversal flags.
+export function isPathClear(
+  origin: Position,
+  target: Position,
+  tiles: DungeonTile[][],
+  width: number,
+  height: number,
+  config: AttackConfig,
+): boolean {
+  const path = getPathTiles(origin, target);
+  for (let i = 1; i < path.length - 1; i++) {
+    const { x, y } = path[i];
+    if (x < 0 || x >= width || y < 0 || y >= height) return false;
+    const t = tiles[y][x];
+    if ((t.type === 'wall' || t.type === 'mineable_wall') && config.blockedByWalls !== false) return false;
+    if (t.type === 'enemy' && config.blockedByUnits !== false && !config.passThroughEnemies) return false;
+    if (t.type === 'trap' && !t.triggered && !config.passThroughTraps && !config.triggersTrapsOnPath) return false;
+    if (t.type === 'terrain') {
+      const isWater = t.terrainType === 'water';
+      if (isWater && !config.canCrossWater && !config.passThroughTerrain) return false;
+      if (!isWater && !config.passThroughTerrain && !config.triggersTrapsOnPath) return false;
+    }
+  }
+  return true;
+}
+
   
   return hitTiles;
 }

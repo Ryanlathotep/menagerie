@@ -822,18 +822,24 @@ export function ShapeDesigner() {
                 lesser: new Set(), minor: new Set(), base: new Set(),
                 greater: new Set(), omega: new Set(),
               };
-              if (mode === 'shape' && mergedForGrid) {
+              if (mergedForGrid) {
                 for (const t of TIER_KEYS) {
                   if (t === tier) {
                     tierSets[t] = new Set(cells);
-                  } else {
+                  } else if (mode === 'shape') {
                     const { shape } = readTier(mergedForGrid, t);
                     if (shape?.offsets) {
                       tierSets[t] = new Set(shape.offsets.map((o) => `${o.dx},${o.dy}`));
                     }
+                  } else {
+                    const { movement } = readMovementTier(mergedForGrid, t);
+                    if (movement?.offsets) {
+                      tierSets[t] = new Set(movement.offsets.map((o) => `${o.dx},${o.dy}`));
+                    }
                   }
                 }
               }
+
               return (
                 <div
                   className="grid gap-1 mx-auto w-full overflow-x-auto"

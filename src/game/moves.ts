@@ -2,7 +2,8 @@
 // Moves now have unlock levels for progression
 
 import { SpeciesType, ElementType, ClassType } from './types';
-import { applyMoveOverride, getCustomMovesFor } from './moveOverrides';
+import { applyMoveOverride, getCustomMovesFor, getCustomMoves } from './moveOverrides';
+
 
 
 export type MoveType = 'melee' | 'ranged' | 'status' | 'heal' | 'movement';

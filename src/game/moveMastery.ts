@@ -182,10 +182,12 @@ export function getAvailableMoveVersions(
   const availableTiers = getAvailableTiers(mastery, monsterLevel);
   const canUseAoE = hasAoEUnlocked(mastery);
   
-  // Only generate evolved versions for moves with power (attack moves)
-  // Status moves don't need tier evolution
-  if (baseMove.power === 0) {
-    // For status moves, just return the base version
+  // Skip tier evolution only for pure status/heal moves with no power AND no
+  // movement pattern. Movement moves (and combo move+attack moves) still get
+  // tiers so admins can scale range / stamina / per-tier shapes via overrides.
+  const hasMovement = !!baseMove.movement?.offsets?.length;
+  const hasAttack = (baseMove.power ?? 0) > 0;
+  if (!hasAttack && !hasMovement) {
     return [{
       ...baseMove,
       tier: 'base',
@@ -193,13 +195,13 @@ export function getAvailableMoveVersions(
       baseMoveId: baseMove.id,
     }];
   }
-  
+
   for (const tier of availableTiers) {
     // Single target version
     versions.push(createEvolvedMove(baseMove, tier, 'single', monsterLevel));
-    
-    // Mass version (if unlocked and move is an attack)
-    if (canUseAoE) {
+
+    // Mass variant only makes sense for moves that actually deal damage.
+    if (canUseAoE && hasAttack) {
       versions.push(createEvolvedMove(baseMove, tier, 'mass', monsterLevel));
     }
   }

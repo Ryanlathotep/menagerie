@@ -63,7 +63,16 @@ export interface Move {
   customShape?: CustomShape;
   /** Admin-designable movement pattern; when set, move is treated as a relocation. */
   movement?: MovementPattern;
+  /** Admin override: explicit availability lists. When present these win over
+   *  the built-in SPECIES_/ELEMENT_/CLASS_MOVES pool the move appears in. Used
+   *  for custom moves and for re-targeting an existing move to a new pool. */
+  availableSpecies?: SpeciesType[];
+  availableElements?: ElementType[];
+  availableClasses?: ClassType[];
+  /** Marks moves created entirely by the admin (not present in source code). */
+  custom?: boolean;
 }
+
 
 // ============= SPECIES-ONLY MOVES (1 aspect) =============
 export const SPECIES_MOVES: Record<SpeciesType, Move[]> = {

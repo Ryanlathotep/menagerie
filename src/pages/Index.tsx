@@ -2130,6 +2130,15 @@ function DungeonView({
       setShowWorkshop(true);
       addLog(`🛠️ You unfold the portable workshop.`, 'system');
       return;
+    } else if (item.effect === 'dowse') {
+      // Dowsing Rod: activate the 5-minute buff and consume the item.
+      // Buff persists across floors + overworld via localStorage.
+      const { activateDowsing, DOWSING_DURATION_MS } = await import('@/game/dowsingRod');
+      activateDowsing(DOWSING_DURATION_MS);
+      dispatch({ type: 'USE_ITEM', itemId: item.id });
+      addLog('🔮 The Dowsing Rod hums — the nearest threats glow for 5 minutes.', 'system');
+      toast.success('Dowsing Rod activated!');
+      return;
     } else if (item.effect === 'town_portal') {
       // Consume the scroll and exit the dungeon back to town/overworld.
       const origin = typeof window !== 'undefined'

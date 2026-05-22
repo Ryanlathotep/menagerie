@@ -1023,81 +1023,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   
   // Right-click → context menu for player buildings, or auto-attack for enemies/nests
   const handleTileRightClick = useCallback((worldX: number, worldY: number) => {
-    const tile = getOverworldTile(overworld, worldX, worldY);
-    
-    // Player building → open context menu (assign / repair / disassemble)
-    if (tile?.type === 'player_building' && tile.playerBuildingId) {
-      const building = overworld.playerBuildings?.find(b => b.id === tile.playerBuildingId);
-      if (building) {
-        setContextMenuBuilding(building);
-        return;
-      }
-    }
-    
-    // Enemy or nest → open the attack picker (sorted by user move-panel prefs)
-    if (tile?.type === 'enemy' && tile.enemyId && monster) {
-      const enemy = getOverworldEnemy(overworld, tile.enemyId);
-      if (enemy) {
-        setAttackMenuTarget({
-          enemy,
-          enemyPos: { x: worldX, y: worldY },
-          playerPos: overworld.playerPosition,
-        });
-      }
-      return;
-    }
-    if (tile?.type === 'nest' && tile.nestId && monster) {
-      const nest = overworld.nests?.[tile.nestId];
-      if (nest) {
-        // Build a synthetic Monster-like target so the attack menu can show
-        // effectiveness/HP info against the nest itself.
-        const nestAsMonster: Monster = {
-          ...monster,
-          id: nest.id,
-          name: `${nest.element[0].toUpperCase()}${nest.element.slice(1)} Nest`,
-          element: nest.element,
-          level: nest.level,
-          stats: {
-            ...monster.stats,
-            currentHp: nest.hp,
-            maxHp: nest.maxHp,
-          },
-        };
-        setAttackMenuTarget({
-          enemy: nestAsMonster,
-          enemyPos: { x: worldX, y: worldY },
-          playerPos: overworld.playerPosition,
-        });
-      }
-      return;
-    }
-
-    // Dungeon entrance → waypoint pin / enter menu
-    if (tile?.type === 'dungeon_entrance' && tile.dungeonId) {
-      const entrance = overworld.dungeonEntrances?.[tile.dungeonId];
-      if (entrance) {
-        setDungeonMenu({ entrance, worldX, worldY });
-        return;
-      }
-    }
-
-    // Water → offer to fill it in with grass for resources
-    if (tile?.type === 'water') {
-      setWaterMenu({ x: worldX, y: worldY });
-      return;
-    }
-
-    // Road → offer to disassemble (refund partial materials)
-    if (tile?.type === 'dirt_road' || tile?.type === 'stone_road') {
-      setRoadMenu({ x: worldX, y: worldY, roadType: tile.type });
-      return;
-    }
-
-    // Plain grass / harvested grass → open tile context menu (Build, etc.)
-    if (tile?.type === 'grass') {
-      setTileContextMenu({ x: worldX, y: worldY });
-    }
-  }, [overworld, monster, handleTargetingClick]);
+    // One menu for every tile — the unified menu reads the tile itself and
+    // builds the action list at render time. Long-press on touch and
+    // right-click on desktop both land here.
+    setUnifiedMenu({ x: worldX, y: worldY });
+  }, []);
   
   // ─── Keyboard ───
   useEffect(() => {

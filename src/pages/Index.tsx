@@ -1012,6 +1012,11 @@ function DungeonView({
   const [showDungeonReviveModal, setShowDungeonReviveModal] = useState(false);
   const [pendingDungeonReviveItem, setPendingDungeonReviveItem] = useState<InventoryItem | null>(null);
   const [stairExitDialogOpen, setStairExitDialogOpen] = useState(false);
+
+  // Dungeon build mode (per-floor buildings persisted via snapshots)
+  const [dungeonBuildPanelOpen, setDungeonBuildPanelOpen] = useState(false);
+  const [dungeonBuildMode, setDungeonBuildMode] = useState(false);
+  const [selectedDungeonBuildType, setSelectedDungeonBuildType] = useState<import('@/game/buildings').PlayerBuildingType | null>(null);
   
   // Respawn state - tracks steps and threshold for step-based spawning
   const [stepsSinceLastSpawn, setStepsSinceLastSpawn] = useState(0);

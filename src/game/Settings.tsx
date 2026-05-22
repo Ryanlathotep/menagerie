@@ -434,14 +434,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             </p>
           </div>
 
-          {/* Admin Panel Access */}
-          <AdminPanelTrigger onOpenAdmin={() => {
-            onClose();
-            // Small delay to let settings close first, then open admin
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('open-admin-panel'));
-            }, 50);
-          }} />
+          {/* Admin Panel Access — open the dialog directly (don't close settings first,
+              or the listener unmounts before the event fires). */}
+          <AdminPanelTrigger onOpenAdmin={() => setAdminOpen(true)} />
+
         </div>
 
 

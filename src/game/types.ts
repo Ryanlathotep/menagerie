@@ -313,6 +313,14 @@ export interface Position {
   z?: number;
 }
 
+// A player-pinned waypoint in a dungeon. Behaves as a Position but can also
+// carry an optional human-friendly name set via the Waypoint Manager.
+export interface DungeonWaypoint extends Position {
+  name?: string;
+}
+
+
+
 // ============= GAME STATE =============
 export type GamePhase = 'main_menu' | 'character_select' | 'dungeon' | 'battle' | 'victory' | 'defeat' | 'run_summary' | 'overworld';
 
@@ -355,7 +363,9 @@ export interface DungeonState {
   // Player-pinned waypoints (right-click any explored tile). Behave like the
   // overworld arrows: each renders a pulsing marker on its tile, plus an
   // edge-of-screen arrow when off-screen. Persist for the current floor only.
-  compassWaypoints?: Position[];
+  // `name` is an optional player-supplied label.
+  compassWaypoints?: DungeonWaypoint[];
+
   // Persistent per-floor snapshots so the player can walk back up the
   // staircase to revisit a previous floor (tile state, enemies, position).
   // Excludes `compassWaypoint` and the active floor itself.

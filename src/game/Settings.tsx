@@ -8,7 +8,9 @@ import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Settings as SettingsIcon, X, Download, Upload, Shield, Globe2, Dices, Home, Bug } from 'lucide-react';
+import { Settings as SettingsIcon, X, Download, Upload, Shield, Globe2, Dices, Home, Bug, Flag } from 'lucide-react';
+import { WaypointManager } from './WaypointManager';
+
 import { ReportBugDialog } from './ReportBugDialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -38,6 +40,9 @@ export interface GameSettings {
   // Per-dungeon waypoint pins (id → enabled). Used for procedural / minor
   // dungeons that don't have a global toggle. Right-click a dungeon to pin.
   dungeonWaypoints: Record<string, boolean>;
+  // Optional player-supplied names for overworld dungeon waypoints (id → name)
+  dungeonWaypointNames: Record<string, string>;
+
   // Auto-equip preferences (used by Equipment screens and pickup auto-equip)
   autoEquipFocus: import('./equipmentUtils').AutoEquipFocus;
   autoEquipOnPickup: boolean;
@@ -54,6 +59,8 @@ const DEFAULT_SETTINGS: GameSettings = {
   showHomeTowerArrow: true,
   showMajorDungeonArrows: true,
   dungeonWaypoints: {},
+  dungeonWaypointNames: {},
+
   autoEquipFocus: 'class',
   autoEquipOnPickup: false,
 };
@@ -152,6 +159,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [adminOpen, setAdminOpen] = useState(false);
   const [bugOpen, setBugOpen] = useState(false);
+  const [waypointMgrOpen, setWaypointMgrOpen] = useState(false);
+
 
   // Listen for admin panel open event (dispatched from the Admin Tools button)
   useEffect(() => {
@@ -385,7 +394,19 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 onCheckedChange={(v) => updateSetting('showMajorDungeonArrows', v)}
               />
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full mt-2"
+              onClick={() => setWaypointMgrOpen(true)}
+            >
+              <Flag className="w-4 h-4 mr-2" /> Manage Waypoints
+            </Button>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Rename or remove individual dungeon-floor and overworld waypoints.
+            </p>
           </div>
+
 
           {/* Auto-Equip Preferences */}
           <div className="space-y-3 pt-4 border-t">
@@ -502,7 +523,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       <ReportBugDialog isOpen={bugOpen} onClose={() => setBugOpen(false)} />
     </div>
     <AdminPanelDialog isOpen={adminOpen} onClose={() => setAdminOpen(false)} />
+    <WaypointManager isOpen={waypointMgrOpen} onClose={() => setWaypointMgrOpen(false)} />
     </>
+
   );
 }
 

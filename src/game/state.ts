@@ -170,6 +170,10 @@ type GameAction =
   | { type: 'SET_DUNGEON'; dungeon: DungeonState }
   | { type: 'UPDATE_DUNGEON'; dungeon: Partial<DungeonState> }
   | { type: 'TOGGLE_DUNGEON_WAYPOINT'; x: number; y: number }
+  | { type: 'RENAME_DUNGEON_WAYPOINT'; x: number; y: number; name: string }
+  | { type: 'REMOVE_DUNGEON_WAYPOINT'; x: number; y: number }
+  | { type: 'CLEAR_DUNGEON_WAYPOINTS' }
+
   | { type: 'DISARM_TRAP'; x: number; y: number; success: boolean }
   | { type: 'START_BATTLE'; enemy: Monster }
   | { type: 'UPDATE_BATTLE'; battle: Partial<BattleState> }
@@ -622,6 +626,43 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         },
       };
     }
+
+    case 'RENAME_DUNGEON_WAYPOINT': {
+      if (!state.run || !state.run.dungeon) return state;
+      const existing = state.run.dungeon.compassWaypoints || [];
+      const trimmed = action.name.trim().slice(0, 32);
+      const next = existing.map(p =>
+        p.x === action.x && p.y === action.y
+          ? { ...p, name: trimmed || undefined }
+          : p
+      );
+      return {
+        ...state,
+        run: {
+          ...state.run,
+          dungeon: { ...state.run.dungeon, compassWaypoints: next },
+        },
+      };
+    }
+
+    case 'REMOVE_DUNGEON_WAYPOINT': {
+      if (!state.run || !state.run.dungeon) return state;
+      const existing = state.run.dungeon.compassWaypoints || [];
+      const next = existing.filter(p => !(p.x === action.x && p.y === action.y));
+      return {
+        ...state,
+        run: { ...state.run, dungeon: { ...state.run.dungeon, compassWaypoints: next } },
+      };
+    }
+
+    case 'CLEAR_DUNGEON_WAYPOINTS': {
+      if (!state.run || !state.run.dungeon) return state;
+      return {
+        ...state,
+        run: { ...state.run, dungeon: { ...state.run.dungeon, compassWaypoints: [] } },
+      };
+    }
+
     
     case 'DISARM_TRAP':
       if (!state.run || !state.run.dungeon) return state;

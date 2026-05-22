@@ -1068,9 +1068,14 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     const dx = worldX - overworld.playerPosition.x;
     const dy = worldY - overworld.playerPosition.y;
     if (dx === 0 && dy === 0) return;
-    // Adjacent tap → step directly.
+    // Adjacent tap → step directly, OR auto-harvest if toggle is on and the
+    // target tile is a harvestable resource.
     if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) {
       cancelAutoWalk();
+      if (settings.autoMine && (tile?.type === 'rock' || tile?.type === 'tree')) {
+        startAutoMine(worldX, worldY);
+        return;
+      }
       handleMove(dx, dy);
       return;
     }

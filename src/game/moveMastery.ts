@@ -166,6 +166,7 @@ export function createEvolvedMove(
     speedMod,
     // Per-tier custom shape wins, otherwise fall back to the base move's shape.
     customShape: tierOverride?.customShape ?? baseMove.customShape,
+    movement: tierOverride?.movement ?? baseMove.movement,
     tier,
     variant,
     baseMoveId: baseMove.id,

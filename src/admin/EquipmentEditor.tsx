@@ -14,6 +14,7 @@ import {
 import { Search, Save, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { computeTrimmedStats, formatNumericHint, rateValueAgainst } from './statCompare';
+import { CopyFromPicker } from './CopyFromPicker';
 
 /** Sum every numeric stat across every set-bonus tier, plus a flat bump for
  *  special / effect strings so sets with utility bonuses don't read as weak. */
@@ -200,6 +201,21 @@ export function EquipmentEditor() {
               </div>
             </div>
 
+            <CopyFromPicker
+              sources={pool.map((s) => ({ id: s.id, name: s.name }))}
+              excludeId={selectedSet.id}
+              onPick={(sourceId) => {
+                const src = pool.find((s) => s.id === sourceId);
+                if (!src) return;
+                const cloned = JSON.parse(JSON.stringify(src)) as EquipmentSet;
+                setEditedSet({
+                  ...cloned,
+                  id: selectedSet.id,
+                  name: selectedSet.name,
+                });
+              }}
+              label={`Copy fields into "${selectedSet.name}" from`}
+            />
 
             <div>
               <Label>Name</Label>

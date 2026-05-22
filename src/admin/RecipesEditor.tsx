@@ -12,6 +12,7 @@ import {
 } from '@/game/equipment';
 import { Search, Save, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
+import { CopyFromPicker } from './CopyFromPicker';
 
 export function RecipesEditor() {
   const { overrides, saveOverride, deleteOverride, getOverride, loading } = useGameDataOverrides('recipes');

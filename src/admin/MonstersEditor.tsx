@@ -10,6 +10,7 @@ import { SPECIES_DATA, SpeciesType, SpeciesData } from '@/game/types';
 import { Search, Save, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { computeTrimmedStats, formatNumericHint, rateValueAgainst } from './statCompare';
+import { CopyFromPicker } from './CopyFromPicker';
 
 interface SpeciesEditable extends SpeciesData {
   speciesId: SpeciesType;
@@ -188,6 +189,22 @@ export function MonstersEditor() {
                 {formatNumericHint(totalTrim)}
               </div>
             </div>
+
+            <CopyFromPicker
+              sources={pool.map((p) => ({ id: p.speciesId, name: `${p.name} (${p.category})` }))}
+              excludeId={selectedSpecies.speciesId}
+              onPick={(sourceId) => {
+                const src = pool.find((p) => p.speciesId === sourceId);
+                if (!src) return;
+                const cloned = JSON.parse(JSON.stringify(src)) as SpeciesEditable;
+                // Preserve the target's identity; clone every other field.
+                setEditedSpecies({
+                  ...cloned,
+                  name: selectedSpecies.name,
+                });
+              }}
+              label={`Copy fields into "${selectedSpecies.name}" from`}
+            />
 
             <div>
               <Label>Name</Label>

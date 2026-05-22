@@ -346,7 +346,7 @@ export function ShapeDesigner() {
 
 
       {/* Designer */}
-      <Card className="p-4">
+      <Card className="p-4 order-1 lg:order-2">
         {!selected ? (
           <div className="h-64 flex items-center justify-center text-muted-foreground">
             Select a move to design a shape.

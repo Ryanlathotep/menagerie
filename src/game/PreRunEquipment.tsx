@@ -441,8 +441,11 @@ export function PreRunEquipment({
                 sortConfig={sortConfig}
                 onSortChange={setSortConfig}
                 onAutoEquip={handleAutoEquip}
+                focus={settings.autoEquipFocus}
+                onFocusChange={(f) => updateSetting('autoEquipFocus', f)}
               />
             </div>
+
             
             <ScrollArea className="flex-1 max-h-[280px]">
               <div className="space-y-2 pr-2">

@@ -260,7 +260,7 @@ export function ShapeDesigner() {
         return { dx, dy };
       });
       if (offsets.length === 0) { toast.error('Select at least one cell.'); return; }
-      patch.movement = { offsets, blink };
+      patch.movement = { offsets, blink, ...(rotateMovement ? { rotateToFacing: true } : {}) };
       patch.type = 'movement';
       delete patch.customShape;
     } else {

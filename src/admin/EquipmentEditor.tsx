@@ -98,6 +98,10 @@ export function EquipmentEditor() {
   };
 
   const hasOverride = selectedSet ? !!getOverride('equipment', selectedSet.id) : false;
+  const ratingInfo = useMemo(
+    () => rateValueAgainst(setPowerRating(editedSet), poolRatings),
+    [editedSet, poolRatings],
+  );
 
   if (loading) {
     return <div className="text-muted-foreground p-4">Loading equipment...</div>;

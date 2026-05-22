@@ -230,14 +230,11 @@ export function MovesEditor() {
               </div>
             </div>
 
-            <div>
-              <Label>Effect</Label>
-              <Input
-                value={(editedMove.effect as string) || ''}
-                onChange={(e) => setEditedMove({ ...editedMove, effect: e.target.value || undefined })}
-                placeholder="e.g., poison, heal_self, lower_defense"
-              />
-            </div>
+            <EffectPicker
+              value={(editedMove.effect as string) || ''}
+              onChange={(v) => setEditedMove({ ...editedMove, effect: v || undefined })}
+            />
+
 
             <div className="flex gap-2">
               <Button onClick={handleSave} className="flex-1 gap-2">
@@ -261,3 +258,124 @@ export function MovesEditor() {
     </div>
   );
 }
+
+// All known move effects, grouped for readability.
+const EFFECT_GROUPS: { label: string; effects: string[] }[] = [
+  {
+    label: 'Status / DoT',
+    effects: ['poison', 'burn', 'paralyze', 'confuse'],
+  },
+  {
+    label: 'Self Buffs',
+    effects: [
+      'raise_attack', 'raise_defense', 'raise_special', 'raise_speed',
+      'raise_accuracy', 'raise_dodge', 'raise_all_stats',
+    ],
+  },
+  {
+    label: 'Debuffs',
+    effects: [
+      'lower_attack', 'lower_defense', 'lower_special', 'lower_speed',
+      'lower_accuracy', 'lower_all_stats',
+    ],
+  },
+  {
+    label: 'Resource',
+    effects: ['heal_self', 'restore_stamina', 'drain_stamina', 'drain_enemy_stamina'],
+  },
+  {
+    label: 'Special',
+    effects: [
+      'crit_chance', 'crit_vs_wounded', 'bonus_vs_wounded',
+      'charge_next', 'double_next', 'copy_type',
+      'steal_buff', 'steal_item', 'find_item', 'reveal_stats',
+    ],
+  },
+];
+
+const ALL_EFFECTS = Array.from(new Set(EFFECT_GROUPS.flatMap((g) => g.effects))).sort();
+
+function EffectPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [query, setQuery] = useState('');
+  const q = query.trim().toLowerCase();
+
+  const matches = (e: string) => !q || e.toLowerCase().includes(q) || e.replace(/_/g, ' ').includes(q);
+  const isCustom = value && !ALL_EFFECTS.includes(value);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label>Effect</Label>
+        <span className="text-xs text-muted-foreground">
+          {value ? <>Selected: <code className="font-mono">{value}</code></> : 'None'}
+        </span>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search effects… (or type a custom effect ID)"
+          className="pl-8"
+        />
+      </div>
+
+      <ScrollArea className="h-56 rounded-md border p-2">
+        <div className="space-y-3">
+          {EFFECT_GROUPS.map((group) => {
+            const shown = group.effects.filter(matches);
+            if (shown.length === 0) return null;
+            return (
+              <div key={group.label}>
+                <div className="text-xs font-semibold text-muted-foreground mb-1">{group.label}</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {shown.map((eff) => {
+                    const active = value === eff;
+                    return (
+                      <Button
+                        key={eff}
+                        type="button"
+                        size="sm"
+                        variant={active ? 'default' : 'outline'}
+                        onClick={() => onChange(active ? '' : eff)}
+                        className="h-7 text-xs"
+                      >
+                        {eff.replace(/_/g, ' ')}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+
+          {q && !ALL_EFFECTS.some(matches) && (
+            <Button
+              type="button"
+              size="sm"
+              variant={value === query.trim() ? 'default' : 'secondary'}
+              onClick={() => onChange(query.trim())}
+              className="h-7 text-xs"
+            >
+              Use custom: "{query.trim()}"
+            </Button>
+          )}
+        </div>
+      </ScrollArea>
+
+      {isCustom && (
+        <div className="text-xs text-amber-600">
+          Custom effect ID — make sure combat logic handles "{value}".
+        </div>
+      )}
+
+      {value && (
+        <Button type="button" size="sm" variant="ghost" onClick={() => onChange('')} className="h-7 text-xs">
+          Clear effect
+        </Button>
+      )}
+    </div>
+  );
+}
+

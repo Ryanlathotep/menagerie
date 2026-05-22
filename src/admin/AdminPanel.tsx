@@ -84,6 +84,9 @@ export function AdminPanel() {
           <TabsContent value="moves" className="p-4 m-0">
             <MovesEditor />
           </TabsContent>
+          <TabsContent value="shapes" className="p-4 m-0">
+            <ShapeDesigner />
+          </TabsContent>
           <TabsContent value="equipment" className="p-4 m-0">
             <EquipmentEditor />
           </TabsContent>

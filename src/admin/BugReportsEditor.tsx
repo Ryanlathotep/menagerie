@@ -49,7 +49,7 @@ export function BugReportsEditor() {
   useEffect(() => { load(); }, [load]);
 
   const updateReport = async (id: string, patch: Partial<BugReport>) => {
-    const { error } = await supabase.from('bug_reports').update(patch).eq('id', id);
+    const { error } = await supabase.from('bug_reports').update(patch as any).eq('id', id);
     if (error) {
       toast({ title: 'Update failed', description: error.message, variant: 'destructive' });
       return;

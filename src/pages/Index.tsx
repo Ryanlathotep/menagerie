@@ -2956,9 +2956,6 @@ function DungeonView({
         const playerDef = playerMon.stats.defense;
 
         if (move) {
-          // Use chosen move's power + element matchup via enemyAI helper
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
-          const { rollEnemyMoveDamage } = require('@/game/enemyAI') as typeof import('@/game/enemyAI');
           const roll = rollEnemyMoveDamage(enemy, move, playerDef, playerMon.element);
           if (!roll.hit) {
             addLog(`👹 ${enemy.name} uses ${move.name} — but misses!`, 'system');

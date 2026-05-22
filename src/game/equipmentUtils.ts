@@ -332,12 +332,6 @@ export function getEquipmentIcon(itemName: string): EquipmentIconDef {
   const override = getEquipmentIconOverride(key);
   if (override) return override;
 
-  // Exact-match override first (so "Iron Sword +1" can still match "Iron Sword").
-  const baseName = Object.keys(EQUIPMENT_ICONS).find((name) => itemName.includes(name));
-  const key = baseName ?? itemName;
-  const override = getEquipmentIconOverride(key);
-  if (override) return override;
-
   return baseName ? EQUIPMENT_ICONS[baseName] : DEFAULT_ICON;
 }
 

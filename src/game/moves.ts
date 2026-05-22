@@ -62,6 +62,8 @@ export interface CustomShape {
   harvestsResources?: HarvestableKind[];
   /** Terrain rune to place on empty/air tiles inside shape. */
   placesTerrain?: import('./terrain').TerrainType;
+  /** If true, rotate the offsets 0/90/180/270° to match the cardinal direction the player aimed. */
+  rotateToFacing?: boolean;
 }
 
 /** Designer-defined movement pattern. Each offset is a legal destination

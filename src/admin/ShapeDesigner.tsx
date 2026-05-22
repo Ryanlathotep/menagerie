@@ -100,14 +100,23 @@ export function ShapeDesigner() {
     Object.values(SPECIES_MOVES).forEach((arr) => out.push(...arr));
     Object.values(ELEMENT_MOVES).forEach((arr) => out.push(...arr));
     Object.values(CLASS_MOVES).forEach((arr) => out.push(...arr));
+    // Include any fully custom (admin-created) moves
+    out.push(...getCustomMoves());
     return out;
   }, []);
 
   const filtered = useMemo(() => {
-    if (!search) return allMoves;
-    const q = search.toLowerCase();
-    return allMoves.filter((m) => m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q));
-  }, [allMoves, search]);
+    let list = allMoves;
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter((m) => m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q));
+    }
+    list = filterMoves(list, moveFilters);
+    // sortMoves needs a monster for usage sorts; pass a stub with empty mastery.
+    const stub = { moveMastery: {} } as unknown as Monster;
+    list = sortMoves(list, sortOption, stub, list.map((m) => m.id));
+    return list;
+  }, [allMoves, search, moveFilters, sortOption]);
 
   const isAnchorOnSelf = originType === 'self';
 

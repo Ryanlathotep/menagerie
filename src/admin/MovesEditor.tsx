@@ -477,22 +477,17 @@ export function MovesEditor() {
             </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-               <NumberField label="Stamina Cost" value={editedMove.staminaCost ?? 0}
-                 hint={formatNumericHint(numericStats.staminaCost)}
-                 onChange={(v) => setEditedMove({ ...editedMove, staminaCost: v })} />
                <NumberField label="Mana Cost" value={editedMove.manaCost ?? 0}
                  hint={formatNumericHint(numericStats.manaCost)}
                  onChange={(v) => setEditedMove({ ...editedMove, manaCost: v || undefined })} />
                <NumberField label="Speed Mod" value={editedMove.speedMod ?? 0}
                  hint={formatNumericHint(numericStats.speedMod)}
                  onChange={(v) => setEditedMove({ ...editedMove, speedMod: v })} />
-            </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                <NumberField label="AoE Radius" value={editedMove.aoeRadius ?? 0}
                  hint={formatNumericHint(numericStats.aoeRadius)}
                  onChange={(v) => setEditedMove({ ...editedMove, aoeRadius: v })} />
             </div>
+
 
 
             {/* ----- Targeting & Shape (read from the move's existing settings) ----- */}

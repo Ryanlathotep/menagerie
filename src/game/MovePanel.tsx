@@ -300,7 +300,10 @@ function DraggableMoveCard({
             </div>
           </div>
           
-          <p className="text-[9px] text-muted-foreground line-clamp-1 mb-1">{move.description}</p>
+          <div className="flex items-start gap-1.5 mb-1">
+            <p className="text-[9px] text-muted-foreground line-clamp-1 flex-1">{move.description}</p>
+            <MoveShapeThumbnail move={move} cellPx={5} />
+          </div>
           
           <div className="flex flex-wrap gap-1.5 text-[9px]">
             {move.power > 0 && (

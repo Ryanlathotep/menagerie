@@ -294,13 +294,9 @@ export function ShapeDesigner() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {/* Designer (rendered first so it appears at top on mobile) */}
-      <div className="lg:order-2">
-        {/* placeholder — actual designer card moved below via order */}
-      </div>
-
       {/* Move picker */}
       <Card className="p-3 lg:order-1">
+
         <div className="flex items-center gap-2 mb-2">
           <Search className="w-4 h-4 text-muted-foreground shrink-0" />
           <Input

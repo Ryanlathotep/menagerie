@@ -290,15 +290,18 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     let playerDamage = 0;
 
     for (const { enemy, pos } of enemies) {
-      const action = calculateOverworldEnemyAction(enemy, pos, ow.playerPosition, ow);
-      const ATTACK_COST = 8;
+      const action = calculateOverworldEnemyAction(
+        enemy, pos, ow.playerPosition, ow, state.run.currentMonster,
+      );
       const REGEN = 5;
+      const FALLBACK_COST = 8;
 
       if (action.type === 'attack') {
+        const move = action.move;
         const sMax = enemy.stats.stamina ?? 50;
         const sCur = enemy.stats.currentStamina ?? sMax;
-        if (sCur < ATTACK_COST) {
-          // Exhausted — rest instead
+        const cost = move?.staminaCost ?? FALLBACK_COST;
+        if (sCur < cost) {
           for (const chunk of Object.values(ow.chunks)) {
             const e = chunk.enemies.find(e => e.id === enemy.id);
             if (e) { e.stats.currentStamina = Math.min(sMax, sCur + REGEN); break; }
@@ -306,16 +309,29 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           addLog(`💤 ${enemy.name} is exhausted and catches its breath.`, 'system');
           continue;
         }
-        // Pay cost + attack
         for (const chunk of Object.values(ow.chunks)) {
           const e = chunk.enemies.find(e => e.id === enemy.id);
-          if (e) { e.stats.currentStamina = Math.max(0, sCur - ATTACK_COST); break; }
+          if (e) { e.stats.currentStamina = Math.max(0, sCur - cost); break; }
         }
-        const attackPower = enemy.stats.attack;
-        const playerDef = state.run.currentMonster.stats.defense;
-        const damage = Math.max(1, Math.floor(attackPower - playerDef * 0.3));
-        playerDamage += damage;
-        addLog(`👹 ${enemy.name} attacks for ${damage} damage!`, 'damage');
+
+        const playerMon = state.run.currentMonster;
+        const playerDef = playerMon.stats.defense;
+        if (move) {
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const { rollEnemyMoveDamage } = require('@/game/enemyAI') as typeof import('@/game/enemyAI');
+          const roll = rollEnemyMoveDamage(enemy, move, playerDef, playerMon.element);
+          if (!roll.hit) {
+            addLog(`👹 ${enemy.name} uses ${move.name} — but misses!`, 'system');
+          } else {
+            playerDamage += roll.damage;
+            const tag = roll.superEffective ? ' 💥 Super effective!' : '';
+            addLog(`👹 ${enemy.name} uses ${move.name} for ${roll.damage} damage!${tag}`, 'damage');
+          }
+        } else {
+          const damage = Math.max(1, Math.floor(enemy.stats.attack - playerDef * 0.3));
+          playerDamage += damage;
+          addLog(`👹 ${enemy.name} attacks for ${damage} damage!`, 'damage');
+        }
       } else if (action.type === 'move') {
         // Small regen on move
         const sMax = enemy.stats.stamina ?? 50;

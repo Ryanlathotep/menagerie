@@ -3045,30 +3045,10 @@ function DungeonView({
               onTileRightClick={(x, y) => {
                 if (!dungeon || !state.run) return;
                 const tile = dungeon.tiles[y]?.[x];
-                if (tile?.type === 'enemy' && tile.enemyId) {
-                  const enemy = dungeon.enemies.find(e => e.id === tile.enemyId);
-                  if (enemy) {
-                    setAttackMenuTarget({
-                      enemy,
-                      enemyPos: { x, y },
-                      playerPos: dungeon.playerPosition,
-                    });
-                  }
-                  return;
-                }
-                // Right-click any other explored tile → toggle a waypoint pin.
                 if (!tile?.explored) return;
-                const existing = dungeon.compassWaypoints || [];
-                const isPinned = existing.some(p => p.x === x && p.y === y);
-                dispatch({ type: 'TOGGLE_DUNGEON_WAYPOINT', x, y });
-                if (isPinned) {
-                  addLog(`📍 Waypoint removed`, 'system');
-                } else {
-                  // Show coordinates relative to entry stairs (matches the HUD).
-                  const ex = dungeon.entryPosition?.x ?? 0;
-                  const ey = dungeon.entryPosition?.y ?? 0;
-                  addLog(`📍 Waypoint pinned at (${x - ex}, ${y - ey})`, 'system');
-                }
+                // Open the unified tile menu — waypoint is now an action inside it
+                // rather than firing immediately on right-click.
+                setDungeonTileMenu({ x, y });
               }}
               targetingMode={!!targetingMove}
               targetingTiles={targetingTiles}

@@ -9,7 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Progress } from '@/components/ui/progress';
 import { useGameDataOverrides } from '@/hooks/useGameDataOverrides';
 import { SPECIES_MOVES, ELEMENT_MOVES, CLASS_MOVES, Move } from '@/game/moves';
-import { rateAgainst, setSingleMoveOverride } from '@/game/moveOverrides';
+import { rateAgainst, ratingFor, setSingleMoveOverride } from '@/game/moveOverrides';
 import { TIER_ORDER, TIER_MULTIPLIERS, TIER_PREFIXES, type MoveTier } from '@/game/moveMastery';
 import { SpeciesType, ElementType, ClassType } from '@/game/types';
 import { Search, Save, RotateCcw, Plus, Trash2, Copy } from 'lucide-react';
@@ -26,7 +26,7 @@ const ALL_CLASSES: ClassType[] = ['normal', 'kinetic', 'energy', 'biological', '
 
 type SourcedMove = { move: Move; source: string; sourceId: string; isCustom: boolean };
 
-type NumericFieldKey = 'power' | 'accuracy' | 'staminaCost' | 'speedMod' | 'aoeRadius' | 'unlockLevel';
+type NumericFieldKey = 'power' | 'accuracy' | 'staminaCost' | 'manaCost' | 'speedMod' | 'aoeRadius' | 'unlockLevel';
 
 type NumericFieldStats = {
   min: number;
@@ -218,10 +218,67 @@ export function MovesEditor() {
     power: computeTrimmedStats(ratingPool.map((move) => move.power ?? 0)),
     accuracy: computeTrimmedStats(ratingPool.map((move) => move.accuracy ?? 100)),
     staminaCost: computeTrimmedStats(ratingPool.map((move) => move.staminaCost ?? 0)),
+    manaCost: computeTrimmedStats(ratingPool.map((move) => move.manaCost ?? 0)),
     speedMod: computeTrimmedStats(ratingPool.map((move) => move.speedMod ?? 0)),
     aoeRadius: computeTrimmedStats(ratingPool.map((move) => move.aoeRadius ?? 0)),
     unlockLevel: computeTrimmedStats(ratingPool.map((move) => move.unlockLevel ?? 1)),
   }), [ratingPool]);
+
+  // The "saved baseline" rating — what was last persisted to the DB. Drives
+  // the suggestions panel which only refreshes when the move is selected or
+  // saved (not on every keystroke).
+  const savedRating = useMemo(() => (selected ? ratingFor({ ...selected.move, ...(selectedOverride ?? {}) }) : 0), [selected, selectedOverride]);
+  const targetRating = editedMove.targetRating ?? savedRating;
+
+  // For each tunable field, compute approximate rating-per-unit so we can
+  // suggest concrete edits to reach the target rating.
+  const suggestions = useMemo(() => {
+    if (!selected) return [] as { label: string; delta: number; ratingDelta: number; direction: 'up' | 'down' }[];
+    const gap = targetRating - ratingInfo.rating;
+    if (Math.abs(gap) < 1) return [];
+    const base = ratingFor(editedMove);
+    const probe = (patch: Partial<Move>) => ratingFor({ ...editedMove, ...patch });
+    // [field label, current, +step probe, -step probe]
+    const fields: { label: string; key: keyof Move; current: number; perUnit: number; lowerBound?: number; upperBound?: number }[] = [
+      { label: 'Power',         key: 'power',       current: editedMove.power ?? 0,        perUnit: probe({ power: (editedMove.power ?? 0) + 10 }) - base, lowerBound: 0,   upperBound: 250 },
+      { label: 'Accuracy',      key: 'accuracy',    current: editedMove.accuracy ?? 100,    perUnit: probe({ accuracy: (editedMove.accuracy ?? 100) + 10 }) - base, lowerBound: 30, upperBound: 100 },
+      { label: 'Stamina Cost',  key: 'staminaCost', current: editedMove.staminaCost ?? 0,   perUnit: probe({ staminaCost: (editedMove.staminaCost ?? 0) - 1 }) - base, lowerBound: 0, upperBound: 50 },
+      { label: 'Mana Cost',     key: 'manaCost',    current: editedMove.manaCost ?? 0,      perUnit: probe({ manaCost: (editedMove.manaCost ?? 0) - 1 }) - base, lowerBound: 0, upperBound: 50 },
+      { label: 'Speed Mod',     key: 'speedMod',    current: editedMove.speedMod ?? 0,      perUnit: probe({ speedMod: (editedMove.speedMod ?? 0) + 1 }) - base, lowerBound: -5, upperBound: 5 },
+      { label: 'AoE Radius',    key: 'aoeRadius',   current: editedMove.aoeRadius ?? 0,     perUnit: probe({ aoeRadius: (editedMove.aoeRadius ?? 0) + 1 }) - base, lowerBound: 0, upperBound: 6 },
+      { label: 'Learned Level', key: 'unlockLevel', current: editedMove.unlockLevel ?? 1,   perUnit: probe({ unlockLevel: (editedMove.unlockLevel ?? 1) - 1 }) - base, lowerBound: 1, upperBound: 50 },
+    ];
+    const out: { label: string; delta: number; ratingDelta: number; direction: 'up' | 'down' }[] = [];
+    for (const f of fields) {
+      if (Math.abs(f.perUnit) < 0.01) continue;
+      // Sign of the per-unit step that moves rating UP:
+      // power/acc/speed/aoe use +step, stamina/mana/level use -step.
+      const stepDir = (f.key === 'staminaCost' || f.key === 'manaCost' || f.key === 'unlockLevel') ? -1 : 1;
+      const unitRating = Math.abs(f.perUnit); // rating gained per favorable unit
+      const stepSize = (f.key === 'power' || f.key === 'accuracy') ? 10 : 1; // matches the probe granularity for those fields
+      const ratingPerSingle = unitRating / stepSize;
+      if (ratingPerSingle < 0.1) continue;
+      const want = gap; // +ve = need more rating
+      // Direction of change to the raw field:
+      const rawDelta = Math.round((want / ratingPerSingle) * (want > 0 ? stepDir : -stepDir));
+      if (rawDelta === 0) continue;
+      // Clamp to plausible bounds.
+      let target = f.current + rawDelta;
+      if (f.lowerBound !== undefined) target = Math.max(f.lowerBound, target);
+      if (f.upperBound !== undefined) target = Math.min(f.upperBound, target);
+      const actualDelta = target - f.current;
+      if (actualDelta === 0) continue;
+      const ratingDelta = ratingPerSingle * Math.abs(actualDelta) * (actualDelta * stepDir > 0 ? 1 : -1);
+      out.push({
+        label: f.label,
+        delta: actualDelta,
+        ratingDelta: Math.round(ratingDelta),
+        direction: want > 0 ? 'up' : 'down',
+      });
+    }
+    return out.sort((a, b) => Math.abs(b.ratingDelta) - Math.abs(a.ratingDelta));
+  }, [editedMove, ratingInfo.rating, targetRating, selected]);
+
 
   if (loading) return <div className="text-muted-foreground p-4">Loading moves...</div>;
 
@@ -307,7 +364,7 @@ export function MovesEditor() {
               </div>
             </div>
 
-            {/* ----- Rating ----- */}
+            {/* ----- Rating + Target (point-buy balancing) ----- */}
             <div className="rounded-md border bg-muted/30 p-3 space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="font-semibold">Power Rating</span>
@@ -321,7 +378,57 @@ export function MovesEditor() {
                 <span>Stronger than {ratingInfo.percentile}% of moves</span>
                 <span>avg {ratingInfo.avg} • min {ratingInfo.min} • max {ratingInfo.max}</span>
               </div>
+
+              <div className="flex items-end gap-2 pt-2 border-t border-border/50">
+                <div className="flex-1">
+                  <Label className="text-xs">Target Rating</Label>
+                  <Input
+                    type="number"
+                    value={editedMove.targetRating ?? ''}
+                    placeholder={String(savedRating)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setEditedMove({ ...editedMove, targetRating: v === '' ? undefined : parseInt(v, 10) });
+                    }}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="text-xs text-muted-foreground pb-1.5 whitespace-nowrap">
+                  Saved: <span className="font-mono">{savedRating}</span>
+                  {' · '}Gap: <span className={`font-mono ${targetRating - ratingInfo.rating > 0 ? 'text-emerald-500' : targetRating - ratingInfo.rating < 0 ? 'text-amber-500' : ''}`}>
+                    {targetRating - ratingInfo.rating > 0 ? '+' : ''}{targetRating - ratingInfo.rating}
+                  </span>
+                </div>
+              </div>
+
+              {suggestions.length > 0 && (
+                <div className="pt-2 border-t border-border/50 space-y-1">
+                  <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                    Suggestions to reach {targetRating}
+                  </div>
+                  <ul className="space-y-0.5 text-xs">
+                    {suggestions.slice(0, 5).map((s) => (
+                      <li key={s.label} className="flex justify-between gap-2 font-mono">
+                        <span>
+                          <span className="text-muted-foreground">{s.label}</span>
+                          {' '}
+                          <span className={s.delta > 0 ? 'text-emerald-500' : 'text-amber-500'}>
+                            {s.delta > 0 ? '+' : ''}{s.delta}
+                          </span>
+                        </span>
+                        <span className="text-muted-foreground">
+                          ≈ {s.ratingDelta > 0 ? '+' : ''}{s.ratingDelta} rating
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="text-[10px] text-muted-foreground leading-tight pt-1">
+                    Each row is a single-field change that would close the gap on its own. Mix and match for finer tuning.
+                  </div>
+                </div>
+              )}
             </div>
+
 
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -369,7 +476,10 @@ export function MovesEditor() {
                  onChange={(v) => setEditedMove({ ...editedMove, staminaCost: v })} />
             </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+               <NumberField label="Mana Cost" value={editedMove.manaCost ?? 0}
+                 hint={formatNumericHint(numericStats.manaCost)}
+                 onChange={(v) => setEditedMove({ ...editedMove, manaCost: v || undefined })} />
                <NumberField label="Speed Mod" value={editedMove.speedMod ?? 0}
                  hint={formatNumericHint(numericStats.speedMod)}
                  onChange={(v) => setEditedMove({ ...editedMove, speedMod: v })} />
@@ -377,6 +487,8 @@ export function MovesEditor() {
                  hint={formatNumericHint(numericStats.aoeRadius)}
                  onChange={(v) => setEditedMove({ ...editedMove, aoeRadius: v })} />
             </div>
+
+
 
             {/* ----- Targeting & Shape (read from the move's existing settings) ----- */}
             <div className="rounded-md border border-border bg-muted/30 p-2 space-y-2">

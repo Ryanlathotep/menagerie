@@ -107,12 +107,16 @@ export interface Move {
   power: number;        // Base damage (0 for status/heal/movement)
   accuracy: number;     // 0-100 base accuracy
   staminaCost: number;  // Stamina consumed
+  manaCost?: number;    // Mana / focus consumed (reserved for future mana system; used by the admin balancing tool)
   speedMod: number;     // Speed modifier: negative = slower, positive = faster (priority)
   aspects: AspectSource[];  // Which aspects power this move (1-3)
   element?: ElementType;    // Elemental type if applicable
   classBonus?: ClassType;   // Class that gives bonus if applicable
   effect?: string;      // Special effect
   unlockLevel?: number; // Level required to learn this move (default: 1)
+  /** Admin balancing tool: designer-specified power-rating budget for this move. Compared against ratingFor() in the editor. */
+  targetRating?: number;
+
   // Targeting properties for ranged/AoE moves
   targeting?: TargetingPattern;  // How the attack targets (default: 'single' for ranged)
   aoeRadius?: number;            // For area/aura patterns - radius of effect
@@ -151,6 +155,8 @@ export interface Move {
     power?: number;
     accuracy?: number;
     staminaCost?: number;
+    manaCost?: number;
+
     speedMod?: number;
     customShape?: CustomShape;
     /** Per-tier movement pattern (overrides base move's `movement` for that tier). */

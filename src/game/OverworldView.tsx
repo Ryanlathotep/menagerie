@@ -2334,10 +2334,32 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         subtitle = 'Step onto it to mine for stone';
         const tier = (tile as any).stoneTier as StoneTier | undefined;
         if (tier && STONE_TIER_DATA[tier]) info.push({ label: 'Tier', value: STONE_TIER_DATA[tier].name });
-        if (isAdjacent) actions.push({
-          id: 'mine', label: 'Mine rock', icon: Pickaxe, variant: 'default',
-          onClick: () => { const dx = unifiedMenu.x - px, dy = unifiedMenu.y - py; close(); handleMove(dx, dy); },
-        });
+        if (isAdjacent) {
+          const autoMineOn = !!settings.autoMine;
+          actions.push({
+            id: 'mine',
+            label: autoMineOn ? 'Auto-Mine until done/attacked' : 'Mine rock (one swing)',
+            icon: Pickaxe, variant: 'default',
+            hint: autoMineOn ? 'Halts on enemy spotted or exhaustion' : undefined,
+            onClick: () => {
+              const tx = unifiedMenu.x, ty = unifiedMenu.y;
+              close();
+              if (autoMineOn) startAutoMine(tx, ty);
+              else handleMove(tx - px, ty - py);
+            },
+          });
+          actions.push({
+            id: 'toggle-auto-mine',
+            label: autoMineOn ? 'Disable Auto-Mine' : 'Enable Auto-Mine',
+            icon: Pickaxe, variant: 'outline',
+            hint: 'Persisted in Settings',
+            onClick: () => {
+              updateSetting('autoMine', !autoMineOn);
+              toast.info(`Auto-Mine ${!autoMineOn ? 'enabled' : 'disabled'}`);
+            },
+          });
+        }
+
       } else if (tile.type === 'cliff' || tile.type === 'waterfall') {
         title = tile.type === 'cliff' ? '⛰ Cliff' : '🌊 Waterfall';
         subtitle = 'Impassable terrain';

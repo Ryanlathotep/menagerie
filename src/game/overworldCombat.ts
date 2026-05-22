@@ -234,8 +234,8 @@ export function calculateOverworldEnemyAction(
   overworld: OverworldState,
   playerMonster?: Monster,
 ): OverworldEnemyAction {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const ai = require('./enemyAI') as typeof import('./enemyAI');
+  const ai = enemyAI;
+
 
   const dist = Math.abs(playerPos.x - enemyPos.x) + Math.abs(playerPos.y - enemyPos.y);
   const archetype = ai.getEnemyArchetype(enemy);

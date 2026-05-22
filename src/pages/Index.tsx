@@ -1358,6 +1358,8 @@ function DungeonView({
         width: dungeon.width,
         height: dungeon.height,
         entryPosition: dungeon.entryPosition,
+        playerBuildings: dungeon.playerBuildings,
+        roads: dungeon.roads,
       };
       const nextFloorNum = dungeon.floor + 1;
       const cached = visited[nextFloorNum];

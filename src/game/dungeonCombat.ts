@@ -472,15 +472,30 @@ export function getValidTargets(
       const y = origin.y + o.dy;
       if (x < 0 || x >= width || y < 0 || y >= height) continue;
       const tile = tiles[y][x];
-      // Destination must be empty / walkable. Blink ignores LOS; otherwise need LOS.
-      if (tile.type !== 'floor' && tile.type !== 'plant') continue;
+      // Destination tile must be land-able. Determine which tiles count as a valid landing.
+      const isWater = tile.terrainType === 'water';
+      const destOk =
+        tile.type === 'floor' ||
+        tile.type === 'plant' ||
+        (tile.type === 'trap' && (config.passThroughTraps || config.blink)) ||
+        (tile.type === 'terrain' && (config.passThroughTerrain || config.blink || (isWater && config.canCrossWater))) ||
+        (tile.type === 'enemy' && (config.passThroughEnemies || config.blink));
+      if (!destOk) continue;
+      // Cliff check (destination elevation jump). Source z falls back to 0.
+      if (!config.canClimbCliffs && !config.blink) {
+        const srcZ = tiles[origin.y]?.[origin.x]?.nestState ? 0 : (origin.z ?? 0);
+        const dstZ = tile.nestState ? 0 : 0; // dungeons currently lack z; placeholder always 0
+        if (Math.abs(dstZ - srcZ) > 1) continue;
+      }
+      // Path checks for non-blink movement.
       if (!config.blink) {
-        if (!hasLineOfSight(origin, { x, y }, tiles, width, height, false)) continue;
+        if (!isPathClear(origin, { x, y }, tiles, width, height, config)) continue;
       }
       validTiles.push({ x, y });
     }
     return validTiles;
   }
+
 
   // ── Custom self-anchored shape: only valid target is the caster's own tile ──
   if (config.pattern === 'custom' && config.customOrigin === 'self') {

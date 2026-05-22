@@ -22,7 +22,18 @@ export interface AttackConfig {
   blink?: boolean;
   /** If true, offsets rotate to the cardinal direction from origin → target. */
   rotateToFacing?: boolean;
+  // ----- Movement-only path traversal flags (mirrors MovementPattern) -----
+  blockedByWalls?: boolean;
+  blockedByUnits?: boolean;
+  passThroughEnemies?: boolean;
+  passThroughTraps?: boolean;
+  passThroughTerrain?: boolean;
+  canClimbCliffs?: boolean;
+  canCrossWater?: boolean;
+  triggersTrapsOnPath?: boolean;
+  harvestsResources?: import('./moves').HarvestableKind[];
 }
+
 
 /** Cardinal facing derived from origin → target vector. North = default (no rotation). */
 export type Facing = 'N' | 'E' | 'S' | 'W';

@@ -3,7 +3,7 @@
 // preferences as the main move panel. Out-of-range and unaffordable moves are
 // shown but disabled, so the player can see the full picture at a glance.
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,8 +12,8 @@ import { X, Zap, Target, Shield, Coins } from 'lucide-react';
 import { Monster } from './types';
 import { Move, getMonsterMoves } from './moves';
 import { getAttackConfig } from './dungeonCombat';
-import { sortMoves, filterMoves } from './MoveSortFilter';
-import { loadMoveFilters } from './persistedFilters';
+import { MoveSortFilter, MoveSortOption, MoveFilterOption, sortMoves, filterMoves } from './MoveSortFilter';
+import { loadMoveFilters, saveMoveFilters } from './persistedFilters';
 import { getEffectiveness } from './combat';
 
 export interface EnemyAttackTarget {

@@ -133,6 +133,9 @@ export function getLineHitTiles(
     
     // If not piercing and we hit an enemy, stop
     if (!piercing && tile.type === 'enemy') break;
+  }
+  
+  return hitTiles;
 }
 
 // Bresenham path between two points (inclusive of both endpoints).
@@ -182,9 +185,6 @@ export function isPathClear(
   return true;
 }
 
-  
-  return hitTiles;
-}
 
 // Get attack configuration based on move type and targeting properties
 export function getAttackConfig(move: Move | EvolvedMove): AttackConfig {

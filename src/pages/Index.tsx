@@ -2461,6 +2461,51 @@ function DungeonView({
     
     for (const tile of affected) {
       const dungeonTile = newDungeon.tiles[tile.y]?.[tile.x];
+
+      // AoE trap / rune triggering (admin toggle on the move).
+      if (targetingMove.triggersTrapsOnAoe && dungeonTile) {
+        // Detonate untriggered traps the AoE overlaps.
+        if (dungeonTile.type === 'trap' && !dungeonTile.triggered) {
+          newDungeon.tiles[tile.y][tile.x] = { ...dungeonTile, triggered: true };
+          addLog(`💥 ${targetingMove.name} sprung a trap at (${tile.x}, ${tile.y})!`, 'damage');
+          // Damage enemies standing on the trap (player can't stand on AoE tiles).
+          const enemyOnTrap = newDungeon.enemies.find(e => {
+            const p = getEnemyPosition(newDungeon, e.id);
+            return p && p.x === tile.x && p.y === tile.y;
+          });
+          if (enemyOnTrap) {
+            const trapDmg = Math.max(5, Math.floor((enemyOnTrap.stats.maxHp ?? 30) * 0.15));
+            newDungeon = {
+              ...newDungeon,
+              enemies: newDungeon.enemies.map(e => e.id === enemyOnTrap.id
+                ? { ...e, stats: { ...e.stats, currentHp: Math.max(0, e.stats.currentHp - trapDmg) } }
+                : e),
+            };
+            addLog(`🪤 ${enemyOnTrap.name} takes ${trapDmg} trap damage!`, 'damage');
+          }
+        }
+        // Apply rune (terrain) backlash to non-favored creatures standing on it.
+        if (dungeonTile.terrainType) {
+          const enemyOnTerrain = newDungeon.enemies.find(e => {
+            const p = getEnemyPosition(newDungeon, e.id);
+            return p && p.x === tile.x && p.y === tile.y;
+          });
+          if (enemyOnTerrain) {
+            const backlash = calculateTerrainDamage(enemyOnTerrain, dungeonTile.terrainType);
+            if (backlash > 0) {
+              newDungeon = {
+                ...newDungeon,
+                enemies: newDungeon.enemies.map(e => e.id === enemyOnTerrain.id
+                  ? { ...e, stats: { ...e.stats, currentHp: Math.max(0, e.stats.currentHp - backlash) } }
+                  : e),
+              };
+              addLog(`✨ Rune lashes ${enemyOnTerrain.name} for ${backlash}!`, 'damage');
+            }
+          }
+        }
+      }
+
+
       
       // Mineable wall: chip with attack if pickaxe is strong enough
       if (dungeonTile?.type === 'mineable_wall' && dungeonTile.wallTier && wallHitsPerAttack > 0) {

@@ -293,7 +293,10 @@ export function UnifiedMovePanel({
           </Badge>
         </div>
         
-        <p className="text-xs text-muted-foreground">{move.description}</p>
+        <div className="flex items-start gap-2">
+          <p className="text-xs text-muted-foreground flex-1">{move.description}</p>
+          <MoveShapeThumbnail move={move} />
+        </div>
         
         {/* Single Target Versions */}
         <div className="space-y-2">

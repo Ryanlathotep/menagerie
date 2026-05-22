@@ -50,6 +50,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AppRoutes />
+        <FloatingBugButton />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

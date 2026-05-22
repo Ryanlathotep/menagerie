@@ -23,6 +23,9 @@ import {
   ShapeOriginType,
   HarvestableKind,
 } from '@/game/moves';
+import { getCustomMoves } from '@/game/moveOverrides';
+import { MoveSortFilter, sortMoves, filterMoves, MoveSortOption, MoveFilterOption } from '@/game/MoveSortFilter';
+import type { Monster } from '@/game/types';
 import { TERRAIN_CONFIG, TerrainType } from '@/game/terrain';
 import { Search, Save, RotateCcw, Crosshair, Footprints } from 'lucide-react';
 import { toast } from 'sonner';
@@ -72,6 +75,8 @@ export function ShapeDesigner() {
   const [mode, setMode] = useState<Mode>('shape');
   const [gridSize, setGridSize] = useState<number>(13);
   const [tier, setTier] = useState<TierKey>('base');
+  const [sortOption, setSortOption] = useState<MoveSortOption>('custom');
+  const [moveFilters, setMoveFilters] = useState<MoveFilterOption[]>(['all']);
 
   // Shape state (for currently selected tier)
   const [originType, setOriginType] = useState<ShapeOriginType>('self');
@@ -95,14 +100,23 @@ export function ShapeDesigner() {
     Object.values(SPECIES_MOVES).forEach((arr) => out.push(...arr));
     Object.values(ELEMENT_MOVES).forEach((arr) => out.push(...arr));
     Object.values(CLASS_MOVES).forEach((arr) => out.push(...arr));
+    // Include any fully custom (admin-created) moves
+    out.push(...getCustomMoves());
     return out;
   }, []);
 
   const filtered = useMemo(() => {
-    if (!search) return allMoves;
-    const q = search.toLowerCase();
-    return allMoves.filter((m) => m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q));
-  }, [allMoves, search]);
+    let list = allMoves;
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter((m) => m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q));
+    }
+    list = filterMoves(list, moveFilters);
+    // sortMoves needs a monster for usage sorts; pass a stub with empty mastery.
+    const stub = { moveMastery: {} } as unknown as Monster;
+    list = sortMoves(list, sortOption, stub, list.map((m) => m.id));
+    return list;
+  }, [allMoves, search, moveFilters, sortOption]);
 
   const isAnchorOnSelf = originType === 'self';
 
@@ -281,40 +295,58 @@ export function ShapeDesigner() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* Move picker */}
-      <Card className="p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Search className="w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search moves…" value={search} onChange={(e) => setSearch(e.target.value)} />
+      <Card className="p-3 order-2 lg:order-1">
+
+        <div className="flex items-center gap-2 mb-2">
+          <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+          <Input
+            placeholder="Search moves…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-8 text-sm"
+          />
         </div>
-        <ScrollArea className="h-[460px]">
-          <div className="space-y-1">
+        <div className="mb-2">
+          <MoveSortFilter
+            sortOption={sortOption}
+            filters={moveFilters}
+            onSortChange={setSortOption}
+            onFilterChange={setMoveFilters}
+          />
+        </div>
+        <ScrollArea className="h-[300px] lg:h-[460px]">
+          <div className="space-y-0.5">
             {filtered.map((m) => {
               const ovr = getOverride('moves', m.id) as Partial<Move> | null;
-              const tag = ovr?.movement ? 'Move' : ovr?.customShape ? 'Shape' : null;
+              const tag = ovr?.movement ? 'Move' : ovr?.customShape ? 'Shape' : (m as Move & { custom?: boolean }).custom ? 'New' : null;
               return (
                 <button
                   key={m.id}
                   onClick={() => loadMove(m)}
-                  className={`w-full text-left p-2 rounded text-sm hover:bg-muted transition-colors flex justify-between items-center ${
+                  className={`w-full text-left px-2 py-1 rounded text-xs hover:bg-muted transition-colors flex justify-between items-center gap-2 ${
                     selected?.id === m.id ? 'bg-primary/20' : ''
                   }`}
                 >
-                  <span>
+                  <span className="truncate">
                     <span className="font-medium">{m.name}</span>
-                    <span className="text-muted-foreground ml-2 text-xs">{m.type}</span>
+                    <span className="text-muted-foreground ml-1.5 text-[10px]">{m.type}</span>
                   </span>
                   {tag && (
-                    <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">{tag}</span>
+                    <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0 rounded shrink-0">{tag}</span>
                   )}
                 </button>
               );
             })}
+            {filtered.length === 0 && (
+              <div className="text-xs text-muted-foreground italic p-2">No moves match.</div>
+            )}
           </div>
         </ScrollArea>
       </Card>
 
+
       {/* Designer */}
-      <Card className="p-4">
+      <Card className="p-4 order-1 lg:order-2">
         {!selected ? (
           <div className="h-64 flex items-center justify-center text-muted-foreground">
             Select a move to design a shape.

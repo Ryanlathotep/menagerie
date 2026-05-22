@@ -48,6 +48,15 @@ export function WaypointManager({ isOpen, onClose }: WaypointManagerProps) {
     .filter(([, v]) => v)
     .map(([id]) => id);
 
+  // Player-dropped overworld tile waypoints (live on the overworld state).
+  const overworldTileWaypoints = overworld?.waypoints || [];
+
+  const updateOverworldWaypoints = (mutator: (list: { x: number; y: number; name?: string }[]) => { x: number; y: number; name?: string }[]) => {
+    if (!overworld) return;
+    const next = mutator(overworld.waypoints ? [...overworld.waypoints] : []);
+    dispatch({ type: 'UPDATE_OVERWORLD', overworld: { ...overworld, waypoints: next } });
+  };
+
   const startEdit = (key: string, current?: string) => {
     setEditingKey(key);
     setDraftName(current || '');
@@ -69,6 +78,15 @@ export function WaypointManager({ isOpen, onClose }: WaypointManagerProps) {
     toast.success(trimmed ? `Renamed to "${trimmed}"` : 'Name cleared');
   };
 
+  const commitOverworldTileRename = (x: number, y: number) => {
+    const trimmed = draftName.trim().slice(0, 32);
+    updateOverworldWaypoints(list => list.map(w =>
+      w.x === x && w.y === y ? { ...w, name: trimmed || undefined } : w
+    ));
+    setEditingKey(null);
+    toast.success(trimmed ? `Renamed to "${trimmed}"` : 'Name cleared');
+  };
+
   const removeOverworld = (id: string) => {
     const next = { ...(settings.dungeonWaypoints || {}) };
     delete next[id];
@@ -76,7 +94,13 @@ export function WaypointManager({ isOpen, onClose }: WaypointManagerProps) {
     toast.info('Waypoint removed');
   };
 
-  const total = dungeonWaypoints.length + pinnedIds.length;
+  const removeOverworldTile = (x: number, y: number) => {
+    updateOverworldWaypoints(list => list.filter(w => !(w.x === x && w.y === y)));
+    toast.info('Waypoint removed');
+  };
+
+  const total = dungeonWaypoints.length + pinnedIds.length + overworldTileWaypoints.length;
+
 
   return (
     <div

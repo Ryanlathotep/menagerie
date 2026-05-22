@@ -452,11 +452,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           </Button>
         </div>
       </Card>
-      <AdminPanelDialog isOpen={adminOpen} onClose={() => setAdminOpen(false)} />
       <ReportBugDialog isOpen={bugOpen} onClose={() => setBugOpen(false)} />
     </div>
+    <AdminPanelDialog isOpen={adminOpen} onClose={() => setAdminOpen(false)} />
+    </>
   );
 }
+
 
 // ─── Rebuild Overworld ───
 // Lets the player wipe the procedural map (terrain, biomes, dungeons, nests,

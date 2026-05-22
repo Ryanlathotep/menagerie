@@ -953,6 +953,10 @@ function DungeonView({
   
   // Attack targeting state
   const [targetingMove, setTargetingMove] = useState<Move | null>(null);
+  // When a combo move has both movement and attack, we stash the "next phase"
+  // move here. After the current targeting phase resolves we re-enter targeting
+  // with this clone (movement-only or attack-only) to complete the combo.
+  const [pendingComboMove, setPendingComboMove] = useState<Move | null>(null);
   const [hoveredTile, setHoveredTile] = useState<Position | null>(null);
   const [targetingTiles, setTargetingTiles] = useState<Position[]>([]);
   const [affectedTiles, setAffectedTiles] = useState<Position[]>([]);

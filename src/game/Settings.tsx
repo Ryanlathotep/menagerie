@@ -394,7 +394,19 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 onCheckedChange={(v) => updateSetting('showMajorDungeonArrows', v)}
               />
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full mt-2"
+              onClick={() => setWaypointMgrOpen(true)}
+            >
+              <Flag className="w-4 h-4 mr-2" /> Manage Waypoints
+            </Button>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Rename or remove individual dungeon-floor and overworld waypoints.
+            </p>
           </div>
+
 
           {/* Auto-Equip Preferences */}
           <div className="space-y-3 pt-4 border-t">

@@ -455,9 +455,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             </div>
             <div className="flex items-center justify-between">
               <div className="flex flex-col">
-                <Label htmlFor="auto-mine" className="cursor-pointer">Auto-Mine</Label>
+                <Label htmlFor="auto-mine" className="cursor-pointer">Auto-Harvest</Label>
                 <span className="text-xs text-muted-foreground">
-                  Keep mining an adjacent rock until it's exhausted or a visible enemy appears.
+                  Keep harvesting an adjacent resource (rock, tree, metal, etc.) until depleted or a visible enemy appears. Also makes a regular tap on a harvestable auto-harvest it.
                 </span>
               </div>
               <Switch

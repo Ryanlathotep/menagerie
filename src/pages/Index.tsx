@@ -3034,47 +3034,88 @@ function DungeonView({
   const handleDungeonTileClick = useCallback((x: number, y: number) => {
     if (targetingMove) {
       handleTargetingClick(x, y);
-    } else {
-      // Check if clicking on an enemy - auto-enter targeting mode with first attack move
-      const tile = dungeon?.tiles[y]?.[x];
-      if (tile?.type === 'enemy' && tile.enemyId && state.run) {
-        const monster = state.run.currentMonster;
-        const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
-        const attackMove = moves.find(m => m.type === 'melee' || m.type === 'ranged');
-        
-        if (attackMove) {
-          const config = getAttackConfig(attackMove);
-          const playerPos = dungeon!.playerPosition;
-          const distance = Math.abs(x - playerPos.x) + Math.abs(y - playerPos.y);
-          
-          // Check if in range
-          if (distance <= config.range) {
-            // Enter targeting mode and immediately click on this tile
-            const validTargets = getValidTargets(
-              playerPos, 
-              config, 
-              dungeon!.tiles, 
-              dungeon!.width, 
-              dungeon!.height, 
-              true
-            );
-            
-            if (validTargets.some(t => t.x === x && t.y === y)) {
-              setTargetingMove(attackMove);
-              setTargetingTiles(validTargets);
-              // Execute the attack immediately
-              setTimeout(() => handleTargetingClick(x, y), 0);
-              return;
-            }
-          } else {
-            addLog(`❌ Enemy out of range! Get closer.`, 'info');
+      return;
+    }
+
+    // Build mode: place building on open floor tile in dungeon
+    if (dungeonBuildMode && selectedDungeonBuildType && dungeon) {
+      const tile = dungeon.tiles[y]?.[x];
+      if (!tile || tile.type !== 'floor') {
+        toast.error('Can only build on open floor tiles!');
+        return;
+      }
+      // Reject if already occupied by a player building on this floor
+      const existing = (dungeon.playerBuildings || []) as any[];
+      if (existing.some(b => b.worldX === x && b.worldY === y)) {
+        toast.error('A building already stands here.');
+        return;
+      }
+      // Import lazily through static refs at top of file
+      const def = BUILDING_DEFINITIONS[selectedDungeonBuildType];
+      const ow = state.saveData.overworldState;
+      const creative = isCreativeMode();
+      if (!creative && (!ow || ow.woodCollected < def.cost.wood || ow.stoneCollected < def.cost.stone)) {
+        toast.error(`Need 🪵 ${def.cost.wood} 🪨 ${def.cost.stone}`);
+        return;
+      }
+      const newBuilding = createBuilding(selectedDungeonBuildType, x, y);
+      dispatch({
+        type: 'UPDATE_DUNGEON',
+        dungeon: { playerBuildings: [...existing, newBuilding] } as any,
+      });
+      if (!creative && ow) {
+        dispatch({
+          type: 'UPDATE_OVERWORLD',
+          overworld: {
+            ...ow,
+            woodCollected: ow.woodCollected - def.cost.wood,
+            stoneCollected: ow.stoneCollected - def.cost.stone,
+          },
+        });
+      }
+      toast.success(`🏗️ Built ${def.name}!`);
+      addLog(`🏗️ Built ${def.name} on floor ${dungeon.floor}.`, 'system');
+      setDungeonBuildMode(false);
+      setSelectedDungeonBuildType(null);
+      return;
+    }
+
+    // Check if clicking on an enemy - auto-enter targeting mode with first attack move
+    const tile = dungeon?.tiles[y]?.[x];
+    if (tile?.type === 'enemy' && tile.enemyId && state.run) {
+      const monster = state.run.currentMonster;
+      const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
+      const attackMove = moves.find(m => m.type === 'melee' || m.type === 'ranged');
+
+      if (attackMove) {
+        const config = getAttackConfig(attackMove);
+        const playerPos = dungeon!.playerPosition;
+        const distance = Math.abs(x - playerPos.x) + Math.abs(y - playerPos.y);
+
+        if (distance <= config.range) {
+          const validTargets = getValidTargets(
+            playerPos,
+            config,
+            dungeon!.tiles,
+            dungeon!.width,
+            dungeon!.height,
+            true
+          );
+
+          if (validTargets.some(t => t.x === x && t.y === y)) {
+            setTargetingMove(attackMove);
+            setTargetingTiles(validTargets);
+            setTimeout(() => handleTargetingClick(x, y), 0);
             return;
           }
+        } else {
+          addLog(`❌ Enemy out of range! Get closer.`, 'info');
+          return;
         }
       }
-      handleTileClick(x, y);
     }
-  }, [targetingMove, handleTargetingClick, handleTileClick, dungeon, state.run]);
+    handleTileClick(x, y);
+  }, [targetingMove, handleTargetingClick, handleTileClick, dungeon, state.run, state.saveData.overworldState, dungeonBuildMode, selectedDungeonBuildType, dispatch, addLog]);
   
   // ESC to cancel targeting
   useEffect(() => {

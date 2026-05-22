@@ -174,7 +174,10 @@ export function getCliffDrops(
  * is what we want for the "1-2 entrances per plateau" feel. The ramp's
  * direction is the side that drops down.
  */
-export function pickRampHere(
+// Internal: the "local minimum" rule. A cliff tile is chosen as a ramp seed
+// when its hash is the lowest among nearby cliff tiles at the same elevation
+// step. Returns the preferred drop direction or null if not the winner.
+function pickRampLocalWinner(
   wx: number,
   wy: number,
   biome: ElementType | null,
@@ -186,9 +189,6 @@ export function pickRampHere(
   const here = getTileElevation(wx, wy, biome);
   const myHash = hash2(wx, wy, 50000 + here);
 
-  // Compare against the eight surrounding tiles that ALSO sit on a cliff at
-  // this elevation step. We only need to be the local minimum within a small
-  // ring for this to give us one ramp per plateau-edge cluster.
   const RING = 2;
   for (let dy = -RING; dy <= RING; dy++) {
     for (let dx = -RING; dx <= RING; dx++) {
@@ -201,16 +201,76 @@ export function pickRampHere(
       const nDrops = getCliffDrops(nx, ny, neighborBiome, getBiomeAt);
       if (!nDrops.any) continue;
       const nHash = hash2(nx, ny, 50000 + nElev);
-      if (nHash < myHash) return null; // someone in the cluster wins instead
+      if (nHash < myHash) return null;
     }
   }
 
-  // We are the chosen cliff. Pick a drop direction (prefer south for visual
-  // clarity, then east, then west, then north).
   if (drops.s) return 's';
   if (drops.e) return 'e';
   if (drops.w) return 'w';
   return 'n';
+}
+
+/**
+ * Deterministic ramp picker.
+ *
+ * A cliff tile becomes a ramp if EITHER:
+ *   (a) It is the local-minimum hash winner among same-elevation cliff tiles
+ *       in a small ring (one seed ramp per cluster), OR
+ *   (b) It is a CONTINUATION of a ramp one elevation step below: the tile
+ *       directly on its lower side is itself a ramp pointing in the same
+ *       compass direction. This guarantees that wherever a ramp lets a
+ *       player climb up, no second cliff tier ever blocks them — the climb
+ *       chains all the way to the plateau top.
+ *
+ * The recursion is bounded by elevation depth (max 5).
+ */
+export function pickRampHere(
+  wx: number,
+  wy: number,
+  biome: ElementType | null,
+  getBiomeAt: (x: number, y: number) => ElementType | null,
+): RampDirection | null {
+  return pickRampRecursive(wx, wy, biome, getBiomeAt, 6);
+}
+
+function pickRampRecursive(
+  wx: number,
+  wy: number,
+  biome: ElementType | null,
+  getBiomeAt: (x: number, y: number) => ElementType | null,
+  depth: number,
+): RampDirection | null {
+  if (depth <= 0) return null;
+  const drops = getCliffDrops(wx, wy, biome, getBiomeAt);
+  if (!drops.any) return null;
+
+  // Rule (a): natural cluster winner.
+  const winner = pickRampLocalWinner(wx, wy, biome, getBiomeAt);
+  if (winner) return winner;
+
+  // Rule (b): continuation of a lower ramp. For each side that drops, check
+  // if the lower neighbor is itself a ramp dropping in the same direction.
+  // If so, we extend the climb upward by also becoming a ramp in that
+  // direction — preventing the player from being walled in at the top.
+  const here = getTileElevation(wx, wy, biome);
+  const sides: Array<{ dir: RampDirection; dx: number; dy: number }> = [
+    { dir: 'n', dx: 0,  dy: -1 },
+    { dir: 's', dx: 0,  dy: 1  },
+    { dir: 'e', dx: 1,  dy: 0  },
+    { dir: 'w', dx: -1, dy: 0  },
+  ];
+  for (const { dir, dx, dy } of sides) {
+    if (!drops[dir]) continue;
+    const nx = wx + dx;
+    const ny = wy + dy;
+    const nb = getBiomeAt(nx, ny);
+    const nElev = getTileElevation(nx, ny, nb);
+    if (nElev !== here - 1) continue;
+    const nRamp = pickRampRecursive(nx, ny, nb, getBiomeAt, depth - 1);
+    if (nRamp === dir) return dir;
+  }
+  return null;
 }
 
 /**

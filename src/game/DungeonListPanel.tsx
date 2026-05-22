@@ -60,7 +60,12 @@ function getThemeLabel(d: DungeonEntrance): string | null {
   return null;
 }
 
-function DungeonRow({ d, onLaunch }: { d: DungeonEntrance; onLaunch: (e: DungeonEntrance) => void }) {
+function DungeonRow({ d, onLaunch, onQuickStart, quickStartPartySize }: {
+  d: DungeonEntrance;
+  onLaunch: (e: DungeonEntrance) => void;
+  onQuickStart?: (e: DungeonEntrance) => void;
+  quickStartPartySize?: number;
+}) {
   const cleared = d.deepestFloor > 0;
   const startingLevel = Math.max(1, d.difficulty || 1);
   const themeLabel = getThemeLabel(d);
@@ -104,19 +109,36 @@ function DungeonRow({ d, onLaunch }: { d: DungeonEntrance; onLaunch: (e: Dungeon
               </div>
             )}
           </div>
-          <Button
-            size="sm"
-            variant={d.isHome ? 'default' : 'outline'}
-            className={d.isHome ? 'bg-gradient-to-r from-primary to-secondary' : ''}
-            onClick={(e) => {
-              e.stopPropagation();
-              onLaunch(d);
-            }}
-          >
-            Enter
-          </Button>
+          <div className="flex flex-col items-stretch gap-1 shrink-0">
+            <Button
+              size="sm"
+              variant={d.isHome ? 'default' : 'outline'}
+              className={d.isHome ? 'bg-gradient-to-r from-primary to-secondary' : ''}
+              onClick={(e) => {
+                e.stopPropagation();
+                onLaunch(d);
+              }}
+            >
+              Enter
+            </Button>
+            {onQuickStart && (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="text-[11px]"
+                title={`Skip prep — last saved party (${quickStartPartySize ?? 0})`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onQuickStart(d);
+                }}
+              >
+                ▶️ Start
+              </Button>
+            )}
+          </div>
         </div>
       </button>
+
 
       <button
         type="button"

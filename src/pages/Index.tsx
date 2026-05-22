@@ -232,9 +232,17 @@ function MainMenu() {
   return (
     <div className="game-container font-serif text-center">
       <div className="w-full max-w-md mx-auto text-center space-y-6 sm:space-y-8 px-2">
-        <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent pb-2 break-words">
-          Menagerie
-        </h1>
+        <div className="relative inline-block">
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent pb-2 break-words">
+            Menagerie
+          </h1>
+          <span
+            aria-label="Beta"
+            className="absolute -bottom-1 -right-3 sm:-right-6 rotate-[-12deg] text-sm sm:text-base font-bold text-accent tracking-wider uppercase drop-shadow-sm"
+          >
+            Beta
+          </span>
+        </div>
         <p className="text-muted-foreground text-base sm:text-lg">Play as the monsters. Unlock them all.</p>
 
         <div className="space-y-4">

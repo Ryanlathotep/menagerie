@@ -27,8 +27,12 @@ import { TERRAIN_CONFIG, TerrainType } from '@/game/terrain';
 import { Search, Save, RotateCcw, Crosshair, Footprints } from 'lucide-react';
 import { toast } from 'sonner';
 
-const GRID = 9; // 9x9 grid, center at (4,4)
-const HALF = Math.floor(GRID / 2);
+const GRID_SIZE_OPTIONS = [9, 13, 17, 21];
+type TierKey = 'lesser' | 'minor' | 'base' | 'greater' | 'omega';
+const TIER_KEYS: TierKey[] = ['lesser', 'minor', 'base', 'greater', 'omega'];
+const TIER_LABELS: Record<TierKey, string> = {
+  lesser: 'Lesser', minor: 'Minor', base: 'Base', greater: 'Greater', omega: 'Omega',
+};
 
 type Mode = 'shape' | 'movement';
 

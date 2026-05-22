@@ -548,12 +548,11 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       let fleeUpdatedEntrances = { ...(state.saveData.dungeonEntrances || {}) };
       if (fleeDungeonId && fleeUpdatedEntrances[fleeDungeonId] && state.run.dungeon) {
         const fleeFloor = state.run.dungeon.floor;
-        if (fleeFloor > (fleeUpdatedEntrances[fleeDungeonId].deepestFloor || 0)) {
-          fleeUpdatedEntrances[fleeDungeonId] = {
-            ...fleeUpdatedEntrances[fleeDungeonId],
-            deepestFloor: fleeFloor,
-          };
-        }
+        const base = {
+          ...fleeUpdatedEntrances[fleeDungeonId],
+          deepestFloor: Math.max(fleeUpdatedEntrances[fleeDungeonId].deepestFloor || 0, fleeFloor),
+        };
+        fleeUpdatedEntrances[fleeDungeonId] = snapshotDungeonToEntrance(base, state.run.dungeon);
       }
       
       // If the run was launched from the overworld, respawn the player at the

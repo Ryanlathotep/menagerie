@@ -5,6 +5,7 @@ import { OverworldState, OverworldTile, getOverworldTile, getOverworldEnemy, rem
 import { Move } from './moves';
 import { EvolvedMove } from './moveMastery';
 import { AttackConfig, getAttackConfig, getEnemyBehavior } from './dungeonCombat';
+import * as enemyAI from './enemyAI';
 
 // A tile is "blocking" for line-of-sight / AoE propagation if a projectile or
 // blast can't physically pass through it: water, rock walls, trees, buildings,
@@ -233,8 +234,8 @@ export function calculateOverworldEnemyAction(
   overworld: OverworldState,
   playerMonster?: Monster,
 ): OverworldEnemyAction {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const ai = require('./enemyAI') as typeof import('./enemyAI');
+  const ai = enemyAI;
+
 
   const dist = Math.abs(playerPos.x - enemyPos.x) + Math.abs(playerPos.y - enemyPos.y);
   const archetype = ai.getEnemyArchetype(enemy);

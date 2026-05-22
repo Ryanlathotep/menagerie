@@ -560,11 +560,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   // Cancel auto-walk on unmount.
   useEffect(() => () => cancelAutoWalk(), [cancelAutoWalk]);
 
-  // ─── Auto-Mine loop ─────────────────────────────────────────────────────
-  // Repeatedly steps the player into an adjacent rock tile to harvest it,
-  // halting on enemy sighting, when the tile is no longer a rock, or when
-  // the player moves out of range.
-  const autoMineTargetRef = useRef<Position | null>(null);
+  // ─── Auto-Harvest loop ──────────────────────────────────────────────────
+  // Repeatedly steps the player into an adjacent harvestable tile (rock, tree,
+  // or any future harvestable type), halting on enemy sighting, when the tile
+  // is depleted/changed, or when the player moves out of range.
+  const autoMineTargetRef = useRef<(Position & { tileType: string }) | null>(null);
   const autoMineTimerRef = useRef<number | null>(null);
   const cancelAutoMine = useCallback((reason?: string) => {
     if (autoMineTimerRef.current !== null) {
@@ -578,27 +578,29 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const startAutoMine = useCallback((targetX: number, targetY: number) => {
     cancelAutoWalk();
     cancelAutoMine();
-    autoMineTargetRef.current = { x: targetX, y: targetY };
+    const ow0 = overworldRef.current;
+    const startTile = ow0 ? getOverworldTile(ow0, targetX, targetY) : null;
+    if (!startTile) return;
+    autoMineTargetRef.current = { x: targetX, y: targetY, tileType: startTile.type };
     const stepDelay = Math.max(120, settings.autoRunSpeed || 100);
     autoMineTimerRef.current = window.setInterval(() => {
       const target = autoMineTargetRef.current;
       const ow = overworldRef.current;
       if (!target || !ow) { cancelAutoMine(); return; }
-      // Halt on visible enemies — same rule as auto-walk.
       const enemiesNearby = getVisibleOverworldEnemies(ow, 6);
       if (enemiesNearby.length > 0) {
-        cancelAutoMine('⚠️ Auto-Mine stopped — enemy spotted!');
+        cancelAutoMine('⚠️ Auto-Harvest stopped — enemy spotted!');
         return;
       }
       const t = getOverworldTile(ow, target.x, target.y);
-      if (!t || t.type !== 'rock') {
-        cancelAutoMine('⛏️ Auto-Mine finished — rock exhausted.');
+      if (!t || t.type !== target.tileType) {
+        cancelAutoMine('✅ Auto-Harvest finished — resource depleted.');
         return;
       }
       const dx = target.x - ow.playerPosition.x;
       const dy = target.y - ow.playerPosition.y;
       if (Math.abs(dx) + Math.abs(dy) !== 1) {
-        cancelAutoMine('⛏️ Auto-Mine stopped — moved out of range.');
+        cancelAutoMine('⚠️ Auto-Harvest stopped — moved out of range.');
         return;
       }
       handleMoveRef.current(dx, dy);
@@ -1066,9 +1068,14 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     const dx = worldX - overworld.playerPosition.x;
     const dy = worldY - overworld.playerPosition.y;
     if (dx === 0 && dy === 0) return;
-    // Adjacent tap → step directly.
+    // Adjacent tap → step directly, OR auto-harvest if toggle is on and the
+    // target tile is a harvestable resource.
     if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) {
       cancelAutoWalk();
+      if (settings.autoMine && (tile?.type === 'rock' || tile?.type === 'tree')) {
+        startAutoMine(worldX, worldY);
+        return;
+      }
       handleMove(dx, dy);
       return;
     }
@@ -1084,7 +1091,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     // stop one step before so the final move triggers the interaction via
     // movePlayer (which already handles harvest/enter/attack logic).
     startAutoWalk(path);
-  }, [overworld, monster, targetingMove, handleTargetingClick, handleMove, addLog, buildMode, selectedBuildType, roadBuildMode, selectedRoadType, saveOverworld]);
+  }, [overworld, monster, targetingMove, handleTargetingClick, handleMove, addLog, buildMode, selectedBuildType, roadBuildMode, selectedRoadType, saveOverworld, settings.autoMine, startAutoMine]);
   
   // Right-click → context menu for player buildings, or auto-attack for enemies/nests
   const handleTileRightClick = useCallback((worldX: number, worldY: number) => {
@@ -2325,10 +2332,31 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         subtitle = 'Step onto it to chop for wood';
         const tier = (tile as any).treeTier as TreeTier | undefined;
         if (tier && TREE_TIER_DATA[tier]) info.push({ label: 'Tier', value: TREE_TIER_DATA[tier].name });
-        if (isAdjacent) actions.push({
-          id: 'chop', label: 'Chop tree', icon: TreePine, variant: 'default',
-          onClick: () => { const dx = unifiedMenu.x - px, dy = unifiedMenu.y - py; close(); handleMove(dx, dy); },
-        });
+        if (isAdjacent) {
+          const autoOn = !!settings.autoMine;
+          actions.push({
+            id: 'chop',
+            label: autoOn ? 'Auto-Chop until done/attacked' : 'Chop tree (one swing)',
+            icon: TreePine, variant: 'default',
+            hint: autoOn ? 'Halts on enemy spotted or exhaustion' : undefined,
+            onClick: () => {
+              const tx = unifiedMenu.x, ty = unifiedMenu.y;
+              close();
+              if (autoOn) startAutoMine(tx, ty);
+              else handleMove(tx - px, ty - py);
+            },
+          });
+          actions.push({
+            id: 'toggle-auto-harvest',
+            label: autoOn ? 'Disable Auto-Harvest' : 'Enable Auto-Harvest',
+            icon: TreePine, variant: 'outline',
+            hint: 'Applies to all harvestables; persisted in Settings',
+            onClick: () => {
+              updateSetting('autoMine', !autoOn);
+              toast.info(`Auto-Harvest ${!autoOn ? 'enabled' : 'disabled'}`);
+            },
+          });
+        }
       } else if (tile.type === 'rock') {
         title = '🪨 Rock';
         subtitle = 'Step onto it to mine for stone';
@@ -2349,16 +2377,17 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             },
           });
           actions.push({
-            id: 'toggle-auto-mine',
-            label: autoMineOn ? 'Disable Auto-Mine' : 'Enable Auto-Mine',
+            id: 'toggle-auto-harvest',
+            label: autoMineOn ? 'Disable Auto-Harvest' : 'Enable Auto-Harvest',
             icon: Pickaxe, variant: 'outline',
-            hint: 'Persisted in Settings',
+            hint: 'Applies to all harvestables; persisted in Settings',
             onClick: () => {
               updateSetting('autoMine', !autoMineOn);
-              toast.info(`Auto-Mine ${!autoMineOn ? 'enabled' : 'disabled'}`);
+              toast.info(`Auto-Harvest ${!autoMineOn ? 'enabled' : 'disabled'}`);
             },
           });
         }
+
 
       } else if (tile.type === 'cliff' || tile.type === 'waterfall') {
         title = tile.type === 'cliff' ? '⛰ Cliff' : '🌊 Waterfall';

@@ -58,13 +58,22 @@ const TERRAIN_OPTIONS: { value: TerrainType; label: string }[] = (
   Object.keys(TERRAIN_CONFIG) as TerrainType[]
 ).map((t) => ({ value: t, label: `${TERRAIN_CONFIG[t].icon} ${TERRAIN_CONFIG[t].name}` }));
 
+type TierStats = {
+  power?: number | '';
+  accuracy?: number | '';
+  staminaCost?: number | '';
+  speedMod?: number | '';
+};
+
 export function ShapeDesigner() {
   const { saveOverride, deleteOverride, getOverride, loading } = useGameDataOverrides('moves');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Move | null>(null);
   const [mode, setMode] = useState<Mode>('shape');
+  const [gridSize, setGridSize] = useState<number>(13);
+  const [tier, setTier] = useState<TierKey>('base');
 
-  // Shape state
+  // Shape state (for currently selected tier)
   const [originType, setOriginType] = useState<ShapeOriginType>('self');
   const [cells, setCells] = useState<Set<string>>(new Set());
   const [range, setRange] = useState(5);
@@ -76,6 +85,7 @@ export function ShapeDesigner() {
   const [damagesTraps, setDamagesTraps] = useState(false);
   const [harvests, setHarvests] = useState<Set<HarvestableKind>>(new Set());
   const [placesTerrain, setPlacesTerrain] = useState<TerrainType | ''>('');
+  const [tierStats, setTierStats] = useState<TierStats>({});
 
   // Movement state
   const [blink, setBlink] = useState(false);
@@ -96,6 +106,61 @@ export function ShapeDesigner() {
 
   const isAnchorOnSelf = originType === 'self';
 
+  // Resolve which shape & stats are stored for a given tier on the merged move.
+  const readTier = (merged: Move, t: TierKey): { shape?: CustomShape; stats: TierStats } => {
+    if (t === 'base') {
+      return {
+        shape: merged.customShape,
+        stats: {
+          power: merged.power,
+          accuracy: merged.accuracy,
+          staminaCost: merged.staminaCost,
+          speedMod: merged.speedMod,
+        },
+      };
+    }
+    const ov = merged.tierOverrides?.[t];
+    return {
+      shape: ov?.customShape,
+      stats: {
+        power: ov?.power ?? '',
+        accuracy: ov?.accuracy ?? '',
+        staminaCost: ov?.staminaCost ?? '',
+        speedMod: ov?.speedMod ?? '',
+      },
+    };
+  };
+
+  const applyTierToUI = (merged: Move, t: TierKey) => {
+    const { shape, stats } = readTier(merged, t);
+    setTierStats(stats);
+    if (shape) {
+      setCells(new Set(shape.offsets.map((o) => `${o.dx},${o.dy}`)));
+      setOriginType(shape.originType ?? (shape.origin === 'self' ? 'self' : 'target_tile'));
+      setRange(shape.range ?? 5);
+      setWallPenetrate(!!shape.wallPenetrate);
+      setBlockedByWalls(shape.blockedByWalls ?? true);
+      setBlockedByUnits(shape.blockedByUnits ?? false);
+      setDamagesEnemies(shape.damagesEnemies ?? true);
+      setDamagesAllies(shape.damagesAllies ?? false);
+      setDamagesTraps(shape.damagesTraps ?? false);
+      setHarvests(new Set(shape.harvestsResources ?? []));
+      setPlacesTerrain(shape.placesTerrain ?? '');
+    } else {
+      setCells(new Set());
+      setOriginType(merged.type === 'melee' ? 'self' : 'target_tile');
+      setRange(merged.type === 'melee' ? 1 : 5);
+      setWallPenetrate(false);
+      setBlockedByWalls(true);
+      setBlockedByUnits(false);
+      setDamagesEnemies((merged.power ?? 0) > 0);
+      setDamagesAllies(false);
+      setDamagesTraps(false);
+      setHarvests(new Set());
+      setPlacesTerrain('');
+    }
+  };
+
   const loadMove = (move: Move) => {
     setSelected(move);
     const override = (getOverride('moves', move.id) as Partial<Move> | null) || {};
@@ -104,39 +169,29 @@ export function ShapeDesigner() {
       setMode('movement');
       setCells(new Set(merged.movement.offsets.map((o) => `${o.dx},${o.dy}`)));
       setBlink(!!merged.movement.blink);
-    } else if (merged.customShape) {
-      const cs = merged.customShape;
-      setMode('shape');
-      setCells(new Set(cs.offsets.map((o) => `${o.dx},${o.dy}`)));
-      setOriginType(cs.originType ?? (cs.origin === 'self' ? 'self' : 'target_tile'));
-      setRange(cs.range ?? 5);
-      setWallPenetrate(!!cs.wallPenetrate);
-      setBlockedByWalls(cs.blockedByWalls ?? true);
-      setBlockedByUnits(cs.blockedByUnits ?? false);
-      setDamagesEnemies(cs.damagesEnemies ?? true);
-      setDamagesAllies(cs.damagesAllies ?? false);
-      setDamagesTraps(cs.damagesTraps ?? false);
-      setHarvests(new Set(cs.harvestsResources ?? []));
-      setPlacesTerrain(cs.placesTerrain ?? '');
+      setTier('base');
     } else {
       setMode('shape');
-      setCells(new Set());
-      setOriginType(move.type === 'melee' ? 'self' : 'target_tile');
-      setRange(move.type === 'melee' ? 1 : 5);
-      setWallPenetrate(false);
-      setBlockedByWalls(true);
-      setBlockedByUnits(false);
-      setDamagesEnemies(move.power > 0);
-      setDamagesAllies(false);
-      setDamagesTraps(false);
-      setHarvests(new Set());
-      setPlacesTerrain('');
+      setTier('base');
+      applyTierToUI(merged, 'base');
       setBlink(false);
     }
   };
 
+  // When the user switches tier tabs, persist current edits into the move
+  // (in memory) then load the new tier's data.
+  const switchTier = (next: TierKey) => {
+    if (!selected || mode !== 'shape') { setTier(next); return; }
+    // Snapshot current edits into a merged Move so the next tier sees them.
+    const override = (getOverride('moves', selected.id) as Partial<Move> | null) || {};
+    const merged: Move = { ...selected, ...override };
+    // Don't actually mutate here — just re-read what's persisted. Edits not yet
+    // saved to a tier are intentionally tier-local; admin must hit Save to keep.
+    setTier(next);
+    applyTierToUI(merged, next);
+  };
+
   const toggleCell = (dx: number, dy: number) => {
-    // The anchor cell (0,0) is the origin marker — not toggleable in either mode.
     if (dx === 0 && dy === 0) return;
     const key = `${dx},${dy}`;
     const next = new Set(cells);
@@ -150,49 +205,73 @@ export function ShapeDesigner() {
     setHarvests(next);
   };
 
-  const handleSave = async () => {
-    if (!selected) return;
+  const buildShape = (): CustomShape | null => {
     const offsets = [...cells].map((s) => {
       const [dx, dy] = s.split(',').map(Number);
       return { dx, dy };
     });
-    if (offsets.length === 0) {
-      toast.error('Select at least one cell.');
-      return;
-    }
+    if (offsets.length === 0) return null;
+    return {
+      offsets,
+      origin: isAnchorOnSelf ? 'self' : 'target',
+      originType,
+      range,
+      wallPenetrate,
+      blockedByWalls,
+      blockedByUnits,
+      damagesEnemies,
+      damagesAllies,
+      damagesTraps,
+      harvestsResources: [...harvests],
+      ...(placesTerrain ? { placesTerrain } : {}),
+    };
+  };
+
+  const handleSave = async () => {
+    if (!selected) return;
     const existing = (getOverride('moves', selected.id) as Partial<Move> | null) || {};
     const patch: Partial<Move> = { ...existing };
-    if (mode === 'shape') {
-      const shape: CustomShape = {
-        offsets,
-        origin: isAnchorOnSelf ? 'self' : 'target', // legacy field
-        originType,
-        range,
-        wallPenetrate,
-        blockedByWalls,
-        blockedByUnits,
-        damagesEnemies,
-        damagesAllies,
-        damagesTraps,
-        harvestsResources: [...harvests],
-        ...(placesTerrain ? { placesTerrain } : {}),
-      };
-      patch.customShape = shape;
-      patch.targeting = 'custom';
-      delete patch.movement;
-    } else {
-      const movement: MovementPattern = { offsets, blink };
-      patch.movement = movement;
+
+    if (mode === 'movement') {
+      const offsets = [...cells].map((s) => {
+        const [dx, dy] = s.split(',').map(Number);
+        return { dx, dy };
+      });
+      if (offsets.length === 0) { toast.error('Select at least one cell.'); return; }
+      patch.movement = { offsets, blink };
       patch.type = 'movement';
       delete patch.customShape;
+    } else {
+      const shape = buildShape();
+      if (!shape) { toast.error('Select at least one cell.'); return; }
+      if (tier === 'base') {
+        patch.customShape = shape;
+        patch.targeting = 'custom';
+        if (tierStats.power !== '' && tierStats.power !== undefined) patch.power = Number(tierStats.power);
+        if (tierStats.accuracy !== '' && tierStats.accuracy !== undefined) patch.accuracy = Number(tierStats.accuracy);
+        if (tierStats.staminaCost !== '' && tierStats.staminaCost !== undefined) patch.staminaCost = Number(tierStats.staminaCost);
+        if (tierStats.speedMod !== '' && tierStats.speedMod !== undefined) patch.speedMod = Number(tierStats.speedMod);
+      } else {
+        const nextOverrides = { ...(patch.tierOverrides ?? {}) };
+        const tierPatch: NonNullable<Move['tierOverrides']>[string] = { customShape: shape };
+        if (tierStats.power !== '' && tierStats.power !== undefined) tierPatch.power = Number(tierStats.power);
+        if (tierStats.accuracy !== '' && tierStats.accuracy !== undefined) tierPatch.accuracy = Number(tierStats.accuracy);
+        if (tierStats.staminaCost !== '' && tierStats.staminaCost !== undefined) tierPatch.staminaCost = Number(tierStats.staminaCost);
+        if (tierStats.speedMod !== '' && tierStats.speedMod !== undefined) tierPatch.speedMod = Number(tierStats.speedMod);
+        nextOverrides[tier] = tierPatch;
+        patch.tierOverrides = nextOverrides;
+      }
+      delete patch.movement;
     }
+
     const ok = await saveOverride('moves', selected.id, patch as Record<string, unknown>);
-    if (ok) toast.success(`Saved ${mode} for ${selected.name}`);
+    if (ok) toast.success(`Saved ${tier} ${mode} for ${selected.name}`);
   };
 
   const handleClear = async () => {
     if (!selected) return;
     setCells(new Set());
+    setTierStats({});
     await deleteOverride('moves', selected.id);
     toast.success(`Cleared override for ${selected.name}`);
   };

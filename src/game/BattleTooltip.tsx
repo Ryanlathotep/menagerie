@@ -6,6 +6,7 @@ import { Monster } from './types';
 import { calculateHitChance, calculateExpectedDamage, getEffectiveness } from './combat';
 import { getMasteryProgress, getHighestTier, TIER_COLORS, getTierDisplayName, MoveMastery } from './moveMastery';
 import { MasteryDisplay, TierBadge } from './MasteryDisplay';
+import { MoveShapeThumbnail } from './MoveShapeThumbnail';
 
 interface MoveTooltipProps {
   move: Move;

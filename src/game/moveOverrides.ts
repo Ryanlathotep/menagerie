@@ -102,16 +102,19 @@ export function ratingFor(m: Partial<Move>): number {
   const power = m.power ?? 0;
   const acc = m.accuracy ?? 100;
   const stam = m.staminaCost ?? 0;
+  const mana = m.manaCost ?? 0;
   const speed = m.speedMod ?? 0;
   const aoe = m.aoeRadius ?? 0;
+  const lvl = m.unlockLevel ?? 1;
 
   let r = 0;
   // Raw damage weighted by hit chance.
   r += power * (acc / 100);
   // Status/heal moves with no damage get value from their effect tag.
   if (power === 0 && m.effect) r += 25;
-  // Stamina is the main cost.
+  // Resource costs.
   r -= stam * 1.6;
+  r -= mana * 2.5;
   // Priority is very strong.
   r += speed * 6;
   // Any tagged effect is worth something extra (DoT, stat changes, drains…).
@@ -121,6 +124,8 @@ export function ratingFor(m: Partial<Move>): number {
     const tiles = Math.max(1, Math.PI * aoe * aoe * 0.5);
     r += power * 0.5 * (tiles - 1);
   }
+  // Level gate: learning earlier is worth more, late unlocks cost rating.
+  r -= Math.max(0, lvl - 1) * 1.5;
   // Targeting modifiers.
   switch (m.targeting) {
     case 'piercing': r += 18; break;
@@ -140,6 +145,7 @@ export function ratingFor(m: Partial<Move>): number {
   }
   return Math.max(0, Math.round(r));
 }
+
 
 /** Returns rating + percentile vs the supplied comparison pool. */
 export function rateAgainst(m: Partial<Move>, pool: Move[]): { rating: number; percentile: number; avg: number; min: number; max: number } {

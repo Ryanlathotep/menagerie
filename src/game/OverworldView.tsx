@@ -1091,7 +1091,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     // stop one step before so the final move triggers the interaction via
     // movePlayer (which already handles harvest/enter/attack logic).
     startAutoWalk(path);
-  }, [overworld, monster, targetingMove, handleTargetingClick, handleMove, addLog, buildMode, selectedBuildType, roadBuildMode, selectedRoadType, saveOverworld]);
+  }, [overworld, monster, targetingMove, handleTargetingClick, handleMove, addLog, buildMode, selectedBuildType, roadBuildMode, selectedRoadType, saveOverworld, settings.autoMine, startAutoMine]);
   
   // Right-click → context menu for player buildings, or auto-attack for enemies/nests
   const handleTileRightClick = useCallback((worldX: number, worldY: number) => {

@@ -2500,6 +2500,9 @@ function DungeonView({
       } else if (combo && combo.comboOrder === 'attack_then_move') {
         // Movement was Phase 2 of an attack_then_move combo — combo complete.
         setPendingComboMove(null);
+        // Now hand off the turn to the enemies (deferred by the attack phase).
+        const finalDungeon = { ...dungeon, tiles: newTiles, playerPosition: { x, y } };
+        processEnemyTurnsRef.current?.(finalDungeon);
       }
       return;
     }

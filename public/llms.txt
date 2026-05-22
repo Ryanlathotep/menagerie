@@ -1,0 +1,7 @@
+# Menagerie
+
+> A roguelike dungeon delving creature collector by Ryan & Julie York. Explore an infinite overworld, climb themed towers, recruit monsters from 20 base species, and craft equipment from materials harvested in tactical map-based combat.
+
+## Pages
+
+- [Home](/): Play Menagerie — overworld exploration, dungeon towers, and creature collecting.

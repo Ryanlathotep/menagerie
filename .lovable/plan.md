@@ -1,75 +1,73 @@
 ## Goal
+Make dungeons feel like a place you can settle. All overworld buildings + roads become placeable on dungeon floors, and every floor you've shaped (mined walls, placed buildings, roads, defeated nests, picked-up items) persists across runs — re-entering a dungeon resumes the world you left, not a fresh seed.
 
-One consistent menu for any tile on any platform. Right-click (PC) and long-press (touch) on any tile opens a single centered modal that shows tile + creature info AND every action available for that tile. Left-click / short tap stays as movement (existing behavior). Hover tooltips on desktop stay; the same info also lives inside the menu.
+## Current state
+- **Per-run only:** `DungeonState.visitedFloors` snapshots each floor (tiles/enemies/position) but lives on the active `RunState`. Flee/wipe discards it.
+- **Buildings & roads:** Only exist on `OverworldState` (`playerBuildings`, `roads`, `tileOverrides`). Dungeon floors have no such fields, no build UI, no renderer pass.
+- **Dungeon entrances:** `DungeonEntrance` on `OverworldState.dungeonEntrances` already persists across runs (seed, deepestFloor, discovered). Perfect anchor for cross-run floor snapshots.
 
-## What's broken today
+## Plan
 
-- PC: right-click on dungeons opens a waypoint menu that's been flaky.
-- Android: long-press fires tooltips that conflict with the context menu.
-- Dispatch is fragmented: 6 different menu components (TileContextMenu, WaterTileContextMenu, RoadContextMenu, DungeonWaypointMenu, BuildingContextMenu, AttackPicker) each opened from a different branch in `handleTileRightClick`. Overworld and dungeon use different patterns.
-
-## Design
-
-### New component: `UnifiedTileMenu`
-
-Centered modal (matches existing `DungeonWaypointMenu` shell), one screen:
-
+### 1. Data model (`src/game/types.ts`)
+Extend `DungeonEntrance` with persistent floor data:
+```ts
+floorSnapshots?: Record<number, {
+  tiles: DungeonTile[][];
+  width: number;
+  height: number;
+  playerBuildings: PlayerBuilding[];
+  roads: Record<string, 'dirt_road' | 'stone_road'>;
+  // enemies/position intentionally NOT stored cross-run — enemies respawn,
+  // player re-enters at the staircase they used.
+}>;
 ```
-┌──────────────────────────────────────────┐
-│ 🍃 Tile name           (x, y) · biome    │
-│ ─────────────────────────────────────── │
-│ Tile info block (terrain, elevation,     │
-│   passable, building, resource node)     │
-│                                          │
-│ Creature info block (only if occupant):  │
-│   name · lvl · element/class · HP bar    │
-│   matchup warning (1.5x / 1.3x)          │
-│                                          │
-│ ── Actions ──                            │
-│ [⚔ Attack]    (opens existing AttackPicker)
-│ [👣 Move here] (one-step or auto-walk path) │
-│ [🏰 Enter dungeon] (if entrance)         │
-│ [📍 Waypoint pin] (if dungeon/major loc) │
-│ [🔨 Build here] (if buildable)           │
-│ [⛏ Mine / 🪓 Chop / 🌾 Harvest] (if resource)
-│ [💧 Fill water] / [🛤 Remove road]       │
-│ [👥 Assign monster] (player building)    │
-│ [✕ Close]                                │
-└──────────────────────────────────────────┘
-```
+Per-run `DungeonState.visitedFloors` keeps its existing shape (adds `playerBuildings` + `roads` so they render mid-run too).
 
-Action rows are dynamically built from a `getTileActions(tile, ctx)` helper so the modal stays dumb. Disabled rows still show with a reason ("No target in range").
+### 2. Hydration on dungeon entry (`src/pages/Index.tsx` START_RUN / dungeon-enter)
+When entering a dungeon entrance:
+- For each generated floor, if `entrance.floorSnapshots[floor]` exists, overlay its tiles/buildings/roads onto the freshly seeded floor (preserves any new infinite-streaming strips beyond the saved width).
+- Enemies & items regenerate normally; mined walls and player constructions persist.
 
-### Dispatch changes
+### 3. Snapshot writes
+Three write points must mirror floor state back into `entrance.floorSnapshots`:
+- **Floor change** (stairs up/down): snapshot the floor being left.
+- **FLEE_DUNGEON / END_RUN / TOWN_PORTAL_SCROLL:** snapshot the current floor before tearing down `RunState`.
+- **Mid-run build/mine/road:** already updates `dungeon.tiles` + `visitedFloors` — no extra write needed; the flee/stairs hooks above flush it.
 
-- `OverworldView.handleTileRightClick` — replace the 6-way branch with `setUnifiedMenu({ x, y })`. Existing specialized menus stay mounted as secondary screens that `UnifiedTileMenu` can open (e.g. AttackPicker, BuildPanel) so we don't re-implement them.
-- `DungeonRenderer` / `Index.tsx` dungeon side — same: route `onTileRightClick` into the unified menu.
-- Long-press (already wired in `DungeonRenderer.tsx:887+` and `OverworldRenderer.tsx:327+`) opens the same unified menu.
+### 4. Building & road UI in dungeons
+- Reuse existing Build/Road panels. Detect `mode === 'dungeon'` and:
+  - Route `placeBuilding` / `placeRoad` / `mineWall` actions into `dungeon` state instead of `overworld`.
+  - **Skip the "within 10 tiles of home or another building" check** (per user choice — no anchor needed in dungeons).
+  - Keep cost checks (materials/gold) and creative-mode bypass.
+- Dungeon tiles already have walkability; treat dungeon floor tiles as buildable when not wall/staircase/water.
 
-### Tooltip conflict on Android
+### 5. Rendering (`src/game/DungeonRenderer.tsx`)
+Add a buildings + roads render pass mirroring `OverworldRenderer`:
+- Import the same `BuildingSprite` / road tile components used in overworld.
+- Z-order: floor → roads → tiles (chests/herbs) → buildings → enemies → player → overlays (dowsing, fog).
+- Right-click tooltip/context menu (assign/repair/disassemble) reused from overworld.
 
-The `Building Tooltips & Menu` rule (hover tooltip on desktop + right-click menu) currently leaks onto touch because hover events fire on tap. Fix: gate hover tooltips with `@media (hover: hover)` / a `pointer: fine` check so touch devices never see hover tooltips. The unified menu carries the same info, so touch users lose nothing.
+### 6. Hub integration
+Staffed buildings (farms producing materials, towers attacking enemies, workstation opening crafting) work identically inside dungeons. Town Hall / shop interactions are restricted to the overworld home base (no second town in a dungeon).
 
-## Files
+### 7. Persistence
+Snapshots ride along on `OverworldState.dungeonEntrances`, which is already serialized into `saveData` and synced to Lovable Cloud `game_saves`. No new tables.
 
-New:
-- `src/game/UnifiedTileMenu.tsx` — the modal shell + action list builder.
-- `src/game/tileActions.ts` — pure `getTileActions(tile, ctx) → Action[]` helper. Centralizes "what can I do here?".
+## Technical notes
+- `DungeonTile` already supports the fields buildings need (walkable, items, terrain). No schema changes there.
+- Memory cost: a 80×80 floor with ~50 buildings ≈ 30 KB JSON. Cap snapshots at last 50 visited floors per dungeon to bound save size; deeper untouched floors regenerate on visit.
+- `Tower of the Infinite` and themed towers all use the same persistence path — no special casing.
+- Update memory file `mem://gameplay/exploration/persistent-staircases` and add a new `mem://gameplay/exploration/dungeon-building-and-persistence` entry.
 
-Edited:
-- `src/game/OverworldView.tsx` — replace `handleTileRightClick` branching with one `setUnifiedMenu` call; mount `UnifiedTileMenu`; keep existing AttackPicker/BuildPanel/etc. as downstream targets.
-- `src/pages/Index.tsx` (dungeon) — same treatment for `onTileRightClick`.
-- `src/game/OverworldRenderer.tsx`, `src/game/DungeonRenderer.tsx` — gate hover tooltip with `(hover: hover)` media query.
-- `src/game/DungeonWaypointMenu.tsx`, `src/game/TileContextMenu.tsx`, `src/game/WaterTileContextMenu.tsx`, `src/game/RoadContextMenu.tsx` — keep for now (called via UnifiedTileMenu when needed) but most flows fold directly into the unified menu. Cleanup happens once unified flow is verified.
+## Files touched
+- `src/game/types.ts` — extend `DungeonEntrance`, `DungeonState.visitedFloors`.
+- `src/game/buildings.ts` — branch placement validator on context (overworld vs dungeon).
+- `src/game/DungeonRenderer.tsx` — add buildings/roads render pass + right-click menu.
+- `src/game/OverworldRenderer.tsx` — extract shared building sprite helpers if needed.
+- `src/pages/Index.tsx` — hydration on enter, snapshot on stairs/flee/end, route build/road/mine actions to dungeon state when in dungeon mode.
+- `src/game/dungeon.ts` (or wherever floor generation lives) — accept snapshot overlay arg.
 
-## Out of scope (this pass)
-
-- Visual redesign of the existing AttackPicker / BuildPanel / Building assign UI. Those still open as secondary screens.
-- Radial / popover variants. User picked centered modal.
-- Removing the existing menu components. They stay until the unified flow is proven.
-
-## Verification
-
-- PC: right-click grass, dungeon, enemy, building, water, road, nest → unified menu shows correct actions; left-click still moves.
-- Touch: long-press any of the above → unified menu; tap moves; no stray hover tooltip popping up.
-- Hover tooltip on desktop still works for buildings/creatures.
+## Out of scope
+- Home base upgrades (Campfire→Town Hall) inside dungeons — those are tied to world coord (0,0).
+- Settlement-building auto-spawn rules adapted to dungeon biomes (will use overworld defaults).
+- Migration of existing in-progress runs — first dungeon entry after deploy seeds empty snapshots.

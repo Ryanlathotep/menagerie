@@ -1712,7 +1712,20 @@ export const CONSUMABLE_RECIPES: ConsumableRecipe[] = [
     ],
     icon: '📜',
     description: 'Tears open a portal back to town. Required to flee any tower other than the Tower of the Infinite.',
-    effect: 'town_portal',
+  {
+    id: 'craft_dowsing_rod',
+    name: 'Dowsing Rod',
+    resultId: 'dowsing_rod',
+    rarity: 'uncommon',
+    materials: [
+      { materialId: 'iron_ore', quantity: 1 },
+      { materialId: 'mana_blossom', quantity: 2 },
+      { materialId: 'earth_essence', quantity: 1 },
+    ],
+    icon: '🔮',
+    description: 'Highlights the nearest 5 enemies for 5 minutes — persists across dungeon floors and the overworld.',
+    effect: 'dowse',
+    effectValue: 5 * 60, // seconds (display hint)
   },
   // NOTE: Portable Workstation is now a singleton TOOL (see tools.ts WORKSTATION),
   // crafted under the Tools tab and triggered via a sidebar button. It is no

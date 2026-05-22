@@ -953,6 +953,10 @@ function DungeonView({
   
   // Attack targeting state
   const [targetingMove, setTargetingMove] = useState<Move | null>(null);
+  // When a combo move has both movement and attack, we stash the "next phase"
+  // move here. After the current targeting phase resolves we re-enter targeting
+  // with this clone (movement-only or attack-only) to complete the combo.
+  const [pendingComboMove, setPendingComboMove] = useState<Move | null>(null);
   const [hoveredTile, setHoveredTile] = useState<Position | null>(null);
   const [targetingTiles, setTargetingTiles] = useState<Position[]>([]);
   const [affectedTiles, setAffectedTiles] = useState<Position[]>([]);
@@ -2189,6 +2193,30 @@ function DungeonView({
       return;
     }
     
+    // ── Combo move (movement + attack): start the configured first phase and
+    // stash the other half as `pendingComboMove` for after the first resolves.
+    if (isComboMove(move)) {
+      const order = move.comboOrder ?? 'move_then_attack';
+      if (order === 'move_then_attack') {
+        // Phase 1: pick destination using the movement pattern.
+        const phase1 = stripAttack(move);
+        if (!enterTargetingFor(phase1, `🎯 ${move.name}: pick a destination tile…`)) {
+          toast.error('No valid movement destinations!');
+          return;
+        }
+        setPendingComboMove(move); // full move; we'll continue with attack phase
+      } else {
+        // Phase 1: aim the attack from current position.
+        const phase1 = stripMovement(move);
+        if (!enterTargetingFor(phase1, `🎯 ${move.name}: aim the attack, then choose a retreat tile.`)) {
+          toast.error('No valid targets in range!');
+          return;
+        }
+        setPendingComboMove(move);
+      }
+      return;
+    }
+
     // For attack moves (melee/ranged), enter targeting mode instead of executing
     if (move.type === 'melee' || move.type === 'ranged' || (move.type === 'status' && move.effect?.includes('lower_'))) {
       // Enter targeting mode
@@ -2305,14 +2333,62 @@ function DungeonView({
     addLog(`✨ ${message} (⚡-${staminaCost})`, 'heal');
   };
   
-  // Cancel targeting mode
+  // Cancel targeting mode (and abort any pending combo phase)
   const cancelTargeting = useCallback(() => {
     setTargetingMove(null);
+    setPendingComboMove(null);
     setTargetingTiles([]);
     setAffectedTiles([]);
     setHoveredTile(null);
     aoePendingConfirmRef.current = null;
   }, []);
+
+  // ── Combo move helpers ─────────────────────────────────────────────────────
+  // A move is a combo when it has BOTH a movement pattern AND an attack shape
+  // (custom AoE, explicit AoE radius, or any non-self targeting with power>0).
+  const hasMovementPhase = (m: Move) =>
+    !!(m.movement && m.movement.offsets && m.movement.offsets.length > 0);
+  const hasAttackPhase = (m: Move) => {
+    if (m.customShape && m.customShape.offsets.length > 0) return true;
+    if ((m.aoeRadius ?? 0) > 0) return true;
+    if (m.type === 'melee' || m.type === 'ranged') return m.power > 0;
+    if (m.type === 'status' && m.effect?.includes('lower_')) return true;
+    return false;
+  };
+  const isComboMove = (m: Move) => hasMovementPhase(m) && hasAttackPhase(m);
+  // Strip movement so getAttackConfig falls through to the attack shape branch.
+  const stripMovement = (m: Move): Move => ({ ...m, movement: undefined, staminaCost: 0 });
+  // Strip attack data so getAttackConfig hits the movement branch.
+  const stripAttack = (m: Move): Move => ({
+    ...m,
+    customShape: undefined,
+    aoeRadius: 0,
+    targeting: undefined,
+    staminaCost: 0,
+  });
+
+  // Begin a targeting phase for an arbitrary move (used to re-enter targeting
+  // for the second half of a combo). Returns false if no valid targets exist.
+  const enterTargetingFor = useCallback((move: Move, label?: string): boolean => {
+    if (!dungeon) return false;
+    const config = getAttackConfig(move);
+    const validTargets = getValidTargets(
+      dungeon.playerPosition,
+      config,
+      dungeon.tiles,
+      dungeon.width,
+      dungeon.height,
+      true,
+    );
+    if (validTargets.length === 0) return false;
+    setTargetingMove(move);
+    setTargetingTiles(validTargets);
+    setAffectedTiles([]);
+    setHoveredTile(null);
+    aoePendingConfirmRef.current = null;
+    if (label) addLog(label, 'system');
+    return true;
+  }, [dungeon]);
 
   // While aiming a skill, recompute valid target tiles (and the AoE preview
   // under the cursor) whenever the player moves. This lets the player walk
@@ -2408,6 +2484,26 @@ function DungeonView({
       setTargetingMove(null);
       setTargetingTiles([]);
       setAffectedTiles([]);
+
+      // ── Combo chaining: if this movement was Phase 1 of a move_then_attack
+      // combo, re-enter targeting with the attack phase from the new position.
+      // Defer one frame so the dungeon dispatch above takes effect first.
+      const combo = pendingComboMove;
+      if (combo && (combo.comboOrder ?? 'move_then_attack') === 'move_then_attack') {
+        const attackPhase = { ...stripMovement(combo), staminaCost: combo.staminaCost ?? 0 };
+        setPendingComboMove(null);
+        setTimeout(() => {
+          if (!enterTargetingFor(attackPhase, `⚔️ ${combo.name}: aim the attack!`)) {
+            addLog(`⚠️ ${combo.name}: no targets from new position.`, 'info');
+          }
+        }, 0);
+      } else if (combo && combo.comboOrder === 'attack_then_move') {
+        // Movement was Phase 2 of an attack_then_move combo — combo complete.
+        setPendingComboMove(null);
+        // Now hand off the turn to the enemies (deferred by the attack phase).
+        const finalDungeon = { ...dungeon, tiles: newTiles, playerPosition: { x, y } };
+        processEnemyTurnsRef.current?.(finalDungeon);
+      }
       return;
     }
 
@@ -2691,12 +2787,31 @@ function DungeonView({
       }
     });
     
+    // ── Combo chaining: if this attack was Phase 1 of an attack_then_move
+    // combo, re-enter targeting with the movement phase from the current spot
+    // (a retreat-strike) and skip the enemy turn until movement resolves.
+    const combo = pendingComboMove;
+    const isAttackThenMove = combo && combo.comboOrder === 'attack_then_move';
+
     // Exit targeting mode
     cancelTargeting();
-    
+
+    if (isAttackThenMove && combo) {
+      const movePhase = { ...stripAttack(combo), staminaCost: 0 };
+      setPendingComboMove(combo); // keep so movement branch can detect & clear
+      setTimeout(() => {
+        if (!enterTargetingFor(movePhase, `🌀 ${combo.name}: choose a retreat tile (Esc to skip).`)) {
+          addLog(`⚠️ ${combo.name}: no retreat tiles available.`, 'info');
+          setPendingComboMove(null);
+          processEnemyTurnsRef.current?.(newDungeon);
+        }
+      }, 0);
+      return;
+    }
+
     // Process enemy turns after player attacks
     processEnemyTurnsRef.current?.(newDungeon);
-  }, [targetingMove, targetingTiles, state.run, dungeon, dispatch, cancelTargeting]);
+  }, [targetingMove, targetingTiles, state.run, dungeon, dispatch, cancelTargeting, pendingComboMove, enterTargetingFor]);
   
   // Process all visible enemy turns
   const processEnemyTurns = useCallback((currentDungeon: typeof dungeon) => {

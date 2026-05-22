@@ -429,6 +429,27 @@ export function MovesEditor() {
                 checked={!!editedMove.triggersTrapsOnAoe}
                 onChange={(v) => setEditedMove({ ...editedMove, triggersTrapsOnAoe: v })}
               />
+
+              {/* Combo order: only meaningful when a move has BOTH a movement pattern and an attack shape. */}
+              <div>
+                <Label className="text-xs">Combo Order (move + attack)</Label>
+                <Select
+                  value={editedMove.comboOrder ?? 'move_then_attack'}
+                  onValueChange={(v) =>
+                    setEditedMove({ ...editedMove, comboOrder: v as 'move_then_attack' | 'attack_then_move' })
+                  }
+                >
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="move_then_attack">Move first, then attack (charge)</SelectItem>
+                    <SelectItem value="attack_then_move">Attack first, then move (retreat strike)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="text-[10px] text-muted-foreground leading-tight mt-1">
+                  Only applies when the move has both a Movement pattern and an Attack shape. Player picks the
+                  destination, then aims the attack (or vice-versa).
+                </div>
+              </div>
             </div>
 
 

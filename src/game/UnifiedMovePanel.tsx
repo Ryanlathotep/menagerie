@@ -33,6 +33,7 @@ import {
   filterMoves 
 } from './MoveSortFilter';
 import { loadMoveFilters, saveMoveFilters } from './persistedFilters';
+import { MoveShapeThumbnail } from './MoveShapeThumbnail';
 import { 
   loadKeybinds, saveKeybinds, getMonsterKeybinds, setMoveKeybind, 
   removeMoveKeybind, VALID_KEYBIND_KEYS 

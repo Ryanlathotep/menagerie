@@ -356,13 +356,45 @@ export function MovesEditor() {
 // ============================================================================
 
 function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  // Keep a local string so iOS users can clear the field, type "-", "12", etc.
+  // without each keystroke being coerced to 0 (which previously made it feel
+  // like the keyboard wasn't working).
+  const [text, setText] = useState<string>(String(value ?? 0));
+
+  // Re-sync when the parent value changes from outside (e.g. selecting a
+  // different move) but not while the user is mid-edit with a matching number.
+  useEffect(() => {
+    const parsed = parseInt(text, 10);
+    if (Number.isNaN(parsed) || parsed !== value) {
+      setText(String(value ?? 0));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  const commit = (raw: string) => {
+    const n = parseInt(raw, 10);
+    onChange(Number.isFinite(n) ? n : 0);
+  };
+
   return (
     <div>
       <Label>{label}</Label>
       <Input
-        type="number"
-        value={value}
-        onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+        type="text"
+        inputMode="numeric"
+        pattern="-?[0-9]*"
+        autoComplete="off"
+        value={text}
+        onChange={(e) => {
+          const v = e.target.value;
+          setText(v);
+          // Only push valid integers up; allow empty / "-" locally.
+          if (/^-?\d+$/.test(v)) commit(v);
+        }}
+        onBlur={() => {
+          commit(text);
+          setText(String(parseInt(text, 10) || 0));
+        }}
       />
     </div>
   );

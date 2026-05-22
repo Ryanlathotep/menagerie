@@ -90,10 +90,13 @@ export function ShapeDesigner() {
   const [damagesTraps, setDamagesTraps] = useState(false);
   const [harvests, setHarvests] = useState<Set<HarvestableKind>>(new Set());
   const [placesTerrain, setPlacesTerrain] = useState<TerrainType | ''>('');
+  const [rotateShape, setRotateShape] = useState(false);
   const [tierStats, setTierStats] = useState<TierStats>({});
 
   // Movement state
   const [blink, setBlink] = useState(false);
+  const [rotateMovement, setRotateMovement] = useState(false);
+
 
   const allMoves = useMemo(() => {
     const out: Move[] = [];

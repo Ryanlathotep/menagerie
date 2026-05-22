@@ -560,11 +560,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   // Cancel auto-walk on unmount.
   useEffect(() => () => cancelAutoWalk(), [cancelAutoWalk]);
 
-  // ─── Auto-Mine loop ─────────────────────────────────────────────────────
-  // Repeatedly steps the player into an adjacent rock tile to harvest it,
-  // halting on enemy sighting, when the tile is no longer a rock, or when
-  // the player moves out of range.
-  const autoMineTargetRef = useRef<Position | null>(null);
+  // ─── Auto-Harvest loop ──────────────────────────────────────────────────
+  // Repeatedly steps the player into an adjacent harvestable tile (rock, tree,
+  // or any future harvestable type), halting on enemy sighting, when the tile
+  // is depleted/changed, or when the player moves out of range.
+  const autoMineTargetRef = useRef<(Position & { tileType: string }) | null>(null);
   const autoMineTimerRef = useRef<number | null>(null);
   const cancelAutoMine = useCallback((reason?: string) => {
     if (autoMineTimerRef.current !== null) {
@@ -578,27 +578,29 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const startAutoMine = useCallback((targetX: number, targetY: number) => {
     cancelAutoWalk();
     cancelAutoMine();
-    autoMineTargetRef.current = { x: targetX, y: targetY };
+    const ow0 = overworldRef.current;
+    const startTile = ow0 ? getOverworldTile(ow0, targetX, targetY) : null;
+    if (!startTile) return;
+    autoMineTargetRef.current = { x: targetX, y: targetY, tileType: startTile.type };
     const stepDelay = Math.max(120, settings.autoRunSpeed || 100);
     autoMineTimerRef.current = window.setInterval(() => {
       const target = autoMineTargetRef.current;
       const ow = overworldRef.current;
       if (!target || !ow) { cancelAutoMine(); return; }
-      // Halt on visible enemies — same rule as auto-walk.
       const enemiesNearby = getVisibleOverworldEnemies(ow, 6);
       if (enemiesNearby.length > 0) {
-        cancelAutoMine('⚠️ Auto-Mine stopped — enemy spotted!');
+        cancelAutoMine('⚠️ Auto-Harvest stopped — enemy spotted!');
         return;
       }
       const t = getOverworldTile(ow, target.x, target.y);
-      if (!t || t.type !== 'rock') {
-        cancelAutoMine('⛏️ Auto-Mine finished — rock exhausted.');
+      if (!t || t.type !== target.tileType) {
+        cancelAutoMine('✅ Auto-Harvest finished — resource depleted.');
         return;
       }
       const dx = target.x - ow.playerPosition.x;
       const dy = target.y - ow.playerPosition.y;
       if (Math.abs(dx) + Math.abs(dy) !== 1) {
-        cancelAutoMine('⛏️ Auto-Mine stopped — moved out of range.');
+        cancelAutoMine('⚠️ Auto-Harvest stopped — moved out of range.');
         return;
       }
       handleMoveRef.current(dx, dy);

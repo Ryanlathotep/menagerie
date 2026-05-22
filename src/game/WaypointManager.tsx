@@ -38,9 +38,12 @@ export function WaypointManager({ isOpen, onClose }: WaypointManagerProps) {
   // Overworld pins: id → { enabled, name?, entranceName? }
   const overworld = state.saveData?.overworldState;
   const entranceById = new Map<string, string>();
-  overworld?.dungeonEntrances?.forEach(e => {
-    entranceById.set(e.id, e.name || 'Unnamed Dungeon');
-  });
+  if (overworld?.dungeonEntrances) {
+    Object.values(overworld.dungeonEntrances).forEach(e => {
+      entranceById.set(e.id, e.name || 'Unnamed Dungeon');
+    });
+  }
+
   const pinnedIds = Object.entries(settings.dungeonWaypoints || {})
     .filter(([, v]) => v)
     .map(([id]) => id);

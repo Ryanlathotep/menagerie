@@ -267,32 +267,20 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
   const gridSize = VIEW_RANGE * 2 + 1;
 
   // Dowsed enemy positions: nearest 5 enemy tiles by Manhattan distance.
-  // Scans all loaded chunks so off-screen targets still count toward the 5.
+  // Scans a wider square around the player than the visible viewport so
+  // off-screen targets still count toward the 5.
   const dowsedKeys = (() => {
     if (!dowsingOn) return new Set<string>();
+    const SCAN = VIEW_RANGE * 3;
     const candidates: { x: number; y: number; d: number }[] = [];
-    for (const chunk of Object.values(overworld.chunks)) {
-      for (const enemy of chunk.enemies) {
-        const ep = (enemy as unknown as { position?: { x: number; y: number } }).position;
-        // Fallback: scan chunk tiles for the matching enemyId.
-        let ex: number | undefined;
-        let ey: number | undefined;
-        if (ep) { ex = ep.x; ey = ep.y; }
-        else {
-          for (let yy = 0; yy < chunk.tiles.length; yy++) {
-            for (let xx = 0; xx < chunk.tiles[yy].length; xx++) {
-              const t = chunk.tiles[yy][xx];
-              if (t.type === 'enemy' && t.enemyId === enemy.id) {
-                ex = chunk.chunkX * chunk.tiles[0].length + xx;
-                ey = chunk.chunkY * chunk.tiles.length + yy;
-                break;
-              }
-            }
-            if (ex !== undefined) break;
-          }
+    for (let dy = -SCAN; dy <= SCAN; dy++) {
+      for (let dx = -SCAN; dx <= SCAN; dx++) {
+        const wx = px + dx;
+        const wy = py + dy;
+        const t = getOverworldTile(overworld, wx, wy);
+        if (t && t.type === 'enemy' && t.enemyId) {
+          candidates.push({ x: wx, y: wy, d: Math.abs(dx) + Math.abs(dy) });
         }
-        if (ex === undefined || ey === undefined) continue;
-        candidates.push({ x: ex, y: ey, d: Math.abs(ex - px) + Math.abs(ey - py) });
       }
     }
     candidates.sort((a, b) => a.d - b.d);

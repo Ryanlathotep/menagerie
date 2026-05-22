@@ -5,6 +5,7 @@ import { OverworldState, OverworldTile, getOverworldTile, getOverworldEnemy, rem
 import { Move } from './moves';
 import { EvolvedMove } from './moveMastery';
 import { AttackConfig, getAttackConfig, getEnemyBehavior } from './dungeonCombat';
+import * as enemyAI from './enemyAI';
 
 // A tile is "blocking" for line-of-sight / AoE propagation if a projectile or
 // blast can't physically pass through it: water, rock walls, trees, buildings,

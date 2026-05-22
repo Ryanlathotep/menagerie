@@ -9,7 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Progress } from '@/components/ui/progress';
 import { useGameDataOverrides } from '@/hooks/useGameDataOverrides';
 import { SPECIES_MOVES, ELEMENT_MOVES, CLASS_MOVES, Move } from '@/game/moves';
-import { rateAgainst, setSingleMoveOverride } from '@/game/moveOverrides';
+import { rateAgainst, ratingFor, setSingleMoveOverride } from '@/game/moveOverrides';
 import { TIER_ORDER, TIER_MULTIPLIERS, TIER_PREFIXES, type MoveTier } from '@/game/moveMastery';
 import { SpeciesType, ElementType, ClassType } from '@/game/types';
 import { Search, Save, RotateCcw, Plus, Trash2, Copy } from 'lucide-react';
@@ -26,7 +26,7 @@ const ALL_CLASSES: ClassType[] = ['normal', 'kinetic', 'energy', 'biological', '
 
 type SourcedMove = { move: Move; source: string; sourceId: string; isCustom: boolean };
 
-type NumericFieldKey = 'power' | 'accuracy' | 'staminaCost' | 'speedMod' | 'aoeRadius' | 'unlockLevel';
+type NumericFieldKey = 'power' | 'accuracy' | 'staminaCost' | 'manaCost' | 'speedMod' | 'aoeRadius' | 'unlockLevel';
 
 type NumericFieldStats = {
   min: number;
@@ -218,10 +218,67 @@ export function MovesEditor() {
     power: computeTrimmedStats(ratingPool.map((move) => move.power ?? 0)),
     accuracy: computeTrimmedStats(ratingPool.map((move) => move.accuracy ?? 100)),
     staminaCost: computeTrimmedStats(ratingPool.map((move) => move.staminaCost ?? 0)),
+    manaCost: computeTrimmedStats(ratingPool.map((move) => move.manaCost ?? 0)),
     speedMod: computeTrimmedStats(ratingPool.map((move) => move.speedMod ?? 0)),
     aoeRadius: computeTrimmedStats(ratingPool.map((move) => move.aoeRadius ?? 0)),
     unlockLevel: computeTrimmedStats(ratingPool.map((move) => move.unlockLevel ?? 1)),
   }), [ratingPool]);
+
+  // The "saved baseline" rating — what was last persisted to the DB. Drives
+  // the suggestions panel which only refreshes when the move is selected or
+  // saved (not on every keystroke).
+  const savedRating = useMemo(() => (selected ? ratingFor({ ...selected.move, ...(selectedOverride ?? {}) }) : 0), [selected, selectedOverride]);
+  const targetRating = editedMove.targetRating ?? savedRating;
+
+  // For each tunable field, compute approximate rating-per-unit so we can
+  // suggest concrete edits to reach the target rating.
+  const suggestions = useMemo(() => {
+    if (!selected) return [] as { label: string; delta: number; ratingDelta: number; direction: 'up' | 'down' }[];
+    const gap = targetRating - ratingInfo.rating;
+    if (Math.abs(gap) < 1) return [];
+    const base = ratingFor(editedMove);
+    const probe = (patch: Partial<Move>) => ratingFor({ ...editedMove, ...patch });
+    // [field label, current, +step probe, -step probe]
+    const fields: { label: string; key: keyof Move; current: number; perUnit: number; lowerBound?: number; upperBound?: number }[] = [
+      { label: 'Power',         key: 'power',       current: editedMove.power ?? 0,        perUnit: probe({ power: (editedMove.power ?? 0) + 10 }) - base, lowerBound: 0,   upperBound: 250 },
+      { label: 'Accuracy',      key: 'accuracy',    current: editedMove.accuracy ?? 100,    perUnit: probe({ accuracy: (editedMove.accuracy ?? 100) + 10 }) - base, lowerBound: 30, upperBound: 100 },
+      { label: 'Stamina Cost',  key: 'staminaCost', current: editedMove.staminaCost ?? 0,   perUnit: probe({ staminaCost: (editedMove.staminaCost ?? 0) - 1 }) - base, lowerBound: 0, upperBound: 50 },
+      { label: 'Mana Cost',     key: 'manaCost',    current: editedMove.manaCost ?? 0,      perUnit: probe({ manaCost: (editedMove.manaCost ?? 0) - 1 }) - base, lowerBound: 0, upperBound: 50 },
+      { label: 'Speed Mod',     key: 'speedMod',    current: editedMove.speedMod ?? 0,      perUnit: probe({ speedMod: (editedMove.speedMod ?? 0) + 1 }) - base, lowerBound: -5, upperBound: 5 },
+      { label: 'AoE Radius',    key: 'aoeRadius',   current: editedMove.aoeRadius ?? 0,     perUnit: probe({ aoeRadius: (editedMove.aoeRadius ?? 0) + 1 }) - base, lowerBound: 0, upperBound: 6 },
+      { label: 'Learned Level', key: 'unlockLevel', current: editedMove.unlockLevel ?? 1,   perUnit: probe({ unlockLevel: (editedMove.unlockLevel ?? 1) - 1 }) - base, lowerBound: 1, upperBound: 50 },
+    ];
+    const out: { label: string; delta: number; ratingDelta: number; direction: 'up' | 'down' }[] = [];
+    for (const f of fields) {
+      if (Math.abs(f.perUnit) < 0.01) continue;
+      // Sign of the per-unit step that moves rating UP:
+      // power/acc/speed/aoe use +step, stamina/mana/level use -step.
+      const stepDir = (f.key === 'staminaCost' || f.key === 'manaCost' || f.key === 'unlockLevel') ? -1 : 1;
+      const unitRating = Math.abs(f.perUnit); // rating gained per favorable unit
+      const stepSize = (f.key === 'power' || f.key === 'accuracy') ? 10 : 1; // matches the probe granularity for those fields
+      const ratingPerSingle = unitRating / stepSize;
+      if (ratingPerSingle < 0.1) continue;
+      const want = gap; // +ve = need more rating
+      // Direction of change to the raw field:
+      const rawDelta = Math.round((want / ratingPerSingle) * (want > 0 ? stepDir : -stepDir));
+      if (rawDelta === 0) continue;
+      // Clamp to plausible bounds.
+      let target = f.current + rawDelta;
+      if (f.lowerBound !== undefined) target = Math.max(f.lowerBound, target);
+      if (f.upperBound !== undefined) target = Math.min(f.upperBound, target);
+      const actualDelta = target - f.current;
+      if (actualDelta === 0) continue;
+      const ratingDelta = ratingPerSingle * Math.abs(actualDelta) * (actualDelta * stepDir > 0 ? 1 : -1);
+      out.push({
+        label: f.label,
+        delta: actualDelta,
+        ratingDelta: Math.round(ratingDelta),
+        direction: want > 0 ? 'up' : 'down',
+      });
+    }
+    return out.sort((a, b) => Math.abs(b.ratingDelta) - Math.abs(a.ratingDelta));
+  }, [editedMove, ratingInfo.rating, targetRating, selected]);
+
 
   if (loading) return <div className="text-muted-foreground p-4">Loading moves...</div>;
 

@@ -735,19 +735,19 @@ export function snapshotDungeonToEntrance(
         tiles: snap.tiles.map(row => row.map(snapshotTile)),
         width: snap.width,
         height: snap.height,
-        playerBuildings: existing[floor]?.playerBuildings,
-        roads: existing[floor]?.roads,
+        playerBuildings: snap.playerBuildings ? snap.playerBuildings.map(b => ({ ...b })) : existing[floor]?.playerBuildings,
+        roads: snap.roads ? { ...snap.roads } : existing[floor]?.roads,
       };
     }
   }
 
-  // Snapshot the currently-active floor.
+  // Snapshot the currently-active floor (live buildings/roads on dungeon).
   next[dungeon.floor] = {
     tiles: dungeon.tiles.map(row => row.map(snapshotTile)),
     width: dungeon.width,
     height: dungeon.height,
-    playerBuildings: existing[dungeon.floor]?.playerBuildings,
-    roads: existing[dungeon.floor]?.roads,
+    playerBuildings: dungeon.playerBuildings ? dungeon.playerBuildings.map(b => ({ ...b })) : existing[dungeon.floor]?.playerBuildings,
+    roads: dungeon.roads ? { ...dungeon.roads } : existing[dungeon.floor]?.roads,
   };
 
   // Cap size: keep the 50 deepest snapshots (deepest = most interesting).

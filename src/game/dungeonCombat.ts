@@ -5,7 +5,7 @@ import { Move, TargetingPattern } from './moves';
 import { EvolvedMove } from './moveMastery';
 
 // Attack pattern shapes (internal representation)
-export type AttackPattern = 'single' | 'line' | 'cone' | 'cross' | 'area' | 'aura' | 'self';
+export type AttackPattern = 'single' | 'line' | 'cone' | 'cross' | 'area' | 'aura' | 'self' | 'custom' | 'movement';
 
 // Attack range and pattern configuration
 export interface AttackConfig {
@@ -14,6 +14,12 @@ export interface AttackConfig {
   width?: number;           // For cone/area patterns
   piercing?: boolean;       // Hits all enemies in line
   wallPenetrate?: boolean;  // Can pass through walls (very rare)
+  /** Custom-shape offsets relative to origin (used when pattern === 'custom' or 'movement'). */
+  customOffsets?: { dx: number; dy: number }[];
+  /** For 'custom' pattern: whether offsets are anchored to the caster ('self') or target tile ('target'). */
+  customOrigin?: 'self' | 'target';
+  /** For 'movement' pattern: blink ignores wall/unit blockers between caster and destination. */
+  blink?: boolean;
 }
 
 // Check line of sight between two positions (returns true if unblocked)

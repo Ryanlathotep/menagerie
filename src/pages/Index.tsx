@@ -34,6 +34,8 @@ import { calculateMonsterDrops, getEnemyEquipmentDrops } from '@/game/monsterDro
 import { rollEnemyMoveDamage } from '@/game/enemyAI';
 import { EquipmentView } from '@/game/EquipmentView';
 import { PreRunEquipment } from '@/game/PreRunEquipment';
+import { BUILDING_DEFINITIONS, createBuilding, PlayerBuildingType } from '@/game/buildings';
+import { DungeonBuildPanel } from '@/game/DungeonBuildPanel';
 import { OverworldView } from '@/game/OverworldView';
 import { DungeonListPanel } from '@/game/DungeonListPanel';
 import { EnemyAttackMenu, EnemyAttackTarget } from '@/game/EnemyAttackMenu';

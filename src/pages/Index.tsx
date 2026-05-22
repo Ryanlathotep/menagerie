@@ -2484,6 +2484,23 @@ function DungeonView({
       setTargetingMove(null);
       setTargetingTiles([]);
       setAffectedTiles([]);
+
+      // ── Combo chaining: if this movement was Phase 1 of a move_then_attack
+      // combo, re-enter targeting with the attack phase from the new position.
+      // Defer one frame so the dungeon dispatch above takes effect first.
+      const combo = pendingComboMove;
+      if (combo && (combo.comboOrder ?? 'move_then_attack') === 'move_then_attack') {
+        const attackPhase = { ...stripMovement(combo), staminaCost: combo.staminaCost ?? 0 };
+        setPendingComboMove(null);
+        setTimeout(() => {
+          if (!enterTargetingFor(attackPhase, `⚔️ ${combo.name}: aim the attack!`)) {
+            addLog(`⚠️ ${combo.name}: no targets from new position.`, 'info');
+          }
+        }, 0);
+      } else if (combo && combo.comboOrder === 'attack_then_move') {
+        // Movement was Phase 2 of an attack_then_move combo — combo complete.
+        setPendingComboMove(null);
+      }
       return;
     }
 

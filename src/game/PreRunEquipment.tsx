@@ -19,6 +19,8 @@ import { Slider } from '@/components/ui/slider';
 import { EquippedSlotDisplay, DraggableEquipmentItem, DragData } from './DraggableEquipmentItem';
 import { EquipmentSortControls } from './EquipmentSortControls';
 import { sortEquipment, autoEquip, SortConfig } from './equipmentUtils';
+import { useSettings } from './Settings';
+
 import { toast } from '@/hooks/use-toast';
 
 interface PreRunEquipmentProps {

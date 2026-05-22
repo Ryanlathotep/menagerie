@@ -3616,7 +3616,46 @@ function DungeonView({
                 }
               }}
             />
-            
+
+            {/* Build button (top-right of dungeon viewport) */}
+            <div className="absolute top-2 right-2 z-30 flex flex-col gap-1 items-end">
+              <Button
+                size="sm"
+                variant={dungeonBuildMode ? 'destructive' : 'secondary'}
+                onClick={() => {
+                  if (dungeonBuildMode) {
+                    setDungeonBuildMode(false);
+                    setSelectedDungeonBuildType(null);
+                  } else {
+                    setDungeonBuildPanelOpen(true);
+                  }
+                }}
+                title="Build structures on this floor (persists across runs)"
+              >
+                🏗️ {dungeonBuildMode ? 'Cancel' : 'Build'}
+              </Button>
+              {dungeonBuildMode && selectedDungeonBuildType && (
+                <div className="bg-card/90 backdrop-blur border rounded px-2 py-1 text-xs">
+                  Placing: {BUILDING_DEFINITIONS[selectedDungeonBuildType].name} — click an open floor tile.
+                </div>
+              )}
+            </div>
+
+            <DungeonBuildPanel
+              open={dungeonBuildPanelOpen}
+              wood={state.saveData.overworldState?.woodCollected ?? 0}
+              stone={state.saveData.overworldState?.stoneCollected ?? 0}
+              onClose={() => setDungeonBuildPanelOpen(false)}
+              onSelectBuilding={(type) => {
+                setSelectedDungeonBuildType(type);
+                setDungeonBuildMode(true);
+                setDungeonBuildPanelOpen(false);
+              }}
+              onSelectRoad={() => {
+                toast.info('Roads in dungeons coming soon.');
+              }}
+            />
+
             {/* Targeting mode UI */}
             {targetingMove && (
               <MoveInfoPanel move={targetingMove} onCancel={cancelTargeting} />

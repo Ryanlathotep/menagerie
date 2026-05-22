@@ -366,6 +366,13 @@ export interface DungeonState {
   // `name` is an optional player-supplied label.
   compassWaypoints?: DungeonWaypoint[];
 
+  // Player-placed buildings & roads on this floor. Use the same PlayerBuilding
+  // shape as the overworld so all sprites / behaviors / context menus work.
+  // Note: `any[]` here avoids a circular import with buildings.ts; consumers
+  // cast to `PlayerBuilding[]`.
+  playerBuildings?: any[];
+  roads?: Record<string, 'dirt_road' | 'stone_road'>;
+
   // Persistent per-floor snapshots so the player can walk back up the
   // staircase to revisit a previous floor (tile state, enemies, position).
   // Excludes `compassWaypoint` and the active floor itself.
@@ -376,6 +383,8 @@ export interface DungeonState {
     width: number;
     height: number;
     entryPosition?: Position;
+    playerBuildings?: any[];
+    roads?: Record<string, 'dirt_road' | 'stone_road'>;
   }>;
 }
 

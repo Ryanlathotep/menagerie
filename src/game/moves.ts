@@ -72,6 +72,8 @@ export interface MovementPattern {
   offsets: { dx: number; dy: number }[];
   /** If true, ignores walls / units between caster and destination (teleport). */
   blink?: boolean;
+  /** If true, rotate the offsets to match the cardinal direction the player aimed. */
+  rotateToFacing?: boolean;
 }
 
 export interface Move {

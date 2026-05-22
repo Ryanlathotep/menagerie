@@ -523,7 +523,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       <ReportBugDialog isOpen={bugOpen} onClose={() => setBugOpen(false)} />
     </div>
     <AdminPanelDialog isOpen={adminOpen} onClose={() => setAdminOpen(false)} />
+    <WaypointManager isOpen={waypointMgrOpen} onClose={() => setWaypointMgrOpen(false)} />
     </>
+
   );
 }
 

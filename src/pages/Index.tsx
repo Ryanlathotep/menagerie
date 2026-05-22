@@ -5105,29 +5105,40 @@ function Game() {
     setGameLog(prev => [...prev.slice(-199), createLogMessage(text, type)]);
   }, []);
 
-  // Mirror Sonner toasts into the unified log
+  // Route Sonner toasts: during gameplay (dungeon/battle/overworld/defeat/summary)
+  // push to the in-game log ONLY (no popup). Outside gameplay (menus, auth) show normally.
+  const phaseRef = useRef(state.phase);
+  phaseRef.current = state.phase;
   useEffect(() => {
     const originalSuccess = toast.success;
     const originalError = toast.error;
     const originalInfo = (toast as any).info;
 
+    const inGame = () => {
+      const p = phaseRef.current;
+      return p === 'dungeon' || p === 'battle' || p === 'overworld' || p === 'defeat' || p === 'run_summary';
+    };
+
     toast.success = ((message: any, options?: any) => {
       const parsed = parseLogMessage(String(message));
       addLog(parsed.text, parsed.type);
-      return originalSuccess(message, options);
+      if (!inGame()) return originalSuccess(message, options);
+      return '' as any;
     }) as any;
 
     toast.error = ((message: any, options?: any) => {
       const parsed = parseLogMessage(String(message));
       addLog(parsed.text, parsed.type);
-      return originalError(message, options);
+      if (!inGame()) return originalError(message, options);
+      return '' as any;
     }) as any;
 
     if (typeof originalInfo === 'function') {
       (toast as any).info = (message: any, options?: any) => {
         const parsed = parseLogMessage(String(message));
         addLog(parsed.text, parsed.type);
-        return originalInfo(message, options);
+        if (!inGame()) return originalInfo(message, options);
+        return '' as any;
       };
     }
 

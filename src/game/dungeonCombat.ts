@@ -109,6 +109,35 @@ export function getAttackConfig(move: Move | EvolvedMove): AttackConfig {
   const piercing = 'piercing' in move ? (move as Move).piercing : false;
   const wallPenetrate = 'wallPenetrate' in move ? (move as Move).wallPenetrate : false;
   
+  const customShape = 'customShape' in move ? (move as Move).customShape : undefined;
+  const movement = 'movement' in move ? (move as Move).movement : undefined;
+
+  // Admin-designed movement skill: caster picks one of the listed offsets as a destination.
+  if (movement && movement.offsets.length > 0) {
+    const maxR = Math.max(...movement.offsets.map(o => Math.max(Math.abs(o.dx), Math.abs(o.dy))));
+    return {
+      pattern: 'movement',
+      range: maxR,
+      customOffsets: movement.offsets,
+      blink: !!movement.blink,
+      wallPenetrate: !!movement.blink,
+    };
+  }
+
+  // Admin-designed AoE shape (origin = self for melee bursts, target for ranged strikes).
+  if (customShape && customShape.offsets.length > 0) {
+    const maxR = Math.max(...customShape.offsets.map(o => Math.max(Math.abs(o.dx), Math.abs(o.dy))));
+    return {
+      pattern: 'custom',
+      // For self-origin, range bounds the shape itself; for target-origin, range bounds
+      // how far the player can place the target tile from themselves.
+      range: customShape.origin === 'self' ? maxR : (customShape.range ?? (move.type === 'melee' ? 1 : 5)),
+      customOffsets: customShape.offsets,
+      customOrigin: customShape.origin,
+      wallPenetrate: !!customShape.wallPenetrate,
+    };
+  }
+
   // Self-targeting for buffs and heals (unless they target enemies)
   if (move.type === 'heal') {
     return { pattern: 'self', range: 0 };

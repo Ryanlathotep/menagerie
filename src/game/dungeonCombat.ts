@@ -407,6 +407,30 @@ export function getValidTargets(
   targetEnemies: boolean = true // true = player attacking enemies, false = enemy attacking player
 ): Position[] {
   const validTiles: Position[] = [];
+
+  // ── Movement skill: caster picks one of the offset destinations (relative to self) ──
+  if (config.pattern === 'movement' && config.customOffsets) {
+    for (const o of config.customOffsets) {
+      const x = origin.x + o.dx;
+      const y = origin.y + o.dy;
+      if (x < 0 || x >= width || y < 0 || y >= height) continue;
+      const tile = tiles[y][x];
+      // Destination must be empty / walkable. Blink ignores LOS; otherwise need LOS.
+      if (tile.type !== 'floor' && tile.type !== 'plant') continue;
+      if (!config.blink) {
+        if (!hasLineOfSight(origin, { x, y }, tiles, width, height, false)) continue;
+      }
+      validTiles.push({ x, y });
+    }
+    return validTiles;
+  }
+
+  // ── Custom self-anchored shape: only valid target is the caster's own tile ──
+  if (config.pattern === 'custom' && config.customOrigin === 'self') {
+    validTiles.push({ x: origin.x, y: origin.y });
+    return validTiles;
+  }
+
   
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {

@@ -13,6 +13,10 @@ import { TowerLeaderboard } from './TowerLeaderboard';
 interface DungeonListPanelProps {
   dungeonEntrances: Record<string, DungeonEntrance>;
   onLaunch: (entrance: DungeonEntrance) => void;
+  /** Optional: when provided, each row shows a "Start" button that bypasses
+   *  party-select + pre-run prep using the saved party + persisted gear. */
+  onQuickStart?: (entrance: DungeonEntrance) => void;
+  quickStartPartySize?: number;
 }
 
 const ELEMENT_EMOJI: Record<string, string> = {
@@ -56,7 +60,12 @@ function getThemeLabel(d: DungeonEntrance): string | null {
   return null;
 }
 
-function DungeonRow({ d, onLaunch }: { d: DungeonEntrance; onLaunch: (e: DungeonEntrance) => void }) {
+function DungeonRow({ d, onLaunch, onQuickStart, quickStartPartySize }: {
+  d: DungeonEntrance;
+  onLaunch: (e: DungeonEntrance) => void;
+  onQuickStart?: (e: DungeonEntrance) => void;
+  quickStartPartySize?: number;
+}) {
   const cleared = d.deepestFloor > 0;
   const startingLevel = Math.max(1, d.difficulty || 1);
   const themeLabel = getThemeLabel(d);
@@ -100,19 +109,36 @@ function DungeonRow({ d, onLaunch }: { d: DungeonEntrance; onLaunch: (e: Dungeon
               </div>
             )}
           </div>
-          <Button
-            size="sm"
-            variant={d.isHome ? 'default' : 'outline'}
-            className={d.isHome ? 'bg-gradient-to-r from-primary to-secondary' : ''}
-            onClick={(e) => {
-              e.stopPropagation();
-              onLaunch(d);
-            }}
-          >
-            Enter
-          </Button>
+          <div className="flex flex-col items-stretch gap-1 shrink-0">
+            <Button
+              size="sm"
+              variant={d.isHome ? 'default' : 'outline'}
+              className={d.isHome ? 'bg-gradient-to-r from-primary to-secondary' : ''}
+              onClick={(e) => {
+                e.stopPropagation();
+                onLaunch(d);
+              }}
+            >
+              Enter
+            </Button>
+            {onQuickStart && (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="text-[11px]"
+                title={`Skip prep — last saved party (${quickStartPartySize ?? 0})`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onQuickStart(d);
+                }}
+              >
+                ▶️ Start
+              </Button>
+            )}
+          </div>
         </div>
       </button>
+
 
       <button
         type="button"
@@ -131,23 +157,32 @@ function DungeonRow({ d, onLaunch }: { d: DungeonEntrance; onLaunch: (e: Dungeon
   );
 }
 
-function Section({ title, items, onLaunch }: { title: string; items: DungeonEntrance[]; onLaunch: (e: DungeonEntrance) => void }) {
+function Section({ title, items, onLaunch, onQuickStart, quickStartPartySize }: {
+  title: string;
+  items: DungeonEntrance[];
+  onLaunch: (e: DungeonEntrance) => void;
+  onQuickStart?: (e: DungeonEntrance) => void;
+  quickStartPartySize?: number;
+}) {
   if (items.length === 0) return null;
   return (
     <div className="space-y-2">
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground/80 px-1">{title}</div>
       {items.map(d => (
-        <DungeonRow key={d.id} d={d} onLaunch={onLaunch} />
+        <DungeonRow
+          key={d.id}
+          d={d}
+          onLaunch={onLaunch}
+          onQuickStart={onQuickStart}
+          quickStartPartySize={quickStartPartySize}
+        />
       ))}
     </div>
   );
 }
 
-export function DungeonListPanel({ dungeonEntrances, onLaunch }: DungeonListPanelProps) {
+export function DungeonListPanel({ dungeonEntrances, onLaunch, onQuickStart, quickStartPartySize }: DungeonListPanelProps) {
   const all = Object.values(dungeonEntrances || {});
-  // A dungeon counts as discovered once the player has physically seen it on
-  // the overworld (or already cleared a floor in it). Home is always visible.
-  // Themed towers no longer auto-reveal — the player must explore to them.
   const isDiscovered = (d: DungeonEntrance) =>
     !!(d.isHome || d.discovered || d.deepestFloor > 0);
 
@@ -165,12 +200,14 @@ export function DungeonListPanel({ dungeonEntrances, onLaunch }: DungeonListPane
 
   const undiscoveredCount = all.length - discovered.length;
 
-  // Defense in depth: never let an undiscovered dungeon be launched, even if
-  // somehow surfaced through stale UI.
   const safeLaunch = (d: DungeonEntrance) => {
     if (!isDiscovered(d)) return;
     onLaunch(d);
   };
+  const safeQuickStart = onQuickStart
+    ? (d: DungeonEntrance) => { if (isDiscovered(d)) onQuickStart(d); }
+    : undefined;
+
 
 
   return (
@@ -184,11 +221,11 @@ export function DungeonListPanel({ dungeonEntrances, onLaunch }: DungeonListPane
 
       <ScrollArea className="h-[360px] pr-2">
         <div className="space-y-4">
-          <Section title="Home" items={home} onLaunch={safeLaunch} />
-          <Section title="Elemental Towers" items={elementTowers} onLaunch={safeLaunch} />
-          <Section title="Class Towers" items={classTowers} onLaunch={safeLaunch} />
-          <Section title="Species Towers" items={speciesTowers} onLaunch={safeLaunch} />
-          <Section title="Overworld Dungeons" items={overworldDungeons} onLaunch={safeLaunch} />
+          <Section title="Home" items={home} onLaunch={safeLaunch} onQuickStart={safeQuickStart} quickStartPartySize={quickStartPartySize} />
+          <Section title="Elemental Towers" items={elementTowers} onLaunch={safeLaunch} onQuickStart={safeQuickStart} quickStartPartySize={quickStartPartySize} />
+          <Section title="Class Towers" items={classTowers} onLaunch={safeLaunch} onQuickStart={safeQuickStart} quickStartPartySize={quickStartPartySize} />
+          <Section title="Species Towers" items={speciesTowers} onLaunch={safeLaunch} onQuickStart={safeQuickStart} quickStartPartySize={quickStartPartySize} />
+          <Section title="Overworld Dungeons" items={overworldDungeons} onLaunch={safeLaunch} onQuickStart={safeQuickStart} quickStartPartySize={quickStartPartySize} />
 
           {undiscoveredCount > 0 && (
             <div className="rounded-md border border-dashed border-muted-foreground/30 p-3 text-center text-xs text-muted-foreground">

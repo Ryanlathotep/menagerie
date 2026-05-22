@@ -174,6 +174,59 @@ function MainMenu() {
     dispatch({ type: 'SELL_EQUIPMENT', itemId, price });
     toast.success(`Sold for ${price} gold!`);
   };
+
+  // Quick-start: skip both character-select and pre-run equipment screens
+  // when the player already has a saved party they're happy with.
+  const savedPartyIds: string[] = (() => {
+    try {
+      const raw = localStorage.getItem('menagerie_last_party');
+      return raw ? (JSON.parse(raw) as string[]) : [];
+    } catch { return []; }
+  })();
+  const quickStartParty = savedPartyIds
+    .map(id => state.saveData.unlockedMonsters.find(u => u.comboId === id))
+    .filter(Boolean) as UnlockedMonster[];
+  const canQuickStart = quickStartParty.length > 0;
+
+  const quickStart = (destination: 'dungeon' | 'overworld', entranceId?: string) => {
+    if (!canQuickStart) return;
+    localStorage.setItem('menagerie_run_destination', destination);
+    localStorage.setItem('menagerie_run_origin', 'main_menu');
+    if (destination === 'dungeon' && entranceId) {
+      const entrance = state.saveData.dungeonEntrances?.[entranceId];
+      localStorage.setItem('menagerie_active_dungeon_id', entranceId);
+      localStorage.setItem('menagerie_active_dungeon_difficulty', String(entrance?.difficulty || 1));
+    } else {
+      localStorage.removeItem('menagerie_active_dungeon_id');
+    }
+    localStorage.removeItem('menagerie_selected_start_floor');
+
+    const monsters = quickStartParty.map(saved =>
+      createMonster(
+        saved.species,
+        saved.classType,
+        saved.element,
+        saved.level,
+        saved.equipment,
+        saved.experience,
+        saved.moveMastery,
+      )
+    );
+    // Carry each member's persisted equipment so the START_RUN reducer
+    // doesn't blank slots 2-N.
+    const partyPreEquipped: MonsterEquipment[] = monsters.map(m => m.equipment || createEmptyEquipment());
+
+    dispatch({
+      type: 'START_RUN',
+      monster: monsters[0],
+      party: monsters,
+      partyPreEquipped,
+      withdrawnIds: [],
+      preSelectedItems: [],
+      destination,
+    });
+  };
+
   
   return (
     <div className="game-container font-serif text-center">
@@ -208,7 +261,7 @@ function MainMenu() {
           )}
 
           {/* Overworld button moved to top */}
-          <div className="flex gap-2 justify-center">
+          <div className="flex gap-2 justify-center flex-wrap">
             <Button
               size="lg"
               className="w-full max-w-xs sm:w-64 bg-gradient-to-r from-secondary to-primary hover:opacity-90"
@@ -221,6 +274,17 @@ function MainMenu() {
             >
               🗺️ Enter Overworld
             </Button>
+            {canQuickStart && (
+              <Button
+                size="lg"
+                variant="secondary"
+                className="w-full max-w-xs sm:w-64"
+                onClick={() => quickStart('overworld')}
+                title={`Start with last party (${quickStartParty.length}): ${quickStartParty.map(m => m.species).join(', ')}`}
+              >
+                ▶️ Start Adventure
+              </Button>
+            )}
           </div>
 
           {/* Dungeon list replaces the single Start Run button */}
@@ -233,7 +297,10 @@ function MainMenu() {
               localStorage.setItem('menagerie_active_dungeon_difficulty', String(entrance.difficulty || 1));
               dispatch({ type: 'SET_PHASE', phase: 'character_select' });
             }}
+            onQuickStart={canQuickStart ? (entrance) => quickStart('dungeon', entrance.id) : undefined}
+            quickStartPartySize={quickStartParty.length}
           />
+
 
           <div className="flex gap-2 justify-center">
             <Button 
@@ -506,6 +573,9 @@ function CharacterSelect() {
   };
   
   const runDestination = (localStorage.getItem('menagerie_run_destination') || 'dungeon') as 'dungeon' | 'overworld';
+
+
+
   
   const startRun = (
     partyEquipment: MonsterEquipment[],

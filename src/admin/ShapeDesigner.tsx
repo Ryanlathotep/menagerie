@@ -289,6 +289,12 @@ export function ShapeDesigner() {
     setHarvests(next);
   };
 
+  const toggleMoveHarvest = (k: HarvestableKind) => {
+    const next = new Set(moveHarvests);
+    next.has(k) ? next.delete(k) : next.add(k);
+    setMoveHarvests(next);
+  };
+
   const buildShape = (): CustomShape | null => {
     const offsets = [...cells].map((s) => {
       const [dx, dy] = s.split(',').map(Number);
@@ -312,19 +318,54 @@ export function ShapeDesigner() {
     };
   };
 
+  const buildMovement = (): import('@/game/moves').MovementPattern | null => {
+    const offsets = [...cells].map((s) => {
+      const [dx, dy] = s.split(',').map(Number);
+      return { dx, dy };
+    });
+    if (offsets.length === 0) return null;
+    return {
+      offsets,
+      blink,
+      ...(rotateMovement ? { rotateToFacing: true } : {}),
+      range: moveRange,
+      blockedByWalls: moveBlockedByWalls,
+      blockedByUnits: moveBlockedByUnits,
+      passThroughEnemies: movePassEnemies,
+      passThroughTraps: movePassTraps,
+      passThroughTerrain: movePassTerrain,
+      canClimbCliffs: moveClimbCliffs,
+      canCrossWater: moveCrossWater,
+      triggersTrapsOnPath: moveTriggersTrapsOnPath,
+      harvestsResources: [...moveHarvests],
+    };
+  };
+
   const handleSave = async () => {
     if (!selected) return;
     const existing = (getOverride('moves', selected.id) as Partial<Move> | null) || {};
     const patch: Partial<Move> = { ...existing };
 
     if (mode === 'movement') {
-      const offsets = [...cells].map((s) => {
-        const [dx, dy] = s.split(',').map(Number);
-        return { dx, dy };
-      });
-      if (offsets.length === 0) { toast.error('Select at least one cell.'); return; }
-      patch.movement = { offsets, blink, ...(rotateMovement ? { rotateToFacing: true } : {}) };
-      patch.type = 'movement';
+      const movement = buildMovement();
+      if (!movement) { toast.error('Select at least one cell.'); return; }
+      if (tier === 'base') {
+        patch.movement = movement;
+        patch.type = 'movement';
+        if (tierStats.power !== '' && tierStats.power !== undefined) patch.power = Number(tierStats.power);
+        if (tierStats.accuracy !== '' && tierStats.accuracy !== undefined) patch.accuracy = Number(tierStats.accuracy);
+        if (tierStats.staminaCost !== '' && tierStats.staminaCost !== undefined) patch.staminaCost = Number(tierStats.staminaCost);
+        if (tierStats.speedMod !== '' && tierStats.speedMod !== undefined) patch.speedMod = Number(tierStats.speedMod);
+      } else {
+        const nextOverrides = { ...(patch.tierOverrides ?? {}) };
+        const tierPatch: NonNullable<Move['tierOverrides']>[string] = { movement };
+        if (tierStats.power !== '' && tierStats.power !== undefined) tierPatch.power = Number(tierStats.power);
+        if (tierStats.accuracy !== '' && tierStats.accuracy !== undefined) tierPatch.accuracy = Number(tierStats.accuracy);
+        if (tierStats.staminaCost !== '' && tierStats.staminaCost !== undefined) tierPatch.staminaCost = Number(tierStats.staminaCost);
+        if (tierStats.speedMod !== '' && tierStats.speedMod !== undefined) tierPatch.speedMod = Number(tierStats.speedMod);
+        nextOverrides[tier] = tierPatch;
+        patch.tierOverrides = nextOverrides;
+      }
       delete patch.customShape;
     } else {
       const shape = buildShape();
@@ -352,6 +393,7 @@ export function ShapeDesigner() {
     const ok = await saveOverride('moves', selected.id, patch as Record<string, unknown>);
     if (ok) toast.success(`Saved ${tier} ${mode} for ${selected.name}`);
   };
+
 
   const handleClear = async () => {
     if (!selected) return;

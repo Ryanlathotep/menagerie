@@ -2784,12 +2784,31 @@ function DungeonView({
       }
     });
     
+    // ── Combo chaining: if this attack was Phase 1 of an attack_then_move
+    // combo, re-enter targeting with the movement phase from the current spot
+    // (a retreat-strike) and skip the enemy turn until movement resolves.
+    const combo = pendingComboMove;
+    const isAttackThenMove = combo && combo.comboOrder === 'attack_then_move';
+
     // Exit targeting mode
     cancelTargeting();
-    
+
+    if (isAttackThenMove && combo) {
+      const movePhase = { ...stripAttack(combo), staminaCost: 0 };
+      setPendingComboMove(combo); // keep so movement branch can detect & clear
+      setTimeout(() => {
+        if (!enterTargetingFor(movePhase, `🌀 ${combo.name}: choose a retreat tile (Esc to skip).`)) {
+          addLog(`⚠️ ${combo.name}: no retreat tiles available.`, 'info');
+          setPendingComboMove(null);
+          processEnemyTurnsRef.current?.(newDungeon);
+        }
+      }, 0);
+      return;
+    }
+
     // Process enemy turns after player attacks
     processEnemyTurnsRef.current?.(newDungeon);
-  }, [targetingMove, targetingTiles, state.run, dungeon, dispatch, cancelTargeting]);
+  }, [targetingMove, targetingTiles, state.run, dungeon, dispatch, cancelTargeting, pendingComboMove, enterTargetingFor]);
   
   // Process all visible enemy turns
   const processEnemyTurns = useCallback((currentDungeon: typeof dungeon) => {

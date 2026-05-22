@@ -1426,7 +1426,15 @@ function DungeonView({
             entryPosition: cached.entryPosition ?? cached.playerPosition,
             visitedFloors: visited,
           }
-        : { ...generateDungeon(prevFloorNum, dungeon.theme, dungeon.startingFloor), visitedFloors: visited };
+        : (() => {
+            const activeId = typeof window !== 'undefined' ? localStorage.getItem('menagerie_active_dungeon_id') : null;
+            const entrance = activeId ? state.saveData.dungeonEntrances?.[activeId] : undefined;
+            const fresh = hydrateDungeonFromSnapshot(
+              generateDungeon(prevFloorNum, dungeon.theme, dungeon.startingFloor),
+              entrance,
+            );
+            return { ...fresh, visitedFloors: visited };
+          })();
       dispatch({ type: 'SET_DUNGEON', dungeon: newDungeon });
       addLog(`⬆️ Ascended to Floor ${prevFloorNum}.`, 'system');
       return;

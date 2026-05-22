@@ -479,6 +479,18 @@ export interface DungeonEntrance {
   isHome?: boolean;               // True for the starter Tower of the Infinite
   theme?: DungeonTheme;           // Content theme (filters what monsters spawn)
   category?: 'home' | 'element' | 'class' | 'species' | 'procedural'; // For grouping in UI
+  // Cross-run persistent per-floor snapshots. Mined walls, opened tiles,
+  // collected chests, placed buildings/roads survive between runs.
+  // Enemies are intentionally NOT stored — they respawn on re-entry.
+  // Capped to the last 50 visited floors (deeper floors regenerate fresh).
+  floorSnapshots?: Record<number, {
+    tiles: DungeonTile[][];
+    width: number;
+    height: number;
+    // Phase B (buildings in dungeons) — fields are forward-compatible:
+    playerBuildings?: any[];     // PlayerBuilding[] (avoid circular import here)
+    roads?: Record<string, 'dirt_road' | 'stone_road'>;
+  }>;
 }
 
 export const HOME_TOWER_ID = 'home_tower';

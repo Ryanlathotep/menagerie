@@ -57,6 +57,8 @@ const DEFAULT_SETTINGS: GameSettings = {
   showHomeTowerArrow: true,
   showMajorDungeonArrows: true,
   dungeonWaypoints: {},
+  dungeonWaypointNames: {},
+
   autoEquipFocus: 'class',
   autoEquipOnPickup: false,
 };

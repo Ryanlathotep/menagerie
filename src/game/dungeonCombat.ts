@@ -151,7 +151,7 @@ export function getAttackConfig(move: Move | EvolvedMove): AttackConfig {
 
   // Admin-designed movement skill: caster picks one of the listed offsets as a destination.
   if (movement && movement.offsets.length > 0) {
-    const maxR = Math.max(...movement.offsets.map(o => Math.max(Math.abs(o.dx), Math.abs(o.dy))));
+    const maxR = movement.range ?? Math.max(...movement.offsets.map(o => Math.max(Math.abs(o.dx), Math.abs(o.dy))));
     return {
       pattern: 'movement',
       range: maxR,
@@ -159,8 +159,18 @@ export function getAttackConfig(move: Move | EvolvedMove): AttackConfig {
       blink: !!movement.blink,
       wallPenetrate: !!movement.blink,
       rotateToFacing: !!movement.rotateToFacing,
+      blockedByWalls: movement.blockedByWalls ?? !movement.blink,
+      blockedByUnits: movement.blockedByUnits ?? !movement.blink,
+      passThroughEnemies: !!movement.passThroughEnemies,
+      passThroughTraps: !!movement.passThroughTraps,
+      passThroughTerrain: !!movement.passThroughTerrain,
+      canClimbCliffs: !!movement.canClimbCliffs,
+      canCrossWater: !!movement.canCrossWater,
+      triggersTrapsOnPath: !!movement.triggersTrapsOnPath,
+      harvestsResources: movement.harvestsResources,
     };
   }
+
 
   // Admin-designed AoE shape (origin = self for melee bursts, target for ranged strikes).
   if (customShape && customShape.offsets.length > 0) {

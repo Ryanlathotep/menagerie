@@ -116,6 +116,16 @@ export function EnemyAttackMenu({
           </Button>
         </div>
 
+        {/* Sort + filter controls (persist with main move panel) */}
+        <div className="flex-shrink-0">
+          <MoveSortFilter
+            sortOption={sortOption}
+            filters={filters}
+            onSortChange={updateSort}
+            onFilterChange={updateFilters}
+          />
+        </div>
+
         {/* Move list */}
         <ScrollArea className="flex-1 -mx-1 pr-1">
           <div className="space-y-1.5 px-1">

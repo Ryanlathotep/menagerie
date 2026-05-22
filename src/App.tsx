@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import { useDismissTooltipsOnTap } from "./hooks/useDismissTooltipsOnTap";
 import { supabase } from "@/integrations/supabase/client";
 import { setMoveOverrides } from "@/game/moveOverrides";
+import { setEquipmentIconOverrides } from "@/game/equipmentIconOverrides";
 import { FloatingBugButton } from "@/game/FloatingBugButton";
 
 const queryClient = new QueryClient();
@@ -25,10 +26,12 @@ const AppRoutes = () => {
     (async () => {
       const { data, error } = await supabase
         .from('game_data_overrides')
-        .select('data_key, data_value')
-        .eq('data_type', 'moves');
+        .select('data_type, data_key, data_value')
+        .in('data_type', ['moves', 'sprites']);
       if (cancelled || error || !data) return;
-      setMoveOverrides(data as { data_key: string; data_value: Record<string, unknown> }[]);
+      const rows = data as { data_type: string; data_key: string; data_value: Record<string, unknown> }[];
+      setMoveOverrides(rows.filter((r) => r.data_type === 'moves'));
+      setEquipmentIconOverrides(rows.filter((r) => r.data_type === 'sprites'));
     })();
     return () => { cancelled = true; };
   }, []);

@@ -51,6 +51,16 @@ export function EquipmentEditor() {
     }));
   }, []);
 
+  // Effective pool with overrides applied — drives the comparison ratings.
+  const pool = useMemo(() => {
+    return allSets.map((set) => {
+      const ovr = getOverride('equipment', set.id) as Partial<EquipmentSet> | null;
+      return { ...set, ...(ovr || {}) } as EquipmentSetEditable;
+    });
+  }, [allSets, getOverride]);
+  const poolRatings = useMemo(() => pool.map(setPowerRating), [pool]);
+  const ratingTrim = useMemo(() => computeTrimmedStats(poolRatings), [poolRatings]);
+
   const filteredSets = useMemo(() => {
     if (!search) return allSets;
     const lower = search.toLowerCase();
@@ -65,7 +75,7 @@ export function EquipmentEditor() {
   const handleSelectSet = (set: EquipmentSetEditable) => {
     setSelectedSet(set);
     const override = getOverride('equipment', set.id) as Partial<EquipmentSet> | null;
-    setEditedSet(override || { ...set });
+    setEditedSet(override ? { ...set, ...override } : { ...set });
   };
 
   const handleSave = async () => {

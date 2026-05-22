@@ -1414,6 +1414,8 @@ function DungeonView({
         width: dungeon.width,
         height: dungeon.height,
         entryPosition: dungeon.entryPosition,
+        playerBuildings: dungeon.playerBuildings,
+        roads: dungeon.roads,
       };
       const prevFloorNum = dungeon.floor - 1;
       const cached = visited[prevFloorNum];
@@ -1429,6 +1431,8 @@ function DungeonView({
             startingFloor: dungeon.startingFloor,
             entryPosition: cached.entryPosition ?? cached.playerPosition,
             visitedFloors: visited,
+            playerBuildings: cached.playerBuildings,
+            roads: cached.roads,
           }
         : (() => {
             const activeId = typeof window !== 'undefined' ? localStorage.getItem('menagerie_active_dungeon_id') : null;

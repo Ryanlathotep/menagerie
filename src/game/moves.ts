@@ -660,14 +660,8 @@ export function getMoveById(id: string): Move | undefined {
   ];
   const found = allMoves.find(m => m.id === id);
   if (found) return applyMoveOverride(found);
-  // Fall back to custom admin moves (search across every species/element/class).
-  for (const s of ['slime'] as SpeciesType[]) {
-    // Not iterating species — we just need any custom by id. Use a broad lookup.
-  }
-  // Broad lookup: try every combination is wasteful; use direct registry instead.
-  // Re-export search across all custom moves.
-  const customs = (await import('./moveOverrides')).getCustomMoves?.() as Move[] | undefined;
-  return customs?.find((m) => m.id === id);
+  return getCustomMoves().find((m) => m.id === id);
 }
+
 
 

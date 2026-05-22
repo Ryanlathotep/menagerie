@@ -125,6 +125,8 @@ export function EquipmentEditor() {
           <div className="space-y-1">
             {filteredSets.map((set) => {
               const hasOvr = !!getOverride('equipment', set.id);
+              const effective = pool.find((s) => s.id === set.id);
+              const r = setPowerRating(effective || set);
               return (
                 <button
                   key={set.id}
@@ -133,19 +135,20 @@ export function EquipmentEditor() {
                     selectedSet?.id === set.id ? 'bg-primary/20' : ''
                   }`}
                 >
-                  <span>
-                    <span 
+                  <span className="truncate">
+                    <span
                       className="font-medium"
                       style={{ color: `hsl(${set.color})` }}
                     >
                       {set.name}
                     </span>
                   </span>
-                  {hasOvr && (
-                    <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">
-                      Modified
-                    </span>
-                  )}
+                  <span className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs font-mono text-muted-foreground">{r}</span>
+                    {hasOvr && (
+                      <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded">mod</span>
+                    )}
+                  </span>
                 </button>
               );
             })}

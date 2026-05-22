@@ -12,7 +12,7 @@ import { SPECIES_MOVES, ELEMENT_MOVES, CLASS_MOVES, Move } from '@/game/moves';
 import { rateAgainst, setSingleMoveOverride } from '@/game/moveOverrides';
 import { TIER_ORDER, TIER_MULTIPLIERS, TIER_PREFIXES, type MoveTier } from '@/game/moveMastery';
 import { SpeciesType, ElementType, ClassType } from '@/game/types';
-import { Search, Save, RotateCcw, Plus, Trash2 } from 'lucide-react';
+import { Search, Save, RotateCcw, Plus, Trash2, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ALL_SPECIES: SpeciesType[] = [
@@ -153,9 +153,30 @@ export function MovesEditor() {
     setSingleMoveOverride(id, draft); // optimistic local
     saveOverride('moves', id, draft as unknown as Record<string, unknown>).then((ok) => {
       if (ok) {
-        loadedForIdRef.current = id; // we've already seeded editedMove below
+        loadedForIdRef.current = id;
         setSelectedId(id);
         setEditedMove(draft);
+      }
+    });
+  };
+
+  const handleCopy = (source: Move) => {
+    const id = `custom_${Date.now().toString(36)}`;
+    // Deep-ish clone via JSON to detach nested arrays/objects.
+    const cloned = JSON.parse(JSON.stringify(source)) as Move;
+    const draft: Move = {
+      ...cloned,
+      id,
+      name: `${source.name} (Copy)`,
+      custom: true,
+    };
+    setSingleMoveOverride(id, draft);
+    saveOverride('moves', id, draft as unknown as Record<string, unknown>).then((ok) => {
+      if (ok) {
+        loadedForIdRef.current = id;
+        setSelectedId(id);
+        setEditedMove(draft);
+        toast.success(`Copied ${source.name}`);
       }
     });
   };
@@ -227,19 +248,21 @@ export function MovesEditor() {
               const hasOvr = !!getOverride('moves', move.id);
               const r = rateAgainst(move, ratingPool).rating;
               return (
-                <button
+                <div
                   key={move.id}
-                  onClick={() => handleSelect(move.id)}
-                  className={`w-full text-left p-2 rounded text-sm hover:bg-muted transition-colors flex justify-between items-center ${
+                  className={`group w-full p-2 rounded text-sm hover:bg-muted transition-colors flex justify-between items-center gap-2 ${
                     selectedId === move.id ? 'bg-primary/20' : ''
                   }`}
                 >
-                  <span className="truncate">
+                  <button
+                    onClick={() => handleSelect(move.id)}
+                    className="flex-1 min-w-0 text-left truncate"
+                  >
                     <span className="font-medium">{move.name}</span>
                     <span className="text-muted-foreground ml-2 text-xs">
                       ({isCustom ? 'Custom' : `${source}: ${sourceId}`})
                     </span>
-                  </span>
+                  </button>
                   <span className="flex items-center gap-2 shrink-0">
                     <span className="text-xs font-mono text-muted-foreground">{r}</span>
                     {hasOvr && !isCustom && (
@@ -248,8 +271,16 @@ export function MovesEditor() {
                     {isCustom && (
                       <span className="text-[10px] bg-emerald-500/20 text-emerald-600 px-1.5 py-0.5 rounded">new</span>
                     )}
+                    <button
+                      type="button"
+                      title={`Duplicate "${move.name}" as a new custom move`}
+                      onClick={(e) => { e.stopPropagation(); handleCopy(move); }}
+                      className="opacity-60 hover:opacity-100 hover:text-primary p-0.5 rounded"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
                   </span>
-                </button>
+                </div>
               );
             })}
           </div>

@@ -695,20 +695,116 @@ export function ShapeDesigner() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <p className="text-xs text-muted-foreground">
-                  Click cells where the caster may teleport. Anchor (center) is the caster.
+                  Click cells where the caster may move/teleport to. Anchor (center) is the caster.
                 </p>
-                <label className="flex items-center gap-2 text-xs">
-                  <input type="checkbox" checked={blink} onChange={(e) => setBlink(e.target.checked)} />
-                  Blink (ignore walls / line-of-sight)
-                </label>
-                <label className="flex items-center gap-2 text-xs">
-                  <input type="checkbox" checked={rotateMovement} onChange={(e) => setRotateMovement(e.target.checked)} />
-                  Rotate destinations to aimed direction
-                </label>
+
+                {/* Range */}
+                <div>
+                  <Label className="text-xs">Max destination range (tiles)</Label>
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={20}
+                    value={moveRange}
+                    onChange={(e) => setMoveRange(parseInt(e.target.value) || 1)}
+                  />
+                </div>
+
+                {/* Propagation */}
+                <div className="space-y-1.5 border-t border-border pt-2">
+                  <Label className="text-xs uppercase text-muted-foreground">Path propagation</Label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={blink} onChange={(e) => setBlink(e.target.checked)} />
+                    Blink (teleport — ignore walls / line-of-sight)
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={moveBlockedByWalls}
+                      disabled={blink}
+                      onChange={(e) => setMoveBlockedByWalls(e.target.checked)}
+                    />
+                    Walls block the path
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={moveBlockedByUnits}
+                      disabled={blink}
+                      onChange={(e) => setMoveBlockedByUnits(e.target.checked)}
+                    />
+                    Units block the path
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={rotateMovement}
+                      onChange={(e) => setRotateMovement(e.target.checked)}
+                    />
+                    Rotate destinations to aimed direction (N/E/S/W)
+                  </label>
+                </div>
+
+                {/* Pass-through rules */}
+                <div className="space-y-1.5 border-t border-border pt-2">
+                  <Label className="text-xs uppercase text-muted-foreground">Pass-through</Label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={movePassEnemies} onChange={(e) => setMovePassEnemies(e.target.checked)} />
+                    Can pass through enemies
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={movePassTraps} onChange={(e) => setMovePassTraps(e.target.checked)} />
+                    Can pass over traps (without triggering)
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={movePassTerrain} onChange={(e) => setMovePassTerrain(e.target.checked)} />
+                    Can pass over terrain runes (without triggering)
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={moveClimbCliffs} onChange={(e) => setMoveClimbCliffs(e.target.checked)} />
+                    Can climb up cliffs (elevation jumps)
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={moveCrossWater} onChange={(e) => setMoveCrossWater(e.target.checked)} />
+                    Can cross water tiles
+                  </label>
+                </div>
+
+                {/* Triggers + harvest along path */}
+                <div className="space-y-1.5 border-t border-border pt-2">
+                  <Label className="text-xs uppercase text-muted-foreground">Effects along path</Label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={moveTriggersTrapsOnPath}
+                      onChange={(e) => setMoveTriggersTrapsOnPath(e.target.checked)}
+                    />
+                    Triggers traps &amp; terrain rune effects the path overlaps
+                  </label>
+                </div>
+
+                {/* Harvest */}
+                <div className="space-y-1.5 border-t border-border pt-2">
+                  <Label className="text-xs uppercase text-muted-foreground">Harvests along path</Label>
+                  <div className="grid grid-cols-2 gap-1">
+                    {HARVEST_KINDS.map((h) => (
+                      <label key={h.value} className="flex items-center gap-2 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={moveHarvests.has(h.value)}
+                          onChange={() => toggleMoveHarvest(h.value)}
+                        />
+                        {h.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
+
 
             {/* Grid */}
             {(() => {

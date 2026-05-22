@@ -4,14 +4,34 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress';
 import { useGameDataOverrides } from '@/hooks/useGameDataOverrides';
-import { 
-  EQUIPMENT_SETS, 
-  EquipmentSet, 
-  SetId
+import {
+  EQUIPMENT_SETS,
+  EquipmentSet,
+  SetId,
 } from '@/game/equipment';
 import { Search, Save, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
+import { computeTrimmedStats, formatNumericHint, rateValueAgainst } from './statCompare';
+
+/** Sum every numeric stat across every set-bonus tier, plus a flat bump for
+ *  special / effect strings so sets with utility bonuses don't read as weak. */
+function setPowerRating(set: Partial<EquipmentSet>): number {
+  let total = 0;
+  for (const b of set.bonuses || []) {
+    if (b.stats) {
+      for (const v of Object.values(b.stats)) {
+        if (typeof v === 'number') total += v;
+      }
+    }
+    if (b.special) total += 8;
+    if (b.effect) total += 6;
+    // Higher-piece bonuses are harder to assemble — weight them slightly more.
+    total += Math.max(0, (b.pieces - 2)) * 2;
+  }
+  return Math.round(total);
+}
 
 interface EquipmentSetEditable extends EquipmentSet {
   setId: SetId;

@@ -3121,7 +3121,77 @@ function DungeonView({
                 }}
               />
             )}
+
+            {/* Unified tile menu (right-click / long-press on any explored tile) */}
+            {dungeonTileMenu && dungeon && state.run && (() => {
+              const { x, y } = dungeonTileMenu;
+              const tile = dungeon.tiles[y]?.[x];
+              const close = () => setDungeonTileMenu(null);
+              if (!tile) { close(); return null; }
+              const actions: UnifiedTileAction[] = [];
+              let title = '🟫 Tile';
+              let subtitle: string | undefined;
+
+              // Attack action if the tile holds an enemy
+              if (tile.type === 'enemy' && tile.enemyId) {
+                const enemy = dungeon.enemies.find(e => e.id === tile.enemyId);
+                if (enemy) {
+                  title = `⚔ ${enemy.name}`;
+                  subtitle = `Lv ${enemy.level} · ${enemy.element}`;
+                  actions.push({
+                    id: 'attack', label: 'Pick a move to attack',
+                    icon: Swords, variant: 'default',
+                    onClick: () => {
+                      close();
+                      setAttackMenuTarget({
+                        enemy,
+                        enemyPos: { x, y },
+                        playerPos: dungeon.playerPosition,
+                      });
+                    },
+                  });
+                }
+              } else {
+                title = `📍 Tile`;
+                const ex = dungeon.entryPosition?.x ?? 0;
+                const ey = dungeon.entryPosition?.y ?? 0;
+                subtitle = `Relative (${x - ex}, ${y - ey})`;
+              }
+
+              // Waypoint pin/unpin on any explored tile
+              const existing = dungeon.compassWaypoints || [];
+              const isPinned = existing.some(p => p.x === x && p.y === y);
+              actions.push({
+                id: 'waypoint',
+                label: isPinned ? 'Remove waypoint' : 'Drop waypoint',
+                icon: isPinned ? FlagOff : Flag,
+                onClick: () => {
+                  dispatch({ type: 'TOGGLE_DUNGEON_WAYPOINT', x, y });
+                  if (isPinned) {
+                    addLog(`📍 Waypoint removed`, 'system');
+                  } else {
+                    const ex = dungeon.entryPosition?.x ?? 0;
+                    const ey = dungeon.entryPosition?.y ?? 0;
+                    addLog(`📍 Waypoint pinned at (${x - ex}, ${y - ey})`, 'system');
+                  }
+                  close();
+                },
+              });
+
+              return (
+                <UnifiedTileMenu
+                  worldX={x}
+                  worldY={y}
+                  title={title}
+                  subtitle={subtitle}
+                  actions={actions}
+                  footnote="Pinned waypoints show an edge-of-screen arrow."
+                  onClose={close}
+                />
+              );
+            })()}
           </div>
+
 
           {/* Bottom bar with controls and game log - resizable */}
           <div className="bg-card border-t-2 border-primary/20 z-40 flex flex-col flex-shrink-0" style={{ height: `${controlsBarHeight}px` }}>

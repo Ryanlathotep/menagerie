@@ -31,8 +31,11 @@ import { EquipmentItem, MonsterEquipment, createEmptyEquipment } from '@/game/eq
 import { isPickupUpgrade } from '@/game/equipmentUtils';
 
 import { calculateMonsterDrops, getEnemyEquipmentDrops } from '@/game/monsterDrops';
+import { rollEnemyMoveDamage } from '@/game/enemyAI';
 import { EquipmentView } from '@/game/EquipmentView';
 import { PreRunEquipment } from '@/game/PreRunEquipment';
+import { BUILDING_DEFINITIONS, createBuilding, PlayerBuildingType } from '@/game/buildings';
+import { DungeonBuildPanel } from '@/game/DungeonBuildPanel';
 import { OverworldView } from '@/game/OverworldView';
 import { DungeonListPanel } from '@/game/DungeonListPanel';
 import { EnemyAttackMenu, EnemyAttackTarget } from '@/game/EnemyAttackMenu';
@@ -1011,6 +1014,11 @@ function DungeonView({
   const [showDungeonReviveModal, setShowDungeonReviveModal] = useState(false);
   const [pendingDungeonReviveItem, setPendingDungeonReviveItem] = useState<InventoryItem | null>(null);
   const [stairExitDialogOpen, setStairExitDialogOpen] = useState(false);
+
+  // Dungeon build mode (per-floor buildings persisted via snapshots)
+  const [dungeonBuildPanelOpen, setDungeonBuildPanelOpen] = useState(false);
+  const [dungeonBuildMode, setDungeonBuildMode] = useState(false);
+  const [selectedDungeonBuildType, setSelectedDungeonBuildType] = useState<PlayerBuildingType | null>(null);
   
   // Respawn state - tracks steps and threshold for step-based spawning
   const [stepsSinceLastSpawn, setStepsSinceLastSpawn] = useState(0);
@@ -2956,9 +2964,6 @@ function DungeonView({
         const playerDef = playerMon.stats.defense;
 
         if (move) {
-          // Use chosen move's power + element matchup via enemyAI helper
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
-          const { rollEnemyMoveDamage } = require('@/game/enemyAI') as typeof import('@/game/enemyAI');
           const roll = rollEnemyMoveDamage(enemy, move, playerDef, playerMon.element);
           if (!roll.hit) {
             addLog(`👹 ${enemy.name} uses ${move.name} — but misses!`, 'system');
@@ -3031,59 +3036,105 @@ function DungeonView({
   const handleDungeonTileClick = useCallback((x: number, y: number) => {
     if (targetingMove) {
       handleTargetingClick(x, y);
-    } else {
-      // Check if clicking on an enemy - auto-enter targeting mode with first attack move
-      const tile = dungeon?.tiles[y]?.[x];
-      if (tile?.type === 'enemy' && tile.enemyId && state.run) {
-        const monster = state.run.currentMonster;
-        const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
-        const attackMove = moves.find(m => m.type === 'melee' || m.type === 'ranged');
-        
-        if (attackMove) {
-          const config = getAttackConfig(attackMove);
-          const playerPos = dungeon!.playerPosition;
-          const distance = Math.abs(x - playerPos.x) + Math.abs(y - playerPos.y);
-          
-          // Check if in range
-          if (distance <= config.range) {
-            // Enter targeting mode and immediately click on this tile
-            const validTargets = getValidTargets(
-              playerPos, 
-              config, 
-              dungeon!.tiles, 
-              dungeon!.width, 
-              dungeon!.height, 
-              true
-            );
-            
-            if (validTargets.some(t => t.x === x && t.y === y)) {
-              setTargetingMove(attackMove);
-              setTargetingTiles(validTargets);
-              // Execute the attack immediately
-              setTimeout(() => handleTargetingClick(x, y), 0);
-              return;
-            }
-          } else {
-            addLog(`❌ Enemy out of range! Get closer.`, 'info');
+      return;
+    }
+
+    // Build mode: place building on open floor tile in dungeon
+    if (dungeonBuildMode && selectedDungeonBuildType && dungeon) {
+      const tile = dungeon.tiles[y]?.[x];
+      if (!tile || tile.type !== 'floor') {
+        toast.error('Can only build on open floor tiles!');
+        return;
+      }
+      // Reject if already occupied by a player building on this floor
+      const existing = (dungeon.playerBuildings || []) as any[];
+      if (existing.some(b => b.worldX === x && b.worldY === y)) {
+        toast.error('A building already stands here.');
+        return;
+      }
+      // Import lazily through static refs at top of file
+      const def = BUILDING_DEFINITIONS[selectedDungeonBuildType];
+      const ow = state.saveData.overworldState;
+      const creative = isCreativeMode();
+      if (!creative && (!ow || ow.woodCollected < def.cost.wood || ow.stoneCollected < def.cost.stone)) {
+        toast.error(`Need 🪵 ${def.cost.wood} 🪨 ${def.cost.stone}`);
+        return;
+      }
+      const newBuilding = createBuilding(selectedDungeonBuildType, x, y);
+      dispatch({
+        type: 'UPDATE_DUNGEON',
+        dungeon: { playerBuildings: [...existing, newBuilding] } as any,
+      });
+      if (!creative && ow) {
+        dispatch({
+          type: 'UPDATE_OVERWORLD',
+          overworld: {
+            ...ow,
+            woodCollected: ow.woodCollected - def.cost.wood,
+            stoneCollected: ow.stoneCollected - def.cost.stone,
+          },
+        });
+      }
+      toast.success(`🏗️ Built ${def.name}!`);
+      addLog(`🏗️ Built ${def.name} on floor ${dungeon.floor}.`, 'system');
+      setDungeonBuildMode(false);
+      setSelectedDungeonBuildType(null);
+      return;
+    }
+
+    // Check if clicking on an enemy - auto-enter targeting mode with first attack move
+    const tile = dungeon?.tiles[y]?.[x];
+    if (tile?.type === 'enemy' && tile.enemyId && state.run) {
+      const monster = state.run.currentMonster;
+      const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
+      const attackMove = moves.find(m => m.type === 'melee' || m.type === 'ranged');
+
+      if (attackMove) {
+        const config = getAttackConfig(attackMove);
+        const playerPos = dungeon!.playerPosition;
+        const distance = Math.abs(x - playerPos.x) + Math.abs(y - playerPos.y);
+
+        if (distance <= config.range) {
+          const validTargets = getValidTargets(
+            playerPos,
+            config,
+            dungeon!.tiles,
+            dungeon!.width,
+            dungeon!.height,
+            true
+          );
+
+          if (validTargets.some(t => t.x === x && t.y === y)) {
+            setTargetingMove(attackMove);
+            setTargetingTiles(validTargets);
+            setTimeout(() => handleTargetingClick(x, y), 0);
             return;
           }
+        } else {
+          addLog(`❌ Enemy out of range! Get closer.`, 'info');
+          return;
         }
       }
-      handleTileClick(x, y);
     }
-  }, [targetingMove, handleTargetingClick, handleTileClick, dungeon, state.run]);
+    handleTileClick(x, y);
+  }, [targetingMove, handleTargetingClick, handleTileClick, dungeon, state.run, state.saveData.overworldState, dungeonBuildMode, selectedDungeonBuildType, dispatch, addLog]);
   
-  // ESC to cancel targeting
+  // ESC to cancel targeting or build mode
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && targetingMove) {
+      if (e.key !== 'Escape') return;
+      if (targetingMove) {
         cancelTargeting();
         addLog('❌ Attack cancelled.', 'info');
+      } else if (dungeonBuildMode) {
+        setDungeonBuildMode(false);
+        setSelectedDungeonBuildType(null);
+        addLog('🏗️ Build cancelled.', 'info');
       }
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [targetingMove, cancelTargeting]);
+  }, [targetingMove, cancelTargeting, dungeonBuildMode, addLog]);
 
   // Keybind shortcuts for moves (dungeon exploration)
   const keybindDataRef = useRef(loadKeybinds());
@@ -3565,7 +3616,46 @@ function DungeonView({
                 }
               }}
             />
-            
+
+            {/* Build button (top-right of dungeon viewport) */}
+            <div className="absolute top-2 right-2 z-30 flex flex-col gap-1 items-end">
+              <Button
+                size="sm"
+                variant={dungeonBuildMode ? 'destructive' : 'secondary'}
+                onClick={() => {
+                  if (dungeonBuildMode) {
+                    setDungeonBuildMode(false);
+                    setSelectedDungeonBuildType(null);
+                  } else {
+                    setDungeonBuildPanelOpen(true);
+                  }
+                }}
+                title="Build structures on this floor (persists across runs)"
+              >
+                🏗️ {dungeonBuildMode ? 'Cancel' : 'Build'}
+              </Button>
+              {dungeonBuildMode && selectedDungeonBuildType && (
+                <div className="bg-card/90 backdrop-blur border rounded px-2 py-1 text-xs">
+                  Placing: {BUILDING_DEFINITIONS[selectedDungeonBuildType].name} — click an open floor tile.
+                </div>
+              )}
+            </div>
+
+            <DungeonBuildPanel
+              open={dungeonBuildPanelOpen}
+              wood={state.saveData.overworldState?.woodCollected ?? 0}
+              stone={state.saveData.overworldState?.stoneCollected ?? 0}
+              onClose={() => setDungeonBuildPanelOpen(false)}
+              onSelectBuilding={(type) => {
+                setSelectedDungeonBuildType(type);
+                setDungeonBuildMode(true);
+                setDungeonBuildPanelOpen(false);
+              }}
+              onSelectRoad={() => {
+                toast.info('Roads in dungeons coming soon.');
+              }}
+            />
+
             {/* Targeting mode UI */}
             {targetingMove && (
               <MoveInfoPanel move={targetingMove} onCancel={cancelTargeting} />

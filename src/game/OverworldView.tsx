@@ -46,6 +46,7 @@ import { GameSidebar } from './GameSidebar';
 import { CraftingWorkshop } from './CraftingWorkshop';
 import { getMonsterMoves, Move, getNewMovesAtLevel } from './moves';
 import { getAttackConfig } from './dungeonCombat';
+import { rollEnemyMoveDamage } from './enemyAI';
 import { xpToNextLevel, calculateXpReward } from './combat';
 import {
   getOverworldValidTargets,
@@ -317,8 +318,6 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         const playerMon = state.run.currentMonster;
         const playerDef = playerMon.stats.defense;
         if (move) {
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
-          const { rollEnemyMoveDamage } = require('@/game/enemyAI') as typeof import('@/game/enemyAI');
           const roll = rollEnemyMoveDamage(enemy, move, playerDef, playerMon.element);
           if (!roll.hit) {
             addLog(`👹 ${enemy.name} uses ${move.name} — but misses!`, 'system');

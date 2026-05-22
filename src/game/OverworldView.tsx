@@ -936,6 +936,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   
   // ─── Tile click handler ───
   const handleTileClick = useCallback((worldX: number, worldY: number) => {
+    // Defensive: make sure chunks around both the player and the tap target are
+    // generated before any logic reads them. On mobile, taps can race ahead of
+    // the post-move chunk streamer and target ungenerated tiles, causing
+    // pathfinding/click handlers to silently no-op.
+    ensureChunksLoaded(overworld, overworld.playerPosition.x, overworld.playerPosition.y);
+    ensureChunksLoaded(overworld, worldX, worldY);
     // Road build mode: place road
     if (roadBuildMode && selectedRoadType) {
       setOverworld(prev => {
@@ -1095,11 +1101,13 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   
   // Right-click → context menu for player buildings, or auto-attack for enemies/nests
   const handleTileRightClick = useCallback((worldX: number, worldY: number) => {
+    // Ensure the tapped tile is generated before the unified menu reads it.
+    ensureChunksLoaded(overworld, worldX, worldY);
     // One menu for every tile — the unified menu reads the tile itself and
     // builds the action list at render time. Long-press on touch and
     // right-click on desktop both land here.
     setUnifiedMenu({ x: worldX, y: worldY });
-  }, []);
+  }, [overworld]);
   
   // ─── Keyboard ───
   useEffect(() => {

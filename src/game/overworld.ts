@@ -606,7 +606,7 @@ export function getDifficulty(worldX: number, worldY: number): number {
 // Must stay >= OverworldRenderer's VIEW_RANGE so chunks are streamed in before
 // they enter the viewport. Add a small lookahead so chunks finish generating
 // before the player can see their first tile.
-const VIEW_TILE_RADIUS = 10; // renderer is 8, +2 lookahead
+const VIEW_TILE_RADIUS = 16; // renderer is 8, generous lookahead so taps near the edge always find a generated tile
 
 export function ensureChunksLoaded(state: OverworldState, worldX: number, worldY: number): void {
   // Load every chunk that overlaps the player's visible bounding box (plus a

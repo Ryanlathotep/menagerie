@@ -2193,6 +2193,30 @@ function DungeonView({
       return;
     }
     
+    // ── Combo move (movement + attack): start the configured first phase and
+    // stash the other half as `pendingComboMove` for after the first resolves.
+    if (isComboMove(move)) {
+      const order = move.comboOrder ?? 'move_then_attack';
+      if (order === 'move_then_attack') {
+        // Phase 1: pick destination using the movement pattern.
+        const phase1 = stripAttack(move);
+        if (!enterTargetingFor(phase1, `🎯 ${move.name}: pick a destination tile…`)) {
+          toast.error('No valid movement destinations!');
+          return;
+        }
+        setPendingComboMove(move); // full move; we'll continue with attack phase
+      } else {
+        // Phase 1: aim the attack from current position.
+        const phase1 = stripMovement(move);
+        if (!enterTargetingFor(phase1, `🎯 ${move.name}: aim the attack, then choose a retreat tile.`)) {
+          toast.error('No valid targets in range!');
+          return;
+        }
+        setPendingComboMove(move);
+      }
+      return;
+    }
+
     // For attack moves (melee/ranged), enter targeting mode instead of executing
     if (move.type === 'melee' || move.type === 'ranged' || (move.type === 'status' && move.effect?.includes('lower_'))) {
       // Enter targeting mode

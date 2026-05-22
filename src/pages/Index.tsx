@@ -2494,30 +2494,50 @@ function DungeonView({
       // Can enemy see player?
       if (!canSeePlayer(enemyPos, updatedDungeon.playerPosition, updatedDungeon.tiles)) continue;
       
-      // Calculate action
+      // Calculate action (archetype + IQ aware via enemyAI.ts)
       const action = calculateEnemyAction(
-        enemy, 
-        enemyPos, 
-        updatedDungeon.playerPosition, 
-        updatedDungeon.tiles, 
-        updatedDungeon.width, 
-        updatedDungeon.height
+        enemy,
+        enemyPos,
+        updatedDungeon.playerPosition,
+        updatedDungeon.tiles,
+        updatedDungeon.width,
+        updatedDungeon.height,
+        { playerMonster: state.run.currentMonster },
       );
-      
+
       if (action.type === 'attack') {
         // Enemy must pay a stamina cost to attack. If exhausted, it rests instead.
-        if (!enemyHasStaminaToAttack(enemy)) {
+        const move = action.move;
+        const staminaCost = move?.staminaCost ?? ENEMY_ATTACK_STAMINA_COST;
+        const curSta = enemy.stats.currentStamina ?? enemy.stats.stamina ?? 0;
+        if (curSta < staminaCost) {
           staminaChanges.set(enemy.id, (staminaChanges.get(enemy.id) || 0) + ENEMY_REST_STAMINA_REGEN);
           addLog(`💤 ${enemy.name} is exhausted and catches its breath.`, 'system');
           continue;
         }
-        // Pay cost + deal damage
-        staminaChanges.set(enemy.id, (staminaChanges.get(enemy.id) || 0) - ENEMY_ATTACK_STAMINA_COST);
-        const attackPower = enemy.stats.attack;
-        const playerDef = state.run.currentMonster.stats.defense;
-        const damage = Math.max(1, Math.floor(attackPower - playerDef * 0.3));
-        playerDamage += damage;
-        addLog(`👹 ${enemy.name} attacks for ${damage} damage!`, 'damage');
+        staminaChanges.set(enemy.id, (staminaChanges.get(enemy.id) || 0) - staminaCost);
+
+        const playerMon = state.run.currentMonster;
+        const playerDef = playerMon.stats.defense;
+
+        if (move) {
+          // Use chosen move's power + element matchup via enemyAI helper
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const { rollEnemyMoveDamage } = require('@/game/enemyAI') as typeof import('@/game/enemyAI');
+          const roll = rollEnemyMoveDamage(enemy, move, playerDef, playerMon.element);
+          if (!roll.hit) {
+            addLog(`👹 ${enemy.name} uses ${move.name} — but misses!`, 'system');
+          } else {
+            playerDamage += roll.damage;
+            const tag = roll.superEffective ? ' 💥 Super effective!' : '';
+            addLog(`👹 ${enemy.name} uses ${move.name} for ${roll.damage} damage!${tag}`, 'damage');
+          }
+        } else {
+          // Fallback to basic attack
+          const damage = Math.max(1, Math.floor(enemy.stats.attack - playerDef * 0.3));
+          playerDamage += damage;
+          addLog(`👹 ${enemy.name} attacks for ${damage} damage!`, 'damage');
+        }
       } else if (action.type === 'move' && action.direction) {
         // Enemy moves — small stamina regen while not attacking
         staminaChanges.set(enemy.id, (staminaChanges.get(enemy.id) || 0) + Math.floor(ENEMY_REST_STAMINA_REGEN / 2));

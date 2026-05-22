@@ -2517,7 +2517,7 @@ function DungeonView({
       destTile.type = 'player';
       const newDungeon = { ...dungeon, tiles: newTiles, playerPosition: { x, y } };
       dispatch({ type: 'SET_DUNGEON', dungeon: newDungeon });
-      const newHp = Math.max(0, (monster.stats.currentHp ?? monster.stats.hp) - pathDamage);
+      const newHp = Math.max(0, (monster.stats.currentHp ?? monster.stats.maxHp) - pathDamage);
       dispatch({
         type: 'UPDATE_PLAYER_MONSTER',
         monster: {

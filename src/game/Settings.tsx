@@ -407,6 +407,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
         </div>
       </Card>
       <AdminPanelDialog isOpen={adminOpen} onClose={() => setAdminOpen(false)} />
+      <ReportBugDialog isOpen={bugOpen} onClose={() => setBugOpen(false)} />
     </div>
   );
 }

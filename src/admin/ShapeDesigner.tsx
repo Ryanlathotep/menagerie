@@ -195,6 +195,7 @@ export function ShapeDesigner() {
       setTier('base');
       applyTierToUI(merged, 'base');
       setBlink(false);
+      setRotateMovement(false);
     }
   };
 

@@ -1376,6 +1376,8 @@ function DungeonView({
           startingFloor: dungeon.startingFloor,
           entryPosition: cached.entryPosition ?? cached.playerPosition,
           visitedFloors: visited,
+          playerBuildings: cached.playerBuildings,
+          roads: cached.roads,
         };
       } else {
         const activeId = typeof window !== 'undefined' ? localStorage.getItem('menagerie_active_dungeon_id') : null;

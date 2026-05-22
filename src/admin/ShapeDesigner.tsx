@@ -93,9 +93,20 @@ export function ShapeDesigner() {
   const [rotateShape, setRotateShape] = useState(false);
   const [tierStats, setTierStats] = useState<TierStats>({});
 
-  // Movement state
+  // Movement state (mirrors AoE shape options, plus movement-specific flags)
   const [blink, setBlink] = useState(false);
   const [rotateMovement, setRotateMovement] = useState(false);
+  const [moveRange, setMoveRange] = useState(5);
+  const [moveBlockedByWalls, setMoveBlockedByWalls] = useState(true);
+  const [moveBlockedByUnits, setMoveBlockedByUnits] = useState(false);
+  const [movePassEnemies, setMovePassEnemies] = useState(false);
+  const [movePassTraps, setMovePassTraps] = useState(false);
+  const [movePassTerrain, setMovePassTerrain] = useState(false);
+  const [moveClimbCliffs, setMoveClimbCliffs] = useState(false);
+  const [moveCrossWater, setMoveCrossWater] = useState(false);
+  const [moveTriggersTrapsOnPath, setMoveTriggersTrapsOnPath] = useState(false);
+  const [moveHarvests, setMoveHarvests] = useState<Set<HarvestableKind>>(new Set());
+
 
 
   const allMoves = useMemo(() => {
@@ -180,16 +191,69 @@ export function ShapeDesigner() {
     }
   };
 
+  // Resolve which MovementPattern + stat tweaks are stored for a given tier.
+  const readMovementTier = (merged: Move, t: TierKey): { movement?: import('@/game/moves').MovementPattern; stats: TierStats } => {
+    if (t === 'base') {
+      return {
+        movement: merged.movement,
+        stats: {
+          power: merged.power, accuracy: merged.accuracy,
+          staminaCost: merged.staminaCost, speedMod: merged.speedMod,
+        },
+      };
+    }
+    const ov = merged.tierOverrides?.[t];
+    return {
+      movement: ov?.movement,
+      stats: {
+        power: ov?.power ?? '', accuracy: ov?.accuracy ?? '',
+        staminaCost: ov?.staminaCost ?? '', speedMod: ov?.speedMod ?? '',
+      },
+    };
+  };
+
+  const applyMovementTierToUI = (merged: Move, t: TierKey) => {
+    const { movement, stats } = readMovementTier(merged, t);
+    setTierStats(stats);
+    if (movement) {
+      setCells(new Set(movement.offsets.map((o) => `${o.dx},${o.dy}`)));
+      setBlink(!!movement.blink);
+      setRotateMovement(!!movement.rotateToFacing);
+      setMoveRange(movement.range ?? 5);
+      setMoveBlockedByWalls(movement.blockedByWalls ?? true);
+      setMoveBlockedByUnits(movement.blockedByUnits ?? false);
+      setMovePassEnemies(!!movement.passThroughEnemies);
+      setMovePassTraps(!!movement.passThroughTraps);
+      setMovePassTerrain(!!movement.passThroughTerrain);
+      setMoveClimbCliffs(!!movement.canClimbCliffs);
+      setMoveCrossWater(!!movement.canCrossWater);
+      setMoveTriggersTrapsOnPath(!!movement.triggersTrapsOnPath);
+      setMoveHarvests(new Set(movement.harvestsResources ?? []));
+    } else {
+      setCells(new Set());
+      setBlink(false);
+      setRotateMovement(false);
+      setMoveRange(5);
+      setMoveBlockedByWalls(true);
+      setMoveBlockedByUnits(false);
+      setMovePassEnemies(false);
+      setMovePassTraps(false);
+      setMovePassTerrain(false);
+      setMoveClimbCliffs(false);
+      setMoveCrossWater(false);
+      setMoveTriggersTrapsOnPath(false);
+      setMoveHarvests(new Set());
+    }
+  };
+
   const loadMove = (move: Move) => {
     setSelected(move);
     const override = (getOverride('moves', move.id) as Partial<Move> | null) || {};
     const merged: Move = { ...move, ...override };
     if (merged.movement) {
       setMode('movement');
-      setCells(new Set(merged.movement.offsets.map((o) => `${o.dx},${o.dy}`)));
-      setBlink(!!merged.movement.blink);
-      setRotateMovement(!!merged.movement.rotateToFacing);
       setTier('base');
+      applyMovementTierToUI(merged, 'base');
     } else {
       setMode('shape');
       setTier('base');
@@ -202,15 +266,14 @@ export function ShapeDesigner() {
   // When the user switches tier tabs, persist current edits into the move
   // (in memory) then load the new tier's data.
   const switchTier = (next: TierKey) => {
-    if (!selected || mode !== 'shape') { setTier(next); return; }
-    // Snapshot current edits into a merged Move so the next tier sees them.
+    if (!selected) { setTier(next); return; }
     const override = (getOverride('moves', selected.id) as Partial<Move> | null) || {};
     const merged: Move = { ...selected, ...override };
-    // Don't actually mutate here — just re-read what's persisted. Edits not yet
-    // saved to a tier are intentionally tier-local; admin must hit Save to keep.
     setTier(next);
-    applyTierToUI(merged, next);
+    if (mode === 'movement') applyMovementTierToUI(merged, next);
+    else applyTierToUI(merged, next);
   };
+
 
   const toggleCell = (dx: number, dy: number) => {
     if (dx === 0 && dy === 0) return;
@@ -224,6 +287,12 @@ export function ShapeDesigner() {
     const next = new Set(harvests);
     next.has(k) ? next.delete(k) : next.add(k);
     setHarvests(next);
+  };
+
+  const toggleMoveHarvest = (k: HarvestableKind) => {
+    const next = new Set(moveHarvests);
+    next.has(k) ? next.delete(k) : next.add(k);
+    setMoveHarvests(next);
   };
 
   const buildShape = (): CustomShape | null => {
@@ -249,19 +318,54 @@ export function ShapeDesigner() {
     };
   };
 
+  const buildMovement = (): import('@/game/moves').MovementPattern | null => {
+    const offsets = [...cells].map((s) => {
+      const [dx, dy] = s.split(',').map(Number);
+      return { dx, dy };
+    });
+    if (offsets.length === 0) return null;
+    return {
+      offsets,
+      blink,
+      ...(rotateMovement ? { rotateToFacing: true } : {}),
+      range: moveRange,
+      blockedByWalls: moveBlockedByWalls,
+      blockedByUnits: moveBlockedByUnits,
+      passThroughEnemies: movePassEnemies,
+      passThroughTraps: movePassTraps,
+      passThroughTerrain: movePassTerrain,
+      canClimbCliffs: moveClimbCliffs,
+      canCrossWater: moveCrossWater,
+      triggersTrapsOnPath: moveTriggersTrapsOnPath,
+      harvestsResources: [...moveHarvests],
+    };
+  };
+
   const handleSave = async () => {
     if (!selected) return;
     const existing = (getOverride('moves', selected.id) as Partial<Move> | null) || {};
     const patch: Partial<Move> = { ...existing };
 
     if (mode === 'movement') {
-      const offsets = [...cells].map((s) => {
-        const [dx, dy] = s.split(',').map(Number);
-        return { dx, dy };
-      });
-      if (offsets.length === 0) { toast.error('Select at least one cell.'); return; }
-      patch.movement = { offsets, blink, ...(rotateMovement ? { rotateToFacing: true } : {}) };
-      patch.type = 'movement';
+      const movement = buildMovement();
+      if (!movement) { toast.error('Select at least one cell.'); return; }
+      if (tier === 'base') {
+        patch.movement = movement;
+        patch.type = 'movement';
+        if (tierStats.power !== '' && tierStats.power !== undefined) patch.power = Number(tierStats.power);
+        if (tierStats.accuracy !== '' && tierStats.accuracy !== undefined) patch.accuracy = Number(tierStats.accuracy);
+        if (tierStats.staminaCost !== '' && tierStats.staminaCost !== undefined) patch.staminaCost = Number(tierStats.staminaCost);
+        if (tierStats.speedMod !== '' && tierStats.speedMod !== undefined) patch.speedMod = Number(tierStats.speedMod);
+      } else {
+        const nextOverrides = { ...(patch.tierOverrides ?? {}) };
+        const tierPatch: NonNullable<Move['tierOverrides']>[string] = { movement };
+        if (tierStats.power !== '' && tierStats.power !== undefined) tierPatch.power = Number(tierStats.power);
+        if (tierStats.accuracy !== '' && tierStats.accuracy !== undefined) tierPatch.accuracy = Number(tierStats.accuracy);
+        if (tierStats.staminaCost !== '' && tierStats.staminaCost !== undefined) tierPatch.staminaCost = Number(tierStats.staminaCost);
+        if (tierStats.speedMod !== '' && tierStats.speedMod !== undefined) tierPatch.speedMod = Number(tierStats.speedMod);
+        nextOverrides[tier] = tierPatch;
+        patch.tierOverrides = nextOverrides;
+      }
       delete patch.customShape;
     } else {
       const shape = buildShape();
@@ -289,6 +393,7 @@ export function ShapeDesigner() {
     const ok = await saveOverride('moves', selected.id, patch as Record<string, unknown>);
     if (ok) toast.success(`Saved ${tier} ${mode} for ${selected.name}`);
   };
+
 
   const handleClear = async () => {
     if (!selected) return;
@@ -386,48 +491,48 @@ export function ShapeDesigner() {
               </Button>
             </div>
 
-            {/* Tier selector (shape mode only) */}
-            {mode === 'shape' && (
-              <div className="space-y-1">
-                <Label className="text-xs uppercase text-muted-foreground">Editing tier</Label>
-                <div className="flex flex-wrap gap-1">
-                  {TIER_KEYS.map((t) => {
-                    const merged: Move = { ...selected, ...((getOverride('moves', selected.id) as Partial<Move>) || {}) };
-                    const has = readTier(merged, t).shape !== undefined ||
-                      (t !== 'base' && merged.tierOverrides?.[t] !== undefined);
-                    return (
-                      <Button
-                        key={t}
-                        size="sm"
-                        variant={tier === t ? 'default' : 'outline'}
-                        onClick={() => switchTier(t)}
-                        className="text-xs h-7 gap-1"
-                      >
-                        {TIER_LABELS[t]}
-                        {has && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
-                      </Button>
-                    );
-                  })}
-                </div>
-                <p className="text-[10px] text-muted-foreground">
-                  Each tier can have its own shape + stat tweaks. Base tier writes to the move itself; higher tiers write to <code>tierOverrides[{tier}]</code>. Switching tiers loads saved data — unsaved edits in the previous tier are discarded.
-                </p>
+            {/* Tier selector (both modes) */}
+            <div className="space-y-1">
+              <Label className="text-xs uppercase text-muted-foreground">Editing tier</Label>
+              <div className="flex flex-wrap gap-1">
+                {TIER_KEYS.map((t) => {
+                  const merged: Move = { ...selected, ...((getOverride('moves', selected.id) as Partial<Move>) || {}) };
+                  const has = mode === 'movement'
+                    ? (readMovementTier(merged, t).movement !== undefined
+                       || (t !== 'base' && merged.tierOverrides?.[t]?.movement !== undefined))
+                    : (readTier(merged, t).shape !== undefined
+                       || (t !== 'base' && merged.tierOverrides?.[t] !== undefined));
+                  return (
+                    <Button
+                      key={t}
+                      size="sm"
+                      variant={tier === t ? 'default' : 'outline'}
+                      onClick={() => switchTier(t)}
+                      className="text-xs h-7 gap-1"
+                    >
+                      {TIER_LABELS[t]}
+                      {has && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                    </Button>
+                  );
+                })}
               </div>
-            )}
+              <p className="text-[10px] text-muted-foreground">
+                Each tier can have its own {mode === 'movement' ? 'movement pattern' : 'shape'} + stat tweaks. Base writes to the move itself; higher tiers write to <code>tierOverrides[{tier}]</code>. Switching tiers discards unsaved edits.
+              </p>
+            </div>
 
-            {/* Per-tier stat overrides (shape mode only) */}
-            {mode === 'shape' && (
-              <div className="grid grid-cols-2 gap-2 border-t border-border pt-2">
-                <TierStatField label="Power" value={tierStats.power} placeholder={String(selected.power)}
-                  onChange={(v) => setTierStats({ ...tierStats, power: v })} />
-                <TierStatField label="Accuracy" value={tierStats.accuracy} placeholder={String(selected.accuracy)}
-                  onChange={(v) => setTierStats({ ...tierStats, accuracy: v })} />
-                <TierStatField label="Stamina" value={tierStats.staminaCost} placeholder={String(selected.staminaCost)}
-                  onChange={(v) => setTierStats({ ...tierStats, staminaCost: v })} />
-                <TierStatField label="Speed Mod" value={tierStats.speedMod} placeholder={String(selected.speedMod)}
-                  onChange={(v) => setTierStats({ ...tierStats, speedMod: v })} />
-              </div>
-            )}
+            {/* Per-tier stat overrides (both modes) */}
+            <div className="grid grid-cols-2 gap-2 border-t border-border pt-2">
+              <TierStatField label="Power" value={tierStats.power} placeholder={String(selected.power)}
+                onChange={(v) => setTierStats({ ...tierStats, power: v })} />
+              <TierStatField label="Accuracy" value={tierStats.accuracy} placeholder={String(selected.accuracy)}
+                onChange={(v) => setTierStats({ ...tierStats, accuracy: v })} />
+              <TierStatField label="Stamina" value={tierStats.staminaCost} placeholder={String(selected.staminaCost)}
+                onChange={(v) => setTierStats({ ...tierStats, staminaCost: v })} />
+              <TierStatField label="Speed Mod" value={tierStats.speedMod} placeholder={String(selected.speedMod)}
+                onChange={(v) => setTierStats({ ...tierStats, speedMod: v })} />
+            </div>
+
 
             {/* Grid size selector */}
             <div className="flex items-center gap-2 border-t border-border pt-2">
@@ -590,20 +695,116 @@ export function ShapeDesigner() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <p className="text-xs text-muted-foreground">
-                  Click cells where the caster may teleport. Anchor (center) is the caster.
+                  Click cells where the caster may move/teleport to. Anchor (center) is the caster.
                 </p>
-                <label className="flex items-center gap-2 text-xs">
-                  <input type="checkbox" checked={blink} onChange={(e) => setBlink(e.target.checked)} />
-                  Blink (ignore walls / line-of-sight)
-                </label>
-                <label className="flex items-center gap-2 text-xs">
-                  <input type="checkbox" checked={rotateMovement} onChange={(e) => setRotateMovement(e.target.checked)} />
-                  Rotate destinations to aimed direction
-                </label>
+
+                {/* Range */}
+                <div>
+                  <Label className="text-xs">Max destination range (tiles)</Label>
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={20}
+                    value={moveRange}
+                    onChange={(e) => setMoveRange(parseInt(e.target.value) || 1)}
+                  />
+                </div>
+
+                {/* Propagation */}
+                <div className="space-y-1.5 border-t border-border pt-2">
+                  <Label className="text-xs uppercase text-muted-foreground">Path propagation</Label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={blink} onChange={(e) => setBlink(e.target.checked)} />
+                    Blink (teleport — ignore walls / line-of-sight)
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={moveBlockedByWalls}
+                      disabled={blink}
+                      onChange={(e) => setMoveBlockedByWalls(e.target.checked)}
+                    />
+                    Walls block the path
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={moveBlockedByUnits}
+                      disabled={blink}
+                      onChange={(e) => setMoveBlockedByUnits(e.target.checked)}
+                    />
+                    Units block the path
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={rotateMovement}
+                      onChange={(e) => setRotateMovement(e.target.checked)}
+                    />
+                    Rotate destinations to aimed direction (N/E/S/W)
+                  </label>
+                </div>
+
+                {/* Pass-through rules */}
+                <div className="space-y-1.5 border-t border-border pt-2">
+                  <Label className="text-xs uppercase text-muted-foreground">Pass-through</Label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={movePassEnemies} onChange={(e) => setMovePassEnemies(e.target.checked)} />
+                    Can pass through enemies
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={movePassTraps} onChange={(e) => setMovePassTraps(e.target.checked)} />
+                    Can pass over traps (without triggering)
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={movePassTerrain} onChange={(e) => setMovePassTerrain(e.target.checked)} />
+                    Can pass over terrain runes (without triggering)
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={moveClimbCliffs} onChange={(e) => setMoveClimbCliffs(e.target.checked)} />
+                    Can climb up cliffs (elevation jumps)
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={moveCrossWater} onChange={(e) => setMoveCrossWater(e.target.checked)} />
+                    Can cross water tiles
+                  </label>
+                </div>
+
+                {/* Triggers + harvest along path */}
+                <div className="space-y-1.5 border-t border-border pt-2">
+                  <Label className="text-xs uppercase text-muted-foreground">Effects along path</Label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={moveTriggersTrapsOnPath}
+                      onChange={(e) => setMoveTriggersTrapsOnPath(e.target.checked)}
+                    />
+                    Triggers traps &amp; terrain rune effects the path overlaps
+                  </label>
+                </div>
+
+                {/* Harvest */}
+                <div className="space-y-1.5 border-t border-border pt-2">
+                  <Label className="text-xs uppercase text-muted-foreground">Harvests along path</Label>
+                  <div className="grid grid-cols-2 gap-1">
+                    {HARVEST_KINDS.map((h) => (
+                      <label key={h.value} className="flex items-center gap-2 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={moveHarvests.has(h.value)}
+                          onChange={() => toggleMoveHarvest(h.value)}
+                        />
+                        {h.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
+
 
             {/* Grid */}
             {(() => {
@@ -621,18 +822,24 @@ export function ShapeDesigner() {
                 lesser: new Set(), minor: new Set(), base: new Set(),
                 greater: new Set(), omega: new Set(),
               };
-              if (mode === 'shape' && mergedForGrid) {
+              if (mergedForGrid) {
                 for (const t of TIER_KEYS) {
                   if (t === tier) {
                     tierSets[t] = new Set(cells);
-                  } else {
+                  } else if (mode === 'shape') {
                     const { shape } = readTier(mergedForGrid, t);
                     if (shape?.offsets) {
                       tierSets[t] = new Set(shape.offsets.map((o) => `${o.dx},${o.dy}`));
                     }
+                  } else {
+                    const { movement } = readMovementTier(mergedForGrid, t);
+                    if (movement?.offsets) {
+                      tierSets[t] = new Set(movement.offsets.map((o) => `${o.dx},${o.dy}`));
+                    }
                   }
                 }
               }
+
               return (
                 <div
                   className="grid gap-1 mx-auto w-full overflow-x-auto"
@@ -646,9 +853,8 @@ export function ShapeDesigner() {
                     const isAnchor = dx === 0 && dy === 0;
                     const key = `${dx},${dy}`;
                     const on = cells.has(key);
-                    const letters = mode === 'shape'
-                      ? TIER_KEYS.filter((t) => tierSets[t].has(key)).map((t) => TIER_LETTERS[t])
-                      : [];
+                    const letters = TIER_KEYS.filter((t) => tierSets[t].has(key)).map((t) => TIER_LETTERS[t]);
+
                     return (
                       <button
                         key={i}
@@ -674,11 +880,10 @@ export function ShapeDesigner() {
               );
             })()}
 
-            {mode === 'shape' && (
-              <p className="text-[10px] text-muted-foreground text-center">
-                Cell letters mark which tier(s) include that offset: <b>L</b>esser · <b>M</b>inor · <b>B</b>ase · <b>G</b>reater · <b>O</b>mega.
-              </p>
-            )}
+            <p className="text-[10px] text-muted-foreground text-center">
+              Cell letters mark which tier(s) include that offset: <b>L</b>esser · <b>M</b>inor · <b>B</b>ase · <b>G</b>reater · <b>O</b>mega.
+            </p>
+
 
 
             <div className="flex gap-2 pt-2">

@@ -694,3 +694,95 @@ export interface GameState {
   run: RunState | null;
   saveData: SaveData;
 }
+
+// ============= DUNGEON FLOOR PERSISTENCE =============
+
+const MAX_SNAPSHOTS_PER_DUNGEON = 50;
+
+/** Strip volatile per-tile state that should respawn on re-entry. */
+function snapshotTile(t: DungeonTile): DungeonTile {
+  // Deep-copy; tiles are leaf objects with no functions.
+  return { ...t };
+}
+
+/**
+ * Fold the active dungeon (current floor + visitedFloors) into the entrance's
+ * cross-run `floorSnapshots`. Enemies are intentionally NOT persisted —
+ * they regenerate fresh each entry so the world isn't permanently emptied.
+ * Caps stored floors to the 50 most-recently-visited.
+ */
+export function snapshotDungeonToEntrance(
+  entrance: DungeonEntrance,
+  dungeon: DungeonState,
+): DungeonEntrance {
+  const existing = entrance.floorSnapshots || {};
+  const next: Record<number, NonNullable<DungeonEntrance['floorSnapshots']>[number]> = { ...existing };
+
+  // Snapshot all visited floors (these already exclude the active floor).
+  if (dungeon.visitedFloors) {
+    for (const [floorStr, snap] of Object.entries(dungeon.visitedFloors)) {
+      const floor = Number(floorStr);
+      next[floor] = {
+        tiles: snap.tiles.map(row => row.map(snapshotTile)),
+        width: snap.width,
+        height: snap.height,
+        playerBuildings: existing[floor]?.playerBuildings,
+        roads: existing[floor]?.roads,
+      };
+    }
+  }
+
+  // Snapshot the currently-active floor.
+  next[dungeon.floor] = {
+    tiles: dungeon.tiles.map(row => row.map(snapshotTile)),
+    width: dungeon.width,
+    height: dungeon.height,
+    playerBuildings: existing[dungeon.floor]?.playerBuildings,
+    roads: existing[dungeon.floor]?.roads,
+  };
+
+  // Cap size: keep the 50 deepest snapshots (deepest = most interesting).
+  const floors = Object.keys(next).map(Number).sort((a, b) => b - a);
+  const trimmed: typeof next = {};
+  for (const f of floors.slice(0, MAX_SNAPSHOTS_PER_DUNGEON)) {
+    trimmed[f] = next[f];
+  }
+
+  return { ...entrance, floorSnapshots: trimmed };
+}
+
+/**
+ * Overlay a saved floor snapshot onto a freshly-generated dungeon floor.
+ * Preserves mined walls and player edits while letting enemies/items respawn.
+ * If the freshly-generated dungeon has been resized (infinite streaming), we
+ * keep the freshly-generated tiles beyond the saved bounds.
+ */
+export function hydrateDungeonFromSnapshot(
+  fresh: DungeonState,
+  entrance: DungeonEntrance | undefined,
+): DungeonState {
+  const snap = entrance?.floorSnapshots?.[fresh.floor];
+  if (!snap) return fresh;
+
+  // Replace tiles in-bounds with the snapshot; keep fresh enemies/spawn.
+  const w = Math.max(fresh.width, snap.width);
+  const h = Math.max(fresh.height, snap.height);
+  const tiles: DungeonTile[][] = [];
+  for (let y = 0; y < h; y++) {
+    const row: DungeonTile[] = [];
+    for (let x = 0; x < w; x++) {
+      const fromSnap = y < snap.height && x < snap.width ? snap.tiles[y]?.[x] : undefined;
+      const fromFresh = y < fresh.height && x < fresh.width ? fresh.tiles[y]?.[x] : undefined;
+      row.push(fromSnap ? { ...fromSnap } : (fromFresh ? { ...fromFresh } : { type: 'wall', x, y } as any));
+    }
+    tiles.push(row);
+  }
+
+  return {
+    ...fresh,
+    tiles,
+    width: w,
+    height: h,
+  };
+}
+

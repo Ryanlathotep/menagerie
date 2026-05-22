@@ -936,6 +936,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   
   // ─── Tile click handler ───
   const handleTileClick = useCallback((worldX: number, worldY: number) => {
+    // Defensive: make sure chunks around both the player and the tap target are
+    // generated before any logic reads them. On mobile, taps can race ahead of
+    // the post-move chunk streamer and target ungenerated tiles, causing
+    // pathfinding/click handlers to silently no-op.
+    ensureChunksLoaded(overworld, overworld.playerPosition.x, overworld.playerPosition.y);
+    ensureChunksLoaded(overworld, worldX, worldY);
     // Road build mode: place road
     if (roadBuildMode && selectedRoadType) {
       setOverworld(prev => {

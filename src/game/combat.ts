@@ -24,6 +24,17 @@ export interface CombatResult {
   attackerName: string; // Name of the attacker
 }
 
+// Effective element/class for a move when fired by a specific attacker. Honors
+// the admin "inherit caster's damage type" toggles set on the move.
+export function getMoveElement(move: Move, attacker: Monster): ElementType | undefined {
+  if (move.inheritMonsterElement) return attacker.element;
+  return move.element;
+}
+export function getMoveClass(move: Move, attacker: Monster): ClassType | undefined {
+  if (move.inheritMonsterClass) return attacker.class;
+  return move.classBonus;
+}
+
 // Track temporary resistances (for Chimera)
 export interface TemporaryResistance {
   element: ElementType;

@@ -360,6 +360,32 @@ export function getAffectedTiles(
       }
       break;
     }
+
+    case 'custom': {
+      // Designer-defined shape. Anchor = caster (self) or target tile.
+      const anchor = config.customOrigin === 'self' ? origin : target;
+      // If anchored to target and we can't see it, bail (unless wall-penetrating).
+      if (config.customOrigin !== 'self' && tiles && !config.wallPenetrate) {
+        if (!hasLineOfSight(origin, target, tiles, dungeonWidth, dungeonHeight, false)) break;
+      }
+      for (const o of config.customOffsets ?? []) {
+        const x = anchor.x + o.dx;
+        const y = anchor.y + o.dy;
+        if (x < 0 || x >= dungeonWidth || y < 0 || y >= dungeonHeight) continue;
+        if (tiles && !config.wallPenetrate) {
+          // Walls block propagation outward from the anchor.
+          if (!hasLineOfSight(anchor, { x, y }, tiles, dungeonWidth, dungeonHeight, false)) continue;
+        }
+        affectedTiles.push({ x, y });
+      }
+      break;
+    }
+
+    case 'movement': {
+      // Movement skill: the only "affected" tile is the chosen destination.
+      affectedTiles.push(target);
+      break;
+    }
   }
   
   return affectedTiles;

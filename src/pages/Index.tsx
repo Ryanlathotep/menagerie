@@ -927,6 +927,7 @@ function DungeonView({
   // Dungeon revive modal state
   const [showDungeonReviveModal, setShowDungeonReviveModal] = useState(false);
   const [pendingDungeonReviveItem, setPendingDungeonReviveItem] = useState<InventoryItem | null>(null);
+  const [stairExitDialogOpen, setStairExitDialogOpen] = useState(false);
   
   // Respawn state - tracks steps and threshold for step-based spawning
   const [stepsSinceLastSpawn, setStepsSinceLastSpawn] = useState(0);

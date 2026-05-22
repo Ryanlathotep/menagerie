@@ -64,14 +64,13 @@ export function getCustomMovesFor(
   classType: ClassType,
   level: number
 ): Move[] {
+  // Lazy import to avoid circular dep at module load.
+  const { passesAvailability } = require('./moves') as typeof import('./moves');
   const out: Move[] = [];
   for (const m of customMoves.values()) {
     const lvl = m.unlockLevel ?? 1;
     if (lvl > level) continue;
-    const sOK = !m.availableSpecies?.length || m.availableSpecies.includes(species);
-    const eOK = !m.availableElements?.length || m.availableElements.includes(element);
-    const cOK = !m.availableClasses?.length || m.availableClasses.includes(classType);
-    if (sOK && eOK && cOK) out.push(m);
+    if (passesAvailability(m, species, element, classType)) out.push(m);
   }
   return out;
 }

@@ -657,5 +657,9 @@ export function getMoveById(id: string): Move | undefined {
     ...Object.values(ELEMENT_CLASS_MOVES).flat(),
     ...Object.values(TRIPLE_ASPECT_MOVES),
   ];
-  return allMoves.find(m => m.id === id);
+  const found = allMoves.find(m => m.id === id);
+  if (found) return applyMoveOverride(found);
+  // Fall back to custom admin moves.
+  return getCustomMovesFor as unknown as never, (() => undefined)();
 }
+

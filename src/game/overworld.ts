@@ -593,21 +593,32 @@ export function getDifficulty(worldX: number, worldY: number): number {
   return Math.max(1, Math.floor((dist - 8) / 7) + 1);
 }
 
+// Visible radius (in tiles) that the overworld renderer draws around the player.
+// Must stay >= OverworldRenderer's VIEW_RANGE so chunks are streamed in before
+// they enter the viewport. Add a small lookahead so chunks finish generating
+// before the player can see their first tile.
+const VIEW_TILE_RADIUS = 10; // renderer is 8, +2 lookahead
+
 export function ensureChunksLoaded(state: OverworldState, worldX: number, worldY: number): void {
-  const cx = Math.floor(worldX / CHUNK_SIZE);
-  const cy = Math.floor(worldY / CHUNK_SIZE);
-  
-  // Load 3x3 grid of chunks around player
-  for (let dx = -1; dx <= 1; dx++) {
-    for (let dy = -1; dy <= 1; dy++) {
-      const key = getChunkKey(cx + dx, cy + dy);
+  // Load every chunk that overlaps the player's visible bounding box (plus a
+  // 1-chunk safety margin). This guarantees no fog gap when the player walks
+  // toward a chunk boundary, regardless of where they stand inside a chunk.
+  const minCx = Math.floor((worldX - VIEW_TILE_RADIUS) / CHUNK_SIZE) - 1;
+  const maxCx = Math.floor((worldX + VIEW_TILE_RADIUS) / CHUNK_SIZE) + 1;
+  const minCy = Math.floor((worldY - VIEW_TILE_RADIUS) / CHUNK_SIZE) - 1;
+  const maxCy = Math.floor((worldY + VIEW_TILE_RADIUS) / CHUNK_SIZE) + 1;
+
+  for (let cx = minCx; cx <= maxCx; cx++) {
+    for (let cy = minCy; cy <= maxCy; cy++) {
+      const key = getChunkKey(cx, cy);
       if (!state.chunks[key]) {
-        const difficulty = getDifficulty((cx + dx) * CHUNK_SIZE, (cy + dy) * CHUNK_SIZE);
-        state.chunks[key] = generateChunk(cx + dx, cy + dy, difficulty, state.dungeonEntrances, state.nests, state.resourceUpgrades);
+        const difficulty = getDifficulty(cx * CHUNK_SIZE, cy * CHUNK_SIZE);
+        state.chunks[key] = generateChunk(cx, cy, difficulty, state.dungeonEntrances, state.nests, state.resourceUpgrades);
       }
     }
   }
 }
+
 
 export function getOverworldTile(state: OverworldState, worldX: number, worldY: number): OverworldTile | null {
   const cx = Math.floor(worldX / CHUNK_SIZE);

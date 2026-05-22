@@ -208,7 +208,7 @@ function MainMenu() {
           )}
 
           {/* Overworld button moved to top */}
-          <div className="flex gap-2 justify-center">
+          <div className="flex gap-2 justify-center flex-wrap">
             <Button
               size="lg"
               className="w-full max-w-xs sm:w-64 bg-gradient-to-r from-secondary to-primary hover:opacity-90"
@@ -221,6 +221,17 @@ function MainMenu() {
             >
               🗺️ Enter Overworld
             </Button>
+            {canQuickStart && (
+              <Button
+                size="lg"
+                variant="secondary"
+                className="w-full max-w-xs sm:w-64"
+                onClick={() => quickStart('overworld')}
+                title={`Start with last party (${quickStartParty.length}): ${quickStartParty.map(m => m.species).join(', ')}`}
+              >
+                ▶️ Start Adventure
+              </Button>
+            )}
           </div>
 
           {/* Dungeon list replaces the single Start Run button */}
@@ -233,7 +244,10 @@ function MainMenu() {
               localStorage.setItem('menagerie_active_dungeon_difficulty', String(entrance.difficulty || 1));
               dispatch({ type: 'SET_PHASE', phase: 'character_select' });
             }}
+            onQuickStart={canQuickStart ? (entrance) => quickStart('dungeon', entrance.id) : undefined}
+            quickStartPartySize={quickStartParty.length}
           />
+
 
           <div className="flex gap-2 justify-center">
             <Button 

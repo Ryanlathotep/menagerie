@@ -422,45 +422,21 @@ function Tile({
     }
   }
 
-  // Trap tiles with detailed tooltips and right-click disarm
+  // Trap tiles with detailed tooltips.
+  // Unified actions now live upstream in the shared tile menu, so traps should
+  // no longer intercept right-click / long-press here.
   if (tile.type === 'trap' && tile.visible) {
     const trapType = tile.trapType || 'spike';
     const trapInfo = TRAP_INFO[trapType];
     const isTriggered = tile.triggered;
     const disarmChance = Math.min(95, Math.max(5, playerDexterity * 3 + 20)); // 20-95% based on dexterity
 
-    const handleDisarm = () => {
-      if (isTriggered || !onDisarmTrap) return;
-      const roll = Math.random() * 100;
-      const success = roll < disarmChance;
-      onDisarmTrap(x, y, success);
-    };
-
-    const handleRightClick = (e: React.MouseEvent) => {
-      e.preventDefault();
-      handleDisarm();
-    };
-
-    // Long-press for mobile
-    let longPressTimer: ReturnType<typeof setTimeout> | null = null;
-    const handleTouchStart = () => {
-      longPressTimer = setTimeout(() => {
-        handleDisarm();
-      }, 500);
-    };
-    const handleTouchEnd = () => {
-      if (longPressTimer) clearTimeout(longPressTimer);
-    };
-
     return <Tooltip {...tooltipOpenProps}>
         <TooltipTrigger asChild>
           <div 
             className={`flex items-center justify-center relative ${isTriggered ? 'opacity-50' : 'cursor-pointer hover:scale-105'} transition-transform`} 
             style={tileStyle} 
-            onContextMenu={handleRightClick}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
-            onTouchCancel={handleTouchEnd}
+            onClick={onClick}
           >
             <TrapTile size={tileSize} trapType={trapType} triggered={isTriggered} seed={tileSeed} />
           </div>

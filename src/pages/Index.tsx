@@ -1019,6 +1019,9 @@ function DungeonView({
   const [dungeonBuildPanelOpen, setDungeonBuildPanelOpen] = useState(false);
   const [dungeonBuildMode, setDungeonBuildMode] = useState(false);
   const [selectedDungeonBuildType, setSelectedDungeonBuildType] = useState<PlayerBuildingType | null>(null);
+  // Dungeon building assign / context menus (mirror of OverworldView's flow).
+  const [dungeonAssignBuilding, setDungeonAssignBuilding] = useState<import('@/game/buildings').PlayerBuilding | null>(null);
+  const [dungeonContextBuilding, setDungeonContextBuilding] = useState<import('@/game/buildings').PlayerBuilding | null>(null);
   
   // Respawn state - tracks steps and threshold for step-based spawning
   const [stepsSinceLastSpawn, setStepsSinceLastSpawn] = useState(0);

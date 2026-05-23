@@ -416,42 +416,33 @@ export function MonsterSpriteSmall({
 }) {
   const colors = ELEMENT_COLORS[element];
   const paths = SPECIES_PATHS[species];
+  const speciesUrl = getAssetOverride('species', species);
+  const elementUrl = getAssetOverride('element', element);
   const uniqueId = `small-${species}-${element}-${Math.random().toString(36).substr(2, 9)}`;
-  
+
   return (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 100 100" 
-      className={className}
-    >
-      <defs>
-        <clipPath id={`body-clip-${uniqueId}`}>
-          <path d={paths.body} />
-        </clipPath>
-      </defs>
-      
-      {/* Clipped element fill */}
-      <g clipPath={`url(#body-clip-${uniqueId})`}>
-        <rect x="0" y="0" width="100" height="100" fill={`hsl(${colors.primary} / 0.6)`} />
-      </g>
-      
-      {/* Dark outline */}
-      <path
-        d={paths.body}
-        fill="none"
-        stroke="hsl(0 0% 10%)"
-        strokeWidth="4"
-      />
-      
-      {/* Dark face */}
-      {paths.face && (
-        <path
-          d={paths.face}
-          fill="hsl(0 0% 8%)"
-          stroke="hsl(0 0% 5%)"
-          strokeWidth="2"
-        />
+    <svg width={size} height={size} viewBox="0 0 100 100" className={className}>
+      {speciesUrl ? (
+        <image href={speciesUrl} x="0" y="0" width="100" height="100" preserveAspectRatio="xMidYMid meet" />
+      ) : (
+        <>
+          <defs>
+            <clipPath id={`body-clip-${uniqueId}`}>
+              <path d={paths.body} />
+            </clipPath>
+          </defs>
+          <g clipPath={`url(#body-clip-${uniqueId})`}>
+            {elementUrl ? (
+              <image href={elementUrl} x="0" y="0" width="100" height="100" preserveAspectRatio="xMidYMid slice" />
+            ) : (
+              <rect x="0" y="0" width="100" height="100" fill={`hsl(${colors.primary} / 0.6)`} />
+            )}
+          </g>
+          <path d={paths.body} fill="none" stroke="hsl(0 0% 10%)" strokeWidth="4" />
+          {paths.face && (
+            <path d={paths.face} fill="hsl(0 0% 8%)" stroke="hsl(0 0% 5%)" strokeWidth="2" />
+          )}
+        </>
       )}
     </svg>
   );

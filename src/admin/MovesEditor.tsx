@@ -14,6 +14,7 @@ import { TIER_ORDER, TIER_MULTIPLIERS, TIER_PREFIXES, type MoveTier } from '@/ga
 import { SpeciesType, ElementType, ClassType } from '@/game/types';
 import { Search, Save, RotateCcw, Plus, Trash2, Copy } from 'lucide-react';
 import { toast } from 'sonner';
+import { getAllEffects } from '@/game/particles/registry';
 
 const ALL_SPECIES: SpeciesType[] = [
   'slime', 'skeleton', 'goblin', 'mushroom', 'ghost',

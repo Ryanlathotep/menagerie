@@ -349,10 +349,51 @@ export function ShapeDesigner() {
     }
   };
 
+  // Templates: { name, mode, shape?, movement? } stored in shape_templates.
+  type ShapeTemplate = {
+    name: string;
+    mode: Mode;
+    shape?: CustomShape;
+    movement?: MovementPattern;
+  };
+  const templates = templateRows.map((r) => ({
+    key: r.data_key,
+    tpl: r.data_value as unknown as ShapeTemplate,
+  }));
+
+  const applyTemplateData = (tpl: ShapeTemplate) => {
+    // Stuff a synthetic merged Move so the existing apply helpers do the work.
+    if (tpl.mode === 'movement' && tpl.movement) {
+      setMode('movement');
+      const fake = { movement: tpl.movement, type: 'movement' } as unknown as Move;
+      applyMovementTierToUI(fake, 'base');
+    } else if (tpl.shape) {
+      setMode('shape');
+      const fake = { customShape: tpl.shape, type: 'ranged' } as unknown as Move;
+      applyTierToUI(fake, 'base');
+    }
+    toast.success(`Applied template: ${tpl.name}`);
+  };
+
   const loadMove = (move: Move) => {
     setSelected(move);
     const override = (getOverride('moves', move.id) as Partial<Move> | null) || {};
     const merged: Move = { ...move, ...override };
+
+    // Auto-link: if no override and a template's name matches the move's
+    // name (case-insensitive), prefer the template so name-matched pairs
+    // are always used together.
+    const hasOverride = !!(override.customShape || override.movement);
+    const nameMatch = !hasOverride
+      ? templates.find((t) => t.tpl.name.toLowerCase() === move.name.toLowerCase())
+      : null;
+
+    if (nameMatch) {
+      setTier('base');
+      applyTemplateData(nameMatch.tpl);
+      return;
+    }
+
     if (merged.movement) {
       setMode('movement');
       setTier('base');
@@ -364,6 +405,30 @@ export function ShapeDesigner() {
       setBlink(false);
       setRotateMovement(false);
     }
+  };
+
+  const handleSaveAsTemplate = async () => {
+    const name = window.prompt(
+      mode === 'movement'
+        ? 'Template name (movement):'
+        : 'Template name (AoE shape):',
+      selected?.name ?? '',
+    );
+    if (!name) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const key = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    const tpl: ShapeTemplate = { name: trimmed, mode };
+    if (mode === 'movement') {
+      const movement = buildMovement();
+      if (!movement) { toast.error('Add at least one movement cell first.'); return; }
+      tpl.movement = movement;
+    } else {
+      const shape = buildShape();
+      if (!shape) { toast.error('Add at least one shape cell first.'); return; }
+      tpl.shape = shape;
+    }
+    await saveTemplate('shape_templates', key, tpl as unknown as Record<string, unknown>);
   };
 
   // When the user switches tier tabs, persist current edits into the move

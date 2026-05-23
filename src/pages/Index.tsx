@@ -3694,6 +3694,8 @@ function DungeonView({
               const tile = dungeon.tiles[y]?.[x];
               const close = () => setDungeonTileMenu(null);
               if (!tile) { close(); return null; }
+              const structure = ((dungeon.playerBuildings || []) as any[]).find((b) => b.worldX === x && b.worldY === y);
+              const structureDef = structure ? BUILDING_DEFINITIONS[structure.type as keyof typeof BUILDING_DEFINITIONS] : null;
 
               const monster = state.run.currentMonster;
               const dist = Math.abs(x - dungeon.playerPosition.x) + Math.abs(y - dungeon.playerPosition.y);
@@ -3973,17 +3975,15 @@ function DungeonView({
                     },
                   });
                 }
+              } else if (structure && structureDef) {
+                title = `${structureDef.emoji} ${structureDef.name}`;
+                subtitle = structure.built === false ? 'Construction site' : 'Player-built structure';
+                info.push({ label: 'Tile', value: 'Dungeon structure' });
+                if (structureDef.description) info.push({ label: 'Use', value: structureDef.description });
               } else if (tile.type === 'door') {
                 title = '🚪 Door';
                 subtitle = 'Passageway';
                 info.push({ label: 'Action', value: 'Walk through it' });
-              } else if (tile.type === 'player_building' && tile.buildingId) {
-                const building = (dungeon.playerBuildings || []).find((b) => b.id === tile.buildingId);
-                const definition = building ? BUILDING_DEFINITIONS[building.type] : null;
-                title = `${definition?.icon || '🏗️'} ${definition?.name || 'Structure'}`;
-                subtitle = building?.built ? 'Player-built structure' : 'Construction site';
-                info.push({ label: 'Tile', value: 'Dungeon structure' });
-                if (definition?.description) info.push({ label: 'Use', value: definition.description });
               } else if (tile.type === 'wall') {
                 title = '🪨 Bedrock';
                 subtitle = 'Unbreakable structural rock';
@@ -3996,7 +3996,7 @@ function DungeonView({
                 subtitle = tile.type;
               }
 
-              if (tile.explored && dist > 0 && tile.type !== 'wall' && tile.type !== 'mineable_wall' && tile.type !== 'player_building') {
+              if (tile.explored && dist > 0 && tile.type !== 'wall' && tile.type !== 'mineable_wall' && !structure) {
                 if (isAdjacent) {
                   actions.push({
                     id: 'move',

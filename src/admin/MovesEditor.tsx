@@ -798,21 +798,21 @@ export function MovesEditor() {
               options={ALL_SPECIES}
               selected={(editedMove.availableSpecies as SpeciesType[]) || []}
               onChange={(v) => setEditedMove({ ...editedMove, availableSpecies: v })}
-              hint={selected.isCustom ? 'Empty = no species restriction' : 'Empty = inherit built-in pool (originally in ' + (selected.source === 'Species' ? selected.sourceId : '—') + ')'}
+              hint={selected.isCustom ? 'Empty = no species restriction' : 'Pre-filled from built-in pool. Edit to narrow or widen.'}
             />
             <AvailabilityToggles
               title="Available Elements"
               options={ALL_ELEMENTS}
               selected={(editedMove.availableElements as ElementType[]) || []}
               onChange={(v) => setEditedMove({ ...editedMove, availableElements: v })}
-              hint={selected.isCustom ? 'Empty = any element' : 'Empty = inherit built-in pool'}
+              hint={selected.isCustom ? 'Empty = any element' : 'Pre-filled from built-in pool. Edit to narrow or widen.'}
             />
             <AvailabilityToggles
               title="Available Classes"
               options={ALL_CLASSES}
               selected={(editedMove.availableClasses as ClassType[]) || []}
               onChange={(v) => setEditedMove({ ...editedMove, availableClasses: v })}
-              hint={selected.isCustom ? 'Empty = any class' : 'Empty = inherit built-in pool'}
+              hint={selected.isCustom ? 'Empty = any class' : 'Pre-filled from built-in pool. Edit to narrow or widen.'}
             />
 
             <div className="flex gap-2">

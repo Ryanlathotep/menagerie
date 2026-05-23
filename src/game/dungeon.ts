@@ -802,7 +802,7 @@ export function movePlayer(
   }
   
   const newPosition = { x: newX, y: newY };
-  updateVisibility(newTiles, newPosition);
+  updateVisibility(newTiles, newPosition, 3, getDungeonTowerVisionSources(dungeon));
 
   // Emit a runeBump alongside `terrain` whenever the player walks onto a rune.
   // Index.tsx uses it to optionally dig the rune with a sufficient Shovel —

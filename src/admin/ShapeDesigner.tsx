@@ -27,7 +27,7 @@ import { getCustomMoves } from '@/game/moveOverrides';
 import { MoveSortFilter, sortMoves, filterMoves, MoveSortOption, MoveFilterOption } from '@/game/MoveSortFilter';
 import type { Monster } from '@/game/types';
 import { TERRAIN_CONFIG, TerrainType } from '@/game/terrain';
-import { Search, Save, RotateCcw, Crosshair, Footprints } from 'lucide-react';
+import { Search, Save, RotateCcw, Crosshair, Footprints, BookmarkPlus, Bookmark, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const GRID_SIZE_OPTIONS = [9, 13, 17, 21];

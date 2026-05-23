@@ -3700,6 +3700,12 @@ function DungeonView({
               const isAdjacent = dist === 1;
               const relativeX = x - (dungeon.entryPosition?.x ?? 0);
               const relativeY = y - (dungeon.entryPosition?.y ?? 0);
+              const trapNames = {
+                spike: { title: '🔺 Spike Trap', description: 'Deals physical damage when triggered' },
+                poison: { title: '☠️ Poison Trap', description: 'Inflicts poison when triggered' },
+                alarm: { title: '🔔 Alarm Trap', description: 'Alerts nearby enemies when triggered' },
+              } as const;
+
               const info: UnifiedTileInfo[] = [
                 { label: 'Distance', value: dist === 0 ? 'Standing here' : isAdjacent ? 'Adjacent' : `${dist} tiles` },
                 { label: 'Relative', value: `(${relativeX}, ${relativeY})` },
@@ -3805,6 +3811,7 @@ function DungeonView({
               } else if (tile.type === 'treasure') {
                 title = '🎁 Treasure chest';
                 subtitle = 'Unopened loot cache';
+                info.push({ label: 'Loot', value: 'Chest rewards on contact' });
                 info.push({ label: 'Action', value: isAdjacent ? 'Collectable now' : 'Step adjacent first' });
                 if (isAdjacent) {
                   actions.push({
@@ -3818,6 +3825,7 @@ function DungeonView({
               } else if (tile.type === 'stairs') {
                 title = '⬇️ Descending stairs';
                 subtitle = `Floor ${dungeon.floor} → ${dungeon.floor + 1}`;
+                info.push({ label: 'Tile', value: 'Dungeon exit downward' });
                 info.push({ label: 'Destination', value: `Floor ${dungeon.floor + 1}` });
                 if (isAdjacent) {
                   actions.push({
@@ -3832,6 +3840,7 @@ function DungeonView({
                 const isEntranceStairs = dungeon.floor <= (dungeon.startingFloor ?? 1);
                 title = '⬆️ Ascending stairs';
                 subtitle = isEntranceStairs ? 'Entrance staircase' : `Floor ${dungeon.floor} → ${Math.max(1, dungeon.floor - 1)}`;
+                info.push({ label: 'Tile', value: isEntranceStairs ? 'Dungeon entrance / exit' : 'Staircase upward' });
                 info.push({ label: 'Destination', value: isEntranceStairs ? 'Exit / entrance' : `Floor ${Math.max(1, dungeon.floor - 1)}` });
                 if (isAdjacent) {
                   actions.push({
@@ -3845,6 +3854,7 @@ function DungeonView({
               } else if (tile.type === 'shop') {
                 title = '🛒 Dungeon shop';
                 subtitle = 'Buy supplies and gear';
+                info.push({ label: 'Tile', value: 'Merchant stall' });
                 if (isAdjacent) {
                   actions.push({
                     id: 'open-shop',
@@ -3857,6 +3867,7 @@ function DungeonView({
               } else if (tile.type === 'elevator') {
                 title = '🛗 Elevator';
                 subtitle = 'Swap party members with town storage';
+                info.push({ label: 'Tile', value: 'Party transfer point' });
                 if (isAdjacent) {
                   actions.push({
                     id: 'use-elevator',
@@ -3872,6 +3883,7 @@ function DungeonView({
                 const hitsNeeded = tile.wallTier ? hitsToBreak(tile.wallTier, pickaxeTier) : Infinity;
                 title = `⛏️ ${wallName}`;
                 subtitle = tile.wallTier ? `Tier ${tile.wallTier} wall` : 'Breakable wall';
+                info.push({ label: 'Loot', value: `Drops ${wallName}` });
                 info.push({ label: 'Progress', value: isFinite(hitsNeeded) ? `${tile.wallHits || 0} / ${hitsNeeded} hits` : `${tile.wallHits || 0} hits` });
                 info.push({ label: 'Tool', value: isFinite(hitsNeeded) ? 'Pickaxe can break it' : 'Pickaxe too weak or missing' });
                 if (isAdjacent) {
@@ -3903,6 +3915,7 @@ function DungeonView({
                 const hitsNeeded = shovelHitsToBreak(tile.terrainType, shovelTier);
                 title = `${terrainConfig.icon} ${terrainConfig.name}`;
                 subtitle = 'Hazardous rune tile';
+                info.push({ label: 'Description', value: terrainConfig.description });
                 info.push({ label: 'Favored', value: terrainConfig.favoredElement ?? terrainConfig.favoredClass ?? 'None' });
                 info.push({ label: 'Backlash', value: '2 damage if mismatched' });
                 info.push({ label: 'Digging', value: isFinite(hitsNeeded) ? `${hitsNeeded} dig${hitsNeeded === 1 ? '' : 's'} with current shovel` : 'Shovel too weak or missing' });
@@ -3917,11 +3930,6 @@ function DungeonView({
                   });
                 }
               } else if (tile.type === 'trap') {
-                const trapNames = {
-                  spike: { title: '🔺 Spike Trap', description: 'Deals physical damage when triggered' },
-                  poison: { title: '☠️ Poison Trap', description: 'Inflicts poison when triggered' },
-                  alarm: { title: '🔔 Alarm Trap', description: 'Alerts nearby enemies when triggered' },
-                } as const;
                 const trapType = tile.trapType || 'spike';
                 const trapInfo = trapNames[trapType];
                 const disarmChance = Math.min(95, Math.max(5, (monster.stats.dodge || 10) * 3 + 20));
@@ -3969,6 +3977,13 @@ function DungeonView({
                 title = '🚪 Door';
                 subtitle = 'Passageway';
                 info.push({ label: 'Action', value: 'Walk through it' });
+              } else if (tile.type === 'player_building' && tile.buildingId) {
+                const building = (dungeon.playerBuildings || []).find((b) => b.id === tile.buildingId);
+                const definition = building ? BUILDING_DEFINITIONS[building.type] : null;
+                title = `${definition?.icon || '🏗️'} ${definition?.name || 'Structure'}`;
+                subtitle = building?.built ? 'Player-built structure' : 'Construction site';
+                info.push({ label: 'Tile', value: 'Dungeon structure' });
+                if (definition?.description) info.push({ label: 'Use', value: definition.description });
               } else if (tile.type === 'wall') {
                 title = '🪨 Bedrock';
                 subtitle = 'Unbreakable structural rock';
@@ -3981,7 +3996,7 @@ function DungeonView({
                 subtitle = tile.type;
               }
 
-              if (tile.explored && dist > 0 && tile.type !== 'wall' && tile.type !== 'mineable_wall') {
+              if (tile.explored && dist > 0 && tile.type !== 'wall' && tile.type !== 'mineable_wall' && tile.type !== 'player_building') {
                 if (isAdjacent) {
                   actions.push({
                     id: 'move',

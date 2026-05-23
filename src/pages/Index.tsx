@@ -3732,6 +3732,28 @@ function DungeonView({
       
       <div className="fixed inset-0 overflow-hidden transition-all duration-300" style={dungeonBottomStyle}>
         <div className="h-full flex flex-col">
+          {/* Get Unstuck button — teleports player to nearest walkable tile.
+              Persists in dungeon view so a stuck player can always recover. */}
+          <button
+            type="button"
+            onClick={() => {
+              if (!dungeon) return;
+              const safe = findNearestWalkableTile(
+                dungeon.tiles,
+                dungeon.playerPosition.x,
+                dungeon.playerPosition.y,
+                120,
+              ) ?? dungeon.entryPosition ?? dungeon.playerPosition;
+              const fixed = prepareDungeonForEntry({ ...dungeon, playerPosition: safe });
+              dispatch({ type: 'SET_DUNGEON', dungeon: fixed });
+              addLog('🆘 Teleported to nearest safe tile.', 'system');
+              toast.success('Unstuck!');
+            }}
+            title="Teleport to nearest walkable tile if you're stuck"
+            className="fixed top-2 left-2 z-50 px-2 py-1 text-xs rounded-md border border-border bg-card/90 text-foreground shadow-md backdrop-blur hover:bg-accent hover:text-accent-foreground"
+          >
+            🆘 Unstuck
+          </button>
           {/* Scrollable dungeon viewport - fills available space */}
           <div className="flex-1 overflow-hidden bg-card">
             <DungeonRenderer 

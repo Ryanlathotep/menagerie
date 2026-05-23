@@ -119,6 +119,10 @@ export function ReportBugDialog({ isOpen, onClose, context }: Props) {
   };
 
   const submit = async () => {
+    if (!user) {
+      toast({ title: 'Please sign in to submit a bug report', variant: 'destructive' });
+      return;
+    }
     if (!title.trim() || !description.trim()) {
       toast({ title: 'Please fill in title and description', variant: 'destructive' });
       return;
@@ -130,10 +134,8 @@ export function ReportBugDialog({ isOpen, onClose, context }: Props) {
     setSubmitting(true);
     try {
       let username: string | null = null;
-      if (user) {
-        const { data } = await supabase.rpc('get_my_username');
-        username = (data as string | null) ?? null;
-      }
+      const { data: nameData } = await supabase.rpc('get_my_username');
+      username = (nameData as string | null) ?? null;
 
       const screenshotUrls = shots.length ? await uploadShots() : [];
 
@@ -147,7 +149,7 @@ export function ReportBugDialog({ isOpen, onClose, context }: Props) {
       };
 
       const { error } = await supabase.from('bug_reports').insert({
-        user_id: user?.id ?? null,
+        user_id: user.id,
         username,
         title: title.trim(),
         description: description.trim(),
@@ -155,6 +157,7 @@ export function ReportBugDialog({ isOpen, onClose, context }: Props) {
         context: ctx,
       });
       if (error) throw error;
+
 
       toast({ title: 'Bug report sent', description: 'Thanks! Admins will review it.' });
       shots.forEach((s) => URL.revokeObjectURL(s.dataUrl));

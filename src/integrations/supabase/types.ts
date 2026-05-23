@@ -304,7 +304,6 @@ export type Database = {
           achieved_at: string
           discovered_count: number
           rank: number
-          user_id: string
           username: string
           world_seed: number
         }[]
@@ -315,7 +314,6 @@ export type Database = {
           achieved_at: string
           rank: number
           tiles_explored: number
-          user_id: string
           username: string
           world_seed: number
         }[]
@@ -329,7 +327,6 @@ export type Database = {
           party_snapshot: Json
           rank: number
           run_seconds: number
-          user_id: string
           username: string
         }[]
       }

@@ -138,6 +138,10 @@ export interface Move {
   availabilityMode?: 'all' | 'any';
   /** Marks moves created entirely by the admin (not present in source code). */
   custom?: boolean;
+  /** Particle effect id (see src/game/particles). Falls through to element /
+   *  class / species defaults when undefined. Admin can override per move via
+   *  data_type='particle_default' with data_key='move:<id>'. */
+  particleEffectId?: string;
   /** If true, the move uses the CASTER's element for matchup calc instead of (or in addition to) `element`. */
   inheritMonsterElement?: boolean;
   /** If true, the move uses the CASTER's class for matchup calc instead of (or in addition to) `classBonus`. */

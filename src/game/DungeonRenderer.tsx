@@ -27,6 +27,8 @@ import { fitFromNeighbors } from './autoTiling';
 import { isAdminCompass, onAdminCompassChange } from './adminCompass';
 import { isDowsingEffective, onDowsingChange, DOWSING_HIGHLIGHT_COUNT } from './dowsingRod';
 import { BUILDING_DEFINITIONS } from './buildings';
+import { ParticleLayer } from './particles/ParticleLayer';
+
 
 // Check if a monster combo has been captured at equal or lower level
 function isCaptured(enemy: Monster, unlockedMonsters: UnlockedMonster[]): {
@@ -906,6 +908,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
             transition: skipTransition ? 'none' : 'transform 120ms ease-out',
           }}
         >
+          <ParticleLayer surface="dungeon" tileSize={tileSize} />
           {dungeon.tiles.map((row, y) => (
             <div key={y} className="flex" style={{ height: tileSize }}>
               {row.map((tile, x) => {

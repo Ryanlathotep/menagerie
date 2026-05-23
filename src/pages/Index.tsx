@@ -87,6 +87,7 @@ import {
   enemyHasStaminaToAttack,
   getPathTiles,
 } from '@/game/dungeonCombat';
+import { playParticleEffectForMove } from '@/game/particles/api';
 import { MoveInfoPanel } from '@/game/AttackTargeting';
 import { loadKeybinds, getMonsterKeybinds as getMonsterKeybindsImport } from '@/game/keybinds';
 import { useAuth } from '@/hooks/useAuth';
@@ -2691,6 +2692,18 @@ function DungeonView({
     }
 
     const affected = getAffectedTiles(dungeon.playerPosition, { x, y }, config, dungeon.width, dungeon.height);
+
+    // Fire visual particle effect for this move (caster → target/affected).
+    try {
+      playParticleEffectForMove({
+        surface: 'dungeon',
+        monster: state.run.currentMonster,
+        move: targetingMove,
+        from: dungeon.playerPosition,
+        to: { x, y },
+        affected,
+      });
+    } catch (e) { /* particle FX should never block combat */ }
     
     // Consume stamina
     const monster = state.run.currentMonster;

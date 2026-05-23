@@ -4077,6 +4077,29 @@ function DungeonView({
                 subtitle = structure.built === false ? 'Construction site' : 'Player-built structure';
                 info.push({ label: 'Tile', value: 'Dungeon structure' });
                 if (structureDef.description) info.push({ label: 'Use', value: structureDef.description });
+                info.push({ label: 'Health', value: `${structure.hp ?? '?'} / ${structure.maxHp ?? '?'}` });
+                if (structureDef.requiresMonster) {
+                  const assigned = structure.assignedMonsterId
+                    ? state.run.party.find(m => m.id === structure.assignedMonsterId)
+                    : null;
+                  info.push({
+                    label: 'Assigned',
+                    value: assigned ? `Lv.${assigned.level} ${assigned.name}` : 'None (unstaffed)',
+                  });
+                }
+                if (structure.type === 'farm' && structure.harvestReady) {
+                  info.push({ label: 'Status', value: '🌾 Ready to harvest' });
+                }
+                actions.push({
+                  id: 'open-building',
+                  label: 'Building options…',
+                  hint: 'Assign / repair / disassemble',
+                  icon: Hammer,
+                  onClick: () => {
+                    close();
+                    setDungeonContextBuilding(structure as PlayerBuilding);
+                  },
+                });
               } else if (tile.type === 'door') {
                 title = '🚪 Door';
                 subtitle = 'Passageway';

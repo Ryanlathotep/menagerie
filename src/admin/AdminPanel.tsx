@@ -11,7 +11,8 @@ import { AdminAccessEditor } from './AdminAccessEditor';
 import { BugReportsEditor } from './BugReportsEditor';
 import { ShapeDesigner } from './ShapeDesigner';
 import { EquipmentIconEditor } from './EquipmentIconEditor';
-import { Shield, Swords, Package, Ghost, UserCog, Bug, Crosshair, Image as ImageIcon } from 'lucide-react';
+import { AssetLibrary } from './AssetLibrary';
+import { Shield, Swords, Package, Ghost, UserCog, Bug, Crosshair, Image as ImageIcon, Palette } from 'lucide-react';
 
 export function AdminPanel() {
   const { isAdmin, loading } = useAdminRole();
@@ -76,6 +77,10 @@ export function AdminPanel() {
               <Ghost className="w-4 h-4" />
               Monsters
             </TabsTrigger>
+            <TabsTrigger value="assets" className="gap-2 shrink-0">
+              <Palette className="w-4 h-4" />
+              Assets
+            </TabsTrigger>
             <TabsTrigger value="bugs" className="gap-2 shrink-0">
               <Bug className="w-4 h-4" />
               Bug Reports
@@ -105,6 +110,9 @@ export function AdminPanel() {
           </TabsContent>
           <TabsContent value="monsters" className="p-4 m-0">
             <MonstersEditor />
+          </TabsContent>
+          <TabsContent value="assets" className="p-4 m-0">
+            <AssetLibrary />
           </TabsContent>
           <TabsContent value="bugs" className="p-4 m-0">
             <BugReportsEditor />

@@ -27,7 +27,7 @@ import { getCustomMoves } from '@/game/moveOverrides';
 import { MoveSortFilter, sortMoves, filterMoves, MoveSortOption, MoveFilterOption } from '@/game/MoveSortFilter';
 import type { Monster } from '@/game/types';
 import { TERRAIN_CONFIG, TerrainType } from '@/game/terrain';
-import { Search, Save, RotateCcw, Crosshair, Footprints } from 'lucide-react';
+import { Search, Save, RotateCcw, Crosshair, Footprints, BookmarkPlus, Bookmark, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const GRID_SIZE_OPTIONS = [9, 13, 17, 21];
@@ -164,6 +164,12 @@ function synthesizeShapeFromTargeting(m: Move): {
 
 export function ShapeDesigner() {
   const { saveOverride, deleteOverride, getOverride, loading } = useGameDataOverrides('moves');
+  const {
+    overrides: templateRows,
+    saveOverride: saveTemplate,
+    deleteOverride: deleteTemplate,
+    loading: templatesLoading,
+  } = useGameDataOverrides('shape_templates');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Move | null>(null);
   const [mode, setMode] = useState<Mode>('shape');
@@ -343,10 +349,51 @@ export function ShapeDesigner() {
     }
   };
 
+  // Templates: { name, mode, shape?, movement? } stored in shape_templates.
+  type ShapeTemplate = {
+    name: string;
+    mode: Mode;
+    shape?: CustomShape;
+    movement?: MovementPattern;
+  };
+  const templates = templateRows.map((r) => ({
+    key: r.data_key,
+    tpl: r.data_value as unknown as ShapeTemplate,
+  }));
+
+  const applyTemplateData = (tpl: ShapeTemplate) => {
+    // Stuff a synthetic merged Move so the existing apply helpers do the work.
+    if (tpl.mode === 'movement' && tpl.movement) {
+      setMode('movement');
+      const fake = { movement: tpl.movement, type: 'movement' } as unknown as Move;
+      applyMovementTierToUI(fake, 'base');
+    } else if (tpl.shape) {
+      setMode('shape');
+      const fake = { customShape: tpl.shape, type: 'ranged' } as unknown as Move;
+      applyTierToUI(fake, 'base');
+    }
+    toast.success(`Applied template: ${tpl.name}`);
+  };
+
   const loadMove = (move: Move) => {
     setSelected(move);
     const override = (getOverride('moves', move.id) as Partial<Move> | null) || {};
     const merged: Move = { ...move, ...override };
+
+    // Auto-link: if no override and a template's name matches the move's
+    // name (case-insensitive), prefer the template so name-matched pairs
+    // are always used together.
+    const hasOverride = !!(override.customShape || override.movement);
+    const nameMatch = !hasOverride
+      ? templates.find((t) => t.tpl.name.toLowerCase() === move.name.toLowerCase())
+      : null;
+
+    if (nameMatch) {
+      setTier('base');
+      applyTemplateData(nameMatch.tpl);
+      return;
+    }
+
     if (merged.movement) {
       setMode('movement');
       setTier('base');
@@ -358,6 +405,30 @@ export function ShapeDesigner() {
       setBlink(false);
       setRotateMovement(false);
     }
+  };
+
+  const handleSaveAsTemplate = async () => {
+    const name = window.prompt(
+      mode === 'movement'
+        ? 'Template name (movement):'
+        : 'Template name (AoE shape):',
+      selected?.name ?? '',
+    );
+    if (!name) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const key = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    const tpl: ShapeTemplate = { name: trimmed, mode };
+    if (mode === 'movement') {
+      const movement = buildMovement();
+      if (!movement) { toast.error('Add at least one movement cell first.'); return; }
+      tpl.movement = movement;
+    } else {
+      const shape = buildShape();
+      if (!shape) { toast.error('Add at least one shape cell first.'); return; }
+      tpl.shape = shape;
+    }
+    await saveTemplate('shape_templates', key, tpl as unknown as Record<string, unknown>);
   };
 
   // When the user switches tier tabs, persist current edits into the move
@@ -552,7 +623,64 @@ export function ShapeDesigner() {
             )}
           </div>
         </ScrollArea>
+
+        {/* Templates */}
+        <div className="mt-3 border-t border-border pt-2">
+          <div className="flex items-center gap-2 mb-1.5">
+            <Bookmark className="w-3.5 h-3.5 text-muted-foreground" />
+            <Label className="text-xs uppercase text-muted-foreground">Templates</Label>
+            <span className="text-[10px] text-muted-foreground ml-auto">
+              {templatesLoading ? 'loading…' : `${templates.length} saved`}
+            </span>
+          </div>
+          <p className="text-[10px] text-muted-foreground mb-1.5">
+            Reusable shapes / movement patterns. Click to apply to the selected move
+            (then Save Override). A template whose name matches a move's name is
+            auto-applied when that move is first opened.
+          </p>
+          <ScrollArea className="h-[120px] lg:h-[160px] border border-border rounded">
+            <div className="space-y-0.5 p-1">
+              {templates.length === 0 && (
+                <div className="text-[11px] text-muted-foreground italic p-1.5">
+                  No templates yet — open a move, design a shape, then “Save as Template”.
+                </div>
+              )}
+              {templates.map(({ key, tpl }) => (
+                <div
+                  key={key}
+                  className="flex items-center gap-1 px-1.5 py-1 rounded hover:bg-muted text-xs"
+                >
+                  <button
+                    onClick={() => selected ? applyTemplateData(tpl) : toast.error('Select a move first.')}
+                    className="flex-1 text-left truncate"
+                    title={`Apply ${tpl.mode} template`}
+                  >
+                    <span className="font-medium">{tpl.name}</span>
+                    <span className="text-[10px] text-muted-foreground ml-1.5">
+                      {tpl.mode === 'movement' ? 'movement' : 'shape'}
+                      {tpl.mode === 'shape' && tpl.shape?.offsets ? ` · ${tpl.shape.offsets.length} cells` : ''}
+                      {tpl.mode === 'movement' && tpl.movement?.offsets ? ` · ${tpl.movement.offsets.length} cells` : ''}
+                    </span>
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (window.confirm(`Delete template "${tpl.name}"?`)) {
+                        await deleteTemplate('shape_templates', key);
+                      }
+                    }}
+                    className="text-muted-foreground hover:text-destructive p-0.5"
+                    title="Delete template"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
       </Card>
+
+
 
 
       {/* Designer */}
@@ -983,9 +1111,12 @@ export function ShapeDesigner() {
 
 
 
-            <div className="flex gap-2 pt-2">
-              <Button onClick={handleSave} className="flex-1 gap-2">
+            <div className="flex flex-wrap gap-2 pt-2">
+              <Button onClick={handleSave} className="flex-1 gap-2 min-w-[140px]">
                 <Save className="w-4 h-4" /> Save Override
+              </Button>
+              <Button variant="secondary" onClick={handleSaveAsTemplate} className="gap-2">
+                <BookmarkPlus className="w-4 h-4" /> Save as Template
               </Button>
               <Button variant="outline" onClick={handleClear} className="gap-2">
                 <RotateCcw className="w-4 h-4" /> Clear

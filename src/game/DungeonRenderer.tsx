@@ -1081,17 +1081,17 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
           return (
             <div className="absolute inset-0 pointer-events-none z-30">
               <div
-                className="absolute -translate-x-1/2 -translate-y-1/2"
+                className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none"
                 style={{ left, top }}
                 title={`Stairs — ${dist} tiles`}
               >
-                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full border backdrop-blur-sm shadow-md text-[10px] font-medium leading-none text-amber-200 bg-amber-500/20 border-amber-400/60">
+                <div className="pointer-events-none flex items-center gap-1 px-1.5 py-0.5 rounded-full border backdrop-blur-sm shadow-md text-[10px] font-medium leading-none text-amber-200 bg-amber-500/20 border-amber-400/60">
                   <span
-                    className="inline-block text-[12px] leading-none"
+                    className="pointer-events-none inline-block text-[12px] leading-none"
                     style={{ transform: `rotate(${(angle * 180) / Math.PI}deg)` }}
                   >➤</span>
-                  <span className="text-base leading-none">⬇️</span>
-                  <span className="tabular-nums opacity-90">{dist}</span>
+                  <span className="pointer-events-none text-base leading-none">⬇️</span>
+                  <span className="pointer-events-none tabular-nums opacity-90">{dist}</span>
                 </div>
               </div>
             </div>

@@ -211,17 +211,17 @@ export function OverworldDirectionArrows({ overworld, toggles }: Props) {
             style={{ left: ex, top: ey }}
           >
             <div
-              className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full border backdrop-blur-sm shadow-md text-[10px] font-medium leading-none ${t.colorClass}`}
+              className={`pointer-events-none flex items-center gap-1 px-1.5 py-0.5 rounded-full border backdrop-blur-sm shadow-md text-[10px] font-medium leading-none ${t.colorClass}`}
               title={`${t.label} — ${dist} tiles`}
             >
               <span
-                className="inline-block text-[12px] leading-none"
+                className="pointer-events-none inline-block text-[12px] leading-none"
                 style={{ transform: `rotate(${rotDeg}deg)` }}
               >
                 ➤
               </span>
-              <span className="text-base leading-none">{t.icon}</span>
-              <span className="tabular-nums opacity-90">{dist}</span>
+              <span className="pointer-events-none text-base leading-none">{t.icon}</span>
+              <span className="pointer-events-none tabular-nums opacity-90">{dist}</span>
             </div>
           </div>
         );

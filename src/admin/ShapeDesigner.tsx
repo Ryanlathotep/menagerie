@@ -176,10 +176,13 @@ export function ShapeDesigner() {
       setPlacesTerrain(shape.placesTerrain ?? '');
       setRotateShape(!!shape.rotateToFacing);
     } else {
-      setCells(new Set());
-      setOriginType(merged.type === 'melee' ? 'self' : 'target_tile');
-      setRange(merged.type === 'melee' ? 1 : 5);
-      setWallPenetrate(false);
+      // No custom shape stored — synthesize one from the move's built-in
+      // targeting pattern so existing moves populate the grid for editing.
+      const synth = synthesizeShapeFromTargeting(merged);
+      setCells(new Set(synth.offsets.map((o) => `${o.dx},${o.dy}`)));
+      setOriginType(synth.originType);
+      setRange(synth.range);
+      setWallPenetrate(!!merged.wallPenetrate);
       setBlockedByWalls(true);
       setBlockedByUnits(false);
       setDamagesEnemies((merged.power ?? 0) > 0);
@@ -187,7 +190,7 @@ export function ShapeDesigner() {
       setDamagesTraps(false);
       setHarvests(new Set());
       setPlacesTerrain('');
-      setRotateShape(false);
+      setRotateShape(synth.rotateToFacing);
     }
   };
 

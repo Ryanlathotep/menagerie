@@ -244,16 +244,21 @@ export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({
   const paths = SPECIES_PATHS[species];
   const overlay = CLASS_OVERLAYS[classType];
   const classColor = overlay.color;
-  
+
+  // Admin-uploaded replacement images (layered, each independent).
+  const speciesUrl = getAssetOverride('species', species);
+  const elementUrl = getAssetOverride('element', element);
+  const classUrl = getAssetOverride('class', classType);
+
   const animationClass = animated ? 'animate-pulse-glow' : '';
   const uniqueId = `sprite-${species}-${element}-${classType}-${Math.random().toString(36).substr(2, 9)}`;
 
   return (
-    <svg 
+    <svg
       ref={ref}
-      width={size} 
-      height={size} 
-      viewBox="0 0 100 100" 
+      width={size}
+      height={size}
+      viewBox="0 0 100 100"
       className={`${className} ${animationClass}`}
       style={{ filter: getElementGlow(element) }}
     >
@@ -262,12 +267,10 @@ export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({
         <clipPath id={`body-clip-${uniqueId}`}>
           <path d={paths.body} />
         </clipPath>
-        {/* Camo pattern for biological class - with transparent gaps for element to show */}
-        {overlay.camoPattern && (
+        {/* Camo pattern for biological class - only when no class image override */}
+        {!classUrl && overlay.camoPattern && (
           <pattern id={`camo-${uniqueId}`} patternUnits="userSpaceOnUse" width="25" height="25">
-            {/* Transparent base lets element show through */}
             <rect width="25" height="25" fill="transparent" />
-            {/* Camo blobs - scattered to let element show in gaps */}
             <ellipse cx="6" cy="6" rx="5" ry="3" fill={`hsl(${overlay.color} / 0.85)`} />
             <ellipse cx="18" cy="4" rx="4" ry="2.5" fill={`hsl(${overlay.secondaryColor} / 0.8)`} />
             <ellipse cx="12" cy="14" rx="6" ry="3.5" fill={`hsl(80 35% 28% / 0.85)`} />
@@ -277,94 +280,70 @@ export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({
           </pattern>
         )}
       </defs>
-      
-      {/* Subtle background circle - not element colored */}
-      <circle 
-        cx="50" 
-        cy="50" 
-        r="45" 
-        fill="hsl(var(--muted) / 0.1)"
-      />
-      
-      {/* Species body - element color with transparency, clipped to body shape */}
-      <g clipPath={`url(#body-clip-${uniqueId})`}>
-        {/* Base element fill - contained within body */}
-        <rect x="0" y="0" width="100" height="100" fill={`hsl(${colors.primary} / 0.6)`} />
-        
-        {/* Biological camo overlay - only rendered for biological class */}
-        {overlay.camoPattern && (
-          <rect x="0" y="0" width="100" height="100" fill={`url(#camo-${uniqueId})`} opacity="0.7" />
-        )}
-      </g>
-      
-      {/* Species body outline - dark and opaque */}
-      <path
-        d={paths.body}
-        fill="none"
-        stroke="hsl(0 0% 10%)"
-        strokeWidth="3.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      
-      {/* Species detail (body details like ribs, wings, etc) - NOT clipped so they show outside body */}
-      {paths.detail && (
-        <path
-          d={paths.detail}
-          fill="none"
-          stroke="hsl(0 0% 15%)"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-        />
+
+      {/* Subtle background circle */}
+      <circle cx="50" cy="50" r="45" fill="hsl(var(--muted) / 0.1)" />
+
+      {/* === SPECIES LAYER === */}
+      {speciesUrl ? (
+        <image href={speciesUrl} x="0" y="0" width="100" height="100" preserveAspectRatio="xMidYMid meet" />
+      ) : (
+        <>
+          {/* Species body element fill (clipped) + camo */}
+          <g clipPath={`url(#body-clip-${uniqueId})`}>
+            {elementUrl ? (
+              <image href={elementUrl} x="0" y="0" width="100" height="100" preserveAspectRatio="xMidYMid slice" />
+            ) : (
+              <rect x="0" y="0" width="100" height="100" fill={`hsl(${colors.primary} / 0.6)`} />
+            )}
+            {/* Class pattern layer (clipped to body) */}
+            {classUrl ? (
+              <image
+                href={classUrl}
+                x="0"
+                y="0"
+                width="100"
+                height="100"
+                preserveAspectRatio="xMidYMid slice"
+                style={{ mixBlendMode: 'multiply' }}
+              />
+            ) : (
+              overlay.camoPattern && (
+                <rect x="0" y="0" width="100" height="100" fill={`url(#camo-${uniqueId})`} opacity="0.7" />
+              )
+            )}
+          </g>
+
+          {/* Species body outline */}
+          <path d={paths.body} fill="none" stroke="hsl(0 0% 10%)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+          {paths.detail && (
+            <path d={paths.detail} fill="none" stroke="hsl(0 0% 15%)" strokeWidth="2.5" strokeLinecap="round" />
+          )}
+          {paths.face && (
+            <path d={paths.face} fill="hsl(0 0% 8%)" stroke="hsl(0 0% 5%)" strokeWidth="2.5" strokeLinecap="round" />
+          )}
+        </>
       )}
-      
-      {/* Face features - dark and very opaque for visibility */}
-      {paths.face && (
-        <path
-          d={paths.face}
-          fill="hsl(0 0% 8%)"
-          stroke="hsl(0 0% 5%)"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-        />
+
+      {/* When species replaced by image, draw element/class as top overlays so all 4 layers compose */}
+      {speciesUrl && elementUrl && (
+        <image href={elementUrl} x="0" y="0" width="100" height="100" preserveAspectRatio="xMidYMid slice" style={{ mixBlendMode: 'multiply', opacity: 0.7 }} />
       )}
-      
-      {/* Class equipment rendered on top of everything */}
-      {/* Class armor overlay - rendered first so it's behind other equipment */}
-      {overlay.armor && (
-        <path
-          d={overlay.armor}
-          fill={`hsl(${classColor} / 0.8)`}
-          stroke={`hsl(${classColor})`}
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+      {speciesUrl && classUrl && (
+        <image href={classUrl} x="0" y="0" width="100" height="100" preserveAspectRatio="xMidYMid slice" style={{ mixBlendMode: 'overlay', opacity: 0.85 }} />
       )}
-      
-      {/* Class weapon overlay - positioned to the side */}
-      {overlay.weapon && (
-        <path
-          d={overlay.weapon}
-          fill={`hsl(${classColor} / 0.9)`}
-          stroke={`hsl(${classColor})`}
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+
+      {/* Class procedural overlays (armor/weapon/accessory) — skipped when class image override present */}
+      {!classUrl && overlay.armor && (
+        <path d={overlay.armor} fill={`hsl(${classColor} / 0.8)`} stroke={`hsl(${classColor})`} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       )}
-      
-      {/* Class accessory overlay - crown/aura/etc */}
-      {overlay.accessory && (
-        <path
-          d={overlay.accessory}
-          fill={`hsl(${overlay.secondaryColor || classColor} / 0.9)`}
-          stroke={`hsl(${classColor})`}
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+      {!classUrl && overlay.weapon && (
+        <path d={overlay.weapon} fill={`hsl(${classColor} / 0.9)`} stroke={`hsl(${classColor})`} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       )}
+      {!classUrl && overlay.accessory && (
+        <path d={overlay.accessory} fill={`hsl(${overlay.secondaryColor || classColor} / 0.9)`} stroke={`hsl(${classColor})`} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      )}
+
       
       {/* Equipped items - render on top of everything */}
       {equipment && (

@@ -40,23 +40,27 @@ function toPx(tile: { x: number; y: number }, tileSize: number, origin: { x: num
 }
 
 export function ParticleLayer({ surface, tileSize }: Props) {
+export function ParticleLayer({ surface, tileSize, originWorld }: Props) {
   const [active, setActive] = useState<ActiveEffect[]>([]);
   const activeRef = useRef<ActiveEffect[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const tileSizeRef = useRef(tileSize);
   tileSizeRef.current = tileSize;
+  const originRef = useRef(originWorld ?? { x: 0, y: 0 });
+  originRef.current = originWorld ?? { x: 0, y: 0 };
 
   // Subscribe to particle events.
   useEffect(() => {
     const off = subscribeParticles((req) => {
       if (req.surface !== surface) return;
       const ts = tileSizeRef.current;
+      const og = originRef.current;
       const eff: ActiveEffect = {
         ...req,
         resolvedColor: resolveColor(req),
-        pxFrom: toPx(req.from, ts),
-        pxTo: toPx(req.to, ts),
-        pxAffected: (req.affected ?? [req.to]).map((p) => toPx(p, ts)),
+        pxFrom: toPx(req.from, ts, og),
+        pxTo: toPx(req.to, ts, og),
+        pxAffected: (req.affected ?? [req.to]).map((p) => toPx(p, ts, og)),
       };
       activeRef.current = [...activeRef.current, eff];
       setActive(activeRef.current);

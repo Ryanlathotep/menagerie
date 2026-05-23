@@ -895,7 +895,7 @@ function DungeonView({
     state,
     dispatch
   } = useGame();
-  const { settings } = useSettings();
+  const { settings, updateSetting } = useSettings();
   const dungeon = state.run?.dungeon;
   const [showShop, setShowShop] = useState(false);
   const [showEquipment, setShowEquipment] = useState(false);
@@ -1594,6 +1594,8 @@ function DungeonView({
   // Use refs to always have fresh state for auto-run (avoids stale closures)
   const dungeonRef = useRef(dungeon);
   const handleMoveRef = useRef(handleMove);
+  const autoHarvestTargetRef = useRef<(Position & { tileType: 'mineable_wall' | 'terrain' }) | null>(null);
+  const autoHarvestTimerRef = useRef<number | null>(null);
   
   useEffect(() => {
     dungeonRef.current = dungeon;
@@ -1602,6 +1604,56 @@ function DungeonView({
   useEffect(() => {
     handleMoveRef.current = handleMove;
   }, [handleMove]);
+
+  const cancelAutoHarvest = useCallback((reason?: string) => {
+    if (typeof window !== 'undefined' && autoHarvestTimerRef.current !== null) {
+      window.clearInterval(autoHarvestTimerRef.current);
+      autoHarvestTimerRef.current = null;
+    }
+    if (autoHarvestTargetRef.current && reason) addLog(reason, 'info');
+    autoHarvestTargetRef.current = null;
+  }, [addLog]);
+
+  const startDungeonAutoHarvest = useCallback((targetX: number, targetY: number) => {
+    if (typeof window === 'undefined') return;
+    cancelAutoHarvest();
+    const currentDungeon = dungeonRef.current;
+    const tile = currentDungeon?.tiles[targetY]?.[targetX];
+    if (!currentDungeon || !tile || (tile.type !== 'mineable_wall' && tile.type !== 'terrain')) return;
+    autoHarvestTargetRef.current = { x: targetX, y: targetY, tileType: tile.type };
+    const stepDelay = Math.max(120, settings.autoRunSpeed || 100);
+    autoHarvestTimerRef.current = window.setInterval(() => {
+      const target = autoHarvestTargetRef.current;
+      const liveDungeon = dungeonRef.current;
+      if (!target || !liveDungeon) {
+        cancelAutoHarvest();
+        return;
+      }
+      if (hasVisibleEnemy(liveDungeon.tiles)) {
+        cancelAutoHarvest('⚠️ Auto-Harvest stopped — enemy spotted!');
+        return;
+      }
+      const liveTile = liveDungeon.tiles[target.y]?.[target.x];
+      if (!liveTile || liveTile.type !== target.tileType) {
+        cancelAutoHarvest('✅ Auto-Harvest finished — resource depleted.');
+        return;
+      }
+      const direction = getDirection(liveDungeon.playerPosition, { x: target.x, y: target.y });
+      if (!direction) {
+        cancelAutoHarvest('⚠️ Auto-Harvest stopped — moved out of range.');
+        return;
+      }
+      if (isMovingRef.current) return;
+      isMovingRef.current = true;
+      handleMoveRef.current(direction);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        isMovingRef.current = false;
+      }));
+      setTimeout(() => { isMovingRef.current = false; }, 250);
+    }, stepDelay);
+  }, [cancelAutoHarvest, settings.autoRunSpeed]);
+
+  useEffect(() => () => cancelAutoHarvest(), [cancelAutoHarvest]);
 
   // Auto-run logic - uses requestAnimationFrame for smooth timing
   // Track if a move is currently being processed to prevent overlapping moves
@@ -3694,12 +3746,20 @@ function DungeonView({
               const tile = dungeon.tiles[y]?.[x];
               const close = () => setDungeonTileMenu(null);
               if (!tile) { close(); return null; }
+              const structure = ((dungeon.playerBuildings || []) as any[]).find((b) => b.worldX === x && b.worldY === y);
+              const structureDef = structure ? BUILDING_DEFINITIONS[structure.type as keyof typeof BUILDING_DEFINITIONS] : null;
 
               const monster = state.run.currentMonster;
               const dist = Math.abs(x - dungeon.playerPosition.x) + Math.abs(y - dungeon.playerPosition.y);
               const isAdjacent = dist === 1;
               const relativeX = x - (dungeon.entryPosition?.x ?? 0);
               const relativeY = y - (dungeon.entryPosition?.y ?? 0);
+              const trapNames = {
+                spike: { title: '🔺 Spike Trap', description: 'Deals physical damage when triggered' },
+                poison: { title: '☠️ Poison Trap', description: 'Inflicts poison when triggered' },
+                alarm: { title: '🔔 Alarm Trap', description: 'Alerts nearby enemies when triggered' },
+              } as const;
+
               const info: UnifiedTileInfo[] = [
                 { label: 'Distance', value: dist === 0 ? 'Standing here' : isAdjacent ? 'Adjacent' : `${dist} tiles` },
                 { label: 'Relative', value: `(${relativeX}, ${relativeY})` },
@@ -3805,6 +3865,7 @@ function DungeonView({
               } else if (tile.type === 'treasure') {
                 title = '🎁 Treasure chest';
                 subtitle = 'Unopened loot cache';
+                info.push({ label: 'Loot', value: 'Chest rewards on contact' });
                 info.push({ label: 'Action', value: isAdjacent ? 'Collectable now' : 'Step adjacent first' });
                 if (isAdjacent) {
                   actions.push({
@@ -3818,6 +3879,7 @@ function DungeonView({
               } else if (tile.type === 'stairs') {
                 title = '⬇️ Descending stairs';
                 subtitle = `Floor ${dungeon.floor} → ${dungeon.floor + 1}`;
+                info.push({ label: 'Tile', value: 'Dungeon exit downward' });
                 info.push({ label: 'Destination', value: `Floor ${dungeon.floor + 1}` });
                 if (isAdjacent) {
                   actions.push({
@@ -3832,6 +3894,7 @@ function DungeonView({
                 const isEntranceStairs = dungeon.floor <= (dungeon.startingFloor ?? 1);
                 title = '⬆️ Ascending stairs';
                 subtitle = isEntranceStairs ? 'Entrance staircase' : `Floor ${dungeon.floor} → ${Math.max(1, dungeon.floor - 1)}`;
+                info.push({ label: 'Tile', value: isEntranceStairs ? 'Dungeon entrance / exit' : 'Staircase upward' });
                 info.push({ label: 'Destination', value: isEntranceStairs ? 'Exit / entrance' : `Floor ${Math.max(1, dungeon.floor - 1)}` });
                 if (isAdjacent) {
                   actions.push({
@@ -3845,6 +3908,7 @@ function DungeonView({
               } else if (tile.type === 'shop') {
                 title = '🛒 Dungeon shop';
                 subtitle = 'Buy supplies and gear';
+                info.push({ label: 'Tile', value: 'Merchant stall' });
                 if (isAdjacent) {
                   actions.push({
                     id: 'open-shop',
@@ -3857,6 +3921,7 @@ function DungeonView({
               } else if (tile.type === 'elevator') {
                 title = '🛗 Elevator';
                 subtitle = 'Swap party members with town storage';
+                info.push({ label: 'Tile', value: 'Party transfer point' });
                 if (isAdjacent) {
                   actions.push({
                     id: 'use-elevator',
@@ -3870,18 +3935,35 @@ function DungeonView({
                 const wallName = tile.wallTier ? mineableWallName(tile.wallTier) : 'Mineable wall';
                 const pickaxeTier = effectiveTools(state.saveData.tools).pickaxe;
                 const hitsNeeded = tile.wallTier ? hitsToBreak(tile.wallTier, pickaxeTier) : Infinity;
+                const autoHarvestOn = !!settings.autoMine;
                 title = `⛏️ ${wallName}`;
                 subtitle = tile.wallTier ? `Tier ${tile.wallTier} wall` : 'Breakable wall';
+                info.push({ label: 'Loot', value: `Drops ${wallName}` });
                 info.push({ label: 'Progress', value: isFinite(hitsNeeded) ? `${tile.wallHits || 0} / ${hitsNeeded} hits` : `${tile.wallHits || 0} hits` });
                 info.push({ label: 'Tool', value: isFinite(hitsNeeded) ? 'Pickaxe can break it' : 'Pickaxe too weak or missing' });
                 if (isAdjacent) {
                   actions.push({
                     id: 'mine-wall',
-                    label: 'Mine wall',
-                    hint: 'Consumes a turn',
+                    label: autoHarvestOn ? 'Auto-Harvest wall' : 'Mine wall',
+                    hint: autoHarvestOn ? 'Keeps mining until broken or an enemy appears' : 'Consumes a turn',
                     icon: Pickaxe,
                     variant: 'default',
-                    onClick: stepToTile,
+                    onClick: () => {
+                      close();
+                      if (autoHarvestOn) startDungeonAutoHarvest(x, y);
+                      else handleMove(getDirection(dungeon.playerPosition, { x, y }));
+                    },
+                  });
+                  actions.push({
+                    id: 'toggle-auto-harvest-wall',
+                    label: autoHarvestOn ? 'Disable Auto-Harvest' : 'Enable Auto-Harvest',
+                    hint: 'Applies to dungeon walls and rune tiles; persisted in Settings',
+                    icon: Pickaxe,
+                    variant: 'outline',
+                    onClick: () => {
+                      updateSetting('autoMine', !autoHarvestOn);
+                      toast.info(`Auto-Harvest ${!autoHarvestOn ? 'enabled' : 'disabled'}`);
+                    },
                   });
                 }
               } else if (tile.type === 'plant' && tile.plantType) {
@@ -3901,27 +3983,47 @@ function DungeonView({
                 const terrainConfig = TERRAIN_CONFIG[tile.terrainType];
                 const shovelTier = effectiveTools(state.saveData.tools).shovel;
                 const hitsNeeded = shovelHitsToBreak(tile.terrainType, shovelTier);
+                const autoHarvestOn = !!settings.autoMine;
                 title = `${terrainConfig.icon} ${terrainConfig.name}`;
                 subtitle = 'Hazardous rune tile';
+                info.push({ label: 'Description', value: terrainConfig.description });
                 info.push({ label: 'Favored', value: terrainConfig.favoredElement ?? terrainConfig.favoredClass ?? 'None' });
                 info.push({ label: 'Backlash', value: '2 damage if mismatched' });
                 info.push({ label: 'Digging', value: isFinite(hitsNeeded) ? `${hitsNeeded} dig${hitsNeeded === 1 ? '' : 's'} with current shovel` : 'Shovel too weak or missing' });
                 if (isAdjacent) {
                   actions.push({
                     id: 'step-on-rune',
-                    label: isAutoShovelEnabled() && isFinite(hitsNeeded) ? 'Step on & auto-dig' : 'Step onto rune',
-                    hint: isAutoShovelEnabled() ? 'Auto-Shovel is on' : 'Auto-Shovel is off',
+                    label: autoHarvestOn && isFinite(hitsNeeded)
+                      ? 'Auto-Harvest rune'
+                      : isAutoShovelEnabled() && isFinite(hitsNeeded)
+                        ? 'Step on & auto-dig'
+                        : 'Step onto rune',
+                    hint: autoHarvestOn
+                      ? 'Keeps digging until the rune is removed or an enemy appears'
+                      : isAutoShovelEnabled()
+                        ? 'Auto-Shovel is on'
+                        : 'Auto-Shovel is off',
                     icon: isAutoShovelEnabled() ? Shovel : Footprints,
                     variant: 'default',
-                    onClick: stepToTile,
+                    onClick: () => {
+                      close();
+                      if (autoHarvestOn && isFinite(hitsNeeded)) startDungeonAutoHarvest(x, y);
+                      else handleMove(getDirection(dungeon.playerPosition, { x, y }));
+                    },
+                  });
+                  actions.push({
+                    id: 'toggle-auto-harvest-rune',
+                    label: autoHarvestOn ? 'Disable Auto-Harvest' : 'Enable Auto-Harvest',
+                    hint: 'Applies to dungeon walls and rune tiles; persisted in Settings',
+                    icon: Pickaxe,
+                    variant: 'outline',
+                    onClick: () => {
+                      updateSetting('autoMine', !autoHarvestOn);
+                      toast.info(`Auto-Harvest ${!autoHarvestOn ? 'enabled' : 'disabled'}`);
+                    },
                   });
                 }
               } else if (tile.type === 'trap') {
-                const trapNames = {
-                  spike: { title: '🔺 Spike Trap', description: 'Deals physical damage when triggered' },
-                  poison: { title: '☠️ Poison Trap', description: 'Inflicts poison when triggered' },
-                  alarm: { title: '🔔 Alarm Trap', description: 'Alerts nearby enemies when triggered' },
-                } as const;
                 const trapType = tile.trapType || 'spike';
                 const trapInfo = trapNames[trapType];
                 const disarmChance = Math.min(95, Math.max(5, (monster.stats.dodge || 10) * 3 + 20));
@@ -3965,6 +4067,11 @@ function DungeonView({
                     },
                   });
                 }
+              } else if (structure && structureDef) {
+                title = `${structureDef.emoji} ${structureDef.name}`;
+                subtitle = structure.built === false ? 'Construction site' : 'Player-built structure';
+                info.push({ label: 'Tile', value: 'Dungeon structure' });
+                if (structureDef.description) info.push({ label: 'Use', value: structureDef.description });
               } else if (tile.type === 'door') {
                 title = '🚪 Door';
                 subtitle = 'Passageway';
@@ -3981,7 +4088,7 @@ function DungeonView({
                 subtitle = tile.type;
               }
 
-              if (tile.explored && dist > 0 && tile.type !== 'wall' && tile.type !== 'mineable_wall') {
+              if (tile.explored && dist > 0 && tile.type !== 'wall' && tile.type !== 'mineable_wall' && !structure) {
                 if (isAdjacent) {
                   actions.push({
                     id: 'move',

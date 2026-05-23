@@ -117,7 +117,7 @@ export function resolveEffectFor(monster: Monster | null | undefined, move: Move
     if (fx) return fx;
   }
   // 4. Class default
-  const cls = monster?.classType;
+  const cls = (monster as { class?: import('../types').ClassType } | undefined)?.class;
   if (cls) {
     const fx = effects.get(defaults.get(`class:${cls}`) ?? '');
     if (fx) return fx;

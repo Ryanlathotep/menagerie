@@ -11,6 +11,7 @@ import { useDismissTooltipsOnTap } from "./hooks/useDismissTooltipsOnTap";
 import { supabase } from "@/integrations/supabase/client";
 import { setMoveOverrides } from "@/game/moveOverrides";
 import { setEquipmentIconOverrides } from "@/game/equipmentIconOverrides";
+import { setAssetOverrides } from "@/game/assetOverrides";
 import { FloatingBugButton } from "@/game/FloatingBugButton";
 
 const queryClient = new QueryClient();
@@ -19,19 +20,20 @@ const AppRoutes = () => {
   // Tap anywhere to dismiss lingering hover-cards / tooltips (esp. on mobile).
   useDismissTooltipsOnTap();
 
-  // Pull admin-defined move overrides + custom moves once on boot so they
-  // influence getMonsterMoves immediately.
+  // Pull admin-defined move overrides + custom moves + image assets once on
+  // boot so they influence game rendering immediately.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const { data, error } = await supabase
         .from('game_data_overrides')
         .select('data_type, data_key, data_value')
-        .in('data_type', ['moves', 'sprites']);
+        .in('data_type', ['moves', 'sprites', 'asset_image']);
       if (cancelled || error || !data) return;
       const rows = data as { data_type: string; data_key: string; data_value: Record<string, unknown> }[];
       setMoveOverrides(rows.filter((r) => r.data_type === 'moves'));
       setEquipmentIconOverrides(rows.filter((r) => r.data_type === 'sprites'));
+      setAssetOverrides(rows.filter((r) => r.data_type === 'asset_image'));
     })();
     return () => { cancelled = true; };
   }, []);

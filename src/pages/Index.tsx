@@ -3808,6 +3808,36 @@ function DungeonView({
               }}
             />
 
+            {/* Dungeon building: Assign monster modal */}
+            {dungeonAssignBuilding && state.run && (
+              <BuildingAssignModal
+                building={dungeonAssignBuilding}
+                party={state.run.party}
+                activePartyIndex={state.run.activePartyIndex}
+                assignedMonsterIds={(dungeon?.playerBuildings || [])
+                  .filter(b => b.assignedMonsterId && b.id !== dungeonAssignBuilding.id)
+                  .map(b => b.assignedMonsterId!)
+                }
+                onAssign={handleDungeonAssignMonster}
+                onUnassign={handleDungeonUnassignMonster}
+                onClose={() => setDungeonAssignBuilding(null)}
+              />
+            )}
+
+            {/* Dungeon building: context menu (assign / repair / disassemble) */}
+            {dungeonContextBuilding && state.run && (
+              <BuildingContextMenu
+                building={dungeonContextBuilding}
+                party={state.run.party}
+                woodAvailable={state.saveData.overworldState?.woodCollected ?? 0}
+                stoneAvailable={state.saveData.overworldState?.stoneCollected ?? 0}
+                onAssign={handleDungeonContextAssign}
+                onRepair={handleDungeonRepairBuilding}
+                onDisassemble={handleDungeonDisassembleBuilding}
+                onClose={() => setDungeonContextBuilding(null)}
+              />
+            )}
+
             {/* Targeting mode UI */}
             {targetingMove && (
               <MoveInfoPanel move={targetingMove} onCancel={cancelTargeting} />

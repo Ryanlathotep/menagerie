@@ -1457,7 +1457,7 @@ function DungeonView({
             );
             return { ...fresh, visitedFloors: visited };
           })();
-      dispatch({ type: 'SET_DUNGEON', dungeon: newDungeon });
+      dispatch({ type: 'SET_DUNGEON', dungeon: prepareDungeonForEntry(newDungeon) });
       addLog(`⬆️ Ascended to Floor ${prevFloorNum}.`, 'system');
       return;
     } else if (result.trap) {

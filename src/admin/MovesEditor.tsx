@@ -68,6 +68,47 @@ export function MovesEditor() {
     return out;
   }, []);
 
+  // For each built-in move id, infer its availability lists + aspects from
+  // every pool it appears in. Built-in moves don't carry availableSpecies /
+  // availableElements / availableClasses on the object literal — that data
+  // lives implicitly in the SPECIES_MOVES / ELEMENT_MOVES / CLASS_MOVES keys.
+  // We surface it here so the editor's availability toggles are pre-populated
+  // when an admin opens a preexisting move.
+  type InferredAvail = {
+    availableSpecies: SpeciesType[];
+    availableElements: ElementType[];
+    availableClasses: ClassType[];
+    aspects: ('species' | 'element' | 'class')[];
+  };
+  const inferredAvailability = useMemo(() => {
+    const map = new Map<string, InferredAvail>();
+    const ensure = (id: string): InferredAvail => {
+      let e = map.get(id);
+      if (!e) {
+        e = { availableSpecies: [], availableElements: [], availableClasses: [], aspects: [] };
+        map.set(id, e);
+      }
+      return e;
+    };
+    Object.entries(SPECIES_MOVES).forEach(([s, list]) => list.forEach((m) => {
+      const e = ensure(m.id);
+      if (!e.availableSpecies.includes(s as SpeciesType)) e.availableSpecies.push(s as SpeciesType);
+      if (!e.aspects.includes('species')) e.aspects.push('species');
+    }));
+    Object.entries(ELEMENT_MOVES).forEach(([el, list]) => list.forEach((m) => {
+      const e = ensure(m.id);
+      if (!e.availableElements.includes(el as ElementType)) e.availableElements.push(el as ElementType);
+      if (!e.aspects.includes('element')) e.aspects.push('element');
+    }));
+    Object.entries(CLASS_MOVES).forEach(([c, list]) => list.forEach((m) => {
+      const e = ensure(m.id);
+      if (!e.availableClasses.includes(c as ClassType)) e.availableClasses.push(c as ClassType);
+      if (!e.aspects.includes('class')) e.aspects.push('class');
+    }));
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Custom (admin-created) moves come from overrides that carry `custom: true`.
   const customMoves = useMemo<SourcedMove[]>(() => {
     return overrides
@@ -127,8 +168,18 @@ export function MovesEditor() {
     }
     if (loadedForIdRef.current === selected.move.id) return;
     loadedForIdRef.current = selected.move.id;
-    setEditedMove(selectedOverride ? { ...selected.move, ...selectedOverride } : { ...selected.move });
-  }, [selected, selectedOverride]);
+    // Seed editor with: inferred availability (built-ins only) ← base move ← saved override.
+    // Inferred values only fill blanks; explicit move fields and overrides always win.
+    const inferred = !selected.isCustom ? inferredAvailability.get(selected.move.id) : undefined;
+    const base: Partial<Move> = { ...selected.move };
+    if (inferred) {
+      if (!base.availableSpecies?.length) base.availableSpecies = [...inferred.availableSpecies];
+      if (!base.availableElements?.length) base.availableElements = [...inferred.availableElements];
+      if (!base.availableClasses?.length) base.availableClasses = [...inferred.availableClasses];
+      if (!base.aspects?.length) base.aspects = [...inferred.aspects] as Move['aspects'];
+    }
+    setEditedMove(selectedOverride ? { ...base, ...selectedOverride } : base);
+  }, [selected, selectedOverride, inferredAvailability]);
 
   const handleSelect = (id: string) => setSelectedId(id);
 

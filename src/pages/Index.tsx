@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getComboId, UnlockedMonster, InventoryItem, MonsterStats, Monster, Position, DungeonState, hydrateDungeonFromSnapshot } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
-import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, hasVisibleEnemy, LOOT_TABLE, mineWall, mineableWallName, digRune, damageDungeonNest, tickDungeonNests } from '@/game/dungeon';
+import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, hasVisibleEnemy, LOOT_TABLE, mineWall, mineableWallName, digRune, damageDungeonNest, tickDungeonNests, prepareDungeonForEntry, findNearestWalkableTile } from '@/game/dungeon';
 import { spawnNestMonster, getNestDestroyRewards } from '@/game/nests';
 import { expandDungeonIfNeeded, findStairsPosition } from '@/game/dungeonExpansion';
 import { PICKAXE_TIERS, hitsToBreak } from '@/game/tools';

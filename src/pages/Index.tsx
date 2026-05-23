@@ -1405,7 +1405,7 @@ function DungeonView({
         tiles[spawn.y][spawn.x].stairsBeneath = 'up';
         newDungeon = { ...fresh, tiles, entryPosition: { ...spawn }, visitedFloors: visited };
       }
-      dispatch({ type: 'SET_DUNGEON', dungeon: newDungeon });
+      dispatch({ type: 'SET_DUNGEON', dungeon: prepareDungeonForEntry(newDungeon) });
       addLog(`⬇️ Descended to Floor ${nextFloorNum}!`, 'system');
       const towerId = typeof window !== 'undefined' ? localStorage.getItem('menagerie_active_dungeon_id') : null;
       if (towerId) {

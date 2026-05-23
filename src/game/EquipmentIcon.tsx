@@ -3,6 +3,7 @@
 import React from 'react';
 import { EquipmentItem, RARITY_COLORS, Rarity, EQUIPMENT_SETS, SetId } from './equipment';
 import { getEquipmentIcon, getPrimaryStat, STAT_COLORS } from './equipmentUtils';
+import { getAssetOverride } from './assetOverrides';
 
 interface EquipmentIconProps {
   item: EquipmentItem;
@@ -30,6 +31,7 @@ const RARITY_GLOW: Record<Rarity, string> = {
 
 export function EquipmentIcon({ item, size = 40, showStatPreview = true, className = '' }: EquipmentIconProps) {
   const iconDef = getEquipmentIcon(item.name);
+  const imageUrl = getAssetOverride('equipment', item.name);
   const primaryStat = showStatPreview ? getPrimaryStat(item) : null;
   
   // Use set color if item is part of a set, otherwise use rarity color

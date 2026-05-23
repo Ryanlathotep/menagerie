@@ -87,6 +87,7 @@ import {
   enemyHasStaminaToAttack,
   getPathTiles,
 } from '@/game/dungeonCombat';
+import { playParticleEffectForMove } from '@/game/particles/api';
 import { MoveInfoPanel } from '@/game/AttackTargeting';
 import { loadKeybinds, getMonsterKeybinds as getMonsterKeybindsImport } from '@/game/keybinds';
 import { useAuth } from '@/hooks/useAuth';

@@ -568,7 +568,12 @@ function getRandomPlantForFloor(floor: number): PlantType {
 }
 
 // Update visibility around a position
-export function updateVisibility(tiles: DungeonTile[][], position: Position, range: number = 3): void {
+export function updateVisibility(
+  tiles: DungeonTile[][],
+  position: Position,
+  range: number = 3,
+  extraSources?: Array<{ x: number; y: number; range: number }>,
+): void {
   // Reset visibility
   for (let y = 0; y < tiles.length; y++) {
     for (let x = 0; x < tiles[y].length; x++) {
@@ -576,18 +581,39 @@ export function updateVisibility(tiles: DungeonTile[][], position: Position, ran
     }
   }
 
-  // Simple square vision
-  for (let dy = -range; dy <= range; dy++) {
-    for (let dx = -range; dx <= range; dx++) {
-      const ny = position.y + dy;
-      const nx = position.x + dx;
-      
-      if (ny >= 0 && ny < tiles.length && nx >= 0 && nx < tiles[0].length) {
-        tiles[ny][nx].visible = true;
-        tiles[ny][nx].explored = true;
+  const reveal = (cx: number, cy: number, r: number) => {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        const ny = cy + dy;
+        const nx = cx + dx;
+        if (ny >= 0 && ny < tiles.length && nx >= 0 && nx < tiles[0].length) {
+          tiles[ny][nx].visible = true;
+          tiles[ny][nx].explored = true;
+        }
       }
     }
+  };
+
+  reveal(position.x, position.y, range);
+  if (extraSources) {
+    for (const src of extraSources) reveal(src.x, src.y, src.range);
   }
+}
+
+/**
+ * Returns vision sources contributed by player-built scout towers on this floor.
+ * Only towers with an assigned monster contribute vision.
+ */
+export function getDungeonTowerVisionSources(
+  dungeon: Pick<DungeonState, 'playerBuildings'> | { playerBuildings?: any[] },
+): Array<{ x: number; y: number; range: number }> {
+  const buildings = (dungeon as any).playerBuildings as any[] | undefined;
+  if (!buildings || buildings.length === 0) return [];
+  // SCOUT_TOWER_VISION_RADIUS = 4 (kept inline to avoid circular import)
+  const VISION = 4;
+  return buildings
+    .filter(b => b && b.type === 'scout_tower' && b.assignedMonsterId && b.built !== false)
+    .map(b => ({ x: b.worldX, y: b.worldY, range: VISION }));
 }
 
 // Move result with all possible events

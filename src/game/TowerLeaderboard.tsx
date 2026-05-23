@@ -7,7 +7,6 @@ import { Trophy, Loader2 } from 'lucide-react';
 
 interface LeaderboardEntry {
   rank: number;
-  user_id: string;
   username: string;
   best_floor: number;
   party_snapshot: unknown;

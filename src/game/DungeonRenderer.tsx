@@ -917,7 +917,7 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
             left: '50%',
             top: '50%',
             transform: `translate(${-(px * tileSize + tileSize / 2)}px, ${-(py * tileSize + tileSize / 2)}px)`,
-            transition: 'transform 120ms ease-out',
+            transition: skipTransition ? 'none' : 'transform 120ms ease-out',
           }}
         >
           {dungeon.tiles.map((row, y) => (

@@ -600,6 +600,81 @@ export function updateVisibility(
   }
 }
 
+// Find the nearest walkable (floor / stairs / etc) tile to (cx, cy) using a
+// breadth-first scan. Returns the original position if it's already walkable,
+// or null if nothing nearby is reachable. Used by both the entry-prep helper
+// and the player-facing "Get Unstuck" action.
+export function findNearestWalkableTile(
+  tiles: DungeonTile[][],
+  cx: number, cy: number,
+  maxRadius = 60,
+): Position | null {
+  const H = tiles.length;
+  if (H === 0) return null;
+  const W = tiles[0].length;
+  const isWalkable = (t: DungeonTile | undefined) => {
+    if (!t) return false;
+    if (t.type === 'wall' || t.type === 'mineable_wall' || t.type === 'nest') return false;
+    return true;
+  };
+  if (cx >= 0 && cy >= 0 && cx < W && cy < H && isWalkable(tiles[cy][cx])) {
+    return { x: cx, y: cy };
+  }
+  const seen = new Set<string>();
+  const queue: Position[] = [{ x: cx, y: cy }];
+  seen.add(`${cx},${cy}`);
+  let head = 0;
+  while (head < queue.length) {
+    const { x, y } = queue[head++];
+    if (Math.abs(x - cx) + Math.abs(y - cy) > maxRadius) continue;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+      const key = `${nx},${ny}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (isWalkable(tiles[ny][nx])) return { x: nx, y: ny };
+      queue.push({ x: nx, y: ny });
+    }
+  }
+  return null;
+}
+
+// Prepare a dungeon for the player to enter / resume on. Ensures the player
+// tile marker is set, the player isn't stranded inside a wall (snapshot
+// hydration or mining edge cases can leave them on a wall), and the
+// visibility radius is refreshed around the player. Idempotent.
+export function prepareDungeonForEntry(dungeon: DungeonState): DungeonState {
+  if (!dungeon.tiles || dungeon.tiles.length === 0) return dungeon;
+  const tiles = dungeon.tiles.map(row => row.map(t => ({ ...t })));
+  let { playerPosition } = dungeon;
+  const at = tiles[playerPosition.y]?.[playerPosition.x];
+  const stuck = !at || at.type === 'wall' || at.type === 'mineable_wall' || at.type === 'nest';
+  if (stuck) {
+    const safe = findNearestWalkableTile(tiles, playerPosition.x, playerPosition.y);
+    if (safe) playerPosition = safe;
+  }
+  // Clear any stray 'player' tiles that may exist from a stale snapshot.
+  for (let y = 0; y < tiles.length; y++) {
+    for (let x = 0; x < tiles[y].length; x++) {
+      if (tiles[y][x].type === 'player' && (x !== playerPosition.x || y !== playerPosition.y)) {
+        if (tiles[y][x].stairsBeneath === 'down') tiles[y][x].type = 'stairs';
+        else if (tiles[y][x].stairsBeneath === 'up') tiles[y][x].type = 'stairs_up';
+        else if (tiles[y][x].terrainType) tiles[y][x].type = 'terrain';
+        else tiles[y][x].type = 'floor';
+        tiles[y][x].stairsBeneath = undefined;
+      }
+    }
+  }
+  // Mark player tile (preserve stairsBeneath / terrainType under it).
+  const pTile = tiles[playerPosition.y][playerPosition.x];
+  if (pTile.type === 'stairs') { pTile.stairsBeneath = 'down'; }
+  else if (pTile.type === 'stairs_up') { pTile.stairsBeneath = 'up'; }
+  pTile.type = 'player';
+  updateVisibility(tiles, playerPosition, 3, getDungeonTowerVisionSources(dungeon));
+  return { ...dungeon, tiles, playerPosition };
+}
+
 /**
  * Returns vision sources contributed by player-built scout towers on this floor.
  * Only towers with an assigned monster contribute vision.

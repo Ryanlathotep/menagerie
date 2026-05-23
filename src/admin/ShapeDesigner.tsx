@@ -623,7 +623,64 @@ export function ShapeDesigner() {
             )}
           </div>
         </ScrollArea>
+
+        {/* Templates */}
+        <div className="mt-3 border-t border-border pt-2">
+          <div className="flex items-center gap-2 mb-1.5">
+            <Bookmark className="w-3.5 h-3.5 text-muted-foreground" />
+            <Label className="text-xs uppercase text-muted-foreground">Templates</Label>
+            <span className="text-[10px] text-muted-foreground ml-auto">
+              {templatesLoading ? 'loading…' : `${templates.length} saved`}
+            </span>
+          </div>
+          <p className="text-[10px] text-muted-foreground mb-1.5">
+            Reusable shapes / movement patterns. Click to apply to the selected move
+            (then Save Override). A template whose name matches a move's name is
+            auto-applied when that move is first opened.
+          </p>
+          <ScrollArea className="h-[120px] lg:h-[160px] border border-border rounded">
+            <div className="space-y-0.5 p-1">
+              {templates.length === 0 && (
+                <div className="text-[11px] text-muted-foreground italic p-1.5">
+                  No templates yet — open a move, design a shape, then “Save as Template”.
+                </div>
+              )}
+              {templates.map(({ key, tpl }) => (
+                <div
+                  key={key}
+                  className="flex items-center gap-1 px-1.5 py-1 rounded hover:bg-muted text-xs"
+                >
+                  <button
+                    onClick={() => selected ? applyTemplateData(tpl) : toast.error('Select a move first.')}
+                    className="flex-1 text-left truncate"
+                    title={`Apply ${tpl.mode} template`}
+                  >
+                    <span className="font-medium">{tpl.name}</span>
+                    <span className="text-[10px] text-muted-foreground ml-1.5">
+                      {tpl.mode === 'movement' ? 'movement' : 'shape'}
+                      {tpl.mode === 'shape' && tpl.shape?.offsets ? ` · ${tpl.shape.offsets.length} cells` : ''}
+                      {tpl.mode === 'movement' && tpl.movement?.offsets ? ` · ${tpl.movement.offsets.length} cells` : ''}
+                    </span>
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (window.confirm(`Delete template "${tpl.name}"?`)) {
+                        await deleteTemplate('shape_templates', key);
+                      }
+                    }}
+                    className="text-muted-foreground hover:text-destructive p-0.5"
+                    title="Delete template"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
       </Card>
+
+
 
 
       {/* Designer */}

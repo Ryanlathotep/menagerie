@@ -1075,7 +1075,7 @@ function DungeonView({
       );
       dispatch({
         type: 'SET_DUNGEON',
-        dungeon: { ...hydrated, tiles: entryTiles }
+        dungeon: prepareDungeonForEntry({ ...hydrated, tiles: entryTiles })
       });
     }
   }, [dungeon, dispatch, state.saveData.dungeonEntrances, state.saveData.unlockedMonsters]);

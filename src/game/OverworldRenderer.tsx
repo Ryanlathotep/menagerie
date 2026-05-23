@@ -22,6 +22,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { BuildingTooltipContent } from './BuildingTooltip';
 import { OverworldTooltipContent } from './OverworldTooltip';
 import { isDowsingEffective, onDowsingChange, DOWSING_HIGHLIGHT_COUNT } from './dowsingRod';
+import { ParticleLayer } from './particles/ParticleLayer';
 
 interface OverworldRendererProps {
   overworld: OverworldState;
@@ -524,6 +525,11 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
             </HoverCard>
           );
         })}
+        <ParticleLayer
+          surface="overworld"
+          tileSize={tileSize}
+          originWorld={{ x: px - VIEW_RANGE, y: py - VIEW_RANGE }}
+        />
       </div>
       {/* Edge-of-screen arrows for off-screen player waypoints. */}
       {(overworld.waypoints || []).length > 0 && (

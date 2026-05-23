@@ -38,6 +38,7 @@ import { isCreativeMode, effectiveTools } from './creativeMode';
 import { detectConnectorDir, nextConnectorDir } from './wallTop';
 import { OverworldRenderer, OverworldRendererHandle } from './OverworldRenderer';
 import { findOverworldPath } from './overworldPathfinding';
+import { playParticleEffectForMove } from './particles/api';
 import { OverworldDirectionArrows } from './OverworldDirectionArrows';
 import { UnifiedTileMenu, UnifiedTileAction, UnifiedTileInfo, UnifiedTileCreature } from './UnifiedTileMenu';
 import { Flag, FlagOff, DoorOpen, Hammer, Footprints, Swords, Shovel, Droplet, Trash2, Settings as SettingsIcon, Pickaxe, TreePine, Wheat, Wrench, Users, Sparkles } from 'lucide-react';
@@ -319,6 +320,17 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         const playerDef = playerMon.stats.defense;
         if (move) {
           const roll = rollEnemyMoveDamage(enemy, move, playerDef, playerMon.element);
+          // Visual FX from enemy → player.
+          try {
+            playParticleEffectForMove({
+              surface: 'overworld',
+              monster: enemy,
+              move,
+              from: pos,
+              to: ow.playerPosition,
+              affected: [ow.playerPosition],
+            });
+          } catch (e) { /* never block combat */ }
           if (!roll.hit) {
             addLog(`👹 ${enemy.name} uses ${move.name} — but misses!`, 'system');
           } else {
@@ -736,7 +748,19 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     }
 
     const affected = getOverworldAffectedTiles(overworld.playerPosition, { x: worldX, y: worldY }, config, overworld);
-    
+
+    // Visual particle FX (caster → target / AoE tiles).
+    try {
+      playParticleEffectForMove({
+        surface: 'overworld',
+        monster,
+        move: targetingMove,
+        from: overworld.playerPosition,
+        to: { x: worldX, y: worldY },
+        affected,
+      });
+    } catch (e) { /* never block combat on FX */ }
+
     const staminaCost = targetingMove.staminaCost || 0;
     const maxSta = monster.stats.stamina ?? 50;
     const curSta = monster.stats.currentStamina ?? maxSta;

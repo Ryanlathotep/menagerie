@@ -12,10 +12,13 @@ import { ELEMENT_COLORS } from '../types';
 interface Props {
   surface: Surface;
   tileSize: number;
+  /** Optional offset that's subtracted from incoming tile coords before pixel
+   *  conversion. Use for overworld where the grid container shows a window
+   *  centred on the player. Dungeon leaves this at {0,0}. */
+  originWorld?: { x: number; y: number };
 }
 
 interface ActiveEffect extends ParticleEmitRequest {
-  /** Pre-resolved per-particle properties so we don't recompute every frame. */
   resolvedColor: string;
   pxFrom: { x: number; y: number };
   pxTo: { x: number; y: number };
@@ -32,8 +35,8 @@ function resolveColor(req: ParticleEmitRequest): string {
   return HSL(ELEMENT_COLORS[el].primary);
 }
 
-function toPx(tile: { x: number; y: number }, tileSize: number) {
-  return { x: tile.x * tileSize + tileSize / 2, y: tile.y * tileSize + tileSize / 2 };
+function toPx(tile: { x: number; y: number }, tileSize: number, origin: { x: number; y: number }) {
+  return { x: (tile.x - origin.x) * tileSize + tileSize / 2, y: (tile.y - origin.y) * tileSize + tileSize / 2 };
 }
 
 export function ParticleLayer({ surface, tileSize }: Props) {

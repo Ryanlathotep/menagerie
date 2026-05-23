@@ -34,8 +34,10 @@ import { calculateMonsterDrops, getEnemyEquipmentDrops } from '@/game/monsterDro
 import { rollEnemyMoveDamage } from '@/game/enemyAI';
 import { EquipmentView } from '@/game/EquipmentView';
 import { PreRunEquipment } from '@/game/PreRunEquipment';
-import { BUILDING_DEFINITIONS, createBuilding, PlayerBuildingType } from '@/game/buildings';
+import { BUILDING_DEFINITIONS, createBuilding, PlayerBuildingType, PlayerBuilding, getRepairCost, getDisassembleRefund } from '@/game/buildings';
 import { DungeonBuildPanel } from '@/game/DungeonBuildPanel';
+import { BuildingAssignModal } from '@/game/BuildingAssignModal';
+import { BuildingContextMenu } from '@/game/BuildingContextMenu';
 import { OverworldView } from '@/game/OverworldView';
 import { DungeonListPanel } from '@/game/DungeonListPanel';
 import { EnemyAttackMenu, EnemyAttackTarget } from '@/game/EnemyAttackMenu';
@@ -1019,6 +1021,9 @@ function DungeonView({
   const [dungeonBuildPanelOpen, setDungeonBuildPanelOpen] = useState(false);
   const [dungeonBuildMode, setDungeonBuildMode] = useState(false);
   const [selectedDungeonBuildType, setSelectedDungeonBuildType] = useState<PlayerBuildingType | null>(null);
+  // Dungeon building assign / context menus (mirror of OverworldView's flow).
+  const [dungeonAssignBuilding, setDungeonAssignBuilding] = useState<import('@/game/buildings').PlayerBuilding | null>(null);
+  const [dungeonContextBuilding, setDungeonContextBuilding] = useState<import('@/game/buildings').PlayerBuilding | null>(null);
   
   // Respawn state - tracks steps and threshold for step-based spawning
   const [stepsSinceLastSpawn, setStepsSinceLastSpawn] = useState(0);
@@ -3083,6 +3088,101 @@ function DungeonView({
   useEffect(() => {
     processEnemyTurnsRef.current = processEnemyTurns;
   }, [processEnemyTurns]);
+
+  // ─── Dungeon building assign / context handlers ───
+  // Mirrors OverworldView's flow but routes mutations through UPDATE_DUNGEON
+  // so the building lives on the dungeon floor (and snapshots correctly).
+  const handleDungeonAssignMonster = useCallback((monsterId: string) => {
+    if (!dungeonAssignBuilding || !dungeon) return;
+    const buildings = (dungeon.playerBuildings || []).map(b => {
+      if (b.id !== dungeonAssignBuilding.id) return b;
+      const updated: PlayerBuilding = { ...b, assignedMonsterId: monsterId };
+      if (b.type === 'farm') {
+        const m = state.run?.party.find(p => p.id === monsterId);
+        updated.farmElement = (m?.element as any) || updated.farmElement;
+        updated.growthProgress = 0;
+        updated.harvestReady = false;
+      }
+      return updated;
+    });
+    dispatch({ type: 'UPDATE_DUNGEON', dungeon: { playerBuildings: buildings } as any });
+    addLog(`👤 Assigned monster to ${BUILDING_DEFINITIONS[dungeonAssignBuilding.type].name}.`, 'system');
+    setDungeonAssignBuilding(null);
+  }, [dungeonAssignBuilding, dungeon, state.run, dispatch, addLog]);
+
+  const handleDungeonUnassignMonster = useCallback(() => {
+    if (!dungeonAssignBuilding || !dungeon) return;
+    const buildings = (dungeon.playerBuildings || []).map(b => {
+      if (b.id !== dungeonAssignBuilding.id) return b;
+      return {
+        ...b,
+        assignedMonsterId: undefined,
+        farmElement: undefined,
+        growthProgress: undefined,
+        harvestReady: false,
+        harvestOutput: undefined,
+      };
+    });
+    dispatch({ type: 'UPDATE_DUNGEON', dungeon: { playerBuildings: buildings } as any });
+    addLog(`🐾 Removed monster from ${BUILDING_DEFINITIONS[dungeonAssignBuilding.type].name}.`, 'system');
+    setDungeonAssignBuilding(null);
+  }, [dungeonAssignBuilding, dungeon, dispatch, addLog]);
+
+  const handleDungeonRepairBuilding = useCallback(() => {
+    if (!dungeonContextBuilding || !dungeon) return;
+    const cost = getRepairCost(dungeonContextBuilding);
+    const ow = state.saveData.overworldState;
+    const creative = isCreativeMode();
+    if (!creative && (!ow || ow.woodCollected < cost.wood || ow.stoneCollected < cost.stone)) {
+      toast.error('Not enough resources!');
+      return;
+    }
+    const buildings = (dungeon.playerBuildings || []).map(b =>
+      b.id === dungeonContextBuilding.id ? { ...b, hp: b.maxHp } : b,
+    );
+    dispatch({ type: 'UPDATE_DUNGEON', dungeon: { playerBuildings: buildings } as any });
+    if (!creative && ow) {
+      dispatch({
+        type: 'UPDATE_OVERWORLD',
+        overworld: {
+          ...ow,
+          woodCollected: ow.woodCollected - cost.wood,
+          stoneCollected: ow.stoneCollected - cost.stone,
+        },
+      });
+    }
+    addLog(`🔧 Repaired ${BUILDING_DEFINITIONS[dungeonContextBuilding.type].name} to full HP.`, 'system');
+    toast.success(`Repaired! (-🪵${cost.wood} -🪨${cost.stone})`);
+    setDungeonContextBuilding(null);
+  }, [dungeonContextBuilding, dungeon, state.saveData.overworldState, dispatch, addLog]);
+
+  const handleDungeonDisassembleBuilding = useCallback(() => {
+    if (!dungeonContextBuilding || !dungeon) return;
+    const refund = getDisassembleRefund(dungeonContextBuilding);
+    const buildings = (dungeon.playerBuildings || []).filter(b => b.id !== dungeonContextBuilding.id);
+    dispatch({ type: 'UPDATE_DUNGEON', dungeon: { playerBuildings: buildings } as any });
+    const ow = state.saveData.overworldState;
+    if (ow) {
+      dispatch({
+        type: 'UPDATE_OVERWORLD',
+        overworld: {
+          ...ow,
+          woodCollected: ow.woodCollected + refund.wood,
+          stoneCollected: ow.stoneCollected + refund.stone,
+        },
+      });
+    }
+    addLog(`♻️ Disassembled ${BUILDING_DEFINITIONS[dungeonContextBuilding.type].name}. Recovered 🪵${refund.wood} 🪨${refund.stone}.`, 'loot');
+    toast.success(`Disassembled! +🪵${refund.wood} +🪨${refund.stone}`);
+    setDungeonContextBuilding(null);
+  }, [dungeonContextBuilding, dungeon, state.saveData.overworldState, dispatch, addLog]);
+
+  const handleDungeonContextAssign = useCallback(() => {
+    if (!dungeonContextBuilding) return;
+    setDungeonAssignBuilding(dungeonContextBuilding);
+    setDungeonContextBuilding(null);
+  }, [dungeonContextBuilding]);
+
   
   // Modified tile click handler for targeting mode
   const handleDungeonTileClick = useCallback((x: number, y: number) => {
@@ -3708,6 +3808,36 @@ function DungeonView({
               }}
             />
 
+            {/* Dungeon building: Assign monster modal */}
+            {dungeonAssignBuilding && state.run && (
+              <BuildingAssignModal
+                building={dungeonAssignBuilding}
+                party={state.run.party}
+                activePartyIndex={state.run.activePartyIndex}
+                assignedMonsterIds={(dungeon?.playerBuildings || [])
+                  .filter(b => b.assignedMonsterId && b.id !== dungeonAssignBuilding.id)
+                  .map(b => b.assignedMonsterId!)
+                }
+                onAssign={handleDungeonAssignMonster}
+                onUnassign={handleDungeonUnassignMonster}
+                onClose={() => setDungeonAssignBuilding(null)}
+              />
+            )}
+
+            {/* Dungeon building: context menu (assign / repair / disassemble) */}
+            {dungeonContextBuilding && state.run && (
+              <BuildingContextMenu
+                building={dungeonContextBuilding}
+                party={state.run.party}
+                woodAvailable={state.saveData.overworldState?.woodCollected ?? 0}
+                stoneAvailable={state.saveData.overworldState?.stoneCollected ?? 0}
+                onAssign={handleDungeonContextAssign}
+                onRepair={handleDungeonRepairBuilding}
+                onDisassemble={handleDungeonDisassembleBuilding}
+                onClose={() => setDungeonContextBuilding(null)}
+              />
+            )}
+
             {/* Targeting mode UI */}
             {targetingMove && (
               <MoveInfoPanel move={targetingMove} onCancel={cancelTargeting} />
@@ -4072,6 +4202,29 @@ function DungeonView({
                 subtitle = structure.built === false ? 'Construction site' : 'Player-built structure';
                 info.push({ label: 'Tile', value: 'Dungeon structure' });
                 if (structureDef.description) info.push({ label: 'Use', value: structureDef.description });
+                info.push({ label: 'Health', value: `${structure.hp ?? '?'} / ${structure.maxHp ?? '?'}` });
+                if (structureDef.requiresMonster) {
+                  const assigned = structure.assignedMonsterId
+                    ? state.run.party.find(m => m.id === structure.assignedMonsterId)
+                    : null;
+                  info.push({
+                    label: 'Assigned',
+                    value: assigned ? `Lv.${assigned.level} ${assigned.name}` : 'None (unstaffed)',
+                  });
+                }
+                if (structure.type === 'farm' && structure.harvestReady) {
+                  info.push({ label: 'Status', value: '🌾 Ready to harvest' });
+                }
+                actions.push({
+                  id: 'open-building',
+                  label: 'Building options…',
+                  hint: 'Assign / repair / disassemble',
+                  icon: Hammer,
+                  onClick: () => {
+                    close();
+                    setDungeonContextBuilding(structure as PlayerBuilding);
+                  },
+                });
               } else if (tile.type === 'door') {
                 title = '🚪 Door';
                 subtitle = 'Passageway';

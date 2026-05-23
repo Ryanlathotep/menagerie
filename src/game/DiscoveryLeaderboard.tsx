@@ -7,7 +7,6 @@ import { Sparkles, Loader2 } from 'lucide-react';
 
 interface DiscoveryEntry {
   rank: number;
-  user_id: string;
   username: string;
   discovered_count: number;
   world_seed: number | null;

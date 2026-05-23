@@ -3035,6 +3035,17 @@ function DungeonView({
 
         if (move) {
           const roll = rollEnemyMoveDamage(enemy, move, playerDef, playerMon.element);
+          // Visual FX from enemy → player.
+          try {
+            playParticleEffectForMove({
+              surface: 'dungeon',
+              monster: enemy,
+              move,
+              from: enemyPos,
+              to: updatedDungeon.playerPosition,
+              affected: [updatedDungeon.playerPosition],
+            });
+          } catch (e) { /* never block combat */ }
           if (!roll.hit) {
             addLog(`👹 ${enemy.name} uses ${move.name} — but misses!`, 'system');
           } else {

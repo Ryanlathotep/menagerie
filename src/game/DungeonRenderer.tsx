@@ -674,20 +674,30 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   const gridWidth = dungeon.width;
   const gridHeight = dungeon.height;
 
-  // Disable the centering transition for one frame whenever the dungeon
-  // grid is resized (infinite-streaming prepends rows/cols and shifts
-  // player coords). Without this the camera "slides" instead of snapping,
-  // making the map look off-center or tiles look like they jump.
-  const prevDimsRef = useRef<{ w: number; h: number }>({ w: gridWidth, h: gridHeight });
+  // Disable the centering transition whenever the dungeon grid is resized
+  // (infinite-streaming prepends rows/cols and shifts player coords),
+  // the floor changes (persistent stair descend/ascend), or the player
+  // jumps more than 1 tile (teleport, floor reload). Without this the
+  // camera slides for 120ms instead of snapping, briefly showing the map
+  // off-center with the wrong tiles around the player.
+  const prevCamRef = useRef<{ w: number; h: number; floor: number; px: number; py: number }>({
+    w: gridWidth, h: gridHeight, floor: dungeon.floor, px, py,
+  });
   const [skipTransition, setSkipTransition] = useState(false);
   useEffect(() => {
-    if (prevDimsRef.current.w !== gridWidth || prevDimsRef.current.h !== gridHeight) {
+    const prev = prevCamRef.current;
+    const dimsChanged = prev.w !== gridWidth || prev.h !== gridHeight;
+    const floorChanged = prev.floor !== dungeon.floor;
+    const jumped = Math.abs(prev.px - px) > 1 || Math.abs(prev.py - py) > 1;
+    prevCamRef.current = { w: gridWidth, h: gridHeight, floor: dungeon.floor, px, py };
+    if (dimsChanged || floorChanged || jumped) {
       setSkipTransition(true);
-      prevDimsRef.current = { w: gridWidth, h: gridHeight };
-      const id = requestAnimationFrame(() => setSkipTransition(false));
+      const id = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setSkipTransition(false));
+      });
       return () => cancelAnimationFrame(id);
     }
-  }, [gridWidth, gridHeight]);
+  }, [gridWidth, gridHeight, dungeon.floor, px, py]);
 
   // Admin override: re-render when the always-on-compass toggle flips so the
   // exit marker appears/disappears immediately.

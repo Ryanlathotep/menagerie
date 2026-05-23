@@ -525,6 +525,11 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
             </HoverCard>
           );
         })}
+        <ParticleLayer
+          surface="overworld"
+          tileSize={tileSize}
+          originWorld={{ x: px - VIEW_RANGE, y: py - VIEW_RANGE }}
+        />
       </div>
       {/* Edge-of-screen arrows for off-screen player waypoints. */}
       {(overworld.waypoints || []).length > 0 && (

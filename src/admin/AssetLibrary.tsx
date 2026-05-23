@@ -24,7 +24,6 @@ import {
 import { SPECIES_DATA, ELEMENT_COLORS, CLASS_STATS } from '@/game/types';
 import { listEquipmentIconKeys } from '@/game/equipmentUtils';
 import { MonsterSprite } from '@/game/sprites';
-import { SPECIES_DATA as _SD } from '@/game/types';
 
 interface AssetSlot {
   category: AssetCategory;

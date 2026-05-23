@@ -463,9 +463,9 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
                   className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center"
                   aria-label="Pinned waypoint"
                 >
-                  <div className="absolute inset-0 rounded-full border-2 border-emerald-400 animate-ping opacity-60" />
-                  <div className="absolute inset-1 rounded-full border-2 border-emerald-300 opacity-90" />
-                  <span className="relative text-sm drop-shadow-[0_0_4px_rgba(52,211,153,0.9)]">📍</span>
+                  <div className="absolute inset-0 pointer-events-none rounded-full border-2 border-emerald-400 animate-ping opacity-60" />
+                  <div className="absolute inset-1 pointer-events-none rounded-full border-2 border-emerald-300 opacity-90" />
+                  <span className="relative pointer-events-none text-sm drop-shadow-[0_0_4px_rgba(52,211,153,0.9)]">📍</span>
                 </div>
               )}
               {/* AoE / area-of-effect shading — drawn on top so it's clearly visible.
@@ -545,13 +545,13 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
                 style={{ left, top }}
                 title={`${wp.name ? wp.name + ' — ' : 'Waypoint '}(${wp.x}, ${wp.y}) — ${dist} tiles`}
               >
-                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full border backdrop-blur-sm shadow-md text-[10px] font-medium leading-none text-emerald-300 bg-emerald-500/15 border-emerald-400/60">
+                <div className="pointer-events-none flex items-center gap-1 px-1.5 py-0.5 rounded-full border backdrop-blur-sm shadow-md text-[10px] font-medium leading-none text-emerald-300 bg-emerald-500/15 border-emerald-400/60">
                   <span
-                    className="inline-block text-[12px] leading-none"
+                    className="pointer-events-none inline-block text-[12px] leading-none"
                     style={{ transform: `rotate(${(angle * 180) / Math.PI}deg)` }}
                   >➤</span>
-                  <span className="text-base leading-none">📍</span>
-                  <span className="tabular-nums opacity-90">{dist}</span>
+                  <span className="pointer-events-none text-base leading-none">📍</span>
+                  <span className="pointer-events-none tabular-nums opacity-90">{dist}</span>
                 </div>
               </div>
             );

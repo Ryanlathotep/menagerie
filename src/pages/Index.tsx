@@ -3935,6 +3935,7 @@ function DungeonView({
                 const wallName = tile.wallTier ? mineableWallName(tile.wallTier) : 'Mineable wall';
                 const pickaxeTier = effectiveTools(state.saveData.tools).pickaxe;
                 const hitsNeeded = tile.wallTier ? hitsToBreak(tile.wallTier, pickaxeTier) : Infinity;
+                const autoHarvestOn = !!settings.autoMine;
                 title = `⛏️ ${wallName}`;
                 subtitle = tile.wallTier ? `Tier ${tile.wallTier} wall` : 'Breakable wall';
                 info.push({ label: 'Loot', value: `Drops ${wallName}` });
@@ -3943,11 +3944,26 @@ function DungeonView({
                 if (isAdjacent) {
                   actions.push({
                     id: 'mine-wall',
-                    label: 'Mine wall',
-                    hint: 'Consumes a turn',
+                    label: autoHarvestOn ? 'Auto-Harvest wall' : 'Mine wall',
+                    hint: autoHarvestOn ? 'Keeps mining until broken or an enemy appears' : 'Consumes a turn',
                     icon: Pickaxe,
                     variant: 'default',
-                    onClick: stepToTile,
+                    onClick: () => {
+                      close();
+                      if (autoHarvestOn) startDungeonAutoHarvest(x, y);
+                      else handleMove(getDirection(dungeon.playerPosition, { x, y }));
+                    },
+                  });
+                  actions.push({
+                    id: 'toggle-auto-harvest-wall',
+                    label: autoHarvestOn ? 'Disable Auto-Harvest' : 'Enable Auto-Harvest',
+                    hint: 'Applies to dungeon walls and rune tiles; persisted in Settings',
+                    icon: Pickaxe,
+                    variant: 'outline',
+                    onClick: () => {
+                      updateSetting('autoMine', !autoHarvestOn);
+                      toast.info(`Auto-Harvest ${!autoHarvestOn ? 'enabled' : 'disabled'}`);
+                    },
                   });
                 }
               } else if (tile.type === 'plant' && tile.plantType) {
@@ -3967,6 +3983,7 @@ function DungeonView({
                 const terrainConfig = TERRAIN_CONFIG[tile.terrainType];
                 const shovelTier = effectiveTools(state.saveData.tools).shovel;
                 const hitsNeeded = shovelHitsToBreak(tile.terrainType, shovelTier);
+                const autoHarvestOn = !!settings.autoMine;
                 title = `${terrainConfig.icon} ${terrainConfig.name}`;
                 subtitle = 'Hazardous rune tile';
                 info.push({ label: 'Description', value: terrainConfig.description });
@@ -3976,11 +3993,34 @@ function DungeonView({
                 if (isAdjacent) {
                   actions.push({
                     id: 'step-on-rune',
-                    label: isAutoShovelEnabled() && isFinite(hitsNeeded) ? 'Step on & auto-dig' : 'Step onto rune',
-                    hint: isAutoShovelEnabled() ? 'Auto-Shovel is on' : 'Auto-Shovel is off',
+                    label: autoHarvestOn && isFinite(hitsNeeded)
+                      ? 'Auto-Harvest rune'
+                      : isAutoShovelEnabled() && isFinite(hitsNeeded)
+                        ? 'Step on & auto-dig'
+                        : 'Step onto rune',
+                    hint: autoHarvestOn
+                      ? 'Keeps digging until the rune is removed or an enemy appears'
+                      : isAutoShovelEnabled()
+                        ? 'Auto-Shovel is on'
+                        : 'Auto-Shovel is off',
                     icon: isAutoShovelEnabled() ? Shovel : Footprints,
                     variant: 'default',
-                    onClick: stepToTile,
+                    onClick: () => {
+                      close();
+                      if (autoHarvestOn && isFinite(hitsNeeded)) startDungeonAutoHarvest(x, y);
+                      else handleMove(getDirection(dungeon.playerPosition, { x, y }));
+                    },
+                  });
+                  actions.push({
+                    id: 'toggle-auto-harvest-rune',
+                    label: autoHarvestOn ? 'Disable Auto-Harvest' : 'Enable Auto-Harvest',
+                    hint: 'Applies to dungeon walls and rune tiles; persisted in Settings',
+                    icon: Pickaxe,
+                    variant: 'outline',
+                    onClick: () => {
+                      updateSetting('autoMine', !autoHarvestOn);
+                      toast.info(`Auto-Harvest ${!autoHarvestOn ? 'enabled' : 'disabled'}`);
+                    },
                   });
                 }
               } else if (tile.type === 'trap') {

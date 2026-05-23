@@ -119,6 +119,9 @@ export function AdminPanel() {
           <TabsContent value="assets" className="p-4 m-0">
             <AssetLibrary />
           </TabsContent>
+          <TabsContent value="particles" className="p-4 m-0">
+            <ParticlesEditor />
+          </TabsContent>
           <TabsContent value="bugs" className="p-4 m-0">
             <BugReportsEditor />
           </TabsContent>

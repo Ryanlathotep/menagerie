@@ -1111,9 +1111,12 @@ export function ShapeDesigner() {
 
 
 
-            <div className="flex gap-2 pt-2">
-              <Button onClick={handleSave} className="flex-1 gap-2">
+            <div className="flex flex-wrap gap-2 pt-2">
+              <Button onClick={handleSave} className="flex-1 gap-2 min-w-[140px]">
                 <Save className="w-4 h-4" /> Save Override
+              </Button>
+              <Button variant="secondary" onClick={handleSaveAsTemplate} className="gap-2">
+                <BookmarkPlus className="w-4 h-4" /> Save as Template
               </Button>
               <Button variant="outline" onClick={handleClear} className="gap-2">
                 <RotateCcw className="w-4 h-4" /> Clear

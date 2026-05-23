@@ -895,7 +895,7 @@ function DungeonView({
     state,
     dispatch
   } = useGame();
-  const { settings } = useSettings();
+  const { settings, updateSetting } = useSettings();
   const dungeon = state.run?.dungeon;
   const [showShop, setShowShop] = useState(false);
   const [showEquipment, setShowEquipment] = useState(false);
@@ -1594,6 +1594,8 @@ function DungeonView({
   // Use refs to always have fresh state for auto-run (avoids stale closures)
   const dungeonRef = useRef(dungeon);
   const handleMoveRef = useRef(handleMove);
+  const autoHarvestTargetRef = useRef<(Position & { tileType: 'mineable_wall' | 'terrain' }) | null>(null);
+  const autoHarvestTimerRef = useRef<number | null>(null);
   
   useEffect(() => {
     dungeonRef.current = dungeon;
@@ -1602,6 +1604,56 @@ function DungeonView({
   useEffect(() => {
     handleMoveRef.current = handleMove;
   }, [handleMove]);
+
+  const cancelAutoHarvest = useCallback((reason?: string) => {
+    if (typeof window !== 'undefined' && autoHarvestTimerRef.current !== null) {
+      window.clearInterval(autoHarvestTimerRef.current);
+      autoHarvestTimerRef.current = null;
+    }
+    if (autoHarvestTargetRef.current && reason) addLog(reason, 'info');
+    autoHarvestTargetRef.current = null;
+  }, [addLog]);
+
+  const startDungeonAutoHarvest = useCallback((targetX: number, targetY: number) => {
+    if (typeof window === 'undefined') return;
+    cancelAutoHarvest();
+    const currentDungeon = dungeonRef.current;
+    const tile = currentDungeon?.tiles[targetY]?.[targetX];
+    if (!currentDungeon || !tile || (tile.type !== 'mineable_wall' && tile.type !== 'terrain')) return;
+    autoHarvestTargetRef.current = { x: targetX, y: targetY, tileType: tile.type };
+    const stepDelay = Math.max(120, settings.autoRunSpeed || 100);
+    autoHarvestTimerRef.current = window.setInterval(() => {
+      const target = autoHarvestTargetRef.current;
+      const liveDungeon = dungeonRef.current;
+      if (!target || !liveDungeon) {
+        cancelAutoHarvest();
+        return;
+      }
+      if (hasVisibleEnemy(liveDungeon.tiles)) {
+        cancelAutoHarvest('⚠️ Auto-Harvest stopped — enemy spotted!');
+        return;
+      }
+      const liveTile = liveDungeon.tiles[target.y]?.[target.x];
+      if (!liveTile || liveTile.type !== target.tileType) {
+        cancelAutoHarvest('✅ Auto-Harvest finished — resource depleted.');
+        return;
+      }
+      const direction = getDirection(liveDungeon.playerPosition, { x: target.x, y: target.y });
+      if (!direction) {
+        cancelAutoHarvest('⚠️ Auto-Harvest stopped — moved out of range.');
+        return;
+      }
+      if (isMovingRef.current) return;
+      isMovingRef.current = true;
+      handleMoveRef.current(direction);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        isMovingRef.current = false;
+      }));
+      setTimeout(() => { isMovingRef.current = false; }, 250);
+    }, stepDelay);
+  }, [cancelAutoHarvest, settings.autoRunSpeed]);
+
+  useEffect(() => () => cancelAutoHarvest(), [cancelAutoHarvest]);
 
   // Auto-run logic - uses requestAnimationFrame for smooth timing
   // Track if a move is currently being processed to prevent overlapping moves

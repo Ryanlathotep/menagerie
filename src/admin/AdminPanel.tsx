@@ -82,6 +82,10 @@ export function AdminPanel() {
               <Palette className="w-4 h-4" />
               Assets
             </TabsTrigger>
+            <TabsTrigger value="particles" className="gap-2 shrink-0">
+              <Sparkles className="w-4 h-4" />
+              Particles
+            </TabsTrigger>
             <TabsTrigger value="bugs" className="gap-2 shrink-0">
               <Bug className="w-4 h-4" />
               Bug Reports

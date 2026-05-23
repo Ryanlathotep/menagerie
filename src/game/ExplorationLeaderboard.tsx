@@ -7,7 +7,6 @@ import { Compass, Loader2 } from 'lucide-react';
 
 interface ExplorationEntry {
   rank: number;
-  user_id: string;
   username: string;
   tiles_explored: number;
   world_seed: number | null;

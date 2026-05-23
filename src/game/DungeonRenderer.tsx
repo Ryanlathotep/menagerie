@@ -698,6 +698,21 @@ export const DungeonRenderer = forwardRef<DungeonRendererHandle, DungeonRenderer
   const gridWidth = dungeon.width;
   const gridHeight = dungeon.height;
 
+  // Disable the centering transition for one frame whenever the dungeon
+  // grid is resized (infinite-streaming prepends rows/cols and shifts
+  // player coords). Without this the camera "slides" instead of snapping,
+  // making the map look off-center or tiles look like they jump.
+  const prevDimsRef = useRef<{ w: number; h: number }>({ w: gridWidth, h: gridHeight });
+  const [skipTransition, setSkipTransition] = useState(false);
+  useEffect(() => {
+    if (prevDimsRef.current.w !== gridWidth || prevDimsRef.current.h !== gridHeight) {
+      setSkipTransition(true);
+      prevDimsRef.current = { w: gridWidth, h: gridHeight };
+      const id = requestAnimationFrame(() => setSkipTransition(false));
+      return () => cancelAnimationFrame(id);
+    }
+  }, [gridWidth, gridHeight]);
+
   // Admin override: re-render when the always-on-compass toggle flips so the
   // exit marker appears/disappears immediately.
   const [adminCompassOn, setAdminCompassOn] = useState(() => isAdminCompass());

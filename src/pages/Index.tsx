@@ -61,7 +61,7 @@ import { ReviveTargetModal } from '@/game/ReviveTargetModal';
 import { CombatSwitchPanel } from '@/game/CombatSwitchPanel';
 import { LogMessage, createLogMessage, parseLogMessage } from '@/game/GameLog';
 import { isMonsterFavoredOnTerrain, calculateTerrainDamage, TERRAIN_CONFIG, shovelHitsToBreak, rollRuneDrop } from '@/game/terrain';
-import { isAutoShovelEnabled } from '@/game/autoShovel';
+import { isAutoShovelEnabled, setAutoShovelEnabled } from '@/game/autoShovel';
 import { 
   RESPAWN_CONFIG, 
   spawnMonsterInHiddenRoom,
@@ -4040,7 +4040,7 @@ function DungeonView({
                 variant: 'outline',
                 onClick: () => {
                   const next = !isAutoShovelEnabled();
-                  import('@/game/autoShovel').then(({ setAutoShovelEnabled }) => setAutoShovelEnabled(next));
+                  setAutoShovelEnabled(next);
                   toast.info(`Auto-Shovel ${next ? 'enabled' : 'disabled'}`);
                 },
               });

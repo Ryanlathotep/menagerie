@@ -69,7 +69,7 @@ export function TowerLeaderboard({ towerId, limit = 10 }: TowerLeaderboardProps)
       {!loading && !error && rows && rows.length > 0 && (
         <ol className="space-y-0.5">
           {rows.map(r => (
-            <li key={r.user_id} className="flex items-baseline justify-between gap-2 text-[11px]">
+            <li key={r.rank} className="flex items-baseline justify-between gap-2 text-[11px]">
               <span className="flex items-baseline gap-1.5 min-w-0">
                 <span
                   className={`font-mono w-5 text-right ${

@@ -3,6 +3,7 @@
 import React from 'react';
 import { EquipmentItem, RARITY_COLORS, Rarity, EQUIPMENT_SETS, SetId } from './equipment';
 import { getEquipmentIcon, getPrimaryStat, STAT_COLORS } from './equipmentUtils';
+import { getAssetOverride } from './assetOverrides';
 
 interface EquipmentIconProps {
   item: EquipmentItem;
@@ -30,6 +31,7 @@ const RARITY_GLOW: Record<Rarity, string> = {
 
 export function EquipmentIcon({ item, size = 40, showStatPreview = true, className = '' }: EquipmentIconProps) {
   const iconDef = getEquipmentIcon(item.name);
+  const imageUrl = getAssetOverride('equipment', item.name);
   const primaryStat = showStatPreview ? getPrimaryStat(item) : null;
   
   // Use set color if item is part of a set, otherwise use rarity color
@@ -45,33 +47,36 @@ export function EquipmentIcon({ item, size = 40, showStatPreview = true, classNa
   
   return (
     <div className={`relative inline-flex items-center justify-center ${className}`} style={{ width: size, height: size }}>
-      <svg 
-        width={size} 
-        height={size} 
-        viewBox={iconDef.viewBox}
-        style={{ filter: glowFilter }}
-        className="transition-transform"
-      >
-        {/* Background circle for contrast */}
-        <circle 
-          cx="50" 
-          cy="50" 
-          r="48" 
-          fill="hsl(var(--muted) / 0.3)"
-          stroke="hsl(var(--border))"
-          strokeWidth="1"
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt={item.name}
+          width={size}
+          height={size}
+          style={{ filter: glowFilter, objectFit: 'contain' }}
+          className="rounded-sm"
         />
-        
-        {/* Equipment silhouette */}
-        <path 
-          d={iconDef.path}
-          fill={fillColor}
-          stroke="hsl(var(--foreground) / 0.8)"
-          strokeWidth={iconDef.strokeWidth || 1.5}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-      </svg>
+      ) : (
+        <svg
+          width={size}
+          height={size}
+          viewBox={iconDef.viewBox}
+          style={{ filter: glowFilter }}
+          className="transition-transform"
+        >
+          {/* Background circle for contrast */}
+          <circle cx="50" cy="50" r="48" fill="hsl(var(--muted) / 0.3)" stroke="hsl(var(--border))" strokeWidth="1" />
+          {/* Equipment silhouette */}
+          <path
+            d={iconDef.path}
+            fill={fillColor}
+            stroke="hsl(var(--foreground) / 0.8)"
+            strokeWidth={iconDef.strokeWidth || 1.5}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        </svg>
+      )}
       
       {/* Bound indicator - shows item is protected */}
       {item.bound && (

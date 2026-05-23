@@ -320,6 +320,17 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         const playerDef = playerMon.stats.defense;
         if (move) {
           const roll = rollEnemyMoveDamage(enemy, move, playerDef, playerMon.element);
+          // Visual FX from enemy → player.
+          try {
+            playParticleEffectForMove({
+              surface: 'overworld',
+              monster: enemy,
+              move,
+              from: pos,
+              to: ow.playerPosition,
+              affected: [ow.playerPosition],
+            });
+          } catch (e) { /* never block combat */ }
           if (!roll.hit) {
             addLog(`👹 ${enemy.name} uses ${move.name} — but misses!`, 'system');
           } else {

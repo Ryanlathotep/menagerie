@@ -5,6 +5,7 @@
 import React, { forwardRef } from 'react';
 import { SpeciesType, ElementType, ClassType, ELEMENT_COLORS } from './types';
 import { MonsterEquipment, EquipmentSlot, Rarity, RARITY_COLORS } from './equipment';
+import { getAssetOverride } from './assetOverrides';
 
 // SVG path data for each species - centered bodies with standardized positions
 // All bodies centered at x=50, legs at y=75-90, arms at x=25-35 and x=65-75

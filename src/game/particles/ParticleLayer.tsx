@@ -39,7 +39,6 @@ function toPx(tile: { x: number; y: number }, tileSize: number, origin: { x: num
   return { x: (tile.x - origin.x) * tileSize + tileSize / 2, y: (tile.y - origin.y) * tileSize + tileSize / 2 };
 }
 
-export function ParticleLayer({ surface, tileSize }: Props) {
 export function ParticleLayer({ surface, tileSize, originWorld }: Props) {
   const [active, setActive] = useState<ActiveEffect[]>([]);
   const activeRef = useRef<ActiveEffect[]>([]);

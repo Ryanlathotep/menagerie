@@ -737,7 +737,19 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     }
 
     const affected = getOverworldAffectedTiles(overworld.playerPosition, { x: worldX, y: worldY }, config, overworld);
-    
+
+    // Visual particle FX (caster → target / AoE tiles).
+    try {
+      playParticleEffectForMove({
+        surface: 'overworld',
+        monster,
+        move: targetingMove,
+        from: overworld.playerPosition,
+        to: { x: worldX, y: worldY },
+        affected,
+      });
+    } catch (e) { /* never block combat on FX */ }
+
     const staminaCost = targetingMove.staminaCost || 0;
     const maxSta = monster.stats.stamina ?? 50;
     const curSta = monster.stats.currentStamina ?? maxSta;

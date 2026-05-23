@@ -345,90 +345,60 @@ export const MonsterSprite = forwardRef<SVGSVGElement, MonsterSpriteProps>(({
       )}
 
       
-      {/* Equipped items - render on top of everything */}
+      {/* Equipped items - render on top of everything. Uploaded equipment
+          images replace the procedural slot silhouette when available. */}
       {equipment && (
         <>
-          {/* Helmet */}
-          {equipment.helmet && (
-            <path
-              d={EQUIPMENT_VISUALS.helmet.path}
-              fill={`hsl(${getEquipmentColor(equipment.helmet.rarity)} / 0.85)`}
-              stroke={`hsl(${getEquipmentColor(equipment.helmet.rarity)})`}
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          )}
-          
-          {/* Armor - chest piece */}
-          {equipment.armor && (
-            <path
-              d={EQUIPMENT_VISUALS.armor.path}
-              fill={`hsl(${getEquipmentColor(equipment.armor.rarity)} / 0.75)`}
-              stroke={`hsl(${getEquipmentColor(equipment.armor.rarity)})`}
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          )}
-          
-          {/* Main hand weapon */}
-          {equipment.mainHand && (
-            <path
-              d={EQUIPMENT_VISUALS.mainHand.path}
-              fill={`hsl(${getEquipmentColor(equipment.mainHand.rarity)} / 0.9)`}
-              stroke={`hsl(${getEquipmentColor(equipment.mainHand.rarity)})`}
-              strokeWidth="2.5"
-              strokeLinecap="round"
-            />
-          )}
-          
-          {/* Off hand */}
-          {equipment.offHand && (
-            <path
-              d={EQUIPMENT_VISUALS.offHand.path}
-              fill={`hsl(${getEquipmentColor(equipment.offHand.rarity)} / 0.9)`}
-              stroke={`hsl(${getEquipmentColor(equipment.offHand.rarity)})`}
-              strokeWidth="2.5"
-              strokeLinecap="round"
-            />
-          )}
-          
-          {/* Gloves */}
-          {equipment.gloves && (
-            <path
-              d={EQUIPMENT_VISUALS.gloves.path}
-              fill={`hsl(${getEquipmentColor(equipment.gloves.rarity)} / 0.85)`}
-              stroke={`hsl(${getEquipmentColor(equipment.gloves.rarity)})`}
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          )}
-          
-          {/* Boots */}
-          {equipment.boots && (
-            <path
-              d={EQUIPMENT_VISUALS.boots.path}
-              fill={`hsl(${getEquipmentColor(equipment.boots.rarity)} / 0.85)`}
-              stroke={`hsl(${getEquipmentColor(equipment.boots.rarity)})`}
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          )}
-          
-          {/* Accessory - glowing ring/amulet */}
-          {equipment.accessory && (
-            <path
-              d={EQUIPMENT_VISUALS.accessory.path}
-              fill={`hsl(${getEquipmentColor(equipment.accessory.rarity)} / 0.8)`}
-              stroke={`hsl(${getEquipmentColor(equipment.accessory.rarity)})`}
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          )}
+          {(['helmet','armor','mainHand','offHand','gloves','boots','accessory'] as EquipmentSlot[]).map((slot) => {
+            const item = equipment[slot];
+            if (!item) return null;
+            const url = getAssetOverride('equipment', item.name);
+            const visual = EQUIPMENT_VISUALS[slot as keyof typeof EQUIPMENT_VISUALS];
+            if (url) {
+              // Position image roughly over the slot using its path bounds.
+              const box = SLOT_IMAGE_BOX[slot];
+              return (
+                <image
+                  key={slot}
+                  href={url}
+                  x={box.x}
+                  y={box.y}
+                  width={box.w}
+                  height={box.h}
+                  preserveAspectRatio="xMidYMid meet"
+                />
+              );
+            }
+            if (!visual) return null;
+            const color = getEquipmentColor(item.rarity);
+            return (
+              <path
+                key={slot}
+                d={visual.path}
+                fill={`hsl(${color} / 0.85)`}
+                stroke={`hsl(${color})`}
+                strokeWidth={2}
+                strokeLinecap="round"
+              />
+            );
+          })}
         </>
       )}
     </svg>
   );
 });
+
+// Approximate bounding boxes for each equipment slot when drawn over the 100x100 monster sprite.
+const SLOT_IMAGE_BOX: Record<EquipmentSlot, { x: number; y: number; w: number; h: number }> = {
+  helmet:    { x: 25, y: 0,  w: 50, h: 35 },
+  armor:     { x: 28, y: 30, w: 44, h: 40 },
+  gloves:    { x: 10, y: 40, w: 80, h: 25 },
+  boots:     { x: 25, y: 70, w: 50, h: 28 },
+  mainHand:  { x: 60, y: 20, w: 38, h: 60 },
+  offHand:   { x: 2,  y: 20, w: 38, h: 60 },
+  accessory: { x: 36, y: 55, w: 28, h: 28 },
+  back:      { x: 5,  y: 5,  w: 90, h: 90 },
+};
 
 MonsterSprite.displayName = 'MonsterSprite';
 

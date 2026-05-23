@@ -22,6 +22,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { BuildingTooltipContent } from './BuildingTooltip';
 import { OverworldTooltipContent } from './OverworldTooltip';
 import { isDowsingEffective, onDowsingChange, DOWSING_HIGHLIGHT_COUNT } from './dowsingRod';
+import { ParticleLayer } from './particles/ParticleLayer';
 
 interface OverworldRendererProps {
   overworld: OverworldState;

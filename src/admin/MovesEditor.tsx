@@ -681,6 +681,33 @@ export function MovesEditor() {
               onChange={(v) => setEditedMove({ ...editedMove, effect: v || undefined })}
             />
 
+            {/* ----- Particle effect ----- */}
+            <div className="space-y-1">
+              <Label className="text-xs">Particle Effect</Label>
+              <Select
+                value={(editedMove as Move & { particleEffectId?: string }).particleEffectId ?? 'auto'}
+                onValueChange={(v) =>
+                  setEditedMove({
+                    ...editedMove,
+                    particleEffectId: v === 'auto' ? undefined : v,
+                  } as Move)
+                }
+              >
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Auto (element → class → species default)</SelectItem>
+                  {getAllEffects().map((fx) => (
+                    <SelectItem key={fx.id} value={fx.id}>
+                      {fx.name} <span className="opacity-60">({fx.motion})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="text-[10px] text-muted-foreground leading-tight">
+                Override the visual FX for this move. Create new effects under the Particles tab.
+              </div>
+            </div>
+
             {/* ----- Damage-type toggles ----- */}
             <div className="rounded-md border border-border bg-muted/30 p-2 space-y-2">
               <div className="text-xs font-semibold">Damage Types</div>

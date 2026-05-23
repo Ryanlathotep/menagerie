@@ -9,8 +9,8 @@ import { expandDungeonIfNeeded, findStairsPosition } from '@/game/dungeonExpansi
 import { PICKAXE_TIERS, hitsToBreak } from '@/game/tools';
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScrollText, Flag, FlagOff, Swords, Footprints, Pickaxe, Hammer, DoorOpen, ChevronDown, ChevronUp, ShoppingBag, Trees } from 'lucide-react';
-import { UnifiedTileMenu, UnifiedTileAction } from '@/game/UnifiedTileMenu';
+import { ScrollText, Flag, FlagOff, Swords, Footprints, Pickaxe, Hammer, DoorOpen, ChevronDown, ChevronUp, ShoppingBag, Trees, Shovel } from 'lucide-react';
+import { UnifiedTileMenu, UnifiedTileAction, UnifiedTileInfo, UnifiedTileCreature } from '@/game/UnifiedTileMenu';
 import { MonsterSprite } from '@/game/sprites';
 import { DungeonRenderer } from '@/game/DungeonRenderer';
 import { GameSidebar } from '@/game/GameSidebar';
@@ -61,7 +61,7 @@ import { ReviveTargetModal } from '@/game/ReviveTargetModal';
 import { CombatSwitchPanel } from '@/game/CombatSwitchPanel';
 import { LogMessage, createLogMessage, parseLogMessage } from '@/game/GameLog';
 import { isMonsterFavoredOnTerrain, calculateTerrainDamage, TERRAIN_CONFIG, shovelHitsToBreak, rollRuneDrop } from '@/game/terrain';
-import { isAutoShovelEnabled } from '@/game/autoShovel';
+import { isAutoShovelEnabled, setAutoShovelEnabled } from '@/game/autoShovel';
 import { 
   RESPAWN_CONFIG, 
   spawnMonsterInHiddenRoom,
@@ -3694,23 +3694,83 @@ function DungeonView({
               const tile = dungeon.tiles[y]?.[x];
               const close = () => setDungeonTileMenu(null);
               if (!tile) { close(); return null; }
-              const actions: UnifiedTileAction[] = [];
-              let title = '🟫 Tile';
-              let subtitle: string | undefined;
+
+              const monster = state.run.currentMonster;
               const dist = Math.abs(x - dungeon.playerPosition.x) + Math.abs(y - dungeon.playerPosition.y);
               const isAdjacent = dist === 1;
               const relativeX = x - (dungeon.entryPosition?.x ?? 0);
               const relativeY = y - (dungeon.entryPosition?.y ?? 0);
+              const info: UnifiedTileInfo[] = [
+                { label: 'Distance', value: dist === 0 ? 'Standing here' : isAdjacent ? 'Adjacent' : `${dist} tiles` },
+                { label: 'Relative', value: `(${relativeX}, ${relativeY})` },
+              ];
+              const actions: UnifiedTileAction[] = [];
+              let creature: UnifiedTileCreature | undefined;
+              let title = '🟫 Floor';
+              let subtitle = 'Open tile';
+              let footnote = 'Pinned waypoints show an edge-of-screen arrow.';
 
-              // Attack action if the tile holds an enemy
+              const hasId = (id: string) => actions.some((action) => action.id === id);
+              const stepToTile = () => {
+                close();
+                handleMove(getDirection(dungeon.playerPosition, { x, y }));
+              };
+              const autoPathToTile = () => {
+                close();
+                handleTileClick(x, y);
+              };
+              const directTileAttack = (() => {
+                const moveOrderIndex = new Map((state.run.moveOrder || []).map((id, index) => [id, index]));
+                return getMonsterMoves(monster.species, monster.element, monster.class, monster.level)
+                  .filter((move) => (move.type === 'melee' || move.type === 'ranged' || move.power > 0) && (move.staminaCost || 0) <= (monster.stats.currentStamina ?? monster.stats.stamina ?? 50))
+                  .sort((a, b) => (moveOrderIndex.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (moveOrderIndex.get(b.id) ?? Number.MAX_SAFE_INTEGER))
+                  .map((move) => {
+                    const config = getAttackConfig(move);
+                    const validTargets = getValidTargets(
+                      dungeon.playerPosition,
+                      config,
+                      dungeon.tiles,
+                      dungeon.width,
+                      dungeon.height,
+                      true,
+                    );
+                    return { move, validTargets };
+                  })
+                  .find(({ validTargets }) => validTargets.some((target) => target.x === x && target.y === y));
+              })();
+              const quickAttackTile = () => {
+                if (!directTileAttack) return;
+                close();
+                setTargetingMove(directTileAttack.move);
+                setTargetingTiles(directTileAttack.validTargets);
+                setAffectedTiles([]);
+                setHoveredTile(null);
+                setTimeout(() => handleTargetingClick(x, y), 0);
+              };
+
+              if (!tile.visible && tile.explored) {
+                info.push({ label: 'Visibility', value: 'Last seen' });
+              }
+
               if (tile.type === 'enemy' && tile.enemyId) {
                 const enemy = dungeon.enemies.find(e => e.id === tile.enemyId);
                 if (enemy) {
                   title = `⚔ ${enemy.name}`;
-                  subtitle = `Lv ${enemy.level} · ${enemy.element}`;
+                  subtitle = `Lv ${enemy.level} · ${enemy.element} · ${enemy.class}`;
+                  creature = {
+                    name: enemy.name,
+                    level: enemy.level,
+                    element: enemy.element,
+                    klass: enemy.class,
+                    hp: enemy.stats.currentHp,
+                    maxHp: enemy.stats.maxHp,
+                  };
+                  info.push({ label: 'Stamina', value: `${enemy.stats.currentStamina ?? enemy.stats.stamina ?? 0} / ${enemy.stats.stamina ?? 0}` });
                   actions.push({
-                    id: 'attack', label: 'Pick a move to attack',
-                    icon: Swords, variant: 'default',
+                    id: 'attack',
+                    label: 'Pick a move to attack',
+                    icon: Swords,
+                    variant: 'default',
                     onClick: () => {
                       close();
                       setAttackMenuTarget({
@@ -3723,7 +3783,15 @@ function DungeonView({
                 }
               } else if (tile.type === 'nest' && tile.nestState) {
                 title = `🪺 ${tile.nestState.element[0].toUpperCase()}${tile.nestState.element.slice(1)} Nest`;
-                subtitle = `Lv ${tile.nestState.level} · ${tile.nestState.hp}/${tile.nestState.maxHp} HP`;
+                subtitle = `Spawner · Lv ${tile.nestState.level}`;
+                creature = {
+                  name: `${tile.nestState.element[0].toUpperCase()}${tile.nestState.element.slice(1)} Nest`,
+                  level: tile.nestState.level,
+                  element: tile.nestState.element,
+                  hp: tile.nestState.hp,
+                  maxHp: tile.nestState.maxHp,
+                };
+                info.push({ label: 'Spawned', value: String(tile.nestState.totalSpawned) });
                 if (isAdjacent) {
                   actions.push({
                     id: 'bump-nest',
@@ -3731,91 +3799,81 @@ function DungeonView({
                     hint: 'Use a normal turn to damage it',
                     icon: Swords,
                     variant: 'default',
-                    onClick: () => {
-                      close();
-                      handleMove(getDirection(dungeon.playerPosition, { x, y }));
-                    },
+                    onClick: stepToTile,
                   });
                 }
               } else if (tile.type === 'treasure') {
                 title = '🎁 Treasure chest';
-                subtitle = `Relative (${relativeX}, ${relativeY})`;
+                subtitle = 'Unopened loot cache';
+                info.push({ label: 'Action', value: isAdjacent ? 'Collectable now' : 'Step adjacent first' });
                 if (isAdjacent) {
                   actions.push({
-                    id: 'open-treasure',
-                    label: 'Open chest',
+                    id: 'collect-treasure',
+                    label: 'Collect chest',
                     icon: DoorOpen,
                     variant: 'default',
-                    onClick: () => {
-                      close();
-                      handleMove(getDirection(dungeon.playerPosition, { x, y }));
-                    },
+                    onClick: stepToTile,
                   });
                 }
               } else if (tile.type === 'stairs') {
                 title = '⬇️ Descending stairs';
-                subtitle = `Relative (${relativeX}, ${relativeY})`;
+                subtitle = `Floor ${dungeon.floor} → ${dungeon.floor + 1}`;
+                info.push({ label: 'Destination', value: `Floor ${dungeon.floor + 1}` });
                 if (isAdjacent) {
                   actions.push({
                     id: 'use-stairs-down',
-                    label: 'Go down',
+                    label: 'Descend stairs',
                     icon: ChevronDown,
                     variant: 'default',
-                    onClick: () => {
-                      close();
-                      handleMove(getDirection(dungeon.playerPosition, { x, y }));
-                    },
+                    onClick: stepToTile,
                   });
                 }
               } else if (tile.type === 'stairs_up') {
+                const isEntranceStairs = dungeon.floor <= (dungeon.startingFloor ?? 1);
                 title = '⬆️ Ascending stairs';
-                subtitle = `Relative (${relativeX}, ${relativeY})`;
+                subtitle = isEntranceStairs ? 'Entrance staircase' : `Floor ${dungeon.floor} → ${Math.max(1, dungeon.floor - 1)}`;
+                info.push({ label: 'Destination', value: isEntranceStairs ? 'Exit / entrance' : `Floor ${Math.max(1, dungeon.floor - 1)}` });
                 if (isAdjacent) {
                   actions.push({
                     id: 'use-stairs-up',
-                    label: 'Go up',
+                    label: isEntranceStairs ? 'Use entrance stairs' : 'Ascend stairs',
                     icon: ChevronUp,
                     variant: 'default',
-                    onClick: () => {
-                      close();
-                      handleMove(getDirection(dungeon.playerPosition, { x, y }));
-                    },
+                    onClick: stepToTile,
                   });
                 }
               } else if (tile.type === 'shop') {
                 title = '🛒 Dungeon shop';
-                subtitle = `Relative (${relativeX}, ${relativeY})`;
+                subtitle = 'Buy supplies and gear';
                 if (isAdjacent) {
                   actions.push({
                     id: 'open-shop',
                     label: 'Open shop',
                     icon: ShoppingBag,
                     variant: 'default',
-                    onClick: () => {
-                      close();
-                      handleMove(getDirection(dungeon.playerPosition, { x, y }));
-                    },
+                    onClick: stepToTile,
                   });
                 }
               } else if (tile.type === 'elevator') {
                 title = '🛗 Elevator';
-                subtitle = `Relative (${relativeX}, ${relativeY})`;
+                subtitle = 'Swap party members with town storage';
                 if (isAdjacent) {
                   actions.push({
                     id: 'use-elevator',
                     label: 'Use elevator',
                     icon: DoorOpen,
                     variant: 'default',
-                    onClick: () => {
-                      close();
-                      handleMove(getDirection(dungeon.playerPosition, { x, y }));
-                    },
+                    onClick: stepToTile,
                   });
                 }
               } else if (tile.type === 'mineable_wall') {
                 const wallName = tile.wallTier ? mineableWallName(tile.wallTier) : 'Mineable wall';
+                const pickaxeTier = effectiveTools(state.saveData.tools).pickaxe;
+                const hitsNeeded = tile.wallTier ? hitsToBreak(tile.wallTier, pickaxeTier) : Infinity;
                 title = `⛏️ ${wallName}`;
-                subtitle = `Relative (${relativeX}, ${relativeY})`;
+                subtitle = tile.wallTier ? `Tier ${tile.wallTier} wall` : 'Breakable wall';
+                info.push({ label: 'Progress', value: isFinite(hitsNeeded) ? `${tile.wallHits || 0} / ${hitsNeeded} hits` : `${tile.wallHits || 0} hits` });
+                info.push({ label: 'Tool', value: isFinite(hitsNeeded) ? 'Pickaxe can break it' : 'Pickaxe too weak or missing' });
                 if (isAdjacent) {
                   actions.push({
                     id: 'mine-wall',
@@ -3823,42 +3881,113 @@ function DungeonView({
                     hint: 'Consumes a turn',
                     icon: Pickaxe,
                     variant: 'default',
-                    onClick: () => {
-                      close();
-                      handleMove(getDirection(dungeon.playerPosition, { x, y }));
-                    },
+                    onClick: stepToTile,
                   });
                 }
-              } else if (tile.type === 'plant') {
-                title = '🌿 Harvestable plant';
-                subtitle = `Relative (${relativeX}, ${relativeY})`;
-                if (isAdjacent) {
+              } else if (tile.type === 'plant' && tile.plantType) {
+                title = `🌿 ${tile.plantType.split('_').map(part => part[0].toUpperCase() + part.slice(1)).join(' ')}`;
+                subtitle = tile.harvested ? 'Already harvested' : 'Harvestable plant';
+                info.push({ label: 'Status', value: tile.harvested ? 'Harvested' : 'Ready' });
+                if (isAdjacent && !tile.harvested) {
                   actions.push({
                     id: 'harvest-plant',
                     label: 'Harvest plant',
                     icon: Trees,
                     variant: 'default',
+                    onClick: stepToTile,
+                  });
+                }
+              } else if (tile.type === 'terrain' && tile.terrainType) {
+                const terrainConfig = TERRAIN_CONFIG[tile.terrainType];
+                const shovelTier = effectiveTools(state.saveData.tools).shovel;
+                const hitsNeeded = shovelHitsToBreak(tile.terrainType, shovelTier);
+                title = `${terrainConfig.icon} ${terrainConfig.name}`;
+                subtitle = 'Hazardous rune tile';
+                info.push({ label: 'Favored', value: terrainConfig.favoredElement ?? terrainConfig.favoredClass ?? 'None' });
+                info.push({ label: 'Backlash', value: '2 damage if mismatched' });
+                info.push({ label: 'Digging', value: isFinite(hitsNeeded) ? `${hitsNeeded} dig${hitsNeeded === 1 ? '' : 's'} with current shovel` : 'Shovel too weak or missing' });
+                if (isAdjacent) {
+                  actions.push({
+                    id: 'step-on-rune',
+                    label: isAutoShovelEnabled() && isFinite(hitsNeeded) ? 'Step on & auto-dig' : 'Step onto rune',
+                    hint: isAutoShovelEnabled() ? 'Auto-Shovel is on' : 'Auto-Shovel is off',
+                    icon: isAutoShovelEnabled() ? Shovel : Footprints,
+                    variant: 'default',
+                    onClick: stepToTile,
+                  });
+                }
+              } else if (tile.type === 'trap') {
+                const trapNames = {
+                  spike: { title: '🔺 Spike Trap', description: 'Deals physical damage when triggered' },
+                  poison: { title: '☠️ Poison Trap', description: 'Inflicts poison when triggered' },
+                  alarm: { title: '🔔 Alarm Trap', description: 'Alerts nearby enemies when triggered' },
+                } as const;
+                const trapType = tile.trapType || 'spike';
+                const trapInfo = trapNames[trapType];
+                const disarmChance = Math.min(95, Math.max(5, (monster.stats.dodge || 10) * 3 + 20));
+                title = trapInfo.title;
+                subtitle = tile.triggered ? 'Already triggered' : 'Hidden hazard';
+                info.push({ label: 'Effect', value: trapInfo.description });
+                info.push({ label: 'Status', value: tile.triggered ? 'Triggered' : 'Armed' });
+                if (!tile.triggered) info.push({ label: 'Disarm', value: `${disarmChance}% success` });
+                if (!tile.triggered) {
+                  actions.push({
+                    id: 'disarm-trap',
+                    label: 'Disarm trap',
+                    hint: `${disarmChance}% success chance`,
+                    icon: Shovel,
+                    variant: 'default',
                     onClick: () => {
                       close();
-                      handleMove(getDirection(dungeon.playerPosition, { x, y }));
+                      const success = Math.random() * 100 < disarmChance;
+                      dispatch({ type: 'DISARM_TRAP', x, y, success });
+                      if (success) {
+                        addLog('🔧 Trap disarmed!', 'system');
+                      } else {
+                        if (trapType === 'spike') {
+                          const damage = 10 + Math.floor(dungeon.floor * 2);
+                          const newHp = Math.max(0, state.run!.currentMonster.stats.currentHp - damage);
+                          dispatch({
+                            type: 'UPDATE_PLAYER_MONSTER',
+                            monster: {
+                              ...state.run!.currentMonster,
+                              stats: { ...state.run!.currentMonster.stats, currentHp: newHp }
+                            }
+                          });
+                          addLog(`⚠️ Disarm failed! Spike trap dealt ${damage} damage!`, 'damage');
+                          if (newHp <= 0) handleActiveMonsterDownOnMap('a triggered spike trap');
+                        } else if (trapType === 'poison') {
+                          addLog('☠️ Disarm failed! You got poisoned!', 'status');
+                        } else {
+                          addLog('🔔 Disarm failed! Alarm triggered!', 'status');
+                        }
+                      }
                     },
                   });
                 }
+              } else if (tile.type === 'door') {
+                title = '🚪 Door';
+                subtitle = 'Passageway';
+                info.push({ label: 'Action', value: 'Walk through it' });
+              } else if (tile.type === 'wall') {
+                title = '🪨 Bedrock';
+                subtitle = 'Unbreakable structural rock';
+                info.push({ label: 'Action', value: 'Cannot be mined' });
+              } else if (tile.type === 'floor') {
+                title = dist === 0 ? '📍 Your tile' : '🟫 Floor';
+                subtitle = dist === 0 ? 'Current position' : 'Open ground';
               } else {
-                title = `📍 Tile`;
-                subtitle = `Relative (${relativeX}, ${relativeY})`;
+                title = '📍 Tile';
+                subtitle = tile.type;
               }
 
-              if (tile.explored && dist > 0) {
+              if (tile.explored && dist > 0 && tile.type !== 'wall' && tile.type !== 'mineable_wall') {
                 if (isAdjacent) {
                   actions.push({
                     id: 'move',
                     label: 'Move here',
                     icon: Footprints,
-                    onClick: () => {
-                      close();
-                      handleMove(getDirection(dungeon.playerPosition, { x, y }));
-                    },
+                    onClick: stepToTile,
                   });
                 } else {
                   actions.push({
@@ -3866,12 +3995,28 @@ function DungeonView({
                     label: 'Walk here',
                     hint: 'Auto-path to this tile',
                     icon: Footprints,
-                    onClick: () => {
-                      close();
-                      handleTileClick(x, y);
-                    },
+                    onClick: autoPathToTile,
                   });
                 }
+              }
+
+              if (!hasId('attack') && !hasId('bump-nest')) {
+                const quickAttackLabel = tile.type === 'trap'
+                  ? 'Attack trap'
+                  : tile.type === 'mineable_wall'
+                    ? 'Attack wall'
+                    : tile.type === 'terrain'
+                      ? 'Attack rune tile'
+                      : 'Attack this tile';
+                actions.push({
+                  id: 'quick-attack-tile',
+                  label: quickAttackLabel,
+                  hint: directTileAttack ? `Uses ${directTileAttack.move.name}` : undefined,
+                  icon: Swords,
+                  disabled: !directTileAttack,
+                  disabledReason: 'No attack move can currently reach this tile',
+                  onClick: quickAttackTile,
+                });
               }
 
               if (tile.type === 'floor') {
@@ -3887,7 +4032,19 @@ function DungeonView({
                 });
               }
 
-              // Waypoint pin/unpin on any explored tile
+              actions.push({
+                id: 'auto-shovel',
+                label: isAutoShovelEnabled() ? 'Disable Auto-Shovel' : 'Enable Auto-Shovel',
+                hint: 'Session-only; walking onto runes auto-digs them when possible',
+                icon: Shovel,
+                variant: 'outline',
+                onClick: () => {
+                  const next = !isAutoShovelEnabled();
+                  setAutoShovelEnabled(next);
+                  toast.info(`Auto-Shovel ${next ? 'enabled' : 'disabled'}`);
+                },
+              });
+
               const existing = dungeon.compassWaypoints || [];
               const pinnedWp = existing.find(p => p.x === x && p.y === y);
               const isPinned = !!pinnedWp;
@@ -3924,16 +4081,16 @@ function DungeonView({
                 });
               }
 
-
-
               return (
                 <UnifiedTileMenu
                   worldX={x}
                   worldY={y}
                   title={title}
                   subtitle={subtitle}
+                  info={info}
+                  creature={creature}
                   actions={actions}
-                  footnote="Pinned waypoints show an edge-of-screen arrow."
+                  footnote={footnote}
                   onClose={close}
                 />
               );

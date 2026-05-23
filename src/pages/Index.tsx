@@ -9,7 +9,7 @@ import { expandDungeonIfNeeded, findStairsPosition } from '@/game/dungeonExpansi
 import { PICKAXE_TIERS, hitsToBreak } from '@/game/tools';
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScrollText, Flag, FlagOff, Swords } from 'lucide-react';
+import { ScrollText, Flag, FlagOff, Swords, Footprints, Pickaxe, Hammer, DoorOpen, ChevronDown, ChevronUp, ShoppingBag, Trees } from 'lucide-react';
 import { UnifiedTileMenu, UnifiedTileAction } from '@/game/UnifiedTileMenu';
 import { MonsterSprite } from '@/game/sprites';
 import { DungeonRenderer } from '@/game/DungeonRenderer';
@@ -3697,6 +3697,10 @@ function DungeonView({
               const actions: UnifiedTileAction[] = [];
               let title = '🟫 Tile';
               let subtitle: string | undefined;
+              const dist = Math.abs(x - dungeon.playerPosition.x) + Math.abs(y - dungeon.playerPosition.y);
+              const isAdjacent = dist === 1;
+              const relativeX = x - (dungeon.entryPosition?.x ?? 0);
+              const relativeY = y - (dungeon.entryPosition?.y ?? 0);
 
               // Attack action if the tile holds an enemy
               if (tile.type === 'enemy' && tile.enemyId) {
@@ -3717,11 +3721,170 @@ function DungeonView({
                     },
                   });
                 }
+              } else if (tile.type === 'nest' && tile.nestState) {
+                title = `🪺 ${tile.nestState.element[0].toUpperCase()}${tile.nestState.element.slice(1)} Nest`;
+                subtitle = `Lv ${tile.nestState.level} · ${tile.nestState.hp}/${tile.nestState.maxHp} HP`;
+                if (isAdjacent) {
+                  actions.push({
+                    id: 'bump-nest',
+                    label: 'Attack nest',
+                    hint: 'Use a normal turn to damage it',
+                    icon: Swords,
+                    variant: 'default',
+                    onClick: () => {
+                      close();
+                      handleMove(getDirection(dungeon.playerPosition, { x, y }));
+                    },
+                  });
+                }
+              } else if (tile.type === 'treasure') {
+                title = '🎁 Treasure chest';
+                subtitle = `Relative (${relativeX}, ${relativeY})`;
+                if (isAdjacent) {
+                  actions.push({
+                    id: 'open-treasure',
+                    label: 'Open chest',
+                    icon: DoorOpen,
+                    variant: 'default',
+                    onClick: () => {
+                      close();
+                      handleMove(getDirection(dungeon.playerPosition, { x, y }));
+                    },
+                  });
+                }
+              } else if (tile.type === 'stairs') {
+                title = '⬇️ Descending stairs';
+                subtitle = `Relative (${relativeX}, ${relativeY})`;
+                if (isAdjacent) {
+                  actions.push({
+                    id: 'use-stairs-down',
+                    label: 'Go down',
+                    icon: ChevronDown,
+                    variant: 'default',
+                    onClick: () => {
+                      close();
+                      handleMove(getDirection(dungeon.playerPosition, { x, y }));
+                    },
+                  });
+                }
+              } else if (tile.type === 'stairs_up') {
+                title = '⬆️ Ascending stairs';
+                subtitle = `Relative (${relativeX}, ${relativeY})`;
+                if (isAdjacent) {
+                  actions.push({
+                    id: 'use-stairs-up',
+                    label: 'Go up',
+                    icon: ChevronUp,
+                    variant: 'default',
+                    onClick: () => {
+                      close();
+                      handleMove(getDirection(dungeon.playerPosition, { x, y }));
+                    },
+                  });
+                }
+              } else if (tile.type === 'shop') {
+                title = '🛒 Dungeon shop';
+                subtitle = `Relative (${relativeX}, ${relativeY})`;
+                if (isAdjacent) {
+                  actions.push({
+                    id: 'open-shop',
+                    label: 'Open shop',
+                    icon: ShoppingBag,
+                    variant: 'default',
+                    onClick: () => {
+                      close();
+                      handleMove(getDirection(dungeon.playerPosition, { x, y }));
+                    },
+                  });
+                }
+              } else if (tile.type === 'elevator') {
+                title = '🛗 Elevator';
+                subtitle = `Relative (${relativeX}, ${relativeY})`;
+                if (isAdjacent) {
+                  actions.push({
+                    id: 'use-elevator',
+                    label: 'Use elevator',
+                    icon: DoorOpen,
+                    variant: 'default',
+                    onClick: () => {
+                      close();
+                      handleMove(getDirection(dungeon.playerPosition, { x, y }));
+                    },
+                  });
+                }
+              } else if (tile.type === 'mineable_wall') {
+                const wallName = tile.wallTier ? mineableWallName(tile.wallTier) : 'Mineable wall';
+                title = `⛏️ ${wallName}`;
+                subtitle = `Relative (${relativeX}, ${relativeY})`;
+                if (isAdjacent) {
+                  actions.push({
+                    id: 'mine-wall',
+                    label: 'Mine wall',
+                    hint: 'Consumes a turn',
+                    icon: Pickaxe,
+                    variant: 'default',
+                    onClick: () => {
+                      close();
+                      handleMove(getDirection(dungeon.playerPosition, { x, y }));
+                    },
+                  });
+                }
+              } else if (tile.type === 'plant') {
+                title = '🌿 Harvestable plant';
+                subtitle = `Relative (${relativeX}, ${relativeY})`;
+                if (isAdjacent) {
+                  actions.push({
+                    id: 'harvest-plant',
+                    label: 'Harvest plant',
+                    icon: Trees,
+                    variant: 'default',
+                    onClick: () => {
+                      close();
+                      handleMove(getDirection(dungeon.playerPosition, { x, y }));
+                    },
+                  });
+                }
               } else {
                 title = `📍 Tile`;
-                const ex = dungeon.entryPosition?.x ?? 0;
-                const ey = dungeon.entryPosition?.y ?? 0;
-                subtitle = `Relative (${x - ex}, ${y - ey})`;
+                subtitle = `Relative (${relativeX}, ${relativeY})`;
+              }
+
+              if (tile.explored && dist > 0) {
+                if (isAdjacent) {
+                  actions.push({
+                    id: 'move',
+                    label: 'Move here',
+                    icon: Footprints,
+                    onClick: () => {
+                      close();
+                      handleMove(getDirection(dungeon.playerPosition, { x, y }));
+                    },
+                  });
+                } else {
+                  actions.push({
+                    id: 'walk-here',
+                    label: 'Walk here',
+                    hint: 'Auto-path to this tile',
+                    icon: Footprints,
+                    onClick: () => {
+                      close();
+                      handleTileClick(x, y);
+                    },
+                  });
+                }
+              }
+
+              if (tile.type === 'floor') {
+                actions.push({
+                  id: 'build-here',
+                  label: 'Build here',
+                  hint: 'Choose a dungeon structure to place',
+                  icon: Hammer,
+                  onClick: () => {
+                    close();
+                    setDungeonBuildPanelOpen(true);
+                  },
+                });
               }
 
               // Waypoint pin/unpin on any explored tile

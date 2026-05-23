@@ -68,6 +68,100 @@ type TierStats = {
   speedMod?: number | '';
 };
 
+// Convert a built-in move's `targeting` + `aoeRadius` into a concrete
+// grid shape, so existing (non-custom-shape) moves populate the editor
+// with their implied affected cells. Facing is treated as "up" (-y forward).
+function synthesizeShapeFromTargeting(m: Move): {
+  offsets: { dx: number; dy: number }[];
+  originType: ShapeOriginType;
+  range: number;
+  rotateToFacing: boolean;
+} {
+  const targeting = m.targeting ?? (m.type === 'melee' ? 'single' : 'single');
+  const aoe = Math.max(0, m.aoeRadius ?? 0);
+  const baseRange = m.type === 'melee' ? 1 : 5;
+  const offsets: { dx: number; dy: number }[] = [];
+  let originType: ShapeOriginType = m.type === 'melee' ? 'self' : 'target_tile';
+  let range = baseRange;
+  let rotateToFacing = false;
+
+  const disc = (r: number, cx = 0, cy = 0) => {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (dx === 0 && dy === 0 && cx === 0 && cy === 0) continue;
+        if (dx * dx + dy * dy <= r * r) offsets.push({ dx: cx + dx, dy: cy + dy });
+      }
+    }
+  };
+
+  switch (targeting) {
+    case 'self':
+      originType = 'self';
+      // self-only — leave offsets empty (anchor is implicit).
+      break;
+    case 'single':
+      originType = m.type === 'melee' ? 'self' : 'self';
+      offsets.push({ dx: 0, dy: -1 });
+      rotateToFacing = true;
+      break;
+    case 'piercing': {
+      originType = 'self';
+      const len = Math.max(2, baseRange);
+      for (let i = 1; i <= len; i++) offsets.push({ dx: 0, dy: -i });
+      rotateToFacing = true;
+      break;
+    }
+    case 'cone': {
+      originType = 'self';
+      const depth = Math.max(2, aoe || 3);
+      for (let d = 1; d <= depth; d++) {
+        for (let x = -d + 1; x <= d - 1; x++) offsets.push({ dx: x, dy: -d });
+      }
+      rotateToFacing = true;
+      break;
+    }
+    case 'aura': {
+      originType = 'self';
+      disc(Math.max(1, aoe || 1));
+      break;
+    }
+    case 'area': {
+      originType = 'target_tile';
+      disc(Math.max(0, aoe || 1));
+      offsets.push({ dx: 0, dy: 0 }); // include the targeted center tile
+      break;
+    }
+    case 'arc': {
+      originType = 'self';
+      const r = Math.max(2, aoe || 3);
+      for (let dy = -r; dy <= 0; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          if (dx * dx + dy * dy <= r * r) offsets.push({ dx, dy });
+        }
+      }
+      rotateToFacing = true;
+      break;
+    }
+    case 'custom':
+      // Already handled by the customShape branch — fall through with empty.
+      break;
+  }
+
+  // Dedupe.
+  const seen = new Set<string>();
+  const unique = offsets.filter((o) => {
+    const k = `${o.dx},${o.dy}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return !(o.dx === 0 && o.dy === 0);
+  });
+
+  return { offsets: unique, originType, range, rotateToFacing };
+}
+
+
+
 export function ShapeDesigner() {
   const { saveOverride, deleteOverride, getOverride, loading } = useGameDataOverrides('moves');
   const [search, setSearch] = useState('');

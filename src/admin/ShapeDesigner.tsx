@@ -164,6 +164,12 @@ function synthesizeShapeFromTargeting(m: Move): {
 
 export function ShapeDesigner() {
   const { saveOverride, deleteOverride, getOverride, loading } = useGameDataOverrides('moves');
+  const {
+    overrides: templateRows,
+    saveOverride: saveTemplate,
+    deleteOverride: deleteTemplate,
+    loading: templatesLoading,
+  } = useGameDataOverrides('shape_templates');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Move | null>(null);
   const [mode, setMode] = useState<Mode>('shape');

@@ -43,26 +43,6 @@ export function calculateStats(species: SpeciesType, classType: ClassType, level
   };
 }
 
-// Calculate stat gains when leveling up - returns the difference between new and old stats
-export function calculateStatGains(
-  species: SpeciesType, 
-  classType: ClassType, 
-  fromLevel: number, 
-  toLevel: number
-): Partial<MonsterStats> {
-  const oldStats = calculateStats(species, classType, fromLevel);
-  const newStats = calculateStats(species, classType, toLevel);
-  
-  return {
-    maxHp: newStats.maxHp - oldStats.maxHp,
-    attack: newStats.attack - oldStats.attack,
-    defense: newStats.defense - oldStats.defense,
-    speed: newStats.speed - oldStats.speed,
-    dodge: newStats.dodge - oldStats.dodge,
-    special: newStats.special - oldStats.special,
-    stamina: newStats.stamina - oldStats.stamina,
-  };
-}
 
 
 // Create a new monster.
@@ -95,52 +75,24 @@ export function createMonster(
   };
 }
 
-// Check elemental advantage (returns damage multiplier)
-export function getElementMultiplier(attacker: ElementType, defender: ElementType): number {
-  if (ELEMENT_ADVANTAGES[attacker].includes(defender)) {
-    return 1.5; // Super effective
-  }
-  if (ELEMENT_ADVANTAGES[defender].includes(attacker)) {
-    return 0.67; // Not very effective
-  }
-  return 1.0; // Neutral
-}
-
-// Check class advantage
-export function getClassMultiplier(attacker: ClassType, defender: ClassType): number {
-  if (CLASS_ADVANTAGES_CORRECTED[attacker].includes(defender)) {
-    return 1.3;
-  }
-  if (CLASS_ADVANTAGES_CORRECTED[defender].includes(attacker)) {
-    return 0.77;
-  }
+// Check elemental advantage (returns damage multiplier).
+// Used internally by generateRandomMonster's siblings; the canonical combat
+// damage path lives in src/game/combat.ts.
+function getElementMultiplier(attacker: ElementType, defender: ElementType): number {
+  if (ELEMENT_ADVANTAGES[attacker].includes(defender)) return 1.5;
+  if (ELEMENT_ADVANTAGES[defender].includes(attacker)) return 0.67;
   return 1.0;
 }
 
-// Calculate damage
-export function calculateDamage(
-  attacker: Monster,
-  defender: Monster,
-  basePower: number,
-  isSpecial: boolean = false
-): number {
-  const attackStat = isSpecial ? attacker.stats.special : attacker.stats.attack;
-  const defenseStat = isSpecial ? defender.stats.special : defender.stats.defense;
-  
-  const elementMult = getElementMultiplier(attacker.element, defender.element);
-  const classMult = getClassMultiplier(attacker.class, defender.class);
-  
-  // Basic damage formula
-  const baseDamage = Math.floor(
-    ((2 * attacker.level / 5 + 2) * basePower * attackStat / defenseStat) / 50 + 2
-  );
-  
-  // Apply multipliers
-  const finalDamage = Math.floor(baseDamage * elementMult * classMult);
-  
-  // Minimum 1 damage
-  return Math.max(1, finalDamage);
+function getClassMultiplier(attacker: ClassType, defender: ClassType): number {
+  if (CLASS_ADVANTAGES_CORRECTED[attacker].includes(defender)) return 1.3;
+  if (CLASS_ADVANTAGES_CORRECTED[defender].includes(attacker)) return 0.77;
+  return 1.0;
 }
+// Mark as intentionally retained for potential future callers / debugging.
+void getElementMultiplier;
+void getClassMultiplier;
+
 
 // Items that enemies can carry - IDs match ITEMS database for recipe unlocking
 const ENEMY_ITEM_TABLE = [
@@ -199,17 +151,3 @@ export function generateRandomMonster(
   return monster;
 }
 
-// Get monster display name with class
-export function getMonsterFullName(monster: Monster): string {
-  const speciesData = SPECIES_DATA[monster.species];
-  const classNames: Record<ClassType, string> = {
-    normal: 'Normal',
-    kinetic: 'Kinetic',
-    energy: 'Energy',
-    biological: 'Biological',
-    chemical: 'Chemical',
-    political: 'Political',
-  };
-  
-  return `${monster.element.charAt(0).toUpperCase() + monster.element.slice(1)} ${classNames[monster.class]} ${speciesData.name}`;
-}

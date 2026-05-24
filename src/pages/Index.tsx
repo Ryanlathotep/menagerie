@@ -528,7 +528,13 @@ function DungeonView({
     
     // Stream new dungeon strips on whichever sides the player is now near.
     // expandDungeonIfNeeded is a no-op when no edge is close, so this is cheap.
+    // CRITICAL: rebase result.dungeon onto the expanded grid so every
+    // downstream step (runeBump, tickDungeonNests, processEnemyTurns) operates
+    // on — and dispatches — the same expanded dungeon. Otherwise the enemy
+    // turn that fires when an enemy enters proximity overwrites the expansion
+    // with stale coords and softlocks the player at the edge.
     const expandedDungeon = expandDungeonIfNeeded(result.dungeon);
+    result.dungeon = expandedDungeon;
     dispatch({
       type: 'SET_DUNGEON',
       dungeon: expandedDungeon,

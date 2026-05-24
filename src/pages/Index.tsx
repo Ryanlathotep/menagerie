@@ -2449,17 +2449,30 @@ function DungeonView({
     // Build mode: place building on open floor tile in dungeon
     if (dungeonBuildMode && selectedDungeonBuildType && dungeon) {
       const tile = dungeon.tiles[y]?.[x];
-      if (!tile || tile.type !== 'floor') {
+      // Allow placement on floor or terrain (decorative ground) tiles only.
+      if (!tile || (tile.type !== 'floor' && tile.type !== 'terrain')) {
         toast.error('Can only build on open floor tiles!');
         return;
       }
       // Reject if already occupied by a player building on this floor
-      const existing = (dungeon.playerBuildings || []) as any[];
+      const existing = (dungeon.playerBuildings || []) as PlayerBuilding[];
       if (existing.some(b => b.worldX === x && b.worldY === y)) {
         toast.error('A building already stands here.');
         return;
       }
-      // Import lazily through static refs at top of file
+      // Stairs/ladders must attach to a wall (dungeon wall OR a player wall).
+      if (selectedDungeonBuildType === 'stone_staircase' || selectedDungeonBuildType === 'ladder') {
+        const dirs: Array<[number, number]> = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+        const adjacent = dirs.some(([dx, dy]) => {
+          const nt = dungeon.tiles[y + dy]?.[x + dx];
+          if (nt && (nt.type === 'wall' || nt.type === 'mineable_wall')) return true;
+          return existing.some(b => b.type === 'wall' && b.worldX === x + dx && b.worldY === y + dy);
+        });
+        if (!adjacent) {
+          toast.error('Stairs must be placed next to a wall.');
+          return;
+        }
+      }
       const def = BUILDING_DEFINITIONS[selectedDungeonBuildType];
       const ow = state.saveData.overworldState;
       const creative = isCreativeMode();
@@ -2468,10 +2481,7 @@ function DungeonView({
         return;
       }
       const newBuilding = createBuilding(selectedDungeonBuildType, x, y);
-      dispatch({
-        type: 'UPDATE_DUNGEON',
-        dungeon: { playerBuildings: [...existing, newBuilding] } as any,
-      });
+      applyDungeonBuildings([...existing, newBuilding]);
       if (!creative && ow) {
         dispatch({
           type: 'UPDATE_OVERWORLD',

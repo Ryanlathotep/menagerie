@@ -2378,7 +2378,7 @@ function DungeonView({
         harvestOutput: undefined,
       };
     });
-    dispatch({ type: 'UPDATE_DUNGEON', dungeon: { playerBuildings: buildings } as any });
+    applyDungeonBuildings(buildings);
     addLog(`🐾 Removed monster from ${BUILDING_DEFINITIONS[dungeonAssignBuilding.type].name}.`, 'system');
     setDungeonAssignBuilding(null);
   }, [dungeonAssignBuilding, dungeon, dispatch, addLog]);

@@ -52,7 +52,7 @@ function fakeMonster(overrides: Partial<Monster> = {}): Monster {
     maxStamina: 30,
     stats: { hp: 50, atk: 10, def: 10, spd: 10, dex: 10, special: 10 },
     moves: [],
-    moveMastery: { water_jet: { uses: 17, masteryLevel: 1 } },
+    moveMastery: { water_jet: { uses: 17, currentTier: 'base', hasAoE: false } },
     equipment: createEmptyEquipment(),
     ...overrides,
   } as unknown as Monster;
@@ -109,7 +109,7 @@ function inv_endRunPersistsAllFour(): InvariantResult {
     classType: 'biological',
     level: 3,
     experience: 5,
-    moveMastery: { water_jet: { uses: 2, masteryLevel: 0 } },
+    moveMastery: { water_jet: { uses: 2, currentTier: 'base', hasAoE: false } },
   } as UnlockedMonster;
   const before = fakeSaveData([existing]);
   const helm = fakeEquipment('qa-helm');
@@ -245,11 +245,11 @@ function inv_masteryMergeMax(): InvariantResult {
     classType: 'biological',
     level: 10,
     experience: 0,
-    moveMastery: { water_jet: { uses: 99, masteryLevel: 3 } },
+    moveMastery: { water_jet: { uses: 99, currentTier: 'base', hasAoE: false } },
   } as UnlockedMonster;
   const save = fakeSaveData([existing]);
   // Run brings a lower-mastery copy (e.g. mid-leveling).
-  const party = [fakeMonster({ level: 10, moveMastery: { water_jet: { uses: 5, masteryLevel: 0 } } })];
+  const party = [fakeMonster({ level: 10, moveMastery: { water_jet: { uses: 5, currentTier: 'base', hasAoE: false } } })];
   const result = persistRunPartyProgress(save, fakeRun(party));
   const merged = result.find(m => m.comboId === 'slime_water_biological');
   const pass = (merged?.moveMastery?.water_jet?.uses ?? 0) === 99;

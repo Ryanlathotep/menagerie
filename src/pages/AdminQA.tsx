@@ -59,7 +59,7 @@ export default function AdminQA() {
       const s = summarize(out);
       if (user) {
         setSavingHistory(true);
-        const { error } = await supabase.from('qa_runs').insert({
+        const { error } = await supabase.from('qa_runs').insert([{
           user_id: user.id,
           pass_count: s.pass,
           fail_count: s.fail,
@@ -67,7 +67,7 @@ export default function AdminQA() {
           console_errors: consoleErrors as unknown as object,
           app_version: 'menagerie',
           world_seed: (state.saveData as { _worldSeed?: number })._worldSeed ?? null,
-        });
+        }]);
         setSavingHistory(false);
         if (!error) loadHistory();
       }

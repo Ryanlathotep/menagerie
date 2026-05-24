@@ -71,7 +71,7 @@ function stripBoundEquipment(equipment?: MonsterEquipment): MonsterEquipment | u
   ) as MonsterEquipment;
 }
 
-function persistRunPartyProgress(saveData: SaveData, run: GameState['run']): SaveData['unlockedMonsters'] {
+export function persistRunPartyProgress(saveData: SaveData, run: GameState['run']): SaveData['unlockedMonsters'] {
   if (!run) return saveData.unlockedMonsters;
 
   const updatedUnlockedMonsters = [...saveData.unlockedMonsters];

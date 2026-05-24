@@ -19,7 +19,7 @@ interface QaRunRow {
   notes: string | null;
 }
 
-export default function AdminQA() {
+function AdminQAInner() {
   const { state } = useGame();
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdminRole();

@@ -211,3 +211,11 @@ function buildSuggestions(results: InvariantResult[]) {
   };
   return results.filter(r => !r.pass).map(r => ({ id: r.id, suggestion: map[r.id] || r.detail }));
 }
+
+export default function AdminQA() {
+  return (
+    <GameProvider>
+      <AdminQAInner />
+    </GameProvider>
+  );
+}

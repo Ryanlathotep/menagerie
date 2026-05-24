@@ -2360,7 +2360,7 @@ function DungeonView({
       }
       return updated;
     });
-    dispatch({ type: 'UPDATE_DUNGEON', dungeon: { playerBuildings: buildings } as any });
+    applyDungeonBuildings(buildings);
     addLog(`👤 Assigned monster to ${BUILDING_DEFINITIONS[dungeonAssignBuilding.type].name}.`, 'system');
     setDungeonAssignBuilding(null);
   }, [dungeonAssignBuilding, dungeon, state.run, dispatch, addLog]);

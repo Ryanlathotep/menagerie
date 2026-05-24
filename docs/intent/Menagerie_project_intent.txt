@@ -1,3 +1,51 @@
+================================================================================
+RECONCILIATION HEADER — added 2026-05-24
+Where this document conflicts with the shipped game, the rules below WIN.
+The rest of this document remains useful intent for unbuilt systems.
+================================================================================
+
+1. CLASSES — Already aligned. Shipped: normal | kinetic | energy | biological |
+   chemical | political, with star 2-strong/2-weak matrix. AI behavior
+   archetypes (tank/bruiser/assassin/mage/ranger/support) are separate.
+
+2. STATS — Shipped 6-stat block wins: HP, Attack, Defense, Speed, Dex, Stamina.
+   Doc's HP/Attack/Defense/Special-only model is NOT used.
+   - Speed = turn order
+   - Dex   = hit chance
+   - Stamina is consumed by attacks (gating)
+   (CLASS_STATS internally tracks a "special" value used as ranged/magic power.
+    This is part of the 6, not a doc-style fifth attack stat.)
+
+3. LEVEL SCALING — Shipped 1.1x geometric per level wins. Doc's linear-log
+   hybrid is NOT used.
+
+4. OVERWORLD DISTANCE — Manhattan distance from (0,0) wins. Doc's Euclidean
+   is NOT used.
+
+5. DUNGEON LENGTH — Floor count = item level + 50 wins. Run ends only when
+   the full party faints. Tower of the Infinite is endless.
+   Doc's "extract on Floor 10 or +10 past record" is layered as ADDITIONAL
+   reward goals on top — not as the run-length rule.
+
+6. CORRIDORS — 1-tile-wide corridors remain allowed. Doc's 3-tile minimum
+   is NOT enforced.
+
+7. BIOMES — Layered system to implement:
+   - Element + Class (both non-Normal) -> blended biome (toward 25 combos)
+   - Element + Normal class            -> element-only biome
+   - Normal element + Class            -> class-only biome
+   - Normal + Normal                   -> species-themed biome
+
+GREENLIT FROM DOC (no conflict, build when scheduled):
+  Shiny variants, dual-seed architecture, hidden species passive pool,
+  boss +25% buff with capture-on-defeat, ley-line territory +
+  leaderboard-priority deconstruct, scout-tower automation, anti-stall timer,
+  arena building, custom move editor, cosmetic skin pipeline.
+
+================================================================================
+ORIGINAL DOCUMENT BELOW
+================================================================================
+
 Menagerie project intent
 I want menageri to be a roguelike dungeon delver and creature collector.
 It will have an overworld and dungeons to explore.

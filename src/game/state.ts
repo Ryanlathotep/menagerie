@@ -485,33 +485,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       // by ADD/USE/DROP_ITEM. Don't merge again or items will duplicate.
       const storedItems = state.saveData.storedItems || [];
       
-      // Update unlocked monsters: persist level AND equipment for each party member.
-      let updatedUnlockedMonsters = [...state.saveData.unlockedMonsters];
-      state.run.party.forEach((partyMember, idx) => {
-        const comboId = `${partyMember.species}_${partyMember.element}_${partyMember.class}`;
-        const memberEquipment = state.run!.partyEquipment[idx];
-        const cleanedEquipment: MonsterEquipment | undefined = memberEquipment
-          ? Object.fromEntries(
-              Object.entries(memberEquipment).map(([slot, item]) => [
-                slot,
-                item ? { ...item, bound: undefined } : null,
-              ])
-            ) as MonsterEquipment
-          : undefined;
-        
-        const existingIdx = updatedUnlockedMonsters.findIndex(m => m.comboId === comboId);
-        if (existingIdx !== -1) {
-          updatedUnlockedMonsters[existingIdx] = {
-            ...updatedUnlockedMonsters[existingIdx],
-            level: Math.max(updatedUnlockedMonsters[existingIdx].level, partyMember.level),
-            // Persist banked XP and move-mastery progress so fleeing a
-            // dungeon doesn't reset partial progression.
-            experience: partyMember.experience ?? 0,
-            moveMastery: partyMember.moveMastery,
-            equipment: cleanedEquipment,
-          };
-        }
-      });
+      // Use the canonical persist helper so FLEE_DUNGEON and END_RUN behave
+      // identically: merges moveMastery (max uses), preserves higher XP when
+      // existing level is higher, appends newly-recruited combos that aren't
+      // in unlockedMonsters yet, and falls back to existing equipment when
+      // the party slot has none. The previous inline block silently dropped
+      // recruits and could regress mastery / XP on flee.
+      const updatedUnlockedMonsters = persistRunPartyProgress(state.saveData, state.run);
       
       // Unlock recipes for any equipment seen this run (loose loot already in
       // storedEquipment via mirroring + currently equipped).

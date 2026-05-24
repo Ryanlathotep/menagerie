@@ -281,15 +281,35 @@ function DungeonView({
       // Hydrate from persistent floor snapshot (mined walls, opened tiles,
       // collected chests survive across runs). Enemies stay fresh from gen.
       const hydrated = hydrateDungeonFromSnapshot(freshDungeon, entrance);
+      // Bug fix: the snapshot tiles may overwrite fresh.playerPosition with a
+      // wall (different layout from a prior run). If we plant the entry
+      // staircase there, prepareDungeonForEntry silently relocates the player
+      // to a nearby walkable tile that has no `stairsBeneath: 'up'`, leaving
+      // the player stuck on a "completed" floor with no exit portal.
+      // Resolve the final walkable spawn FIRST, then mark the entry tile.
+      let spawn = hydrated.playerPosition;
+      const spawnTile = hydrated.tiles[spawn.y]?.[spawn.x];
+      const blocked = !spawnTile
+        || spawnTile.type === 'wall'
+        || spawnTile.type === 'mineable_wall'
+        || spawnTile.type === 'nest';
+      if (blocked) {
+        const safe = findNearestWalkableTile(hydrated.tiles, spawn.x, spawn.y);
+        if (safe) spawn = safe;
+      }
       // Mark the entry tile so an "up" staircase appears beneath the player —
       // stepping back onto it exits the dungeon to the overworld / summary.
-      const spawn = hydrated.playerPosition;
       const entryTiles = hydrated.tiles.map((row, y) =>
         row.map((t, x) => (x === spawn.x && y === spawn.y ? { ...t, stairsBeneath: 'up' as const } : t))
       );
       dispatch({
         type: 'SET_DUNGEON',
-        dungeon: prepareDungeonForEntry({ ...hydrated, tiles: entryTiles })
+        dungeon: prepareDungeonForEntry({
+          ...hydrated,
+          tiles: entryTiles,
+          playerPosition: spawn,
+          entryPosition: { ...spawn },
+        }),
       });
     }
   }, [dungeon, dispatch, state.saveData.dungeonEntrances, state.saveData.unlockedMonsters]);

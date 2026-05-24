@@ -4396,6 +4396,49 @@ function DungeonView({
                 });
               }
 
+              // ── Self-tile actions (caster buffs + consumables) ──────────
+              if (dist === 0 && monster) {
+                const consumables = (state.run.inventory || []).filter(
+                  (it) => it.type === 'potion' || !!it.effect,
+                );
+                for (const item of consumables.slice(0, 6)) {
+                  actions.push({
+                    id: `use-item-${item.id}`,
+                    label: `Use ${item.name}`,
+                    hint: item.effect ? item.effect.replace(/_/g, ' ') : undefined,
+                    icon: FlaskConical,
+                    onClick: () => { close(); handleUseItemOutOfCombat(item); },
+                  });
+                }
+                const selfMoves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level).filter(
+                  (mv) => (mv.targeting === 'self' || (mv.type === 'heal' && mv.power === 0))
+                    && (mv.staminaCost || 0) <= (monster.stats.currentStamina ?? monster.stats.stamina ?? 50),
+                );
+                for (const mv of selfMoves.slice(0, 4)) {
+                  actions.push({
+                    id: `self-cast-${mv.id}`,
+                    label: `Cast ${mv.name}`,
+                    hint: mv.description,
+                    icon: Wand2,
+                    onClick: () => {
+                      close();
+                      const config = getAttackConfig(mv);
+                      const validTargets = getValidTargets(
+                        dungeon.playerPosition, config,
+                        dungeon.tiles, dungeon.width, dungeon.height, true,
+                      );
+                      setTargetingMove(mv);
+                      setTargetingTiles(validTargets);
+                      setAffectedTiles([]);
+                      setHoveredTile(null);
+                      setTimeout(() => handleTargetingClick(dungeon.playerPosition.x, dungeon.playerPosition.y), 0);
+                    },
+                  });
+                }
+              }
+
+
+
               return (
                 <UnifiedTileMenu
                   worldX={x}

@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import AdminQA from "./pages/AdminQA";
 import NotFound from "./pages/NotFound";
 import { useDismissTooltipsOnTap } from "./hooks/useDismissTooltipsOnTap";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,6 +51,7 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/" element={<Index />} />
       <Route path="/auth" element={<Auth />} />
+      <Route path="/admin/qa" element={<AdminQA />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />
     </Routes>

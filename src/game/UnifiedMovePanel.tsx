@@ -235,6 +235,11 @@ export function UnifiedMovePanel({
     if (move.type === 'melee' || move.type === 'ranged') return true;
     // Debuff status moves can target enemies
     if (move.type === 'status' && move.effect?.includes('lower_')) return true;
+    // Movement skills (dash/blink/etc.) — usable on the map for repositioning.
+    if (move.type === 'movement') return true;
+    // Any admin-designed move that defines a movement pattern is also a
+    // repositioning skill regardless of declared `type`.
+    if (move.movement && move.movement.offsets && move.movement.offsets.length > 0) return true;
     return false;
   };
 

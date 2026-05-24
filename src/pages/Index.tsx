@@ -3341,16 +3341,15 @@ function DungeonView({
                 title = '🎁 Treasure chest';
                 subtitle = 'Unopened loot cache';
                 info.push({ label: 'Loot', value: 'Chest rewards on contact' });
-                info.push({ label: 'Action', value: isAdjacent ? 'Collectable now' : 'Step adjacent first' });
-                if (isAdjacent) {
-                  actions.push({
-                    id: 'collect-treasure',
-                    label: 'Collect chest',
-                    icon: DoorOpen,
-                    variant: 'default',
-                    onClick: stepToTile,
-                  });
-                }
+                info.push({ label: 'Action', value: isAdjacent ? 'Collectable now' : 'Walk to it to collect' });
+                actions.push({
+                  id: 'collect-treasure',
+                  label: isAdjacent ? 'Collect chest' : 'Walk to chest & collect',
+                  hint: isAdjacent ? undefined : 'Auto-paths and opens on arrival',
+                  icon: DoorOpen,
+                  variant: 'default',
+                  onClick: isAdjacent ? stepToTile : autoPathToTile,
+                });
               } else if (tile.type === 'stairs') {
                 title = '⬇️ Descending stairs';
                 subtitle = `Floor ${dungeon.floor} → ${dungeon.floor + 1}`;
@@ -3510,11 +3509,15 @@ function DungeonView({
                 if (!tile.triggered) {
                   actions.push({
                     id: 'disarm-trap',
-                    label: 'Disarm trap',
-                    hint: `${disarmChance}% success chance`,
+                    label: isAdjacent ? 'Disarm trap' : 'Walk to trap',
+                    hint: isAdjacent ? `${disarmChance}% success chance` : 'Auto-paths next to it so you can disarm',
                     icon: Shovel,
                     variant: 'default',
                     onClick: () => {
+                      if (!isAdjacent) {
+                        autoPathToTile();
+                        return;
+                      }
                       close();
                       const success = Math.random() * 100 < disarmChance;
                       dispatch({ type: 'DISARM_TRAP', x, y, success });

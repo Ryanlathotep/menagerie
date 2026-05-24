@@ -63,8 +63,8 @@ export default function AdminQA() {
           user_id: user.id,
           pass_count: s.pass,
           fail_count: s.fail,
-          results: out as unknown as object,
-          console_errors: consoleErrors as unknown as object,
+          results: JSON.parse(JSON.stringify(out)),
+          console_errors: JSON.parse(JSON.stringify(consoleErrors)),
           app_version: 'menagerie',
           world_seed: (state.saveData as { _worldSeed?: number })._worldSeed ?? null,
         }]);

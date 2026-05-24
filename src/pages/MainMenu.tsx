@@ -103,7 +103,7 @@ export function MainMenu() {
     .filter(Boolean) as UnlockedMonster[];
   const canQuickStart = quickStartParty.length > 0;
 
-  const quickStart = (destination: 'dungeon' | 'overworld', entranceId?: string) => {
+  const quickStart = (destination: 'dungeon' | 'overworld', entranceId?: string, startFloor?: number) => {
     if (!canQuickStart) return;
     localStorage.setItem('menagerie_run_destination', destination);
     localStorage.setItem('menagerie_run_origin', 'main_menu');
@@ -114,7 +114,11 @@ export function MainMenu() {
     } else {
       localStorage.removeItem('menagerie_active_dungeon_id');
     }
-    localStorage.removeItem('menagerie_selected_start_floor');
+    if (startFloor && startFloor > 0) {
+      localStorage.setItem('menagerie_selected_start_floor', String(startFloor));
+    } else {
+      localStorage.removeItem('menagerie_selected_start_floor');
+    }
 
     const monsters = quickStartParty.map(saved =>
       createMonster(
@@ -139,6 +143,11 @@ export function MainMenu() {
       destination,
     });
   };
+
+  const highestMonsterLevel = state.saveData.unlockedMonsters.reduce(
+    (max, m) => Math.max(max, m.level ?? 1),
+    1,
+  );
 
   return (
     <div className="game-container font-serif text-center">
@@ -211,8 +220,9 @@ export function MainMenu() {
               localStorage.setItem('menagerie_active_dungeon_difficulty', String(entrance.difficulty || 1));
               dispatch({ type: 'SET_PHASE', phase: 'character_select' });
             }}
-            onQuickStart={canQuickStart ? (entrance) => quickStart('dungeon', entrance.id) : undefined}
+            onQuickStart={canQuickStart ? (entrance, startFloor) => quickStart('dungeon', entrance.id, startFloor) : undefined}
             quickStartPartySize={quickStartParty.length}
+            highestMonsterLevel={highestMonsterLevel}
           />
 
           <div className="flex gap-2 justify-center">

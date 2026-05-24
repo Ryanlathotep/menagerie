@@ -215,6 +215,48 @@ export type Database = {
         }
         Relationships: []
       }
+      qa_runs: {
+        Row: {
+          app_version: string | null
+          console_errors: Json
+          created_at: string
+          fail_count: number
+          id: string
+          notes: string | null
+          pass_count: number
+          ran_at: string
+          results: Json
+          user_id: string
+          world_seed: number | null
+        }
+        Insert: {
+          app_version?: string | null
+          console_errors?: Json
+          created_at?: string
+          fail_count?: number
+          id?: string
+          notes?: string | null
+          pass_count?: number
+          ran_at?: string
+          results?: Json
+          user_id: string
+          world_seed?: number | null
+        }
+        Update: {
+          app_version?: string | null
+          console_errors?: Json
+          created_at?: string
+          fail_count?: number
+          id?: string
+          notes?: string | null
+          pass_count?: number
+          ran_at?: string
+          results?: Json
+          user_id?: string
+          world_seed?: number | null
+        }
+        Relationships: []
+      }
       tower_leaderboard: {
         Row: {
           achieved_at: string

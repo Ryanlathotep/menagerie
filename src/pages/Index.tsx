@@ -1,4 +1,5 @@
 import { GameProvider, useGame, buildProgressSnapshot } from '@/game/state';
+import { DebugBridgeMount } from '@/dev/DebugBridgeMount';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getComboId, UnlockedMonster, InventoryItem, MonsterStats, Monster, Position, DungeonState, hydrateDungeonFromSnapshot } from '@/game/types';
@@ -5564,6 +5565,7 @@ export default function Index() {
     <main>
       <SettingsProvider>
         <GameProvider>
+          <DebugBridgeMount />
           <Game />
         </GameProvider>
       </SettingsProvider>

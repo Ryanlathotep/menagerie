@@ -71,7 +71,7 @@ function stripBoundEquipment(equipment?: MonsterEquipment): MonsterEquipment | u
   ) as MonsterEquipment;
 }
 
-function persistRunPartyProgress(saveData: SaveData, run: GameState['run']): SaveData['unlockedMonsters'] {
+export function persistRunPartyProgress(saveData: SaveData, run: GameState['run']): SaveData['unlockedMonsters'] {
   if (!run) return saveData.unlockedMonsters;
 
   const updatedUnlockedMonsters = [...saveData.unlockedMonsters];
@@ -232,7 +232,7 @@ type GameAction =
   | { type: 'SET_WORKSTATION_OWNED' };
 
 // Reducer
-function gameReducer(state: GameState, action: GameAction): GameState {
+export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'SET_PHASE':
       return { ...state, phase: action.phase };

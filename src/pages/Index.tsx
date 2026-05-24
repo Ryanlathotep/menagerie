@@ -2911,6 +2911,7 @@ function DungeonView({
           : '';
         return (
         <RecruitmentModal
+          key={defeatedEnemy.id}
           enemy={defeatedEnemy}
           recruitChance={recruitChance}
           impressiveStats={battleStats}

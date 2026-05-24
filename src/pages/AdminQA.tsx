@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import { useGame } from '@/game/state';
+import { useGame, GameProvider } from '@/game/state';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { runAllInvariants, summarize, type InvariantResult } from '@/dev/qaInvariants';

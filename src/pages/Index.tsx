@@ -2329,6 +2329,24 @@ function DungeonView({
   // ─── Dungeon building assign / context handlers ───
   // Mirrors OverworldView's flow but routes mutations through UPDATE_DUNGEON
   // so the building lives on the dungeon floor (and snapshots correctly).
+
+  // Apply a buildings change AND recompute fog-of-war in one dispatch so that
+  // scout towers reveal/hide tiles immediately on build / assign / disassemble.
+  const applyDungeonBuildings = useCallback((buildings: PlayerBuilding[]) => {
+    if (!dungeon) return;
+    const tiles = dungeon.tiles.map(row => row.map(t => ({ ...t })));
+    updateVisibility(
+      tiles,
+      dungeon.playerPosition,
+      3,
+      getDungeonTowerVisionSources({ playerBuildings: buildings }),
+    );
+    dispatch({
+      type: 'UPDATE_DUNGEON',
+      dungeon: { playerBuildings: buildings, tiles } as any,
+    });
+  }, [dungeon, dispatch]);
+
   const handleDungeonAssignMonster = useCallback((monsterId: string) => {
     if (!dungeonAssignBuilding || !dungeon) return;
     const buildings = (dungeon.playerBuildings || []).map(b => {

@@ -41,7 +41,7 @@ import { findOverworldPath } from './overworldPathfinding';
 import { playParticleEffectForMove } from './particles/api';
 import { OverworldDirectionArrows } from './OverworldDirectionArrows';
 import { UnifiedTileMenu, UnifiedTileAction, UnifiedTileInfo, UnifiedTileCreature } from './UnifiedTileMenu';
-import { Flag, FlagOff, DoorOpen, Hammer, Footprints, Swords, Shovel, Droplet, Trash2, Settings as SettingsIcon, Pickaxe, TreePine, Wheat, Wrench, Users, Sparkles } from 'lucide-react';
+import { Flag, FlagOff, DoorOpen, Hammer, Footprints, Swords, Shovel, Droplet, Trash2, Settings as SettingsIcon, Pickaxe, TreePine, Wheat, Wrench, Users, Sparkles, Home, FlaskConical, Wand2 } from 'lucide-react';
 import { useSettings } from './Settings';
 import { GameSidebar } from './GameSidebar';
 import { CraftingWorkshop } from './CraftingWorkshop';
@@ -2294,6 +2294,24 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             });
           }
         }
+      } else if (tile.type === 'building') {
+        // Home base / town hub (campfire → log cabin → town hall).
+        const hub = BUILDING_UPGRADES[(tile.buildingType as keyof typeof BUILDING_UPGRADES) || overworld.homeBase.buildingType];
+        title = `${hub.emoji} ${hub.label}`;
+        subtitle = 'Home base hub';
+        if (hub.features?.length) {
+          info.push({ label: 'Features', value: hub.features.join(' · ') });
+        }
+        if (hub.next && hub.upgradeCost) {
+          info.push({ label: 'Upgrade', value: `→ ${BUILDING_UPGRADES[hub.next].label} (🪵${hub.upgradeCost.wood} 🪨${hub.upgradeCost.stone})` });
+        }
+        actions.push({
+          id: 'open-hub',
+          label: 'Use building',
+          hint: 'Open hub menu (upgrade, shop, build)',
+          icon: Home, variant: 'default',
+          onClick: () => { close(); setShowBuildingMenu(true); },
+        });
       } else if (tile.type === 'water') {
         const COST_WOOD = 2, COST_STONE = 5;
         title = '💧 Water';
@@ -2508,6 +2526,49 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           });
         }
       }
+
+      // ── Self-tile actions (caster buffs + consumables) ─────────────────
+      // Project knowledge: "On Self choose actions that buff self or
+      // movement actions." Surface self-targeting moves and any usable
+      // consumables when right-clicking your own tile.
+      if (dist === 0 && monster) {
+        const consumables = (state.run?.inventory || []).filter(
+          (it) => it.type === 'potion' || !!it.effect,
+        );
+        for (const item of consumables.slice(0, 6)) {
+          actions.push({
+            id: `use-item-${item.id}`,
+            label: `Use ${item.name}`,
+            hint: item.effect ? item.effect.replace(/_/g, ' ') : undefined,
+            icon: FlaskConical,
+            onClick: () => { close(); handleUseItemOutOfCombat(item); },
+          });
+        }
+        const selfMoves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level).filter(
+          (mv) => (mv.targeting === 'self' || (mv.type === 'heal' && mv.power === 0))
+            && (mv.staminaCost || 0) <= (monster.stats.currentStamina ?? monster.stats.stamina ?? 50),
+        );
+        for (const mv of selfMoves.slice(0, 4)) {
+          actions.push({
+            id: `self-cast-${mv.id}`,
+            label: `Cast ${mv.name}`,
+            hint: mv.description,
+            icon: Wand2,
+            onClick: () => {
+              close();
+              const config = getAttackConfig(mv);
+              const validTargets = getOverworldValidTargets(overworld.playerPosition, config, overworld);
+              setTargetingMove(mv);
+              setTargetingTiles(validTargets);
+              setAffectedTiles([]);
+              setHoveredTile(null);
+              setTimeout(() => handleTargetingClick(overworld.playerPosition.x, overworld.playerPosition.y), 0);
+            },
+          });
+        }
+      }
+
+
 
       // ── Universal: Drop / Remove / Rename waypoint ─────────────────────
       // Dungeon-entrance tiles already have their own pin toggle above; skip

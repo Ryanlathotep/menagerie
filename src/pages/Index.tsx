@@ -3509,11 +3509,15 @@ function DungeonView({
                 if (!tile.triggered) {
                   actions.push({
                     id: 'disarm-trap',
-                    label: 'Disarm trap',
-                    hint: `${disarmChance}% success chance`,
+                    label: isAdjacent ? 'Disarm trap' : 'Walk to trap',
+                    hint: isAdjacent ? `${disarmChance}% success chance` : 'Auto-paths next to it so you can disarm',
                     icon: Shovel,
                     variant: 'default',
                     onClick: () => {
+                      if (!isAdjacent) {
+                        autoPathToTile();
+                        return;
+                      }
                       close();
                       const success = Math.random() * 100 < disarmChance;
                       dispatch({ type: 'DISARM_TRAP', x, y, success });

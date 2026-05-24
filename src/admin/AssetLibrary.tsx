@@ -116,6 +116,23 @@ function SlotRow({ slot, currentUrl, onUploaded, onRemoved }: SlotRowProps) {
           />
         ) : currentUrl ? (
           <img src={currentUrl} alt={slot.label} className="w-full h-full object-contain" />
+        ) : slot.category === 'equipment' ? (
+          (() => {
+            const def = getEquipmentIcon(slot.key);
+            return (
+              <svg width={56} height={56} viewBox={def.viewBox}>
+                <circle cx="50" cy="50" r="48" fill="hsl(var(--muted) / 0.3)" stroke="hsl(var(--border))" strokeWidth="1" />
+                <path
+                  d={def.path}
+                  fill="hsl(var(--foreground) / 0.7)"
+                  stroke="hsl(var(--foreground) / 0.9)"
+                  strokeWidth={def.strokeWidth || 1.5}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+              </svg>
+            );
+          })()
         ) : (
           <ImageIcon className="w-6 h-6 text-muted-foreground" />
         )}

@@ -1,0 +1,521 @@
+Menagerie project intent
+I want menageri to be a roguelike dungeon delver and creature collector.
+It will have an overworld and dungeons to explore.
+Player will have a chance to capture any creatures they defeat to later use as they see fit.
+Whenever a player defeats a higher level version of a creature and they capture it the version in there inventory gains all higher traits of that version. Some traits may need to be activate on in off like the passive abilities awarded to a creature from its species. Each species will have some secret hidden abilities that each spawn less often then the last. If a player defeats a creature with one of those abilities if they already posses that creature they may chose which of the abilities they would like equipped at any given time from there creature inventory when creating there party.
+
+Creatures are created by combining templates.
+The templates are Species, Element Type, and Class. Secretly Shiny variants will also rarely spawn and those will also add passive abilities. Shiny templates may also be chosen whenever you adjust your party.
+
+All Creatures will have hidden seed stats generated on that creatures initial creation as well as a second set that reflects any permanent changes. They will also each have some hidden initial stats determined by the seed. Recruiting a character with higher hidden stats will overide the lower stat unlocking a better version of the creature.
+
+Hidden seeds will be part of many in game objects. For instance you can generate a unique overworld by choosing a random seed at the start of the game. Dungeon towers will have their own seeds that affect how the dungeon is generated. And items will also have similar seeds and can be inserted into specific towers to generate a unique tower associated with that item. Advancing stages in an item will increase its level thereby increasing hits final stats based on its initial value scaling up slightly each level.
+
+Element type will determine a creature's weakness and resistance to other element types.
+As well as grant access to certain moves or restrict access to them. Some moves may override that. Element types are fire water earth air and void. Each element is strong versus two  elements and weak versus the remaining two. There is also a normal element type that is neither strong nor weak to the other elements this is sort of the default.
+
+Classes will determine a creature's weaknesses and resistance to other class types.
+As well as grant access to certain moves or restrict access to them. Some moves may override that. Class types are Kinetic, chemical, biological political and Energy. Each Class is strong versus two  elements and weak versus the remaining two. There is also a normal class type that is neither strong nor weak to the other Classes this is sort of the default.
+
+
+The game will have no level caps or max stats instead they will scale indefinitely.
+
+Most items should be Craftable in game with a few exceptions that can only be found in dungeons initially.
+
+There will be harvestable resources in the overworld and dungeons. Those resources can be used to craft items and each resource will add a specific stat to items crafted with it. 
+
+There will be player built structures intended to build safe spaces in the overworld. Allow for crafting. Scout towers will behave in a tower defense style and player may assign creatures to them allowing the tower to inherit the creatures attacks and attack any nearby enemies. Creatures defeated by towers will drop loot boxes but not be capturable in this way. 
+
+Dungeon towers will be the primary game play most will have their own seed that determines its layout but players may permanently alter the dungeons by mining some of its walls and also building player structures in them. Towers will start controlled by enemy boss units. Enemy controlled tower will spawn enemies nearby occasionally.  Boss units will have a 25% buff to all stats but when defeated that bonus goes away and the normal version may be capture. If a player remains on a dungeon floor to long monsters from higher level stages may spawn near the next levels stair case. If a player defeats the boss when they leave the dungeon they may assign one of their highest level creatures in their party to control that dungeon. A copy of that creature will be left as a new boss monster at the highest level the player reached before exiting it will gain the boss buff and can be fought by other players as well and other players may gain a copy of that creature in the same way. Copies of their remaining party members will be placed as mini bosses evenly distributed on lower floors as well in order of level. If a player defeats another players boss they gain control of the tower but from then on the extra party members do not populate future playthrough instead if a player defeats a mini boss they may replace it with one of their creatures and capture second place in the tower so forth and so on.
+
+Towers will effect the tiles generated around them based on the boss of the tower. There will be a biome for every Element, and Class combo. As well as biome for each species if either or both their element and class are normal. A player with the highest rank in a dungeon can alter the dungeons rules to determine if it spawns enemy units based on their units or not.
+
+
+Ai generated
+
+Menagerie Project Intent: Comprehensive System Architecture & Design Document
+1. Executive Summary
+1.1 Product Purpose
+Menagerie is an isometric, procedural, open-world roguelike dungeon-delver and creature-collection game. It combines deep mechanical theory, dynamic structural building, tactical automation, and endless progression scaling. The core gameplay loops emphasize procedural generation driven by localized data matrices, emergent strategy via dynamic group synergy, and a perpetual progression model that completely eschews hard caps on stats, levels, or world boundaries.
+Players explore an infinite, multi-layered overworld grid, map procedurally populated dungeons, capture and combine multi-templated creature variations, construct fortresses, and challenge highly competitive endgame progression structures. The app’s architecture serves to harmonize high-granularity calculation algorithms with a modular sandbox design.
+1.2 Target Audience
+Hardcore Roguelike & RPG Enthusiasts: Players who demand infinite progression vectors, systemic transparency, and complex stat calculation layers without arbitrary soft or hard caps.
+Theorycrafters & Strategy Gamers: Users who enjoy multi-variable combinatorial design rules where species, element types, classes, hidden seed data, and status attributes overlap to dictate mechanical viability.
+Collection Sandbox Competitors: Players drawn to rare hunting loops, asynchronous leaderboard dominance, territorial control mechanics, and custom asset/modding integration pipelines.
+2. Core Architectural Pillars
+         [ PROCEDURAL SEED GENERATOR ]
+             /          |          \
+            v           v           v
+    [ Overworld ]  [ Dungeons ]  [ Creature/Item Objects ]
+            \           |           /
+             v          v          v
+          [ MASTER SIMULATION ENGINE ]
+
+Modular Orthogonal Templates: Content and entities are built dynamically using decoupled structural templates (Species, Element, Class, Shines). They generate unique functional outputs based on matrix multiplication of combat coefficients rather than manual hardcoding.
+Deterministic Pseudorandom Generation (PRG): Every environmental element, dungeon floor, and unique item property is governed by nested seed architectures, ensuring that the entire cosmos operates on reproducible mathematical pipelines.
+Persistent Asynchronous State Ecosystem: Multiplayer interactions, world control loops, and leaderboards use localized data synchronization. This ensures that player structures, boss positions, and regional permissions adjust seamlessly according to leaderboard changes.
+Unbounded Progression Vectors: All algorithmic equations governing damage, health scaling, item efficiency, and world levels use open-ended logarithmic or linear curves. This eliminates the technical limitations of conventional max-level or max-stat frameworks.
+3. The Creature Template System
+Every creature in Menagerie is defined as an entity composed of three distinct primary templates and an optional secondary modifier template. These templates determine the creature's core stats, movepools, passives, and combat parameters.
++-------------------------------------------------------+
+|                   CREATURE ENTITY                    |
++-------------------------------------------------------+
+|  [Species Template] -> Hidden Passives & Base Stats   |
+|  [Element Template] -> Type Matching Matrix & Moves   |
+|  [Class Template]   -> Combat Archetype & Moves       |
+|  (Shiny Template)   -> Particle VFX & Hidden IV Boost |
++-------------------------------------------------------+
+
+3.1 Species Template
+The foundation layer of a creature. The Species template determines the baseline statistical distribution array (Base HP, Base Attack, Base Defense, Base Speed, Base Special) and defines the creature's skeleton, animation mesh, overworld sprite skin, and hidden baseline passive skill tracks.
+3.2 Element Template
+Determines a creature's fundamental elemental alignment. This template dictates defensive vulnerability modifiers and offensive type-matching coefficients. It also dictates what moves the creature can learn naturally or inherit via training towers.
+The Elemental Matrix
+Elements operate on a dual-advantage/dual-disadvantage system, with the exception of the Normal type. Each element is mathematically strong against exactly two elements and weak against exactly two elements.
+Attacking Element
+Defending Element
+Damage Multiplier Coefficient
+Fire
+Water, Void
+$0.5\times$
+Fire
+Earth, Air
+$2.0\times$
+Water
+Earth, Air
+$0.5\times$
+Water
+Fire, Void
+$2.0\times$
+Earth
+Fire, Air
+$0.5\times$
+Earth
+Water, Void
+$2.0\times$
+Air
+Water, Earth
+$0.5\times$
+Air
+Fire, Void
+$2.0\times$
+Void
+Fire, Earth
+$0.5\times$
+Void
+Water, Air
+$2.0\times$
+Normal
+Any Element
+$1.0\times$
+3.3 Class Template
+Determines the creature's sociological, tactical, and operational archetype. Similar to elements, classes govern a secondary, fully independent combat efficiency calculation loop.
+The Class Matrix
+Classes feature an identical structural matrix format to elements, operating orthogonally to ensure compound multiplication when calculating raw damage.
+Attacking Class
+Defending Class
+Damage Multiplier Coefficient
+Kinetic
+Chemical, Energy
+$0.5\times$
+Kinetic
+Biological, Political
+$2.0\times$
+Chemical
+Biological, Political
+$0.5\times$
+Chemical
+Kinetic, Energy
+$2.0\times$
+Biological
+Kinetic, Energy
+$0.5\times$
+Biological
+Chemical, Political
+$2.0\times$
+Political
+Chemical, Biological
+$0.5\times$
+Political
+Kinetic, Energy
+$2.0\times$
+Energy
+Kinetic, Political
+$0.5\times$
+Energy
+Chemical, Biological
+$2.0\times$
+Normal
+Any Class
+$1.0\times$
+3.4 Shiny Modifier Template
+A rare runtime overlay applied at instantiation. It provides distinct visual updates and alters base calculations:
+Visual Enhancements: Swaps the standard color palette with an alternative shader skin and attaches an active particle-emitter system.
+Hidden Passive Acquisition: Unlocks an elite, non-standard passive ability track that can be selected in the party customization panel.
+Hidden Value (IV) Multiplier: Applies a permanent random scaling modifier (between $1.05\times$ and $1.25\times$) to all baseline stats generated by the creature's internal seed.
+4. Dual-Seed Data Architecture
+To prevent memory leaks in infinite scaling and ensure complete data integrity across saved files, every creature, player item, and world object uses a unified dual-seed data model.
+      [ UNIQUE OBJECT DATA PAYLOAD ]
+        /                        \
+       v                          v
+[ InitialSeed ]            [ MutationSeed ]
+  - Immutable                - Mutable / Dynamic
+  - Deterministic DNA        - Tracks Permanent Boosts
+  - Direct Drop Scaling      - Tower Modifications
+
+4.1 Creature Seed Architecture
+InitialSeed (String/Hash): The unique immutable hash generated at the exact millisecond of a creature's initial instantiation. It acts as the creature's underlying DNA, dictating its base hidden stats, base weight/size variations, and secret passive ability unlocks.
+MutationSeed (String/Hash): A mutable hash that maps changes whenever a creature undergoes a permanent stat alteration. This includes training tower loops, reincarnation prestige points, or initial stat overrides via capture upgrades.
+4.2 Item Seed Architecture
+InitialSeed (String/Hash): A standardized, immutable hash shared by all identical items belonging to the same base blueprint or archetype. It ensures structural uniformity upon initial craft or drop.
+ModificationSeed (String/Hash): A dynamic, evolutionary hash string that alters its data state whenever a player adds stats via item refinement, prototyping towers, or ingredient infusion.
+4.3 Environmental & Dimensional Seeds
+Dungeon towers and overworld zones read seed strings directly to construct their layout grids. When a player runs an item through a Prototyping Tower, the item’s InitialSeed and ModificationSeed combine to generate a unique layout.
+5. Capture, Synthesis, & Progression Mechanics
+5.1 Trait Assimilation and Capture Upgrades
+When a player defeats a wild creature entity, they have a base percentage chance to capture it. Instead of accumulating redundant clones that cause inventory bloat, the inventory systems use an automatic Trait Overwrite and Assimilation Rule:
+[ Captured Creature ] ── Level/Stats Evaluated ──> [ Inventory Database ]
+                                                            │
+                 ┌──────────────────────────────────────────┴──────────────────────────────────────────┐
+                 ▼                                                                                     ▼
+    Is Level/Stats HIGHER?                                                                   Is Level/Stats LOWER?
+                 │                                                                                     │
+                 ▼                                                                                     ▼
+- Overwrite existing baseline stats.                                                    - Discard duplicate entity.
+- Extract any newly discovered hidden passives.                                         - Extract hidden passives into pool.
+- Update creature profile entry.                                                        - Update creature profile entry.
+
+If a player captures a higher-level version of a creature they already own:
+The existing inventory instance adopts the higher-level stats, base attributes, and upgraded traits of the newly captured unit.
+Any specific hidden abilities possessed by the defeated target are extracted and permanently added to that creature's profile pool.
+The player can toggle these acquired traits and passives on or off via the Prepare Party interface.
+5.2 Secret Passive Management Loop
+Every creature species contains an internal index of hidden passive abilities. Their spawn rates follow a geometric distribution curve ($P(\text{Slot}_n) = k^n$). When creating a party, if multiple hidden abilities are unlocked for a species via historical captures, the player can swap between them based on tactical requirements.
+5.3 Infinite Scaling Mathematical Models
+The game completely eliminates level caps and stat caps. To prevent calculations from overflowing the standard 64-bit float limits while maintaining a perceptible sensation of progression, all core parameters scale using a linear-log hybrid algorithm.
+Stat Growth Formula
+The calculation of an active stat $S$ at level $L$ uses the following function:
+$$S(L) = S_{\text{base}} \times \left(1 + \alpha L + \beta \ln(L + 1)\right) \times \prod M_{\text{seed}}$$
+Where:
+$S_{\text{base}}$ is the baseline species attribute.
+$\alpha$ is the linear scaling growth coefficient ($\alpha \approx 0.05$).
+$\beta$ is the logarithmic balancing coefficient ($\beta \approx 12.5$).
+$M_{\text{seed}}$ represents the compound product of all hidden seed values and shiny multipliers.
+Experience Calculation Formula
+The experience points required to advance from Level $L$ to $L+1$ follow an exponential curve:
+$$E(L) = \lfloor \gamma \times L^{1.5} \times \ln(L + 2) \rfloor$$
+Where $\gamma$ is the global experience pace constant.
+6. Procedural World Generation Pipeline
+[ OVERWORLD CONTINUUM MATRIX ]
+  ├── Coordinates (0,0)  --> Baseline Level 1 Zone
+  ├── Coordinates (X,Y)  --> Level Calculation: L = floor( sqrt(X² + Y²) / ScaleFactor )
+  └── Perlin Noise Maps  --> Biome Distribution, Elevation Layers & Resource Nodes
+
+6.1 Coordinate-Based Infinite Scaling Matrix
+The overworld generates chunks dynamically across an infinite Cartesian grid $(X, Y)$. The difficulty level, stat multipliers, and item drop tiers of any given chunk are directly tied to its Euclidean distance from the origin coordinate $(0,0)$:
+$$L_{\text{zone}}(X, Y) = \left\lfloor \frac{\sqrt{X^2 + Y^2}}{\omega} \right\rfloor + 1$$
+Where $\omega$ represents the spatial frequency scale factor determining how many overworld tiles must be traversed before a zone's level increases.
+6.2 Combinatorial Biome Distribution Engine
+The map generator processes a multi-layered Perlin noise grid to determine structural tile sets. Biomes are mapped by checking the combinations of Element × Class, with special cases handled for Normal states:
+$$\text{Biome}_{\text{ID}} = f(\text{Element}, \text{Class})$$
+Standard Combinations: 5 Elements × 5 Classes creates 25 distinct core environmental biomes (e.g., Void-Political Citadel, Fire-Kinetic Volcanic Rift).
+Normal-Type Anomalies: If an entity's element or class is categorized as Normal, the system triggers a dedicated Species Biome. This pulls asset arrays directly from that specific species' architectural visual profile.
+Shiny Rarity Chunks: Extremely rare coordinates display localized chunk disruptions. This introduces special color-shift terrain shaders, alternative lighting presets, and high-density shiny creature spawns.
+6.3 Overworld Features
+Fog of War: Chunks are completely hidden behind a dynamic fog-of-war layer until a player entity or scout tower moves within a specified line-of-sight radius.
+Dynamic Resource Distribution: Resource nodes generate based on local biome tags. Each harvestable node features distinct elemental hashes that impart specific attributes during crafting phases.
+7. Procedural Dungeon & Dungeon Tower Architecture
+7.1 Structural Generation Parameters
+Dungeon towers are multi-layered procedural instances. Their generation pipeline enforces strict structural layout constraints to ensure high scannability and fluid navigation:
+Hallway Expansion Bounds: Hallway tile generation algorithms require minimum passage corridors of 3 units. This accommodates large party sizes and avoids pathfinding bottlenecks during combat encounters.
+Deterministic Seeding: Entering a standard tower pulls a specific pseudo-random seed that dictates wall placement, trap density, and loot configurations.
+Destructive Mining and Structural Modification: Players can alter layout parameters permanently by mining specific walls or using construction modules to build safe zones inside dungeon levels.
+7.2 Interactables and Hazards
+Dungeons contain interactive game objects that affect exploration pacing:
+Scripted Rooms: Dedicated challenge chambers triggered by specific proximity hooks.
+Gated Key Mechanics: Locked doors generate alongside guaranteed pathfinding lines leading to their matching key items.
+Traps: Arrow traps, lever puzzles, and pitfall traps that drop the player down a floor level into unmapped hazards.
+7.3 Expiry Mechanics (The Anti-Stall Rule)
+To prevent players from idling indefinitely on a single floor to harvest resource spawns, every dungeon floor runs an internal expiration timer.
+[ Player Enters Dungeon Floor ] -> Start Expiry Timer
+  │
+  ├── Player leaves floor before threshold -> Reset Timer
+  │
+  └── Timer crosses Expiry Threshold -> Anti-Stall Event Triggered
+        │
+        └── High-level monsters from deeper stages spawn near the exit staircase.
+
+Once the timer crosses the threshold, high-level monsters from deeper stages spawn directly around the exit staircase, forcing a tactical retreat or advance.
+8. Territorial Control & Asynchronous Multi-User Loops
++--------------------------------------------------------+
+|              TOWER LEADERBOARD STRUCTURE               |
++--------------------------------------------------------+
+|  Rank 1 (Champion) -> Dictates World Spawn Rules       |
+|                       Can Deconstruct Lower Buildings  |
+|  Rank 2 (Challenger)-> Can Deconstruct Rank 3+         |
+|  Rank 3 (Contender) -> Can Deconstruct Rank 4+         |
++--------------------------------------------------------+
+
+8.1 The Boss Buff and Capture Pipeline
+When a player first encounters a tower, it is controlled by an AI-driven enemy boss unit.
+Boss Modifier: The boss receives an active $+25\%$ buff to all base stats.
+Capture Conversion: Once defeated, the stat buff is removed, and the base version of the creature becomes eligible for standard player capture assimilation.
+8.2 Asynchronous Party Mirror Defenses
+When a player conquers a tower and exits, they can assign one of the highest-level creatures from their active party to control it.
+The Overworld Champion: A snapshot copy of the assigned creature becomes the new floor boss. It gains the $+25\%$ boss buff and acts as an asynchronous challenger for any other player who enters that tower instance.
+Mini-Boss Distribution Loop: Copies of the player’s remaining party members are distributed evenly as mini-boss encounters across lower floors, sorted by descending level order.
+Leaderboard Displacements: If a new challenger defeats the active boss, they take control of the tower. The previous owner's extra party members are removed from future runs. If a challenger defeats a mini-boss on a lower floor, they claim second or third place respectively, allowing them to seed their own custom mini-boss defenses.
+8.3 Ley Line Geometric Territorial Controls
+Controlling a Dungeon Tower projectively updates the overworld map data structures around it.
+Influence Expansion
+The creature archetype assigned as the tower boss changes the surrounding overworld spawn tables, altering drop rates and creature spawn weights.
+Neighbor Synergy
+Controlling any of the four nearest neighboring towers stacks a compound efficiency multiplier onto this drop rate alteration:
+$$E_{\text{total}} = E_{\text{base}} \times (1.15)^{N_{\text{towers}}}$$
+Where $N_{\text{towers}}$ is the number of adjacent controlled towers ($\le 4$).
+Polygon Territory Claim
+If a player controls at least three towers that form a closed geometric polygon, the area within that boundary is locked as the player's sovereign territory.
+    (Controlled Tower A)
+         /         \
+        /           \
+       /   CLAIMED   \
+      /   TERRITORY   \  <-- Structures inside are indestructible
+     /                 \      except by the Tier Champion.
+(Controlled Tower B)---(Controlled Tower C)
+
+Leaderboard Priority Enforcement
+Structural permissions within a territory or tower layout follow a strict leaderboard index hierarchy:
+The Rank 1 player can deconstruct or override any buildings or creature assignments placed within that zone by lower-ranked players.
+A Rank 2 player can deconstruct structures belonging to Rank 3 and below, but cannot touch Rank 1 objects. This logic applies to all future player-built structures.
+Persistent Data Phasing
+When a player is displaced on the leaderboards, their structures are not deleted from the server database. Instead, their visibility and collision flags are set to hidden. If the player climbs back up the leaderboard ranking, their buildings automatically phase back into the active world layer. Players can also toggle their local UI view between "Global World Structures" and "Personal Structures Only."
+9. Player Construction & Automated Tower Defense Systems
+9.1 Construction and Base Building
+Players can place modular buildings in the overworld or cleared dungeon levels to establish forward operating bases, processing stations, and crafting workshops.
+9.2 Scout Towers and Automation
+Scout Towers can be upgraded to support automated base defense. Players can assign captured creatures directly to a tower's control slot.
+[ Assigned Creature ] ── Weapon/Attack Vectors Extracted ──> [ Scout Tower Structure ]
+                                                                      │
+                                                                      ▼
+                                                       - Inherits creature's move range.
+                                                       - Fires elemental projectives.
+                                                       - Yields standard Loot Boxes on kill.
+                                                       - Disables creature capture mechanics.
+
+Attack Vector Inheritance: The structure reads the creature's active attack arrays and move conditions, allowing it to fire matching elemental projectives at enemies within range.
+Automation Loot Rules: Enemies defeated by automated towers drop standard Loot Boxes directly into the player's inventory or collection bins. However, creatures killed via automation cannot be captured.
+10. The Ultimate Progression Towers (+10 Endgame Loops)
+The true endgame consists of three distinct high-tier progression loops. These structures operate on a strict $+10$ progress rule: to extract rewards, a player must complete a run that reaches at least Floor 10 or extends 10 floors beyond their previous record.
++---------------------------------------------------------------------------------+
+|                       THE +10 ENDGAME PROGRESSION LOOPS                         |
++---------------------------------------------------------------------------------+
+|  1. PROTOTYPING TOWER   -> Sacrifices items to forge new blueprints & recipes.  |
+|  2. TRAINING TOWER      -> Pushes creature entities past baseline stat limits.  |
+|  3. SKILL FORGING TOWER -> Combines moves to output readable teachable scrolls. |
++---------------------------------------------------------------------------------+
+
+10.1 Prototyping Tower (Items)
+Layout Ingestion Engine: The entire tower layout, enemy composition, and trap distribution are generated by parsing the InitialSeed and ModificationSeed of an item placed into the tower's entrance altar.
+Modification Altars with Real-Time Preview: Floors contain specialized altars where players can temporarily slot in alternative items or companion creatures. The altar interface renders a comprehensive mathematical calculation preview, demonstrating how that specific selection will modify the item's final stats upon successful extraction.
+Extraction Mechanics: Reaching Floor 10 on an item's first run, or clearing Highest Completed Floor + 10 on subsequent runs, triggers the spawning of an End Run Altar next to the exit staircase.
+Successful Extraction vs. Greed Risk: Activating the altar completes the run successfully and awards a permanent, reusable crafting recipe for the newly customized unique item. The player can choose to pass the altar and delve deeper into subsequent floors to amplify the item's stats further. However, a total party wipe before finding another altar voids all modifications accumulated during that run.
+10.2 Training Tower (Creatures)
+Stat Enhancement Pipeline: Follows an identical operational framework to the Prototyping Tower, but focuses on creature training.
+Stat Overrides: When a selected creature completes a training run that reaches Highest Personal Cleared Stage + 10, its permanent baseline statistics are permanently upgraded. This writes new data directly to its MutationSeed.
+10.3 Skill Creation Tower
+Skill Forging Interface: Utilizes the same layout and altar structures as item prototyping, but processes skill combinations instead. Players combine move properties, elemental tags, and class categories inside the tower's nodes. A successful extraction awards a teachable Scroll item asset, which can be used to teach that custom skill to compatible creatures.
+11. Combat, Targeting, & Interface Systems
+11.1 Combat Damage Types and Targeting Vectors
+To ensure tooltips are clear and mechanics are transparent, combat actions are divided into distinct categories. This makes it easy to evaluate how abilities interact with various targets:
+                 [ COMBAT ACTION INGESTION ENGINE ]
+                     /                            \
+                    v                              v
+        [ TARGETING VECTORS ]              [ DAMAGE PROPERTIES ]
+          ├── Melee Single-Target            ├── Physical Attacks
+          ├── Ranged Single-Target           └── Special / Elemental
+          └── Area of Effect (AoE)
+
+Targeting Vectors
+Melee Single-Target: Requires direct tile adjacency to the target entity.
+Ranged Single-Target: Requires a clear line-of-sight vector across a specified distance.
+Area of Effect (AoE): Affects a defined geometric cluster of tiles (e.g., radial, linear splash, cone blast). The interface includes a dedicated tag search filter to help players isolate AoE abilities instantly during loadout setup.
+Damage Properties
+Physical Attacks: Base damage calculations are mitigated by the target's physical defense stats.
+Special/Elemental: Base damage calculations bypass conventional armor and are checked against elemental resistances.
+11.2 Input Mapping & UI Layout Configurations
+Long-Press Sub-Menus: Long-clicking or long-tapping the player character's avatar opens an expedited context menu. This allows quick selection and casting of self-buffs, passive triggers, and movement or utility skills without opening full submenus.
+Context-Sensitive Targeting Filters: When selecting structural targets, the UI dynamically changes context:
+Attacking Walls: The action hotbar filters out standard single-target attacks, displaying only abilities that carry environmental or structural damage tags.
+Disarm Trap: Highlights accessible traps within interaction range, showing disarm success coefficients based on active skill types.
+Unified Context Menu: Tooltips for Creatures, Buildings, Terrain, and Traps are locked to a standardized, high-scannability viewport at the top of the screen. This ensures immediate accessibility without blocking central combat gameplay.
+12. Party Analyzer Tool
+The Party Analyzer is a data-driven UI widget integrated into the top section of the Prepare Party interface. It automates group optimization by reading the active party array and comparing it against the global combat mechanics database.
+[ Active Party Array ] ──> [ Party Analyzer Engine ]
+                                │
+                                ├──> 1. Scans missing Element & Class tags.
+                                └──> 2. Queries Creature Inventory Database.
+                                       │
+                                       ▼
+                                 [ Output Recommendations List ]
+                                   - Sorted by Level (Descending)
+                                   - Prioritizes High-Tier Matches
+
+12.1 Analytical Logic Flow
+Tag Inspection: The analyzer scans the selected party array, identifying missing asset attributes across the Class and Element matrices.
+Inventory Querying: It scans the player's creature inventory database to find creatures that possess the missing tags.
+Prioritized Sorting Output: Recommendations are sorted in descending order based on their current level, ensuring the highest-level option that satisfies team requirements appears first. If a specific synergy profile requires multiple instances of a certain species or class, the analyzer displays compound recommendations to guide team assembly.
+13. Crafting, Harvesting, & Economy
+13.1 Ingredient-Driven Refinement Matrix
+With the exception of unique, high-tier loot artifacts found exclusively in deep endgame dungeons, most game gear and items are player-crafted.
+Resource Nodes: Harvestable nodes found throughout the overworld and dungeons yield raw ingredients that carry unique structural attributes.
+Stat Infusion: The crafting system calculates final item stats based on the exact ingredients used. Each added resource piece injects a predictable stat bonus into the item's ModificationSeed payload.
+13.2 Monetization & Tipping Pipeline
+To support continuous game development and foster direct community integration, the main interface includes a direct transaction pipeline linked to Julie’s developer account. This allows players to send tips or financial contributions seamlessly from within the client interface.
+14. Arena Architecture, Simulated Gambling, & Asynchronous Leagues
+The Arena is a unique, player-constructed building that unlocks asynchronous competitive multiplayer loops and localized economic minigames.
+[ Player Builds Arena Structure ] ──> Instantiates Man-at-Arms NPC Handler
+                                                 │
+            ┌────────────────────────────────────┴────────────────────────────────────┐
+            ▼                                                                         ▼
+   [ Automated Wagering Loop ]                                              [ Asynchronous PvP Leagues ]
+     - Daily NPC combat simulations.                                          - 1v1 ladder simulations.
+     - Player betting/gambling platform.                                      - Replay database logs matches.
+     - Yields unique Arena gear rewards.                                      - Distinct arenas & mechanics.
+
+14.1 The Man-at-Arms NPC Handler
+Building an Arena automatically instantiates a persistent Man-at-Arms NPC entity. This character serves as the primary interface anchor for all competitive features, wager tracking, and leaderboard match reviews.
+14.2 Daily Simulated Wagering Loop
+The system runs daily automated NPC battles within the Arena structure. These fights simulate combat using pure AI scripts, allowing players to research creature matchups, study move configurations, and wager in-game currency on the results. Winning wagers yield specialized resources and arena points used to acquire unique Arena Gear sets.
+14.3 Asynchronous PvP Ladder Leagues
+True 1v1 Combat Simulations: The leaderboard does not rely on arbitrary score tracking. Rankings are determined by actual 1v1 combat simulations processed on the backend, checking creature stats, passive layouts, and ability arrays directly against each other.
+Dynamic Arenas & Rule Modifiers: Leagues are divided into tiered brackets. Each bracket features unique battlefield layouts, environmental traps, and distinct tile hazards that match various element or class combinations.
+Match Replay System: All leaderboard matches are recorded by the simulation backend as structural command streams. This allows players to review match replays, study team compositions, analyze positioning behavior, and optimize their defensive setups.
+15. Move Customization, Editor Tooling, & Custom Skins
+15.1 The Move Tab Modding System
+The Internal Developer Tools feature a highly granular Move Editor module that allows creators to design custom moves and set specific deployment requirements.
++--------------------------------------------------------+
+|                   MOVE EDITOR TOOL                     |
++--------------------------------------------------------+
+|  Deployment Constraints:                               |
+|    - Species, Element, Class Requirements              |
+|                                                        |
+|  Visual Validation Indicators:                         |
+|    - [ RED ]   --> Conditional Requirements Not Met    |
+|    - [ GREEN ] --> Active Traits Granted (AND/OR Logic)|
++--------------------------------------------------------+
+
+Constraint Inputs: Users apply strict structural constraints based on Species, Element alignments, and Class archetypes.
+Visual Logic Markers: Requirements use distinct color-coding in the UI. Unmet conditions render in Red, while traits granted or satisfied by the move's conditional logic display in Green using standard boolean logic gates (AND, OR, NOT).
+15.2 VFX and Asset Preview Pipelines
+Live Visual Effects Suite: The editor includes a visual effects controller that supports real-time particle previewing and rotation adjustments, allowing developers to fine-tune particle behavior on the fly.
+Cosmetic Skins & Tile Ingestion Pipeline: The backend asset system includes an open pipeline for user-submitted content. Players can design and upload custom cosmetic skins and alternative environmental tile sets. Once approved, these custom assets ingest cleanly into the rendering pipeline, updating look tables across characters, structures, and overworld tiles seamlessly.
+16. Technical Data Dictionary & Class Blueprints
+The following structural maps outline the exact JSON and object definitions used across the core systems.
+16.1 Creature Object Definition
+JSON
+{
+  "id": "creature_entity_09812a3f",
+  "name": "Void Kinetic Brawler",
+  "level": 142,
+  "experience": 492103,
+  "seeds": {
+    "initial_seed": "a8f3b2c9e1d874a6b5c4d3e2f1a0b9c8",
+    "mutation_seed": "f8e7d6c5b4a39281706f5e4d3c2b1a0f"
+  },
+  "templates": {
+    "species_id": "spec_golem_01",
+    "element_id": "elem_void",
+    "class_id": "class_kinetic",
+    "is_shiny": true,
+    "shiny_data": {
+      "shader_id": "sh_color_shift_purple",
+      "particle_emitter": "part_shiny_sparkle_04",
+      "iv_multiplier": 1.18
+    }
+  },
+  "stats": {
+    "current_hp": 4520,
+    "max_hp": 4520,
+    "attack": 892,
+    "defense": 1104,
+    "speed": 312,
+    "special": 645
+  },
+  "abilities": {
+    "active_passives": [
+      "pass_void_density",
+      "pass_kinetic_rebound"
+    ],
+    "unlocked_passives_pool": [
+      "pass_void_density",
+      "pass_kinetic_rebound",
+      "pass_secret_shiny_shrowd",
+      "pass_species_stone_grip"
+    ]
+  },
+  "movepool": [
+    "move_void_crush",
+    "move_kinetic_dash",
+    "move_iron_fortress",
+    "move_shatter_palm"
+  ]
+}
+
+16.2 Item Object Definition
+JSON
+{
+  "id": "item_artifact_7712e9ba",
+  "base_archetype": "wpn_broadsword_01",
+  "level": 45,
+  "seeds": {
+    "initial_seed": "00010001000100010001000100010001",
+    "modification_seed": "bc89fa7612de34bc89fa7612de34bc89"
+  },
+  "stat_modifiers": {
+    "physical_attack_bonus": 340,
+    "elemental_void_scaling": 1.12,
+    "critical_strike_chance": 0.08
+  },
+  "socketed_modifiers": {
+    "creature_essence_slot": "creature_entity_09812a3f",
+    "infused_resources": [
+      {
+        "resource_id": "res_void_crystal_pure",
+        "quantity": 12,
+        "stat_contributed": "special_attack_flat_boost"
+      }
+    ]
+  }
+}
+
+16.3 Dungeon Floor State Definition
+JSON
+{
+  "dungeon_id": "dg_tower_omega",
+  "current_floor": 14,
+  "generation_seed": "9912bc7734faed11",
+  "expiry_timer": {
+    "seconds_elapsed": 412,
+    "threshold_seconds": 600,
+    "anti_stall_triggered": false
+  },
+  "tiles_modification_matrix": [
+    {"coord_x": 12, "coord_y": 44, "original_tile": "wall_stone", "current_tile": "floor_mined"},
+    {"coord_x": 12, "coord_y": 45, "original_tile": "wall_stone", "current_tile": "structure_player_chest_vault"}
+  ],
+  "leaderboard_cache": {
+    "rank_1_champion_uuid": "user_player_01_alpha",
+    "rank_2_challenger_uuid": "user_player_14_bravo",
+    "rank_3_contender_uuid": "user_player_99_charlie"
+  }
+}
+
+17. System Architecture Verification
+To guarantee that Menagerie remains completely stable under intensive processing conditions, the platform's core code architecture uses specific structural validations:
+17.1 Memory Allocation & Serialization Limits
+Procedural Garbage Collection: Overworld chunks are dynamically unloaded from active volatile memory (RAM) whenever the player moves more than 3 chunk radii away from them. Their updated states are serialized into localized delta files (.diff) to prevent memory consumption from growing indefinitely during exploration.
+Numeric Overflow Protection: All primary math operators for calculations beyond Level 10,000 are evaluated via logarithmic scales. This prevents unexpected application crashes or execution errors if damage calculations cross into extremely high numbers.
+17.2 Pathfinding Optimization Constraints
+Hierarchical Pathfinding (HPA):* To keep frame rates stable across massive open areas or broad 3-unit dungeon hallways, pathfinding calculations are broken down into localized macro-grids before validating exact tile paths. This isolates pathfinding updates and keeps processing overhead clean during large-scale group encounters.
+
+

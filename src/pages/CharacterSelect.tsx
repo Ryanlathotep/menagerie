@@ -205,6 +205,18 @@ export function CharacterSelect() {
           Select up to {MAX_PARTY_SIZE} monsters for your party. Click to add/remove, right-click to preview.
         </p>
 
+        <PartyAnalyzer
+          party={selectedParty}
+          pool={unlockedMonsters}
+          entrance={runDestination === 'dungeon' ? activeEntranceForPrep : undefined}
+          onSuggest={(m) => {
+            if (selectedParty.some(p => p.comboId === m.comboId)) return;
+            if (selectedParty.length >= MAX_PARTY_SIZE) return;
+            setSelectedParty(prev => [...prev, m]);
+            setPreviewMonster(m);
+          }}
+        />
+
         <Card className="p-3">
           <div className="flex items-center gap-2 mb-2">
             <h3 className="text-sm font-semibold">Party ({selectedParty.length}/{MAX_PARTY_SIZE})</h3>

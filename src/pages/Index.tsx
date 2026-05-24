@@ -1596,8 +1596,17 @@ function DungeonView({
       return;
     }
 
-    // For attack moves (melee/ranged), enter targeting mode instead of executing
-    if (move.type === 'melee' || move.type === 'ranged' || (move.type === 'status' && move.effect?.includes('lower_'))) {
+    // For attack moves (melee/ranged) AND movement skills (dash/blink/etc.),
+    // enter targeting mode instead of executing immediately.
+    const isMovementSkill =
+      move.type === 'movement' ||
+      !!(move.movement && move.movement.offsets && move.movement.offsets.length > 0);
+    if (
+      move.type === 'melee' ||
+      move.type === 'ranged' ||
+      (move.type === 'status' && move.effect?.includes('lower_')) ||
+      isMovementSkill
+    ) {
       // Enter targeting mode
       const config = getAttackConfig(move);
       const validTargets = getValidTargets(
@@ -1610,7 +1619,7 @@ function DungeonView({
       );
       
       if (validTargets.length === 0) {
-        toast.error('No valid targets in range!');
+        toast.error(isMovementSkill ? 'No valid destinations in range!' : 'No valid targets in range!');
         return;
       }
       
@@ -1618,7 +1627,12 @@ function DungeonView({
       setTargetingTiles(validTargets);
       setAffectedTiles([]);
       setHoveredTile(null);
-      addLog(`🎯 Targeting ${move.name}... Click a tile to attack!`, 'system');
+      addLog(
+        isMovementSkill
+          ? `🌀 ${move.name}: pick a destination tile…`
+          : `🎯 Targeting ${move.name}... Click a tile to attack!`,
+        'system',
+      );
       return;
     }
     

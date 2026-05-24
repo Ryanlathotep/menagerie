@@ -1,3 +1,8 @@
+---
+name: menagerie-smoke-test
+description: Broad regression/smoke test for Menagerie. Triggers on "smoke test", "regression test", "see if anything broke". Combines deterministic in-app QA invariant suite (via window.__menagerie or /admin/qa) with best-effort browser visual checks, then a mandatory Suggested-Fixes addendum.
+---
+
 # Menagerie smoke test
 
 Use this skill ANY time the user asks to smoke-test, regression-test, or "see if anything broke" in Menagerie. The skill has two phases — **a deterministic in-app QA suite** (the meat) and a **lightweight browser visual sanity pass** (best-effort, browser-tool limited). Always do both. Always end with the Suggested-Fixes addendum.

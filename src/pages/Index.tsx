@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getComboId, UnlockedMonster, InventoryItem, MonsterStats, Monster, Position, DungeonState, hydrateDungeonFromSnapshot } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
-import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, hasVisibleEnemy, LOOT_TABLE, mineWall, mineableWallName, digRune, damageDungeonNest, tickDungeonNests, prepareDungeonForEntry, findNearestWalkableTile } from '@/game/dungeon';
+import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, hasVisibleEnemy, LOOT_TABLE, mineWall, mineableWallName, digRune, damageDungeonNest, tickDungeonNests, prepareDungeonForEntry, findNearestWalkableTile, updateVisibility, getDungeonTowerVisionSources } from '@/game/dungeon';
 import { spawnNestMonster, getNestDestroyRewards } from '@/game/nests';
 import { expandDungeonIfNeeded, findStairsPosition } from '@/game/dungeonExpansion';
 import { PICKAXE_TIERS, hitsToBreak } from '@/game/tools';
@@ -2329,6 +2329,24 @@ function DungeonView({
   // ─── Dungeon building assign / context handlers ───
   // Mirrors OverworldView's flow but routes mutations through UPDATE_DUNGEON
   // so the building lives on the dungeon floor (and snapshots correctly).
+
+  // Apply a buildings change AND recompute fog-of-war in one dispatch so that
+  // scout towers reveal/hide tiles immediately on build / assign / disassemble.
+  const applyDungeonBuildings = useCallback((buildings: PlayerBuilding[]) => {
+    if (!dungeon) return;
+    const tiles = dungeon.tiles.map(row => row.map(t => ({ ...t })));
+    updateVisibility(
+      tiles,
+      dungeon.playerPosition,
+      3,
+      getDungeonTowerVisionSources({ playerBuildings: buildings }),
+    );
+    dispatch({
+      type: 'UPDATE_DUNGEON',
+      dungeon: { playerBuildings: buildings, tiles } as any,
+    });
+  }, [dungeon, dispatch]);
+
   const handleDungeonAssignMonster = useCallback((monsterId: string) => {
     if (!dungeonAssignBuilding || !dungeon) return;
     const buildings = (dungeon.playerBuildings || []).map(b => {
@@ -2342,7 +2360,7 @@ function DungeonView({
       }
       return updated;
     });
-    dispatch({ type: 'UPDATE_DUNGEON', dungeon: { playerBuildings: buildings } as any });
+    applyDungeonBuildings(buildings);
     addLog(`👤 Assigned monster to ${BUILDING_DEFINITIONS[dungeonAssignBuilding.type].name}.`, 'system');
     setDungeonAssignBuilding(null);
   }, [dungeonAssignBuilding, dungeon, state.run, dispatch, addLog]);
@@ -2360,7 +2378,7 @@ function DungeonView({
         harvestOutput: undefined,
       };
     });
-    dispatch({ type: 'UPDATE_DUNGEON', dungeon: { playerBuildings: buildings } as any });
+    applyDungeonBuildings(buildings);
     addLog(`🐾 Removed monster from ${BUILDING_DEFINITIONS[dungeonAssignBuilding.type].name}.`, 'system');
     setDungeonAssignBuilding(null);
   }, [dungeonAssignBuilding, dungeon, dispatch, addLog]);
@@ -2377,7 +2395,7 @@ function DungeonView({
     const buildings = (dungeon.playerBuildings || []).map(b =>
       b.id === dungeonContextBuilding.id ? { ...b, hp: b.maxHp } : b,
     );
-    dispatch({ type: 'UPDATE_DUNGEON', dungeon: { playerBuildings: buildings } as any });
+    applyDungeonBuildings(buildings);
     if (!creative && ow) {
       dispatch({
         type: 'UPDATE_OVERWORLD',
@@ -2397,7 +2415,7 @@ function DungeonView({
     if (!dungeonContextBuilding || !dungeon) return;
     const refund = getDisassembleRefund(dungeonContextBuilding);
     const buildings = (dungeon.playerBuildings || []).filter(b => b.id !== dungeonContextBuilding.id);
-    dispatch({ type: 'UPDATE_DUNGEON', dungeon: { playerBuildings: buildings } as any });
+    applyDungeonBuildings(buildings);
     const ow = state.saveData.overworldState;
     if (ow) {
       dispatch({
@@ -2431,17 +2449,30 @@ function DungeonView({
     // Build mode: place building on open floor tile in dungeon
     if (dungeonBuildMode && selectedDungeonBuildType && dungeon) {
       const tile = dungeon.tiles[y]?.[x];
-      if (!tile || tile.type !== 'floor') {
+      // Allow placement on floor or terrain (decorative ground) tiles only.
+      if (!tile || (tile.type !== 'floor' && tile.type !== 'terrain')) {
         toast.error('Can only build on open floor tiles!');
         return;
       }
       // Reject if already occupied by a player building on this floor
-      const existing = (dungeon.playerBuildings || []) as any[];
+      const existing = (dungeon.playerBuildings || []) as PlayerBuilding[];
       if (existing.some(b => b.worldX === x && b.worldY === y)) {
         toast.error('A building already stands here.');
         return;
       }
-      // Import lazily through static refs at top of file
+      // Stairs/ladders must attach to a wall (dungeon wall OR a player wall).
+      if (selectedDungeonBuildType === 'stone_staircase' || selectedDungeonBuildType === 'ladder') {
+        const dirs: Array<[number, number]> = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+        const adjacent = dirs.some(([dx, dy]) => {
+          const nt = dungeon.tiles[y + dy]?.[x + dx];
+          if (nt && (nt.type === 'wall' || nt.type === 'mineable_wall')) return true;
+          return existing.some(b => b.type === 'wall' && b.worldX === x + dx && b.worldY === y + dy);
+        });
+        if (!adjacent) {
+          toast.error('Stairs must be placed next to a wall.');
+          return;
+        }
+      }
       const def = BUILDING_DEFINITIONS[selectedDungeonBuildType];
       const ow = state.saveData.overworldState;
       const creative = isCreativeMode();
@@ -2450,10 +2481,7 @@ function DungeonView({
         return;
       }
       const newBuilding = createBuilding(selectedDungeonBuildType, x, y);
-      dispatch({
-        type: 'UPDATE_DUNGEON',
-        dungeon: { playerBuildings: [...existing, newBuilding] } as any,
-      });
+      applyDungeonBuildings([...existing, newBuilding]);
       if (!creative && ow) {
         dispatch({
           type: 'UPDATE_OVERWORLD',

@@ -15,7 +15,7 @@ import { CombatEffects } from './statusEffects';
 import { MonsterSprite } from './sprites';
 import { getMonsterMoves, Move } from './moves';
 import { ExpandedStats } from './CharacterSheet';
-import { ITEMS } from './Inventory';
+
 import { UnifiedMovePanel } from './UnifiedMovePanel';
 import { SettingsPanel } from './Settings';
 import { MonsterEquipment, EquipmentItem, RARITY_COLORS, CRAFTING_MATERIALS, calculateEquipmentBonuses, calculateSetBonusStats } from './equipment';
@@ -678,9 +678,8 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                     {(() => {
                       const consumables = inventory.filter(item => item.type === 'potion' || item.effect);
                       return inventory.map(item => {
-                        const itemData = ITEMS[item.id];
-                        const description = itemData?.description || getItemDescription(item);
-                        const icon = itemData?.icon || getItemIcon(item);
+                        const description = getItemDescription(item);
+                        const icon = getItemIcon(item);
                         const hotbarIndex = consumables.indexOf(item);
                         const hotbarKey = hotbarIndex >= 0 && hotbarIndex < 9 ? hotbarIndex + 1 : null;
                         

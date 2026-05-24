@@ -1,58 +1,89 @@
-# Unified Tile Menu — Coverage Audit & Fixes
+## Why the smoke test underperformed
 
-## What I verified
+The browser tool can't right-click, can't reliably hit SVG tiles, and can't reach combat/persistence — which is **exactly** where the historical bugs live (END_RUN / FLEE_DUNGEON / unequip recovery). So a "successful" smoke test today only proves the boot path works. Fixing this needs three layers working together.
 
-Trigger paths are correct on both surfaces:
-- `DungeonRenderer.onTileRightClick` (right-click + 300ms long-press) → `setDungeonTileMenu({x,y})` → `<UnifiedTileMenu>` in `src/pages/Index.tsx`.
-- `OverworldRenderer.onTileRightClick` (right-click + long-press) → `handleTileRightClick` → `setUnifiedMenu({x,y})` → `<UnifiedTileMenu>` in `src/game/OverworldView.tsx`.
+---
 
-Both surfaces use the same `UnifiedTileMenu` shell, so desktop / tablet / mobile parity is already met (per the Core memory rule).
+## Layer 1 — Static persistence audit (the work you said yes to)
 
-### Tile-type coverage I confirmed
+Read `src/state.ts` (or wherever the reducer lives) and verify, line-by-line:
 
-| Surface | Type | Handled |
-|---|---|---|
-| Dungeon | floor, wall, mineable_wall, door, stairs, stairs_up, trap, treasure, enemy, shop, terrain, plant, elevator, nest, player-built structure | yes |
-| Overworld | grass, tree, rock, water, dirt_road, stone_road, cliff, waterfall, dungeon_entrance, player_building, enemy, nest | yes |
+- `END_RUN` writes **all four**: `level`, `experience`, `moveMastery`, `equipment` back to `unlockedMonsters`
+- `FLEE_DUNGEON` does the same (must be symmetric)
+- `START_RUN` re-hydrates those four on `createMonster`, AND returns unequipped persisted gear to `storedEquipment` (Pre-Run Unequip Recovery)
+- Inventory mirroring: `ADD_ITEM`/`USE_ITEM`/`DROP_ITEM` keep `run.inventory` and `saveData.storedItems` in sync
+- Cloud save write path triggered by END_RUN/FLEE_DUNGEON
 
-Universal actions appended for any explored tile: walk-here (A*), attack-from-here (if a visible target is in range), build-here (on buildable ground), drop/rename/remove waypoint. Self tile is recognized ("📍 Your tile") on dungeon side.
+Deliverable: a findings table (file:line, what's missing, severity). **No code changes** unless you greenlight them after.
 
-## Gaps to fix
+---
 
-1. **Overworld `building` tile (campfire / log cabin / town hall hub) is missing.**
-   `OverworldTileType` includes `'building'` and `overworld.ts` seeds the hub as one. The unified switch has no case for it, so right-click on the hub shows only the generic `Tile (building)` title + the universal block. The expected actions ("Use buildings… assign / upgrade / disassemble", "Enter shop") are not surfaced.
-   - Add a `tile.type === 'building'` branch in `OverworldView.tsx` unified menu.
-   - Action `Open hub` → `setShowBuildingMenu(true)` (same modal that walking onto it opens).
-   - Show name/tier in title via the existing hub metadata.
+## Layer 2 — Make the skill actually work (test hooks + addendum)
 
-2. **No "Self" actions on the player tile (both surfaces).**
-   Project knowledge: *"On Self choose actions that buff self or movement actions."*
-   - When `dist === 0`, append:
-     - "Use consumable…" → opens existing inventory consumable picker (already wired via Inventory panel; expose a callback).
-     - For every non-damaging move with `target === 'self'` the active monster knows, add a one-tap "Cast {move}" action.
+The root cause is the skill has no way to drive the game past the canvas wall. Fix it by exposing a tiny **dev debug bridge** the skill can call:
 
-3. **No "Use consumable on this tile" on enemy / empty tile.**
-   Same project rule: *"use consumables that can target it"*. Add a single `Use item here…` action that opens the inventory filtered to items whose target zone includes this tile (potions on self tile, throwables on enemy tile). Low risk: gate behind `state.run` having any usable consumables.
+**Add `src/dev/debugBridge.ts`** (only registers when `import.meta.env.DEV` or admin flag):
+```ts
+window.__menagerie = {
+  store: { getState, dispatch },        // direct reducer access
+  scenarios: {
+    enterDungeon(towerId='infinite'),
+    simulateCombat({wins:1}),
+    flee(),
+    endRun(),
+    snapshot(): { level, xp, mastery, gear, items, gold }
+  }
+}
+```
 
-4. **Dungeon `door` tile lacks an explicit "Open door / step through" action when adjacent.**
-   Currently it only displays "Walk through it" info and relies on the universal `move` row. Add a default-variant action for clarity.
+Skill then becomes: nav → `snapshot pre` → `enterDungeon` → `simulateCombat` → `flee` → `snapshot post` → diff the four persisted fields. No more clicking tiles. Deterministic. Fast.
 
-5. **Minor polish.** Inline the two most common sub-flows (`BuildingContextMenu` assign-or-disassemble; `EnemyAttackMenu` move picker) remain as secondary modals — that is intentional and acceptable because they are themselves identical across platforms, so the Core "menus identical desktop/tablet/mobile" rule is upheld. No change.
+**Update SKILL.md:**
+- Reorder steps: static check → debug-bridge scenarios → browser visual sanity last
+- Document the bridge API
+- Add the limitations section (already drafted)
+- Add the **Suggestions-from-Results addendum** you asked for: after the report table, the skill must emit a "Suggested fixes" section with concrete next actions for each ❌/⏭️ row (e.g. "FLEE_DUNGEON missing moveMastery write → patch reducer at state.ts:LINE", "Browser couldn't enter dungeon → use debug bridge `scenarios.enterDungeon()` instead")
 
-## Files to edit
+---
 
-- `src/game/OverworldView.tsx` — add `building` case; add self / consumable actions in the universal block.
-- `src/pages/Index.tsx` — add explicit door action; add self / consumable actions in the universal block.
+## Layer 3 — In-app Admin QA panel
 
-## Out of scope
+New admin-only route `/admin/qa` (gated by existing `has_role('admin')`):
 
-- Visual refactor of `UnifiedTileMenu.tsx` shell.
-- Removing `BuildingContextMenu` / `EnemyAttackMenu` (they remain as sub-pickers).
-- Particle / asset-library work from prior turns.
+**UI:**
+- "Run Smoke Test" button → executes the same scenario suite the skill uses (reuses `debugBridge.scenarios`)
+- Live results table: each invariant as a row (✅/❌ + diff details)
+- "History" tab: last 20 runs
 
-## Manual QA after build
+**Logging:**
+- New table `qa_runs` (user_id, ran_at, results jsonb, app_version, world_seed)
+- RLS: admins read all; original admin only writes
+- Each run captures: scenario results, console errors during run, cloud-save delta
 
-1. Right-click the campfire/hub in the overworld → "Open hub" appears and works.
-2. Right-click your own tile in a dungeon → self-target moves appear if known; consumable picker opens.
-3. Long-press the same tiles on mobile viewport (440 wide) → identical menu content.
-4. Right-click a dungeon door while adjacent → explicit "Open door" action steps through.
+**Asserted invariants** (each maps 1:1 to a memory rule):
+1. END_RUN preserves level/xp/mastery/equipment
+2. FLEE_DUNGEON preserves the same four + gold/materials
+3. Pre-Run unequip returns gear to storage
+4. ADD_ITEM mirrors to storedItems
+5. Persistent dungeon floors snapshot survives flee→re-enter
+6. Cloud save row updated_at advances after END_RUN
+
+This gives you a button-press regression suite that runs in <5s and survives browser-tool limits entirely.
+
+---
+
+## Build order if approved
+
+1. Layer 1 audit, report findings, stop for review
+2. If reducers are clean: build the debug bridge + Admin QA page + `qa_runs` table together (one feature)
+3. Update SKILL.md to use the bridge and add the addendum
+4. Re-run the smoke test through the bridge to prove it works
+
+## What I'd skip / defer
+
+- Building a way around right-click in the real game — the in-game right-click works fine for humans; only Stagehand can't do it. Not worth working around in production code.
+- Auto-running the QA suite on every publish — overkill until the panel is proven.
+
+## Open question
+
+For Layer 3, do you want the QA panel to also support **simulating a corrupted save** (manual fixture injection — "load this fake state then assert reducer recovers")? Powerful for regression hunting but adds ~half the build size.

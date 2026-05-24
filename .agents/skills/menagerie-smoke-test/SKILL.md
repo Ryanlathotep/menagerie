@@ -9,7 +9,7 @@ Use this skill ANY time the user asks to smoke-test, regression-test, or "see if
 
 ## 0. Setup
 
-1. `browser--navigate_to_sandbox` to `/index` at viewport 1280×800 (desktop interaction model — right-click menus work).
+1. `browser--navigate_to_sandbox` to `/` (NOT `/index` — that 404s) at viewport 1280×800. Stagehand snaps to 1280×720; that's fine.
 2. `browser--read_console_logs` baseline — note any pre-existing errors so you don't blame the change for them.
 3. If a login wall appears, stop and ask the user to sign in. Do not fill auth.
 

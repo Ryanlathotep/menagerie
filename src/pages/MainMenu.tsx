@@ -220,8 +220,9 @@ export function MainMenu() {
               localStorage.setItem('menagerie_active_dungeon_difficulty', String(entrance.difficulty || 1));
               dispatch({ type: 'SET_PHASE', phase: 'character_select' });
             }}
-            onQuickStart={canQuickStart ? (entrance) => quickStart('dungeon', entrance.id) : undefined}
+            onQuickStart={canQuickStart ? (entrance, startFloor) => quickStart('dungeon', entrance.id, startFloor) : undefined}
             quickStartPartySize={quickStartParty.length}
+            highestMonsterLevel={highestMonsterLevel}
           />
 
           <div className="flex gap-2 justify-center">

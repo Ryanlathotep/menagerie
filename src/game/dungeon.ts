@@ -677,7 +677,8 @@ export function prepareDungeonForEntry(dungeon: DungeonState): DungeonState {
 
 /**
  * Returns vision sources contributed by player-built scout towers on this floor.
- * Only towers with an assigned monster contribute vision.
+ * Any built scout tower reveals fog around itself — assigning a monster only
+ * enables the tower's auto-attack, not its line-of-sight.
  */
 export function getDungeonTowerVisionSources(
   dungeon: Pick<DungeonState, 'playerBuildings'> | { playerBuildings?: any[] },
@@ -687,7 +688,7 @@ export function getDungeonTowerVisionSources(
   // SCOUT_TOWER_VISION_RADIUS = 4 (kept inline to avoid circular import)
   const VISION = 4;
   return buildings
-    .filter(b => b && b.type === 'scout_tower' && b.assignedMonsterId && b.built !== false)
+    .filter(b => b && b.type === 'scout_tower' && b.built !== false)
     .map(b => ({ x: b.worldX, y: b.worldY, range: VISION }));
 }
 

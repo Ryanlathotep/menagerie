@@ -232,7 +232,7 @@ type GameAction =
   | { type: 'SET_WORKSTATION_OWNED' };
 
 // Reducer
-function gameReducer(state: GameState, action: GameAction): GameState {
+export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'SET_PHASE':
       return { ...state, phase: action.phase };

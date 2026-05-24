@@ -2395,7 +2395,7 @@ function DungeonView({
     const buildings = (dungeon.playerBuildings || []).map(b =>
       b.id === dungeonContextBuilding.id ? { ...b, hp: b.maxHp } : b,
     );
-    dispatch({ type: 'UPDATE_DUNGEON', dungeon: { playerBuildings: buildings } as any });
+    applyDungeonBuildings(buildings);
     if (!creative && ow) {
       dispatch({
         type: 'UPDATE_OVERWORLD',

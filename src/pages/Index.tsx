@@ -1505,20 +1505,27 @@ function DungeonView({
   // Handle revive target selection in dungeon
   const handleDungeonReviveTarget = (partyIndex: number) => {
     if (!pendingDungeonReviveItem || !state.run) return;
-    
+
     const revivePercent = pendingDungeonReviveItem.effect === 'revive_full' ? 100 : (pendingDungeonReviveItem.value || 25);
-    
+
     // Revive the party member
     dispatch({ type: 'REVIVE_PARTY_MEMBER', index: partyIndex, hpPercent: revivePercent });
-    
+
     // Consume the item
     dispatch({ type: 'USE_ITEM', itemId: pendingDungeonReviveItem.id });
-    
+
     const revivedMonster = state.run.party[partyIndex];
     const revivedHp = Math.max(1, Math.floor(revivedMonster.stats.maxHp * (revivePercent / 100)));
     addLog(`🌿 ${revivedMonster.species} was revived with ${revivedHp} HP!`, 'heal');
     toast.success(`${revivedMonster.species} revived!`);
-    
+
+    // If the current active monster is fainted (rescue path from
+    // handleActiveMonsterDownOnMap), swap to the freshly revived one so the
+    // run can continue instead of resuming with a 0-HP active.
+    if (state.run.currentMonster.stats.currentHp <= 0 && partyIndex !== state.run.activePartyIndex) {
+      dispatch({ type: 'SWITCH_ACTIVE_MONSTER', index: partyIndex });
+    }
+
     setShowDungeonReviveModal(false);
     setPendingDungeonReviveItem(null);
   };

@@ -82,3 +82,9 @@ If anything failed, name the suspected file/reducer (state.ts END_RUN / FLEE_DUN
 - Don't fill login forms.
 - Don't sign up for new accounts to "test fresh state" — use existing session.
 - Don't claim a bug is fixed without re-running steps 4 and 5.
+
+## Known browser-tool limitations
+
+Stagehand has no native right-click and struggles to click individual SVG dungeon/overworld tiles. Workarounds:
+- Movement: use `press` with `ArrowUp/Down/Left/Right` on `body`.
+- Right-click unified menu, mobile long-press menu, tile-precise clicks, drag-resize: **flag as deferred to manual QA** in the report rather than burning attempts. Don't claim menu parity passed if you couldn't actually open the menu.

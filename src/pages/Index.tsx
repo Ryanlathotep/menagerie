@@ -398,17 +398,32 @@ function DungeonView({
     const party = state.run.party;
     const activeIndex = state.run.activePartyIndex;
     const nextAliveIndex = party.findIndex((m, i) => i !== activeIndex && m.stats.currentHp > 0);
-    
+
     if (nextAliveIndex >= 0) {
       const next = party[nextAliveIndex];
       addLog(`💀 ${state.run.currentMonster.name} fell to ${cause}! ${next.name} steps up!`, 'damage');
       dispatch({ type: 'SWITCH_ACTIVE_MONSTER', index: nextAliveIndex });
       toast.success(`Go, ${next.species}!`);
-    } else {
-      addLog(`☠️ Your entire party has fallen! Returning to town...`, 'damage');
-      dispatch({ type: 'END_RUN', victory: false });
-      dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
+      return;
     }
+
+    // Last man down — before ending the run, check inventory for a Revive item.
+    // Bug fix: players carrying Revive Herbs / Phoenix Flowers used to be
+    // game-overed without ever being offered the chance to use them.
+    const reviveItem = (state.run.inventory ?? []).find(
+      (it) => it.effect === 'revive' || it.effect === 'revive_full'
+    );
+    if (reviveItem) {
+      addLog(`💀 ${state.run.currentMonster.name} fell to ${cause}! Use a ${reviveItem.name} to keep going.`, 'damage');
+      toast.warning(`${state.run.currentMonster.name} fainted — pick a member to revive.`);
+      setPendingDungeonReviveItem(reviveItem);
+      setShowDungeonReviveModal(true);
+      return;
+    }
+
+    addLog(`☠️ Your entire party has fallen! Returning to town...`, 'damage');
+    dispatch({ type: 'END_RUN', victory: false });
+    dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
   }, [state.run, dispatch, addLog]);
   const handleMove = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
     if (!dungeon || !state.run) return;
@@ -1490,20 +1505,27 @@ function DungeonView({
   // Handle revive target selection in dungeon
   const handleDungeonReviveTarget = (partyIndex: number) => {
     if (!pendingDungeonReviveItem || !state.run) return;
-    
+
     const revivePercent = pendingDungeonReviveItem.effect === 'revive_full' ? 100 : (pendingDungeonReviveItem.value || 25);
-    
+
     // Revive the party member
     dispatch({ type: 'REVIVE_PARTY_MEMBER', index: partyIndex, hpPercent: revivePercent });
-    
+
     // Consume the item
     dispatch({ type: 'USE_ITEM', itemId: pendingDungeonReviveItem.id });
-    
+
     const revivedMonster = state.run.party[partyIndex];
     const revivedHp = Math.max(1, Math.floor(revivedMonster.stats.maxHp * (revivePercent / 100)));
     addLog(`🌿 ${revivedMonster.species} was revived with ${revivedHp} HP!`, 'heal');
     toast.success(`${revivedMonster.species} revived!`);
-    
+
+    // If the current active monster is fainted (rescue path from
+    // handleActiveMonsterDownOnMap), swap to the freshly revived one so the
+    // run can continue instead of resuming with a 0-HP active.
+    if (state.run.currentMonster.stats.currentHp <= 0 && partyIndex !== state.run.activePartyIndex) {
+      dispatch({ type: 'SWITCH_ACTIVE_MONSTER', index: partyIndex });
+    }
+
     setShowDungeonReviveModal(false);
     setPendingDungeonReviveItem(null);
   };

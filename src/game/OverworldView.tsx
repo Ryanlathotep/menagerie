@@ -1739,6 +1739,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     {/* Recruitment Modal */}
     {showRecruitment && defeatedEnemy && (
       <RecruitmentModal
+        key={defeatedEnemy.id}
         enemy={defeatedEnemy}
         recruitChance={recruitChance}
         impressiveStats={battleStats}

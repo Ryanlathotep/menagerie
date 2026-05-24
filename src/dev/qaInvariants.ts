@@ -31,8 +31,10 @@ function fakeEquipment(id: string): EquipmentItem {
     name: `Test ${id}`,
     slot: 'helmet',
     rarity: 'common',
+    level: 1,
+    icon: 'helmet',
     stats: { hp: 5 },
-  } as EquipmentItem;
+  } as unknown as EquipmentItem;
 }
 
 function fakeMonster(overrides: Partial<Monster> = {}): Monster {

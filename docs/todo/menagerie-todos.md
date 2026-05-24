@@ -6,18 +6,18 @@
 
 ## Critical Bugs & Blockers
 
-- **Movement Softlock:** Fix navigation grid state; ensure player movement inputs are not disabled or trapped in an infinite loop when an enemy entity enters the proximity/aggro radius.
-- **Location Transition Persistence:** Fix serialization breakages; ensure the active party state is fully saved and restored when changing scenes or maps.
-- **Dungeon Recruitment Loop:** Fix `RecruitmentTimer` logic. Calculate remaining time based on player step-counter increments rather than real-time delta.
-- **Missing Asset Textures:** Fix the Asset Tab UI; resolve broken file paths preventing default equipment artwork from rendering.
+- ~~**Movement Softlock:** Fix navigation grid state; ensure player movement inputs are not disabled or trapped in an infinite loop when an enemy entity enters the proximity/aggro radius.~~ ✅ Fixed (Index.tsx — rebase dungeon to expanded grid before enemy turns).
+- ~~**Location Transition Persistence:** Fix serialization breakages; ensure the active party state is fully saved and restored when changing scenes or maps.~~ ✅ Fixed (state.ts — FLEE_DUNGEON now uses `persistRunPartyProgress` like END_RUN).
+- ~~**Dungeon Recruitment Loop:** Fix `RecruitmentTimer` logic. Calculate remaining time based on player step-counter increments rather than real-time delta.~~ ✅ Fixed (real bug was queued-recruit modal reusing state — added `key={defeatedEnemy.id}` to remount per recruit).
+- ~~**Missing Asset Textures:** Fix the Asset Tab UI; resolve broken file paths preventing default equipment artwork from rendering.~~ ✅ Fixed (AssetLibrary.tsx — equipment rows now render built-in SVG silhouette as the default preview).
 
 ---
 
 ## UI & UX Overhauls
 
 ### Dungeon Entry Flow
-- Bypass party assignment screens on re-entry. Persist previous run's party composition across sessions.
-- Expose "Start at Previous Level" option directly on the primary Dungeon Entry panel.
+- ~~Bypass party assignment screens on re-entry. Persist previous run's party composition across sessions.~~ ✅ Done — quick-start "▶️ Start" is now the primary action on each dungeon row when a saved party exists; "Customize" link still opens character-select.
+- ~~Expose "Start at Previous Level" option directly on the primary Dungeon Entry panel.~~ ✅ Done — collapsible "Start at floor N" slider on each dungeon row, max = entrance.difficulty + ½ highest-monster-level.
 
 ### Party Analyzer Component
 Data-driven widget at top of Prepare Party menu that evaluates current party composition:

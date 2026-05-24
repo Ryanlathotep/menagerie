@@ -2294,6 +2294,24 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             });
           }
         }
+      } else if (tile.type === 'building') {
+        // Home base / town hub (campfire → log cabin → town hall).
+        const hub = BUILDING_UPGRADES[(tile.buildingType as keyof typeof BUILDING_UPGRADES) || overworld.homeBase.buildingType];
+        title = `${hub.emoji} ${hub.label}`;
+        subtitle = 'Home base hub';
+        if (hub.features?.length) {
+          info.push({ label: 'Features', value: hub.features.join(' · ') });
+        }
+        if (hub.next && hub.upgradeCost) {
+          info.push({ label: 'Upgrade', value: `→ ${BUILDING_UPGRADES[hub.next].label} (🪵${hub.upgradeCost.wood} 🪨${hub.upgradeCost.stone})` });
+        }
+        actions.push({
+          id: 'open-hub',
+          label: 'Use building',
+          hint: 'Open hub menu (upgrade, shop, build)',
+          icon: Home, variant: 'default',
+          onClick: () => { close(); setShowBuildingMenu(true); },
+        });
       } else if (tile.type === 'water') {
         const COST_WOOD = 2, COST_STONE = 5;
         title = '💧 Water';

@@ -9,7 +9,7 @@ Use this skill ANY time the user asks to smoke-test, regression-test, or "see if
 
 ## 0. Setup
 
-1. `browser--navigate_to_sandbox` to `/index` at viewport 1280×800 (desktop interaction model — right-click menus work).
+1. `browser--navigate_to_sandbox` to `/` (NOT `/index` — that 404s) at viewport 1280×800. Stagehand snaps to 1280×720; that's fine.
 2. `browser--read_console_logs` baseline — note any pre-existing errors so you don't blame the change for them.
 3. If a login wall appears, stop and ask the user to sign in. Do not fill auth.
 
@@ -82,3 +82,9 @@ If anything failed, name the suspected file/reducer (state.ts END_RUN / FLEE_DUN
 - Don't fill login forms.
 - Don't sign up for new accounts to "test fresh state" — use existing session.
 - Don't claim a bug is fixed without re-running steps 4 and 5.
+
+## Known browser-tool limitations
+
+Stagehand has no native right-click and struggles to click individual SVG dungeon/overworld tiles. Workarounds:
+- Movement: use `press` with `ArrowUp/Down/Left/Right` on `body`.
+- Right-click unified menu, mobile long-press menu, tile-precise clicks, drag-resize: **flag as deferred to manual QA** in the report rather than burning attempts. Don't claim menu parity passed if you couldn't actually open the menu.

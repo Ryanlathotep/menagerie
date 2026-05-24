@@ -2415,7 +2415,7 @@ function DungeonView({
     if (!dungeonContextBuilding || !dungeon) return;
     const refund = getDisassembleRefund(dungeonContextBuilding);
     const buildings = (dungeon.playerBuildings || []).filter(b => b.id !== dungeonContextBuilding.id);
-    dispatch({ type: 'UPDATE_DUNGEON', dungeon: { playerBuildings: buildings } as any });
+    applyDungeonBuildings(buildings);
     const ow = state.saveData.overworldState;
     if (ow) {
       dispatch({

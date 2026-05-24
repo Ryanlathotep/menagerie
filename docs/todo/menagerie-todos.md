@@ -20,10 +20,10 @@
 - ~~Expose "Start at Previous Level" option directly on the primary Dungeon Entry panel.~~ ✅ Done — collapsible "Start at floor N" slider on each dungeon row, max = entrance.difficulty + ½ highest-monster-level.
 
 ### Party Analyzer Component
-Data-driven widget at top of Prepare Party menu that evaluates current party composition:
-- Identify missing Class and Element tags.
-- Query player inventory and return qualifying creatures (including multi-copy requirements).
-- Sort recommendations by descending Level.
+~~Data-driven widget at top of Prepare Party menu that evaluates current party composition:~~ ✅ Done — `PartyAnalyzer.tsx` mounted above the party card in `CharacterSelect`.
+- ~~Identify missing Class and Element tags.~~ ✅ Warns on missing coverage and on weakness to the active tower's theme.
+- ~~Query player inventory and return qualifying creatures (including multi-copy requirements).~~ ✅ Suggests non-party monsters that counter the dungeon theme (element/class advantage tables) and fill missing buckets.
+- ~~Sort recommendations by descending Level.~~ ✅ Suggestions sorted by counter-score, ties broken by level desc.
 
 ### Unified Context Menu & Input
 Top-anchored context menu for targeted interactions:

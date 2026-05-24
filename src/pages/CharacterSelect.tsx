@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { MonsterSprite } from '@/game/sprites';
 import { MonsterStatsPreview } from '@/game/MonsterStatsPreview';
 import { PreRunEquipment } from '@/game/PreRunEquipment';
+import { PartyAnalyzer } from '@/game/PartyAnalyzer';
 import { isCreativeMode } from '@/game/creativeMode';
 import { toast } from 'sonner';
 
@@ -203,6 +204,18 @@ export function CharacterSelect() {
         <p className="text-center text-muted-foreground text-sm">
           Select up to {MAX_PARTY_SIZE} monsters for your party. Click to add/remove, right-click to preview.
         </p>
+
+        <PartyAnalyzer
+          party={selectedParty}
+          pool={unlockedMonsters}
+          entrance={runDestination === 'dungeon' ? activeEntranceForPrep : undefined}
+          onSuggest={(m) => {
+            if (selectedParty.some(p => p.comboId === m.comboId)) return;
+            if (selectedParty.length >= MAX_PARTY_SIZE) return;
+            setSelectedParty(prev => [...prev, m]);
+            setPreviewMonster(m);
+          }}
+        />
 
         <Card className="p-3">
           <div className="flex items-center gap-2 mb-2">

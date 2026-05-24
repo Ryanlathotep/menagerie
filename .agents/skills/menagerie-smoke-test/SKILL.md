@@ -1,90 +1,113 @@
----
-name: menagerie-smoke-test
-description: "Run a full smoke test of the Menagerie game in the preview browser after any code change. Drives the preview (overworld, dungeon, combat, flee, end-run), watches console logs and game_saves, and verifies the project's known-fragile invariants (XP/mastery persistence, unified inventory, pre-run gear recovery, persistent floors). Trigger phrases include smoke test, test the game, QA the build, regression pass, check for bugs, did I break anything."
----
-
 # Menagerie smoke test
 
-Use this skill ANY time the user asks to smoke-test, regression-test, or "see if anything broke" in Menagerie. Browser-driven. Do not skip steps unless the user names a narrower scope.
+Use this skill ANY time the user asks to smoke-test, regression-test, or "see if anything broke" in Menagerie. The skill has two phases — **a deterministic in-app QA suite** (the meat) and a **lightweight browser visual sanity pass** (best-effort, browser-tool limited). Always do both. Always end with the Suggested-Fixes addendum.
 
-## 0. Setup
+## 0. Pre-flight
 
-1. `browser--navigate_to_sandbox` to `/` (NOT `/index` — that 404s) at viewport 1280×800. Stagehand snaps to 1280×720; that's fine.
-2. `browser--read_console_logs` baseline — note any pre-existing errors so you don't blame the change for them.
-3. If a login wall appears, stop and ask the user to sign in. Do not fill auth.
+1. Confirm the user is signed in (the QA suite writes to `qa_runs`, which is admin-only).
+2. `browser--navigate_to_sandbox` to `/` at viewport 1280×800. Note baseline console errors.
+3. If admin auth wall appears, stop and ask the user to log in.
 
-## 1. Main menu
+## 1. Deterministic invariant suite (PRIMARY — never skip)
 
-- Verify the dungeon list renders, Overworld button is at the top, no `Start Run` button (memory: Main Menu Dungeon List).
-- Verify Tower of the Infinite is always listed; themed towers only appear if discovered (memory: Major Tower Discovery).
-- Click Settings → confirm Manage Waypoints + Rebuild Overworld present.
+This is the only reliable persistence check. Browser tile-clicks and right-clicks cannot reach these reducers.
 
-## 2. Overworld pass
+### Option A — call the bridge directly
+1. In the running game (any phase), open DevTools and run:
+   ```js
+   window.__menagerie.runSmokeTest()
+   ```
+2. Collect the returned array. Each entry has `{id, name, pass, severity, detail, memoryRef}`.
 
-1. Enter Overworld. Verify spawn near (0,0), HUD shows X/Y/Z.
-2. Move 4 tiles in any cardinal direction. Confirm: tile counter increments, no enemy spawn within ~8 tiles of home (difficulty cap memory).
-3. Right-click an empty tile → unified menu must show "Move here" + "Set waypoint". Right-click a tree/rock → "Harvest" or "Chop"/"Mine" appears. Right-click a building → tooltip + context menu (assign/repair/disassemble).
-4. **Critical menu parity check**: switch viewport to 440×782 (mobile) WITHOUT reloading; long-press the same tile and confirm the menu contents are IDENTICAL to the desktop right-click (core rule: never branch menu by viewport).
-5. Switch back to 1280×800.
+### Option B — drive the Admin QA panel
+1. `browser--navigate_to_url` → preview origin + `/admin/qa`.
+2. Click **Run Smoke Test**. Read the results table and Suggested-Fixes panel.
+3. The panel persists each run to `qa_runs` for history.
 
-## 3. Dungeon entry + run
+Both options run the same invariants:
 
-1. Walk to nearest dungeon entrance OR open Tower of the Infinite from main menu.
-2. Pre-run screen: equip a piece of gear that's in storage; withdraw a consumable; THEN unequip something previously persisted from a prior run and confirm it returns to storage on START_RUN (memory: Pre-Run Unequip Recovery — silent bug class).
-3. Enter dungeon. Verify floor renders, party HP/Stamina visible, log panel reversed (newest at top).
-4. Engage an enemy: click on it to auto-target. Use one melee, one ranged move. Verify ranged ~50% damage of melee (memory: Melee vs Ranged Balance) and Stamina drains.
-5. Take at least one full party turn cycle: confirm enemies also pay stamina (~8/attack) and rest when out (memory: Enemy Stamina).
-6. Mine a wall (5 pickaxe hits) — verify wall is gone and persists.
-7. Place a waypoint on the current floor. Go up stairs, come back down — waypoint and mined wall must still be there (memory: Persistent Dungeon Floors).
+| ID | Memory rule | What it proves |
+|---|---|---|
+| `end-run-persists-four` | persistent-monster-xp-and-mastery | END_RUN writes level + xp + mastery + equipment via the canonical helper |
+| `flee-persists-four` | no-death-losses | FLEE_DUNGEON is symmetric and banks gold |
+| `pre-run-unequip-recovery` | pre-run-unequip-recovery | Gear unequipped in Pre-Run returns to storedEquipment |
+| `mastery-merge-max` | move-mastery-thresholds | Helper keeps the higher mastery uses, never regresses |
+| `unified-inventory-live` | unified-inventory | run.inventory and saveData.storedItems mirror live |
+| `corrupt-save-tolerance` | — | Helper survives a save missing moveMastery |
 
-## 4. Persistence — the highest-bug-risk area
+A `critical` ❌ means a memory-level regression — STOP and report before doing anything else.
 
-Before fleeing, note in chat: current floor, party member levels + XP bars, one move's mastery uses, equipped gear list, gold/material counts.
+## 2. Browser visual sanity (SECONDARY — best effort)
 
-1. Use a Town Portal Scroll OR flee via Settings → Flee. Confirm prompt appears.
-2. Back in Overworld/main menu, open the same monster's character sheet.
-3. **Verify all four** (memory: Persistent XP & Mastery, core rule):
-   - level retained
-   - experience bar at same %
-   - moveMastery uses incremented and persisted
-   - equipment unchanged
-4. Verify gold/materials/items match (memory: No Death Losses — flee and END_RUN behave identically).
-5. If user is signed in, `supabase--read_query` `select updated_at, save_data->'unlockedMonsters'->0->'experience' from game_saves where user_id = auth.uid() order by updated_at desc limit 1` to confirm cloud save wrote the XP.
+Only after the suite passes. The browser tool can't reliably interact with the canvas; treat anything below this line as a smoke test of UI shell, not behavior.
 
-## 5. End-run path
+1. `/` — main menu loads, Overworld button top, Tower of the Infinite present, no `Start Run` button.
+2. Settings → Manage Waypoints + Rebuild Overworld present.
+3. Enter Overworld via keyboard if needed. Confirm HUD shows X/Y/Z.
+4. Move 4 tiles with `press` ArrowUp/Down/Left/Right on `body`. Confirm tile counter increments.
+5. `browser--read_console_logs` filter `error` — diff against pre-flight baseline. Report only NEW entries.
+6. `browser--list_network_requests` — flag any 4xx/5xx on `/rest/v1/game_saves` or `/rest/v1/rpc/submit_*`.
+7. `code--read_runtime_errors` — surface uncaught React errors.
 
-Repeat steps 3–4 but let the full party faint instead of fleeing. END_RUN must preserve the same four fields. This is the #1 historical regression site — never skip.
+## 3. Known browser-tool limitations (mark as deferred, not failed)
 
-## 6. Final sweep
+Stagehand cannot:
+- Right-click the unified context menu → **deferred to manual QA**
+- Long-press for mobile menu → **deferred to manual QA** (but covered by the cross-platform-menu-parity memory)
+- Click individual SVG dungeon/overworld tiles reliably → **deferred to manual QA**
+- Drag-resize bottom bars → **deferred to manual QA**
 
-- `browser--read_console_logs` filter `error` and `warn` — diff against the baseline from step 0.2. Report only NEW entries.
-- `browser--list_network_requests` — look for failed Supabase calls (4xx/5xx on `/rest/v1/game_saves`, `/rest/v1/rpc/submit_*`).
-- `code--read_runtime_errors` for any uncaught React errors.
+Do NOT mark these ❌. Mark them ⏭️ in the report and direct the user to the Admin QA panel + manual right-click test.
 
 ## Reporting
 
-End with a short table:
+End with this table, then a Suggested-Fixes addendum, then a one-line verdict.
 
 | Step | Result | Notes |
 |------|--------|-------|
-| Menu parity | ✅/❌ | … |
-| Pre-run unequip recovery | ✅/❌ | … |
-| Flee preserves XP/mastery/gear/items | ✅/❌ | … |
-| END_RUN preserves XP/mastery/gear/items | ✅/❌ | … |
-| Persistent floor (mined wall + waypoint) | ✅/❌ | … |
-| New console errors | count | first error message |
+| Invariant: end-run-persists-four | ✅/❌ | detail |
+| Invariant: flee-persists-four | ✅/❌ | detail |
+| Invariant: pre-run-unequip-recovery | ✅/❌ | detail |
+| Invariant: mastery-merge-max | ✅/❌ | detail |
+| Invariant: unified-inventory-live | ✅/❌/⏭️ | "no active run" → ⏭️ |
+| Invariant: corrupt-save-tolerance | ✅/❌ | detail |
+| Visual: main menu shell | ✅/❌ | |
+| Visual: overworld HUD + movement | ✅/❌/⏭️ | |
+| New console errors | count | first error |
+| Right-click / long-press menus | ⏭️ | deferred to manual QA |
 
-If anything failed, name the suspected file/reducer (state.ts END_RUN / FLEE_DUNGEON handlers are the usual culprits) and STOP before fixing — confirm with user first.
+### Suggested-Fixes addendum (MANDATORY)
+
+For every ❌ or ⏭️ in the table, emit a concrete next action. Use this mapping as the starting point — the Admin QA panel produces the same suggestions, treat them as authoritative:
+
+- `end-run-persists-four` → `src/game/state.ts` END_RUN case (~line 362); verify it calls `persistRunPartyProgress`. Don't inline the write.
+- `flee-persists-four` → FLEE_DUNGEON case (~line 465); same helper. Both reducers must be symmetric.
+- `pre-run-unequip-recovery` → START_RUN recovery block (~line 292-320); diff `member.equipment` against final selection, push diff to `mergedStorage`.
+- `mastery-merge-max` → `persistRunPartyProgress` (~line 95); max-uses comparison regressed.
+- `unified-inventory-live` → review the most recent `ADD_ITEM`/`USE_ITEM`/`DROP_ITEM` change; both `run.inventory` and `saveData.storedItems` must be mirrored in the same case.
+- `corrupt-save-tolerance` → guard mastery iteration with `(existing.moveMastery || {})`.
+- Visual failure → identify the failing component before guessing; run `browser--screenshot` and `code--read_runtime_errors`.
+- Browser-tool ⏭️ → ask the user to manually right-click on desktop and long-press on mobile to confirm menu parity; never claim parity passed without a human verifying.
+
+Always conclude with a one-line verdict: **"Safe to ship"** (all critical ✅), **"Investigate before shipping"** (any critical ❌), or **"Visual issues only"** (critical ✅ but visual ❌).
 
 ## Don't do
 
 - Don't run this skill speculatively when the user only asked a code question.
-- Don't fill login forms.
-- Don't sign up for new accounts to "test fresh state" — use existing session.
-- Don't claim a bug is fixed without re-running steps 4 and 5.
+- Don't claim persistence works because the visual pass passed — the invariants are the only proof.
+- Don't fill auth forms. Don't sign up new accounts.
+- Don't claim a bug is fixed without re-running the invariant suite afterward.
 
-## Known browser-tool limitations
+## Debug bridge reference
 
-Stagehand has no native right-click and struggles to click individual SVG dungeon/overworld tiles. Workarounds:
-- Movement: use `press` with `ArrowUp/Down/Left/Right` on `body`.
-- Right-click unified menu, mobile long-press menu, tile-precise clicks, drag-resize: **flag as deferred to manual QA** in the report rather than burning attempts. Don't claim menu parity passed if you couldn't actually open the menu.
+Available on `window.__menagerie` whenever the game tree is mounted (any route under `/`):
+
+```js
+window.__menagerie.help()           // logs the API
+window.__menagerie.getState()       // full GameState
+window.__menagerie.snapshot()       // compact persisted-progress snapshot
+window.__menagerie.dispatch(action) // dispatch any GameAction against the live store
+window.__menagerie.runSmokeTest()   // runs all invariants, logs + returns results
+```
+
+Pair `snapshot()` before and after a suspected-regression action to manually diff persisted XP/mastery/gear without rerunning the full suite.

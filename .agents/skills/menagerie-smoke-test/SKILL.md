@@ -1,6 +1,6 @@
 ---
 name: menagerie-smoke-test
-description: Run a full smoke test of the Menagerie game in the preview browser after any code change. Drives the preview (overworld → dungeon → combat → flee → end-run), watches console logs and game_saves, and verifies the project's known-fragile invariants (XP/mastery persistence, unified inventory, pre-run gear recovery, persistent floors, etc.). Trigger phrases: "smoke test", "test the game", "QA the build", "regression pass", "check for bugs", "did I break anything".
+description: "Run a full smoke test of the Menagerie game in the preview browser after any code change. Drives the preview (overworld, dungeon, combat, flee, end-run), watches console logs and game_saves, and verifies the project's known-fragile invariants (XP/mastery persistence, unified inventory, pre-run gear recovery, persistent floors). Trigger phrases include smoke test, test the game, QA the build, regression pass, check for bugs, did I break anything."
 ---
 
 # Menagerie smoke test

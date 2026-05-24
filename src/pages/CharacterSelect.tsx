@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { MonsterSprite } from '@/game/sprites';
 import { MonsterStatsPreview } from '@/game/MonsterStatsPreview';
 import { PreRunEquipment } from '@/game/PreRunEquipment';
+import { PartyAnalyzer } from '@/game/PartyAnalyzer';
 import { isCreativeMode } from '@/game/creativeMode';
 import { toast } from 'sonner';
 

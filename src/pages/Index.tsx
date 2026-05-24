@@ -4275,6 +4275,15 @@ function DungeonView({
                 title = '🚪 Door';
                 subtitle = 'Passageway';
                 info.push({ label: 'Action', value: 'Walk through it' });
+                if (isAdjacent) {
+                  actions.push({
+                    id: 'open-door',
+                    label: 'Open door',
+                    icon: DoorOpen,
+                    variant: 'default',
+                    onClick: stepToTile,
+                  });
+                }
               } else if (tile.type === 'wall') {
                 title = '🪨 Bedrock';
                 subtitle = 'Unbreakable structural rock';

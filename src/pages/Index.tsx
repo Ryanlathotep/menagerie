@@ -656,9 +656,17 @@ function DungeonView({
           entrance,
         );
         const tiles = fresh.tiles.map(row => row.map(t => ({ ...t })));
-        const spawn = fresh.playerPosition;
+        // Same fix as initial entry: if the snapshot replaced fresh.playerPosition
+        // with a wall, relocate to a walkable neighbour BEFORE planting the
+        // ascent staircase so the player always has a way back up.
+        let spawn = fresh.playerPosition;
+        const sTile = tiles[spawn.y]?.[spawn.x];
+        if (!sTile || sTile.type === 'wall' || sTile.type === 'mineable_wall' || sTile.type === 'nest') {
+          const safe = findNearestWalkableTile(tiles, spawn.x, spawn.y);
+          if (safe) spawn = safe;
+        }
         tiles[spawn.y][spawn.x].stairsBeneath = 'up';
-        newDungeon = { ...fresh, tiles, entryPosition: { ...spawn }, visitedFloors: visited };
+        newDungeon = { ...fresh, tiles, playerPosition: spawn, entryPosition: { ...spawn }, visitedFloors: visited };
       }
       dispatch({ type: 'SET_DUNGEON', dungeon: prepareDungeonForEntry(newDungeon) });
       addLog(`⬇️ Descended to Floor ${nextFloorNum}!`, 'system');

@@ -52,6 +52,7 @@ import {
   tickEffects,
   cureStatusEffect,
   cureAllStatusEffects,
+  getGrappleModifiers,
 } from '@/game/statusEffects';
 import { StatusIcons } from '@/game/StatusEffectDisplay';
 import { CraftingWorkshop } from '@/game/CraftingWorkshop';

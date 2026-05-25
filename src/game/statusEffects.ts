@@ -63,7 +63,32 @@ export const STATUS_EFFECT_CONFIG: Record<StatusEffectType, {
     description: '25% chance to hurt self',
     baseDuration: 3,
   },
+  grappled: {
+    icon: '🤼',
+    color: 'text-amber-400',
+    description: 'Locked in close combat — ranged accuracy, movement, and escape are reduced',
+    baseDuration: 3,
+  },
 };
+
+// Read effective grapple modifiers from a CombatEffects bag.
+// Returns null if not grappled. Defaults fill in any missing fields.
+export function getGrappleModifiers(effects: CombatEffects | null | undefined): {
+  escapeMod: number;
+  rangedAccMod: number;
+  movementMod: number;
+  turnsRemaining: number;
+} | null {
+  if (!effects) return null;
+  const eff = effects.statusEffects.find((e) => e.type === 'grappled');
+  if (!eff) return null;
+  return {
+    escapeMod: eff.grappleEscapeMod ?? DEFAULT_GRAPPLE_ESCAPE_MOD,
+    rangedAccMod: eff.grappleRangedAccMod ?? DEFAULT_GRAPPLE_RANGED_ACC_MOD,
+    movementMod: eff.grappleMovementMod ?? DEFAULT_GRAPPLE_MOVEMENT_MOD,
+    turnsRemaining: eff.turnsRemaining,
+  };
+}
 
 // ============= BUFF/DEBUFF TYPES =============
 export type BuffType = 'attack' | 'defense' | 'speed' | 'special' | 'accuracy' | 'dodge' | 'all_stats';

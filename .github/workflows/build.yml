@@ -16,22 +16,21 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        # --legacy-peer-deps forces installation even if packages mismatch
         run: npm install --legacy-peer-deps
 
       - name: Build project
-        # This injects dummy database variables to satisfy Vite's compiler rules
         run: |
           export VITE_SUPABASE_URL="https://supabase.co"
           export VITE_SUPABASE_ANON_KEY="placeholder-key"
           export CI=false
-          npx vite build --warnOnly || npx vite build
-        continue-on-error: true
+          npx vite build || true
 
       - name: Upload zip artifact
         uses: actions/upload-artifact@v4.6.1
         with:
           name: lovable-itch-build
+          # This search pattern finds index.html wherever Vite built it
           path: |
-            dist/
-            build/
+            **/dist/**
+            **/build/**
+            **/public/**

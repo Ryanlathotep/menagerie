@@ -311,13 +311,36 @@ export function sortMoves(
   }
 }
 
-// Filter moves based on filter options
-export function filterMoves(moves: Move[], filters: MoveFilterOption[]): Move[] {
+// Filter moves based on filter options and optional name search
+export function filterMoves(
+  moves: Move[],
+  filters: MoveFilterOption[],
+  searchQuery: string = '',
+): Move[] {
+  const q = searchQuery.trim().toLowerCase();
+  const searched = q
+    ? moves.filter(
+        (m) =>
+          m.name.toLowerCase().includes(q) ||
+          m.id.toLowerCase().includes(q) ||
+          (m.description?.toLowerCase().includes(q) ?? false) ||
+          (m.effect?.toLowerCase().includes(q) ?? false),
+      )
+    : moves;
+
   if (filters.includes('all') || filters.length === 0) {
-    return moves;
+    return searched;
   }
 
-  return moves.filter(move => {
+  const isAoe = (move: Move) =>
+    !!move.customShape ||
+    (move.aoeRadius ?? 0) > 0 ||
+    (!!move.targeting && move.targeting !== 'single' && move.targeting !== 'piercing');
+  const isDot = (move: Move) =>
+    !!move.effect && ['poison', 'burn', 'bleed'].some((s) => move.effect?.includes(s));
+  const isMovement = (move: Move) => move.type === 'movement' || !!move.movement;
+
+  return searched.filter((move) => {
     for (const filter of filters) {
       switch (filter) {
         case 'melee':
@@ -345,6 +368,15 @@ export function filterMoves(moves: Move[], filters: MoveFilterOption[]): Move[] 
           if (move.effect && ['poison', 'burn', 'freeze', 'paralyze', 'confuse'].some(s => move.effect?.includes(s))) {
             return true;
           }
+          break;
+        case 'aoe':
+          if (isAoe(move)) return true;
+          break;
+        case 'dot':
+          if (isDot(move)) return true;
+          break;
+        case 'movement':
+          if (isMovement(move)) return true;
           break;
       }
     }

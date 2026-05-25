@@ -108,11 +108,15 @@ export function UnifiedMovePanel({
   // Persist sort/filter changes
   const handleSortChange = (option: MoveSortOption) => {
     setSortOption(option);
-    saveMoveFilters({ sortOption: option, filters });
+    saveMoveFilters({ sortOption: option, filters, searchQuery });
   };
   const handleFilterChange = (newFilters: MoveFilterOption[]) => {
     setFilters(newFilters);
-    saveMoveFilters({ sortOption, filters: newFilters });
+    saveMoveFilters({ sortOption, filters: newFilters, searchQuery });
+  };
+  const handleSearchChange = (q: string) => {
+    setSearchQuery(q);
+    saveMoveFilters({ sortOption, filters, searchQuery: q });
   };
   
   // Keybind assignment
@@ -139,9 +143,9 @@ export function UnifiedMovePanel({
   
   // Apply sorting and filtering
   const processedMoves = useMemo(() => {
-    const filtered = filterMoves(moves, filters);
+    const filtered = filterMoves(moves, filters, searchQuery);
     return sortMoves(filtered, sortOption, monster, moveOrder);
-  }, [moves, filters, sortOption, monster, moveOrder]);
+  }, [moves, filters, searchQuery, sortOption, monster, moveOrder]);
   
   const visibleMoves = processedMoves.filter(m => !hiddenMoves.includes(m.id));
   const hiddenMovesList = processedMoves.filter(m => hiddenMoves.includes(m.id));

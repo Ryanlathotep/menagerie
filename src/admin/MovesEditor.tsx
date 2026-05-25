@@ -791,6 +791,44 @@ export function MovesEditor() {
               </div>
             </div>
 
+            {/* ----- Grapple section ----- */}
+            <div className="rounded-md border border-border bg-muted/30 p-2 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold">🤼 Grapple</div>
+                <label className="flex items-center gap-1 text-[11px]">
+                  <input
+                    type="checkbox"
+                    checked={!!editedMove.grapple?.forces}
+                    onChange={(e) => {
+                      const cur = editedMove.grapple ?? {};
+                      setEditedMove({
+                        ...editedMove,
+                        grapple: e.target.checked
+                          ? { forces: true, escapeMod: cur.escapeMod ?? 25, rangedAccMod: cur.rangedAccMod ?? 25, movementMod: cur.movementMod ?? 25, duration: cur.duration ?? 3 }
+                          : undefined,
+                      });
+                    }}
+                  />
+                  Forces Grapple on hit
+                </label>
+              </div>
+              {editedMove.grapple?.forces && (
+                <div className="grid grid-cols-2 gap-2">
+                  <NumberField label="Escape Mod %" value={editedMove.grapple.escapeMod ?? 25}
+                    onChange={(v) => setEditedMove({ ...editedMove, grapple: { ...editedMove.grapple!, escapeMod: v } })} />
+                  <NumberField label="Ranged Acc Mod %" value={editedMove.grapple.rangedAccMod ?? 25}
+                    onChange={(v) => setEditedMove({ ...editedMove, grapple: { ...editedMove.grapple!, rangedAccMod: v } })} />
+                  <NumberField label="Movement Mod %" value={editedMove.grapple.movementMod ?? 25}
+                    onChange={(v) => setEditedMove({ ...editedMove, grapple: { ...editedMove.grapple!, movementMod: v } })} />
+                  <NumberField label="Duration (turns)" value={editedMove.grapple.duration ?? 3}
+                    onChange={(v) => setEditedMove({ ...editedMove, grapple: { ...editedMove.grapple!, duration: v } })} />
+                  <div className="col-span-2 text-[10px] text-muted-foreground leading-tight">
+                    On hit, both attacker and target gain the 🤼 Grappled status. Positive values are
+                    reductions (25 = −25%). Set 0 to remove a penalty, or negative to grant a bonus.
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* ----- Availability toggles ----- */}
             <div className="rounded-md border border-border bg-muted/30 p-2 space-y-1">

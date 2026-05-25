@@ -123,8 +123,10 @@ export function EnemyAttackMenu({
           <MoveSortFilter
             sortOption={sortOption}
             filters={filters}
+            searchQuery={searchQuery}
             onSortChange={updateSort}
             onFilterChange={updateFilters}
+            onSearchChange={updateSearch}
           />
         </div>
 

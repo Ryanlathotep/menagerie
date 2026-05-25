@@ -19,15 +19,15 @@ jobs:
         run: npm install --legacy-peer-deps
 
       - name: Install missing bug-report packages
-        # This injects the html-to-image package Vite is crashing on
         run: npm install html-to-image
 
-      - name: Force Vite Build
+      - name: Force Vite Build (Relative Paths for itch.io)
+        # Adding --base ./ forces all script links to work correctly on itch.io subfolders
         run: |
-          export VITE_SUPABASE_URL="https://placeholder-url.supabase.co"
+          export VITE_SUPABASE_URL="https://supabase.co"
           export VITE_SUPABASE_ANON_KEY="placeholder-key"
           export CI=false
-          npx vite build --outDir actual_dist
+          npx vite build --outDir actual_dist --base ./
 
       - name: Upload zip artifact
         uses: actions/upload-artifact@v4.6.1

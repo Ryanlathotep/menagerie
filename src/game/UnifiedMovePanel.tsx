@@ -393,8 +393,10 @@ export function UnifiedMovePanel({
             <MoveSortFilter
               sortOption={sortOption}
               filters={filters}
+              searchQuery={searchQuery}
               onSortChange={handleSortChange}
               onFilterChange={handleFilterChange}
+              onSearchChange={handleSearchChange}
             />,
             controlsHost,
           )
@@ -402,8 +404,10 @@ export function UnifiedMovePanel({
           <MoveSortFilter
             sortOption={sortOption}
             filters={filters}
+            searchQuery={searchQuery}
             onSortChange={handleSortChange}
             onFilterChange={handleFilterChange}
+            onSearchChange={handleSearchChange}
           />
         )}
       

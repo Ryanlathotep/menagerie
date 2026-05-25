@@ -70,7 +70,7 @@ export function EnemyAttackMenu({
 
   // Apply user filter + sort, then enrich with range / cost info.
   const ordered = useMemo(() => {
-    const filtered = filterMoves(attackMoves, filters);
+    const filtered = filterMoves(attackMoves, filters, searchQuery);
     const sorted = sortMoves(filtered, sortOption, attacker, moveOrder);
     return sorted.map((move) => {
       const cfg = getAttackConfig(move);
@@ -79,7 +79,7 @@ export function EnemyAttackMenu({
       const eff = move.power > 0 ? getEffectiveness(move, attacker, enemy) : null;
       return { move, cfg, inRange, canAfford, eff };
     });
-  }, [attackMoves, filters, sortOption, attacker, moveOrder, distance, enemy]);
+  }, [attackMoves, filters, searchQuery, sortOption, attacker, moveOrder, distance, enemy]);
 
   const usableCount = ordered.filter((m) => m.inRange && m.canAfford).length;
 

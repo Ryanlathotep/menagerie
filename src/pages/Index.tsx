@@ -4580,6 +4580,29 @@ function BattleView({
       }
     }
 
+    // === Forced Grapple from move flag (refreshes/extends grapple on both fighters) ===
+    if (result.hit && move.grapple?.forces) {
+      const g = move.grapple;
+      const grappleStatus = {
+        type: 'grappled' as const,
+        duration: g.duration ?? 3,
+        source: move.name,
+        grappleEscapeMod: g.escapeMod ?? 25,
+        grappleRangedAccMod: g.rangedAccMod ?? 25,
+        grappleMovementMod: g.movementMod ?? 25,
+      };
+      updatedPlayerEffects = {
+        ...updatedPlayerEffects,
+        statusEffects: [...updatedPlayerEffects.statusEffects.filter(e => e.type !== 'grappled'), grappleStatus],
+      };
+      updatedEnemyEffects = {
+        ...updatedEnemyEffects,
+        statusEffects: [...updatedEnemyEffects.statusEffects.filter(e => e.type !== 'grappled'), grappleStatus],
+      };
+      newLog.push(`🤼 ${move.name} locks both fighters into a grapple!`);
+    }
+
+
     // Apply drain heal (after damage)
     if (move.effect === 'heal_self' && result.damage > 0) {
       const drainHeal = Math.floor(result.damage * 0.5);

@@ -83,6 +83,8 @@ export function UnifiedMovePanel({
   // Sorting and filtering state - persisted to localStorage
   const [sortOption, setSortOption] = useState<MoveSortOption>(() => loadMoveFilters().sortOption);
   const [filters, setFilters] = useState<MoveFilterOption[]>(() => loadMoveFilters().filters);
+  const [searchQuery, setSearchQuery] = useState<string>(() => loadMoveFilters().searchQuery ?? '');
+
   
   // Keybind state
   const [keybindData, setKeybindData] = useState(() => loadKeybinds());

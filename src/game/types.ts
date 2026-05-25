@@ -332,11 +332,11 @@ export interface BattleState {
   log: string[];
   // Combat effects tracking
   playerEffects?: {
-    statusEffects: Array<{ type: string; turnsRemaining: number; source: string }>;
+    statusEffects: Array<{ type: string; turnsRemaining: number; source: string; grappleEscapeMod?: number; grappleRangedAccMod?: number; grappleMovementMod?: number }>;
     statModifiers: Array<{ stat: string; direction: 'buff' | 'debuff'; percentage: number; turnsRemaining: number; source: string; stacks?: number }>;
   };
   enemyEffects?: {
-    statusEffects: Array<{ type: string; turnsRemaining: number; source: string }>;
+    statusEffects: Array<{ type: string; turnsRemaining: number; source: string; grappleEscapeMod?: number; grappleRangedAccMod?: number; grappleMovementMod?: number }>;
     statModifiers: Array<{ stat: string; direction: 'buff' | 'debuff'; percentage: number; turnsRemaining: number; source: string; stacks?: number }>;
   };
   // Charge/buff tracking for next attack

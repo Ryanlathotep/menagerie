@@ -1,89 +1,75 @@
-## Why the smoke test underperformed
+## Rename the Battle Window → Grapple Window, and make it actually mean something
 
-The browser tool can't right-click, can't reliably hit SVG tiles, and can't reach combat/persistence — which is **exactly** where the historical bugs live (END_RUN / FLEE_DUNGEON / unequip recovery). So a "successful" smoke test today only proves the boot path works. Fixing this needs three layers working together.
+Walking onto an enemy tile currently opens the legacy turn-based **Battle** screen (`state.run.battle`). We'll repurpose this as the **Grapple Window** so close-range melee fighters have a clear advantage and grappling becomes a real tactical lever.
 
----
+## Rules
 
-## Layer 1 — Static persistence audit (the work you said yes to)
+**Entering a grapple**
+- Walking into an enemy still triggers the window (default behavior — a "natural" grapple).
+- Some moves can also force a grapple from range — see Move Designer below.
+- On entry, both fighters get a 🤼 **Grappled** status carrying the modifiers below.
 
-Read `src/state.ts` (or wherever the reducer lives) and verify, line-by-line:
+**While grappled** (defaults, overridable per move)
+- Ranged attacks: **−25% accuracy** (calculated in `combat.calculateHitChance` for `type === 'ranged'`).
+- Movement skills: **−25% effectiveness** (UnifiedMovePanel + Index movement resolver shrink offset reach, min 1 tile).
+- Escape / Flee action: **−25% success chance** (handleFlee in battle).
+- Melee attacks: unaffected — that's the whole point.
 
-- `END_RUN` writes **all four**: `level`, `experience`, `moveMastery`, `equipment` back to `unlockedMonsters`
-- `FLEE_DUNGEON` does the same (must be symmetric)
-- `START_RUN` re-hydrates those four on `createMonster`, AND returns unequipped persisted gear to `storedEquipment` (Pre-Run Unequip Recovery)
-- Inventory mirroring: `ADD_ITEM`/`USE_ITEM`/`DROP_ITEM` keep `run.inventory` and `saveData.storedItems` in sync
-- Cloud save write path triggered by END_RUN/FLEE_DUNGEON
+**Breaking a grapple**
+- Window closes when one side faints, the player flees successfully, or a movement skill carries the player out of adjacency.
+- The Grappled status also has a `duration` (default 3 turns) so a long stalemate naturally ends.
 
-Deliverable: a findings table (file:line, what's missing, severity). **No code changes** unless you greenlight them after.
+## Move Designer additions (Admin → Moves)
 
----
+New "Grapple" section on every move:
 
-## Layer 2 — Make the skill actually work (test hooks + addendum)
+| Field | Default | Effect |
+|-------|---------|--------|
+| Forces Grapple | off | On hit, opens the Grapple Window (or refreshes if already in one) |
+| Escape modifier | −25% | Per-move override; some moves can pin harder or be looser |
+| Ranged accuracy mod | −25% | Override |
+| Movement skill mod | −25% | Override |
+| Duration (turns) | 3 | How long the Grappled status lasts |
 
-The root cause is the skill has no way to drive the game past the canvas wall. Fix it by exposing a tiny **dev debug bridge** the skill can call:
+## Visual indicator
 
-**Add `src/dev/debugBridge.ts`** (only registers when `import.meta.env.DEV` or admin flag):
-```ts
-window.__menagerie = {
-  store: { getState, dispatch },        // direct reducer access
-  scenarios: {
-    enterDungeon(towerId='infinite'),
-    simulateCombat({wins:1}),
-    flee(),
-    endRun(),
-    snapshot(): { level, xp, mastery, gear, items, gold }
-  }
-}
+A sepia ribbon banner at the top of the Grapple Window:
+
+> 🤼 **Grappled** — Ranged acc −25% · Movement −25% · Escape −25% · 3 turns left
+
+Plus a small 🤼 badge on the active monster's status row in `StatusEffectDisplay`.
+
+## Movement-into-range damage
+
+You're right that the Move tab already determines damage. I'll confirm `Index.tsx`'s movement resolver runs the normal attack pipeline (`executeCombat` → damage roll → effectiveness) against any enemy adjacent to the landing tile when `power > 0`. If it currently skips that for movement-typed moves, I'll add the check.
+
+## UI text changes (Grapple Window itself)
+
+- `Index.tsx` battle title → "🤼 Grapple"
+- `CombatSwitchPanel` heading stays as "Switch Monster" (it's still that).
+- Flee button → "Escape Grapple" with the modified % shown inline.
+
+## Files touched
+
+```text
+src/game/statusEffects.ts        + 'grappled' type with modifier metadata
+src/game/types.ts                + GrappleConfig on Move
+src/game/moves.ts                + (no new fixtures, just type re-export)
+src/admin/MovesEditor.tsx        + Grapple form section
+src/game/combat.ts               + ranged accuracy debuff when attacker is grappled
+src/game/dungeonCombat.ts        + helper to apply grapple on forced-grapple hit
+src/game/state.ts                + START_BATTLE auto-applies grappled status; SWITCH_ACTIVE_IN_BATTLE preserves it
+src/pages/Index.tsx              + rename UI strings, movement-damage check, escape % modifier, ribbon indicator, distance-break tick
+src/game/UnifiedMovePanel.tsx    + shrink movement reach when grappled
 ```
 
-Skill then becomes: nav → `snapshot pre` → `enterDungeon` → `simulateCombat` → `flee` → `snapshot post` → diff the four persisted fields. No more clicking tiles. Deterministic. Fast.
+## Memory updates
 
-**Update SKILL.md:**
-- Reorder steps: static check → debug-bridge scenarios → browser visual sanity last
-- Document the bridge API
-- Add the limitations section (already drafted)
-- Add the **Suggestions-from-Results addendum** you asked for: after the report table, the skill must emit a "Suggested fixes" section with concrete next actions for each ❌/⏭️ row (e.g. "FLEE_DUNGEON missing moveMastery write → patch reducer at state.ts:LINE", "Browser couldn't enter dungeon → use debug bridge `scenarios.enterDungeon()` instead")
+- Remove the stale **Core** line "Map-based ONLY tactical combat. No separate encounter screen." (it's been wrong — the battle window does exist).
+- Add `mem://gameplay/combat/grapple-system` with the rules above.
 
----
+## Out of scope (ask if you want them)
 
-## Layer 3 — In-app Admin QA panel
-
-New admin-only route `/admin/qa` (gated by existing `has_role('admin')`):
-
-**UI:**
-- "Run Smoke Test" button → executes the same scenario suite the skill uses (reuses `debugBridge.scenarios`)
-- Live results table: each invariant as a row (✅/❌ + diff details)
-- "History" tab: last 20 runs
-
-**Logging:**
-- New table `qa_runs` (user_id, ran_at, results jsonb, app_version, world_seed)
-- RLS: admins read all; original admin only writes
-- Each run captures: scenario results, console errors during run, cloud-save delta
-
-**Asserted invariants** (each maps 1:1 to a memory rule):
-1. END_RUN preserves level/xp/mastery/equipment
-2. FLEE_DUNGEON preserves the same four + gold/materials
-3. Pre-Run unequip returns gear to storage
-4. ADD_ITEM mirrors to storedItems
-5. Persistent dungeon floors snapshot survives flee→re-enter
-6. Cloud save row updated_at advances after END_RUN
-
-This gives you a button-press regression suite that runs in <5s and survives browser-tool limits entirely.
-
----
-
-## Build order if approved
-
-1. Layer 1 audit, report findings, stop for review
-2. If reducers are clean: build the debug bridge + Admin QA page + `qa_runs` table together (one feature)
-3. Update SKILL.md to use the bridge and add the addendum
-4. Re-run the smoke test through the bridge to prove it works
-
-## What I'd skip / defer
-
-- Building a way around right-click in the real game — the in-game right-click works fine for humans; only Stagehand can't do it. Not worth working around in production code.
-- Auto-running the QA suite on every publish — overkill until the panel is proven.
-
-## Open question
-
-For Layer 3, do you want the QA panel to also support **simulating a corrupted save** (manual fixture injection — "load this fake state then assert reducer recovers")? Powerful for regression hunting but adds ~half the build size.
+- AI choosing to use grapple-forcing moves preferentially — uses normal scoring for now.
+- Multi-target grapples / chain grapples.
+- Items that prevent or break grapples (could be a follow-up consumable).

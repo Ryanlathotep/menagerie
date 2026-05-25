@@ -670,20 +670,35 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       
     case 'START_BATTLE':
       if (!state.run) return state;
-      return {
-        ...state,
-        phase: 'battle',
-        run: {
-          ...state.run,
-          battle: {
-            playerMonster: state.run.currentMonster,
-            enemyMonster: action.enemy,
-            turn: state.run.currentMonster.stats.speed >= action.enemy.stats.speed ? 'player' : 'enemy',
-            turnNumber: 1,
-            log: [`A wild ${action.enemy.name} appeared!`],
+      {
+        // Walking into an enemy is a "natural grapple" — both fighters get the
+        // 🤼 Grappled status with the default modifiers. Forced grapples from
+        // moves can refresh this with custom mods via UPDATE_BATTLE.
+        const grappleStatus = {
+          type: 'grappled',
+          turnsRemaining: 3,
+          source: 'natural grapple',
+          grappleEscapeMod: 25,
+          grappleRangedAccMod: 25,
+          grappleMovementMod: 25,
+        };
+        return {
+          ...state,
+          phase: 'battle',
+          run: {
+            ...state.run,
+            battle: {
+              playerMonster: state.run.currentMonster,
+              enemyMonster: action.enemy,
+              turn: state.run.currentMonster.stats.speed >= action.enemy.stats.speed ? 'player' : 'enemy',
+              turnNumber: 1,
+              log: [`🤼 Locked in a grapple with ${action.enemy.name}!`],
+              playerEffects: { statusEffects: [grappleStatus], statModifiers: [] },
+              enemyEffects: { statusEffects: [grappleStatus], statModifiers: [] },
+            },
           },
-        },
-      };
+        };
+      }
       
     case 'UPDATE_BATTLE':
       if (!state.run || !state.run.battle) return state;

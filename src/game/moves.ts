@@ -152,6 +152,16 @@ export interface Move {
    *  controls whether the relocation happens before or after the attack resolves.
    *  Default: 'move_then_attack'. */
   comboOrder?: 'move_then_attack' | 'attack_then_move';
+  /** Grapple configuration. When `forces` is true and the move hits, the
+   *  attacker and defender enter a grapple (legacy "battle" window). Numeric
+   *  fields override the defaults from statusEffects.ts. */
+  grapple?: {
+    forces?: boolean;
+    escapeMod?: number;     // % reduction to flee chance (0-100)
+    rangedAccMod?: number;  // % reduction to ranged accuracy (0-100)
+    movementMod?: number;   // % reduction to movement-skill reach (0-100)
+    duration?: number;      // turns the grappled status lasts
+  };
   /** Per-tier overrides: stat tweaks and per-tier custom shapes that replace
    *  the auto-scaled tier multipliers when present. Tier keys are
    *  'lesser' | 'minor' | 'base' | 'greater' | 'omega'. */

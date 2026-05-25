@@ -52,6 +52,7 @@ import {
   tickEffects,
   cureStatusEffect,
   cureAllStatusEffects,
+  getGrappleModifiers,
 } from '@/game/statusEffects';
 import { StatusIcons } from '@/game/StatusEffectDisplay';
 import { CraftingWorkshop } from '@/game/CraftingWorkshop';
@@ -4099,7 +4100,7 @@ function BattleView({
     const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class, battle.enemyMonster.level);
     const enemyMove = enemyMoves[Math.floor(Math.random() * Math.min(3, enemyMoves.length))];
     const newMonster = state.run.party[newIndex];
-    const enemyResult = executeCombat(enemyMove, battle.enemyMonster, newMonster);
+    const enemyResult = executeCombat(enemyMove, battle.enemyMonster, newMonster, true, undefined, undefined, enemyEffects);
     const newPlayerHp = Math.max(0, newMonster.stats.currentHp - enemyResult.damage);
     
     if (newPlayerHp <= 0) {
@@ -4152,7 +4153,7 @@ function BattleView({
     // Enemy gets a turn after using item
     const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class, battle.enemyMonster.level);
     const enemyMove = enemyMoves[Math.floor(Math.random() * Math.min(3, enemyMoves.length))];
-    const enemyResult = executeCombat(enemyMove, battle.enemyMonster, battle.playerMonster);
+    const enemyResult = executeCombat(enemyMove, battle.enemyMonster, battle.playerMonster, true, undefined, undefined, enemyEffects);
     const newPlayerHp = Math.max(0, battle.playerMonster.stats.currentHp - enemyResult.damage);
     
     if (newPlayerHp <= 0) {
@@ -4179,7 +4180,10 @@ function BattleView({
   const handleFlee = () => {
     const playerSpeed = battle.playerMonster.stats.speed;
     const enemySpeed = battle.enemyMonster.stats.speed;
-    const fleeChance = 50 + (playerSpeed - enemySpeed) * 2;
+    let fleeChance = 50 + (playerSpeed - enemySpeed) * 2;
+    // Grapple penalty: escape is harder while locked in a grapple.
+    const grapple = getGrappleModifiers(playerEffects);
+    if (grapple) fleeChance = Math.max(5, fleeChance - grapple.escapeMod);
     const roll = Math.random() * 100;
     if (roll <= fleeChance) {
       toast.success('Got away safely!');
@@ -4196,7 +4200,7 @@ function BattleView({
       // Failed to flee - enemy gets a free attack
       const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class, battle.enemyMonster.level);
       const enemyMove = enemyMoves[Math.floor(Math.random() * Math.min(3, enemyMoves.length))];
-      const enemyResult = executeCombat(enemyMove, battle.enemyMonster, battle.playerMonster);
+      const enemyResult = executeCombat(enemyMove, battle.enemyMonster, battle.playerMonster, true, undefined, undefined, enemyEffects);
       const newPlayerHp = Math.max(0, battle.playerMonster.stats.currentHp - enemyResult.damage);
       const newLog = [...battle.log, `Couldn't escape!`, enemyResult.message];
       if (newPlayerHp <= 0) {
@@ -4325,7 +4329,7 @@ function BattleView({
     const enemyResult = executeCombat(enemyMove, battle.enemyMonster, {
       ...battle.playerMonster,
       stats: newStats
-    });
+    }, true, undefined, undefined, enemyEffects);
     const newPlayerHp = Math.max(0, newStats.currentHp - enemyResult.damage);
     if (newPlayerHp <= 0) {
       const defeatedMonster = {
@@ -4430,8 +4434,9 @@ function BattleView({
       staminaRecovery = 30;
     }
 
-    // Execute combat with proper calculations
-    const result = executeCombat(move, battle.playerMonster, battle.enemyMonster);
+    // Execute combat with proper calculations (pass player's combat effects so
+    // the ranged-accuracy penalty from being grappled is applied automatically).
+    const result = executeCombat(move, battle.playerMonster, battle.enemyMonster, true, undefined, undefined, playerEffects);
     const newLog = [...battle.log, result.message];
     
     // Add all passive ability messages
@@ -4920,7 +4925,7 @@ function BattleView({
         }
       };
       
-      const enemyResult = executeCombat(enemyMove, attackingEnemy, battle.playerMonster);
+      const enemyResult = executeCombat(enemyMove, attackingEnemy, battle.playerMonster, true, undefined, undefined, enemyEffects);
       newPlayerHp = Math.max(0, newPlayerHp - enemyResult.damage);
       newLog.push(enemyResult.message);
       
@@ -5310,9 +5315,18 @@ function BattleView({
         {/* Main battle area */}
         <div className="flex-1 flex flex-col p-4">
           {/* Header */}
-          <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-primary to-destructive bg-clip-text text-transparent mb-4">
-            ⚔️ Battle!
+          <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-primary to-destructive bg-clip-text text-transparent mb-2">
+            🤼 Grapple
           </h2>
+          {(() => {
+            const g = getGrappleModifiers(playerEffects);
+            if (!g) return null;
+            return (
+              <div className="mx-auto mb-3 max-w-2xl text-center text-xs px-3 py-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                🤼 <strong>Grappled</strong> — Ranged accuracy −{g.rangedAccMod}% · Movement −{g.movementMod}% · Escape −{g.escapeMod}% · {g.turnsRemaining} turn{g.turnsRemaining === 1 ? '' : 's'} left
+              </div>
+            );
+          })()}
         
         {/* Battle grid - enemy on left/top, player on right/bottom */}
         <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">

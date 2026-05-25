@@ -96,7 +96,12 @@ export function getClassMultiplier(attackerClass: ClassType, defenderClass: Clas
 // Calculate actual hit chance after dodge (uses DODGE stat, not speed)
 // Ghost's Ethereal passive adds 30% extra dodge chance
 // Bat's Echolocation adds +15% accuracy
-export function calculateHitChance(move: Move, attacker: Monster, defender: Monster): number {
+export function calculateHitChance(
+  move: Move,
+  attacker: Monster,
+  defender: Monster,
+  attackerEffects?: CombatEffects,
+): number {
   let baseAccuracy = move.accuracy;
   const defenderDodge = defender.stats.dodge; // Use dodge stat directly
   
@@ -104,7 +109,16 @@ export function calculateHitChance(move: Move, attacker: Monster, defender: Mons
   if (hasPassive(attacker.species, 'echolocation')) {
     baseAccuracy = Math.min(100, baseAccuracy + 15);
   }
-  
+
+  // ── Grapple penalty: ranged attacks lose accuracy while the attacker is
+  //    locked in a grapple. Melee is unaffected (the whole point of grappling).
+  if (move.type === 'ranged') {
+    const grapple = getGrappleModifiers(attackerEffects);
+    if (grapple) {
+      baseAccuracy = Math.max(0, baseAccuracy - grapple.rangedAccMod);
+    }
+  }
+
   // Each point of dodge reduces hit chance by 0.5%, max 40% reduction
   let dodgeReduction = Math.min(40, Math.floor(defenderDodge * 0.5));
   

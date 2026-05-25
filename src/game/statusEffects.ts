@@ -3,14 +3,25 @@
 import { Monster } from './types';
 
 // ============= STATUS EFFECT TYPES =============
-export type StatusEffectType = 'poison' | 'burn' | 'freeze' | 'paralyze' | 'confuse';
+export type StatusEffectType = 'poison' | 'burn' | 'freeze' | 'paralyze' | 'confuse' | 'grappled';
 
 export interface StatusEffect {
   type: StatusEffectType;
   turnsRemaining: number;
   damagePerTurn?: number; // For DoT effects
   source: string; // Move name that caused it
+  // ── Grapple-specific modifiers (percent, 0-100). Stored on the status so
+  // the visual badge can show them and combat/escape math can read them.
+  grappleEscapeMod?: number;     // % reduction to flee success chance
+  grappleRangedAccMod?: number;  // % reduction to ranged accuracy
+  grappleMovementMod?: number;   // % reduction to movement-skill reach
 }
+
+// Default grapple modifiers when a move/entry doesn't override them.
+export const DEFAULT_GRAPPLE_ESCAPE_MOD = 25;
+export const DEFAULT_GRAPPLE_RANGED_ACC_MOD = 25;
+export const DEFAULT_GRAPPLE_MOVEMENT_MOD = 25;
+export const DEFAULT_GRAPPLE_DURATION = 3;
 
 // Status effect configurations
 export const STATUS_EFFECT_CONFIG: Record<StatusEffectType, {

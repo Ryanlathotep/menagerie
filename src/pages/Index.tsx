@@ -4583,7 +4583,6 @@ function BattleView({
     // === Forced Grapple from move flag (refreshes/extends grapple on both fighters) ===
     if (result.hit && move.grapple?.forces) {
       const g = move.grapple;
-      const dur = g.duration ?? 3;
       const grappleStatus = {
         type: 'grappled' as const,
         turnsRemaining: g.duration ?? 3,

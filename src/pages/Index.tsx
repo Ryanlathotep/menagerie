@@ -4325,7 +4325,7 @@ function BattleView({
     const enemyResult = executeCombat(enemyMove, battle.enemyMonster, {
       ...battle.playerMonster,
       stats: newStats
-    });
+    }, true, undefined, undefined, enemyEffects);
     const newPlayerHp = Math.max(0, newStats.currentHp - enemyResult.damage);
     if (newPlayerHp <= 0) {
       const defeatedMonster = {

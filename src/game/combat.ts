@@ -4,6 +4,7 @@ import { Monster, ElementType, ClassType, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_C
 import { Move } from './moves';
 import { recordMoveUse, MonsterMasteryData, MoveTier } from './moveMastery';
 import { TerrainType, isMonsterFavoredOnTerrain, TERRAIN_DAMAGE_BONUS } from './terrain';
+import { CombatEffects, getGrappleModifiers } from './statusEffects';
 
 export interface CombatResult {
   damage: number;

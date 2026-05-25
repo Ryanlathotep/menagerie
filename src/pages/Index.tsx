@@ -4179,7 +4179,10 @@ function BattleView({
   const handleFlee = () => {
     const playerSpeed = battle.playerMonster.stats.speed;
     const enemySpeed = battle.enemyMonster.stats.speed;
-    const fleeChance = 50 + (playerSpeed - enemySpeed) * 2;
+    let fleeChance = 50 + (playerSpeed - enemySpeed) * 2;
+    // Grapple penalty: escape is harder while locked in a grapple.
+    const grapple = getGrappleModifiers(playerEffects);
+    if (grapple) fleeChance = Math.max(5, fleeChance - grapple.escapeMod);
     const roll = Math.random() * 100;
     if (roll <= fleeChance) {
       toast.success('Got away safely!');

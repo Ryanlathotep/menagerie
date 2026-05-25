@@ -1,9 +1,10 @@
-yamlname: Build Lovable App for itch.io
+yaml
+name: Build Lovable App for itch.io
 
 on:
   push:
     branches:
-      - main  # Triggers the build every time Lovable syncs changes
+      - main
 
 jobs:
   build:

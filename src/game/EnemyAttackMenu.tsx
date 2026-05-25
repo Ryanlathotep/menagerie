@@ -45,8 +45,10 @@ export function EnemyAttackMenu({
   const initial = useMemo(() => loadMoveFilters(), []);
   const [sortOption, setSortOption] = useState<MoveSortOption>(initial.sortOption);
   const [filters, setFilters] = useState<MoveFilterOption[]>(initial.filters);
-  const updateSort = (s: MoveSortOption) => { setSortOption(s); saveMoveFilters({ sortOption: s, filters }); };
-  const updateFilters = (f: MoveFilterOption[]) => { setFilters(f); saveMoveFilters({ sortOption, filters: f }); };
+  const [searchQuery, setSearchQuery] = useState<string>(initial.searchQuery ?? '');
+  const updateSort = (s: MoveSortOption) => { setSortOption(s); saveMoveFilters({ sortOption: s, filters, searchQuery }); };
+  const updateFilters = (f: MoveFilterOption[]) => { setFilters(f); saveMoveFilters({ sortOption, filters: f, searchQuery }); };
+  const updateSearch = (q: string) => { setSearchQuery(q); saveMoveFilters({ sortOption, filters, searchQuery: q }); };
 
   // Only attack-capable moves: melee, ranged, and any status move that targets
   // (i.e. carries a debuff) plus any move with power > 0.
@@ -68,7 +70,7 @@ export function EnemyAttackMenu({
 
   // Apply user filter + sort, then enrich with range / cost info.
   const ordered = useMemo(() => {
-    const filtered = filterMoves(attackMoves, filters);
+    const filtered = filterMoves(attackMoves, filters, searchQuery);
     const sorted = sortMoves(filtered, sortOption, attacker, moveOrder);
     return sorted.map((move) => {
       const cfg = getAttackConfig(move);
@@ -77,7 +79,7 @@ export function EnemyAttackMenu({
       const eff = move.power > 0 ? getEffectiveness(move, attacker, enemy) : null;
       return { move, cfg, inRange, canAfford, eff };
     });
-  }, [attackMoves, filters, sortOption, attacker, moveOrder, distance, enemy]);
+  }, [attackMoves, filters, searchQuery, sortOption, attacker, moveOrder, distance, enemy]);
 
   const usableCount = ordered.filter((m) => m.inRange && m.canAfford).length;
 
@@ -121,8 +123,10 @@ export function EnemyAttackMenu({
           <MoveSortFilter
             sortOption={sortOption}
             filters={filters}
+            searchQuery={searchQuery}
             onSortChange={updateSort}
             onFilterChange={updateFilters}
+            onSearchChange={updateSearch}
           />
         </div>
 

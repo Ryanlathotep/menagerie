@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
   ArrowUpDown, 
@@ -16,7 +17,8 @@ import {
   TrendingUp,
   TrendingDown,
   X,
-  Check
+  Check,
+  Search,
 } from 'lucide-react';
 import { Move } from './moves';
 import { Monster } from './types';
@@ -41,20 +43,27 @@ export type MoveFilterOption =
   | 'damage'      // Any move with power > 0
   | 'buff'        // raise_ effects
   | 'debuff'      // lower_ effects
-  | 'status-effect'; // poison, burn, freeze, paralyze, confuse
+  | 'status-effect' // poison, burn, freeze, paralyze, confuse
+  | 'aoe'         // customShape, aoeRadius>0, or non-single targeting
+  | 'dot'         // damage-over-time: poison, burn, bleed
+  | 'movement';   // type==='movement' or has movement pattern
 
 interface MoveSortFilterProps {
   sortOption: MoveSortOption;
   filters: MoveFilterOption[];
+  searchQuery?: string;
   onSortChange: (option: MoveSortOption) => void;
   onFilterChange: (filters: MoveFilterOption[]) => void;
+  onSearchChange?: (q: string) => void;
 }
 
 export function MoveSortFilter({ 
   sortOption, 
   filters, 
+  searchQuery = '',
   onSortChange, 
-  onFilterChange 
+  onFilterChange,
+  onSearchChange,
 }: MoveSortFilterProps) {
   const [sortOpen, setSortOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -81,6 +90,9 @@ export function MoveSortFilter({
     { value: 'buff', label: 'Buff', icon: <Shield className="w-3 h-3" />, color: 'text-emerald-500' },
     { value: 'debuff', label: 'Debuff', icon: <TrendingDown className="w-3 h-3" />, color: 'text-amber-500' },
     { value: 'status-effect', label: 'Status Effect', icon: <Flame className="w-3 h-3" />, color: 'text-pink-500' },
+    { value: 'aoe', label: 'AoE', icon: <Sparkles className="w-3 h-3" />, color: 'text-indigo-500' },
+    { value: 'dot', label: 'DoT', icon: <Flame className="w-3 h-3" />, color: 'text-rose-500' },
+    { value: 'movement', label: 'Movement', icon: <TrendingUp className="w-3 h-3" />, color: 'text-cyan-500' },
   ];
 
   const toggleFilter = (filter: MoveFilterOption) => {
@@ -111,6 +123,27 @@ export function MoveSortFilter({
 
   return (
     <div className="flex items-center gap-1.5 flex-wrap justify-end">
+      {onSearchChange && (
+        <div className="relative flex-1 min-w-[120px] max-w-[200px]">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Search moves…"
+            className="h-7 pl-7 pr-6 text-xs"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => onSearchChange('')}
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-5 w-5 flex items-center justify-center rounded hover:bg-accent"
+              aria-label="Clear search"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      )}
       {/* Sort Dropdown */}
       <Popover open={sortOpen} onOpenChange={setSortOpen}>
         <PopoverTrigger asChild>
@@ -278,13 +311,36 @@ export function sortMoves(
   }
 }
 
-// Filter moves based on filter options
-export function filterMoves(moves: Move[], filters: MoveFilterOption[]): Move[] {
+// Filter moves based on filter options and optional name search
+export function filterMoves(
+  moves: Move[],
+  filters: MoveFilterOption[],
+  searchQuery: string = '',
+): Move[] {
+  const q = searchQuery.trim().toLowerCase();
+  const searched = q
+    ? moves.filter(
+        (m) =>
+          m.name.toLowerCase().includes(q) ||
+          m.id.toLowerCase().includes(q) ||
+          (m.description?.toLowerCase().includes(q) ?? false) ||
+          (m.effect?.toLowerCase().includes(q) ?? false),
+      )
+    : moves;
+
   if (filters.includes('all') || filters.length === 0) {
-    return moves;
+    return searched;
   }
 
-  return moves.filter(move => {
+  const isAoe = (move: Move) =>
+    !!move.customShape ||
+    (move.aoeRadius ?? 0) > 0 ||
+    (!!move.targeting && move.targeting !== 'single' && move.targeting !== 'piercing');
+  const isDot = (move: Move) =>
+    !!move.effect && ['poison', 'burn', 'bleed'].some((s) => move.effect?.includes(s));
+  const isMovement = (move: Move) => move.type === 'movement' || !!move.movement;
+
+  return searched.filter((move) => {
     for (const filter of filters) {
       switch (filter) {
         case 'melee':
@@ -312,6 +368,15 @@ export function filterMoves(moves: Move[], filters: MoveFilterOption[]): Move[] 
           if (move.effect && ['poison', 'burn', 'freeze', 'paralyze', 'confuse'].some(s => move.effect?.includes(s))) {
             return true;
           }
+          break;
+        case 'aoe':
+          if (isAoe(move)) return true;
+          break;
+        case 'dot':
+          if (isDot(move)) return true;
+          break;
+        case 'movement':
+          if (isMovement(move)) return true;
           break;
       }
     }

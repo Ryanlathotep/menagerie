@@ -8,11 +8,13 @@ const EQUIP_SORT_KEY = 'monster-roguelike-equip-sort';
 export interface PersistedMoveFilters {
   sortOption: MoveSortOption;
   filters: MoveFilterOption[];
+  searchQuery: string;
 }
 
 const DEFAULT_MOVE_FILTERS: PersistedMoveFilters = {
   sortOption: 'custom',
   filters: ['all'],
+  searchQuery: '',
 };
 
 export function loadMoveFilters(): PersistedMoveFilters {

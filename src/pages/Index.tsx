@@ -5315,9 +5315,18 @@ function BattleView({
         {/* Main battle area */}
         <div className="flex-1 flex flex-col p-4">
           {/* Header */}
-          <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-primary to-destructive bg-clip-text text-transparent mb-4">
-            ⚔️ Battle!
+          <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-primary to-destructive bg-clip-text text-transparent mb-2">
+            🤼 Grapple
           </h2>
+          {(() => {
+            const g = getGrappleModifiers(playerEffects);
+            if (!g) return null;
+            return (
+              <div className="mx-auto mb-3 max-w-2xl text-center text-xs px-3 py-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                🤼 <strong>Grappled</strong> — Ranged accuracy −{g.rangedAccMod}% · Movement −{g.movementMod}% · Escape −{g.escapeMod}% · {g.turnsRemaining} turn{g.turnsRemaining === 1 ? '' : 's'} left
+              </div>
+            );
+          })()}
         
         {/* Battle grid - enemy on left/top, player on right/bottom */}
         <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">

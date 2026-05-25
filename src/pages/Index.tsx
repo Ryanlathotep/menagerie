@@ -4430,8 +4430,9 @@ function BattleView({
       staminaRecovery = 30;
     }
 
-    // Execute combat with proper calculations
-    const result = executeCombat(move, battle.playerMonster, battle.enemyMonster);
+    // Execute combat with proper calculations (pass player's combat effects so
+    // the ranged-accuracy penalty from being grappled is applied automatically).
+    const result = executeCombat(move, battle.playerMonster, battle.enemyMonster, true, undefined, undefined, playerEffects);
     const newLog = [...battle.log, result.message];
     
     // Add all passive ability messages

@@ -1,6 +1,35 @@
+name: Build Lovable App
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4.2.0
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Install missing bug-report packages
+        run: npm install html-to-image
+
       - name: Force Vite Build (Relative Paths for itch.io)
         run: |
-          export VITE_SUPABASE_URL="https://ijhisspxewnmriuewaxs.supabase.co"
+          export VITE_SUPABASE_URL="https://supabase.co"
           export VITE_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlqaGlzc3B4ZXdubXJpdWV3YXhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkzODE3MDMsImV4cCI6MjA4NDk1NzcwM30.X9LQKEOkhckY5d3P7HWvxvvqHKctQU9CuegZgW85_zI"
           export CI=false
           npx vite build --outDir actual_dist --base ./
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4.6.1
+        with:
+          name: lovable-itch-build
+          path: actual_dist/

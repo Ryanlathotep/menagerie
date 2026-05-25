@@ -18,9 +18,13 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
+      - name: Install missing bug-report packages
+        # This injects the html-to-image package Vite is crashing on
+        run: npm install html-to-image
+
       - name: Force Vite Build
         run: |
-          export VITE_SUPABASE_URL="https://supabase.co"
+          export VITE_SUPABASE_URL="https://placeholder-url.supabase.co"
           export VITE_SUPABASE_ANON_KEY="placeholder-key"
           export CI=false
           npx vite build --outDir actual_dist

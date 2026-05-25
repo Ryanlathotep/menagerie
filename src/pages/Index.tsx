@@ -4921,7 +4921,7 @@ function BattleView({
         }
       };
       
-      const enemyResult = executeCombat(enemyMove, attackingEnemy, battle.playerMonster);
+      const enemyResult = executeCombat(enemyMove, attackingEnemy, battle.playerMonster, true, undefined, undefined, enemyEffects);
       newPlayerHp = Math.max(0, newPlayerHp - enemyResult.damage);
       newLog.push(enemyResult.message);
       

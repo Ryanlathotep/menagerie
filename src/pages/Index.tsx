@@ -4099,7 +4099,7 @@ function BattleView({
     const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class, battle.enemyMonster.level);
     const enemyMove = enemyMoves[Math.floor(Math.random() * Math.min(3, enemyMoves.length))];
     const newMonster = state.run.party[newIndex];
-    const enemyResult = executeCombat(enemyMove, battle.enemyMonster, newMonster);
+    const enemyResult = executeCombat(enemyMove, battle.enemyMonster, newMonster, true, undefined, undefined, enemyEffects);
     const newPlayerHp = Math.max(0, newMonster.stats.currentHp - enemyResult.damage);
     
     if (newPlayerHp <= 0) {

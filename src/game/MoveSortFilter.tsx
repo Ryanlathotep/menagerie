@@ -58,8 +58,10 @@ interface MoveSortFilterProps {
 export function MoveSortFilter({ 
   sortOption, 
   filters, 
+  searchQuery = '',
   onSortChange, 
-  onFilterChange 
+  onFilterChange,
+  onSearchChange,
 }: MoveSortFilterProps) {
   const [sortOpen, setSortOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -86,6 +88,9 @@ export function MoveSortFilter({
     { value: 'buff', label: 'Buff', icon: <Shield className="w-3 h-3" />, color: 'text-emerald-500' },
     { value: 'debuff', label: 'Debuff', icon: <TrendingDown className="w-3 h-3" />, color: 'text-amber-500' },
     { value: 'status-effect', label: 'Status Effect', icon: <Flame className="w-3 h-3" />, color: 'text-pink-500' },
+    { value: 'aoe', label: 'AoE', icon: <Sparkles className="w-3 h-3" />, color: 'text-indigo-500' },
+    { value: 'dot', label: 'DoT', icon: <Flame className="w-3 h-3" />, color: 'text-rose-500' },
+    { value: 'movement', label: 'Movement', icon: <TrendingUp className="w-3 h-3" />, color: 'text-cyan-500' },
   ];
 
   const toggleFilter = (filter: MoveFilterOption) => {

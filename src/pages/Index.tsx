@@ -4586,8 +4586,7 @@ function BattleView({
       const dur = g.duration ?? 3;
       const grappleStatus = {
         type: 'grappled' as const,
-        duration: dur,
-        turnsRemaining: dur,
+        turnsRemaining: g.duration ?? 3,
         source: move.name,
         grappleEscapeMod: g.escapeMod ?? 25,
         grappleRangedAccMod: g.rangedAccMod ?? 25,

@@ -295,9 +295,10 @@ export function executeCombat(
   defender: Monster,
   isFirstHitThisTurn: boolean = true,
   attackerTerrain?: TerrainType,
-  defenderTerrain?: TerrainType
+  defenderTerrain?: TerrainType,
+  attackerEffects?: CombatEffects,
 ): CombatResult {
-  const hitChance = calculateHitChance(move, attacker, defender);
+  const hitChance = calculateHitChance(move, attacker, defender, attackerEffects);
   const hitRoll = Math.random() * 100;
   const hit = hitRoll <= hitChance;
   

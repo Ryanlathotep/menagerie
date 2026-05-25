@@ -41,13 +41,18 @@ export type MoveFilterOption =
   | 'damage'      // Any move with power > 0
   | 'buff'        // raise_ effects
   | 'debuff'      // lower_ effects
-  | 'status-effect'; // poison, burn, freeze, paralyze, confuse
+  | 'status-effect' // poison, burn, freeze, paralyze, confuse
+  | 'aoe'         // customShape, aoeRadius>0, or non-single targeting
+  | 'dot'         // damage-over-time: poison, burn, bleed
+  | 'movement';   // type==='movement' or has movement pattern
 
 interface MoveSortFilterProps {
   sortOption: MoveSortOption;
   filters: MoveFilterOption[];
+  searchQuery?: string;
   onSortChange: (option: MoveSortOption) => void;
   onFilterChange: (filters: MoveFilterOption[]) => void;
+  onSearchChange?: (q: string) => void;
 }
 
 export function MoveSortFilter({ 

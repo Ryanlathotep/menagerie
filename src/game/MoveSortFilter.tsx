@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
   ArrowUpDown, 
@@ -16,7 +17,8 @@ import {
   TrendingUp,
   TrendingDown,
   X,
-  Check
+  Check,
+  Search,
 } from 'lucide-react';
 import { Move } from './moves';
 import { Monster } from './types';

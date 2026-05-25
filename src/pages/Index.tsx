@@ -4196,7 +4196,7 @@ function BattleView({
       // Failed to flee - enemy gets a free attack
       const enemyMoves = getMonsterMoves(battle.enemyMonster.species, battle.enemyMonster.element, battle.enemyMonster.class, battle.enemyMonster.level);
       const enemyMove = enemyMoves[Math.floor(Math.random() * Math.min(3, enemyMoves.length))];
-      const enemyResult = executeCombat(enemyMove, battle.enemyMonster, battle.playerMonster);
+      const enemyResult = executeCombat(enemyMove, battle.enemyMonster, battle.playerMonster, true, undefined, undefined, enemyEffects);
       const newPlayerHp = Math.max(0, battle.playerMonster.stats.currentHp - enemyResult.damage);
       const newLog = [...battle.log, `Couldn't escape!`, enemyResult.message];
       if (newPlayerHp <= 0) {

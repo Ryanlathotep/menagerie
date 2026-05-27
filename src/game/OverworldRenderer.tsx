@@ -1,6 +1,6 @@
 // Overworld Renderer - Renders the chunk-based overworld with tile graphics
 
-import { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react';
+import { useRef, useEffect, useState, forwardRef, useImperativeHandle, useMemo, memo, useCallback } from 'react';
 import { OverworldState, OverworldTile, getOverworldTile } from './overworld';
 import { Position, Monster, UnlockedMonster } from './types';
 import { MonsterSprite } from './sprites';
@@ -50,6 +50,41 @@ export interface OverworldRendererHandle {
 const TILE_SIZE = 40;
 const VIEW_RANGE = 8;
 
+// ─────────────────────────────────────────────────────────────────
+// PERFORMANCE FIX #1: Memoized tile neighbor lookup cache
+// ─────────────────────────────────────────────────────────────────
+// Instead of calling getOverworldTile() 4x per tree/rock/water tile per render,
+// we build a lookup table once per render cycle.
+function buildNeighborCache(overworld: OverworldState, tiles: { worldX: number; worldY: number; tile: OverworldTile }[]): Map<string, OverworldTile | null> {
+  const cache = new Map<string, OverworldTile | null>();
+  
+  // Pre-cache all tiles in the visible set + their neighbors
+  for (const { worldX, worldY } of tiles) {
+    // Cache the tile itself
+    const selfKey = `${worldX},${worldY}`;
+    if (!cache.has(selfKey)) {
+      cache.set(selfKey, getOverworldTile(overworld, worldX, worldY));
+    }
+    
+    // Cache all 4 neighbors
+    const neighbors = [
+      [worldX, worldY - 1], [worldX + 1, worldY], [worldX, worldY + 1], [worldX - 1, worldY]
+    ];
+    for (const [nx, ny] of neighbors) {
+      const key = `${nx},${ny}`;
+      if (!cache.has(key)) {
+        cache.set(key, getOverworldTile(overworld, nx, ny));
+      }
+    }
+  }
+  
+  return cache;
+}
+
+function getCachedTile(cache: Map<string, OverworldTile | null>, x: number, y: number): OverworldTile | null {
+  return cache.get(`${x},${y}`) ?? null;
+}
+
 // Tile rendering
 function renderTileGraphic(
   tile: OverworldTile,
@@ -61,6 +96,7 @@ function renderTileGraphic(
   dungeonDepth?: number,
   playerBuilding?: PlayerBuilding,
   nest?: NestState,
+  neighborCache?: Map<string, OverworldTile | null>,
 ): React.ReactNode {
   if (!tile.visible && !tile.explored) {
     return <OverworldFogTile size={tileSize} />;
@@ -82,7 +118,11 @@ function renderTileGraphic(
     case 'waterfall':
       return <OverworldWaterfallTile size={tileSize} seed={seed} direction={tile.waterfallDir} />;
     case 'tree': {
-      const isTree = (x: number, y: number) => getOverworldTile(state, x, y)?.type === 'tree';
+      // Use cached neighbor lookups instead of inline getOverworldTile calls
+      const isTree = (x: number, y: number) => {
+        const t = neighborCache ? getCachedTile(neighborCache, x, y) : getOverworldTile(state, x, y);
+        return t?.type === 'tree';
+      };
       const fit = fitFromNeighbors(
         isTree(worldX, worldY - 1),
         isTree(worldX + 1, worldY),
@@ -92,7 +132,10 @@ function renderTileGraphic(
       return <OverworldTreeTile size={tileSize} seed={seed} tier={tile.treeTier} fit={fit} />;
     }
     case 'rock': {
-      const isRock = (x: number, y: number) => getOverworldTile(state, x, y)?.type === 'rock';
+      const isRock = (x: number, y: number) => {
+        const t = neighborCache ? getCachedTile(neighborCache, x, y) : getOverworldTile(state, x, y);
+        return t?.type === 'rock';
+      };
       const fit = fitFromNeighbors(
         isRock(worldX, worldY - 1),
         isRock(worldX + 1, worldY),
@@ -102,7 +145,10 @@ function renderTileGraphic(
       return <OverworldRockTile size={tileSize} seed={seed} tier={tile.stoneTier} fit={fit} />;
     }
     case 'water': {
-      const isWater = (x: number, y: number) => getOverworldTile(state, x, y)?.type === 'water';
+      const isWater = (x: number, y: number) => {
+        const t = neighborCache ? getCachedTile(neighborCache, x, y) : getOverworldTile(state, x, y);
+        return t?.type === 'water';
+      };
       const fit = fitFromNeighbors(
         isWater(worldX, worldY - 1),
         isWater(worldX + 1, worldY),
@@ -187,6 +233,235 @@ function renderTileGraphic(
   }
 }
 
+// ─────────────────────────────────────────────────────────────────
+// MEMOIZED TILE RENDERER COMPONENT
+// ─────────────────────────────────────────────────────────────────
+// Extract tile rendering into a memoized component to prevent unnecessary
+// re-renders when parent updates but individual tile props haven't changed.
+interface TileRendererProps {
+  worldX: number;
+  worldY: number;
+  tile: OverworldTile;
+  relX: number;
+  relY: number;
+  tileSize: number;
+  isPlayer: boolean;
+  isTargetable: boolean;
+  isAffected: boolean;
+  isHovered: boolean;
+  enemy: Monster | null;
+  playerElement: string;
+  playerClass?: string;
+  playerSpecies?: string;
+  playerBuilding?: PlayerBuilding;
+  dungeon?: any;
+  nest?: NestState;
+  dungeonDepth?: number;
+  party: Monster[];
+  isTouch: boolean;
+  waypoints: Array<{ x: number; y: number; name?: string }>;
+  onTileClick: (x: number, y: number) => void;
+  onTileRightClick: (x: number, y: number) => void;
+  onTileHover: (x: number, y: number) => void;
+  onTileHoverEnd: () => void;
+  state: OverworldState;
+  neighborCache?: Map<string, OverworldTile | null>;
+}
+
+const TileRenderer = memo(({
+  worldX, worldY, tile, relX, relY, tileSize, isPlayer, isTargetable, isAffected,
+  isHovered, enemy, playerElement, playerClass, playerSpecies, playerBuilding, dungeon,
+  nest, dungeonDepth, party, isTouch, waypoints, onTileClick, onTileRightClick,
+  onTileHover, onTileHoverEnd, state, neighborCache
+}: TileRendererProps) => {
+  const tileSeed = worldX * 1000 + worldY;
+  const lastTapRef = useRef<{ x: number; y: number; time: number } | null>(null);
+
+  const handleTileTap = useCallback((x: number, y: number) => {
+    const now = Date.now();
+    const last = lastTapRef.current;
+    if (last && last.x === x && last.y === y && now - last.time < 300) {
+      lastTapRef.current = null;
+      onTileRightClick(x, y);
+      return;
+    }
+    lastTapRef.current = { x, y, time: now };
+    onTileClick(x, y);
+  }, [onTileClick, onTileRightClick]);
+
+  const hasWaypoint = waypoints.some(w => w.x === worldX && w.y === worldY);
+
+  const tileContent = (
+    <div
+      key={`${worldX},${worldY}`}
+      className={`absolute cursor-pointer overflow-hidden lp-tile ${
+        isTargetable && !isAffected ? 'ring-1 ring-red-500/40' : ''
+      } ${isAffected ? 'ring-2 ring-red-500' : ''} ${isHovered ? 'ring-2 ring-yellow-400' : ''} ${
+        !tile.visible && tile.explored ? 'opacity-40' : ''
+      }`}
+      style={{
+        left: relX * tileSize,
+        top: relY * tileSize,
+        width: tileSize,
+        height: tileSize,
+      }}
+      onClick={(e) => {
+        const el = e.currentTarget as HTMLDivElement;
+        if (el.dataset.longPressFired) {
+          delete el.dataset.longPressFired;
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        handleTileTap(worldX, worldY);
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        lastTapRef.current = null;
+        onTileRightClick(worldX, worldY);
+      }}
+      onTouchStart={(e) => {
+        const el = e.currentTarget;
+        const timer = setTimeout(() => {
+          el.dataset.longPressFired = '1';
+          lastTapRef.current = null;
+          onTileRightClick(worldX, worldY);
+        }, 450);
+        el.dataset.longPressTimer = String(timer);
+      }}
+      onTouchMove={(e) => {
+        const el = e.currentTarget;
+        if (el.dataset.longPressTimer) {
+          clearTimeout(Number(el.dataset.longPressTimer));
+          delete el.dataset.longPressTimer;
+        }
+      }}
+      onTouchEnd={(e) => {
+        const el = e.currentTarget;
+        if (el.dataset.longPressTimer) {
+          clearTimeout(Number(el.dataset.longPressTimer));
+          delete el.dataset.longPressTimer;
+        }
+        if (el.dataset.longPressFired) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
+      onTouchCancel={(e) => {
+        const el = e.currentTarget;
+        if (el.dataset.longPressTimer) {
+          clearTimeout(Number(el.dataset.longPressTimer));
+          delete el.dataset.longPressTimer;
+        }
+      }}
+      onMouseEnter={() => onTileHover(worldX, worldY)}
+      onMouseLeave={() => onTileHoverEnd()}
+    >
+      {renderTileGraphic(tile, tileSize, tileSeed, worldX, worldY, state, dungeonDepth, playerBuilding, nest, neighborCache)}
+      {isPlayer ? (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <MonsterSprite
+            species={(playerSpecies || 'slime') as any}
+            element={(playerElement || 'normal') as any}
+            classType={(playerClass || 'normal') as any}
+            size={tileSize * 0.8}
+          />
+        </div>
+      ) : enemy ? (
+        <>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <MonsterSprite
+              species={enemy.species}
+              element={enemy.element}
+              classType={enemy.class}
+              size={tileSize * 0.7}
+            />
+          </div>
+          <MatchupIndicator
+            playerElement={playerElement as ElementType}
+            playerClass={playerClass as ClassType | undefined}
+            enemyElement={enemy.element}
+            enemyClass={enemy.class}
+            size={tileSize}
+          />
+        </>
+      ) : null}
+      {tile.type === 'player_building' && playerBuilding?.type === 'scout_tower' && playerBuilding.assignedMonsterId && (() => {
+        const assigned = party.find(m => m.id === playerBuilding.assignedMonsterId);
+        return assigned ? (
+          <div className="absolute inset-0 flex items-end justify-center" style={{ paddingBottom: tileSize * 0.05 }}>
+            <MonsterSprite
+              species={assigned.species}
+              element={assigned.element}
+              classType={assigned.class}
+              size={tileSize * 0.5}
+            />
+          </div>
+        ) : null;
+      })()}
+      {tile.type === 'player_building' && playerBuilding?.type === 'farm' && playerBuilding.harvestReady && (
+        <div className="absolute inset-0 ring-2 ring-yellow-400 animate-pulse pointer-events-none" />
+      )}
+      {hasWaypoint && (
+        <div
+          className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center"
+          aria-label="Pinned waypoint"
+        >
+          <div className="absolute inset-0 pointer-events-none rounded-full border-2 border-emerald-400 animate-ping opacity-60" />
+          <div className="absolute inset-1 pointer-events-none rounded-full border-2 border-emerald-300 opacity-90" />
+          <span className="relative pointer-events-none text-sm drop-shadow-[0_0_4px_rgba(52,211,153,0.9)]">📍</span>
+        </div>
+      )}
+      {isAffected && (
+        <div
+          className={`absolute inset-0 pointer-events-none ${
+            isHovered ? 'bg-red-600/55' : 'bg-red-500/40'
+          }`}
+        />
+      )}
+    </div>
+  );
+
+  const suppressTooltip = tile.type === 'grass';
+  if (suppressTooltip) {
+    return <div key={`${worldX},${worldY}`}>{tileContent}</div>;
+  }
+
+  if (isTouch) {
+    return <div key={`${worldX},${worldY}`}>{tileContent}</div>;
+  }
+
+  const dungeonEntrance = tile.type === 'dungeon_entrance' && tile.dungeonId
+    ? state.dungeonEntrances?.[tile.dungeonId]
+    : undefined;
+
+  const tooltipBody = tile.type === 'player_building' && playerBuilding
+    ? <BuildingTooltipContent building={playerBuilding} party={party} />
+    : <OverworldTooltipContent
+        tile={tile}
+        worldX={worldX}
+        worldY={worldY}
+        dungeonEntrance={dungeonEntrance}
+        enemy={enemy}
+        nest={nest}
+        playerBuilding={playerBuilding}
+      />;
+
+  return (
+    <HoverCard key={`${worldX},${worldY}`} openDelay={250} closeDelay={80}>
+      <HoverCardTrigger asChild>{tileContent}</HoverCardTrigger>
+      <HoverCardContent
+        side="top"
+        className={tile.type === 'player_building' ? 'w-72 p-3' : 'w-64 p-3'}
+      >
+        {tooltipBody}
+      </HoverCardContent>
+    </HoverCard>
+  );
+});
+
+TileRenderer.displayName = 'TileRenderer';
+
 export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRendererProps>(({
   overworld,
   playerElement,
@@ -205,7 +480,6 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
   onTileHoverEnd,
 }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const lastTapRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const { x: px, y: py } = overworld.playerPosition;
 
   // Touch devices: skip HoverCard wrappers entirely. Hover-cards open on
@@ -238,39 +512,43 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
     },
   }));
 
-  // Mobile double-tap → fire the right-click handler (context menu).
-  // A second tap on the SAME tile within 300ms is treated as right-click.
-  const handleTileTap = (worldX: number, worldY: number) => {
-    const now = Date.now();
-    const last = lastTapRef.current;
-    if (last && last.x === worldX && last.y === worldY && now - last.time < 300) {
-      lastTapRef.current = null;
-      onTileRightClick?.(worldX, worldY);
-      return;
-    }
-    lastTapRef.current = { x: worldX, y: worldY, time: now };
-    onTileClick?.(worldX, worldY);
-  };
-  
-  // Build visible tile array
-  const tiles: { worldX: number; worldY: number; tile: OverworldTile; relX: number; relY: number }[] = [];
-  for (let dy = -VIEW_RANGE; dy <= VIEW_RANGE; dy++) {
-    for (let dx = -VIEW_RANGE; dx <= VIEW_RANGE; dx++) {
-      const worldX = px + dx;
-      const worldY = py + dy;
-      const tile = getOverworldTile(overworld, worldX, worldY);
-      if (tile) {
-        tiles.push({ worldX, worldY, tile, relX: dx + VIEW_RANGE, relY: dy + VIEW_RANGE });
+  // ─────────────────────────────────────────────────────────────────
+  // PERFORMANCE FIX #2: Memoized tiles array
+  // ─────────────────────────────────────────────────────────────────
+  // Only rebuild the visible tiles list when the player position changes,
+  // not on every render.
+  const tiles = useMemo(() => {
+    const result: { worldX: number; worldY: number; tile: OverworldTile; relX: number; relY: number }[] = [];
+    for (let dy = -VIEW_RANGE; dy <= VIEW_RANGE; dy++) {
+      for (let dx = -VIEW_RANGE; dx <= VIEW_RANGE; dx++) {
+        const worldX = px + dx;
+        const worldY = py + dy;
+        const tile = getOverworldTile(overworld, worldX, worldY);
+        if (tile) {
+          result.push({ worldX, worldY, tile, relX: dx + VIEW_RANGE, relY: dy + VIEW_RANGE });
+        }
       }
     }
-  }
+    return result;
+  }, [px, py, overworld]);
+
+  // ─────────────────────────────────────────────────────────────────
+  // PERFORMANCE FIX #3: Memoized neighbor cache
+  // ─────────────────────────────────────────────────────────────────
+  // Build the neighbor cache once per visible tile set. This avoids calling
+  // getOverworldTile() 4+ times per tree/rock/water tile during rendering.
+  const neighborCache = useMemo(() => {
+    return buildNeighborCache(overworld, tiles);
+  }, [overworld, tiles]);
 
   const gridSize = VIEW_RANGE * 2 + 1;
 
-  // Dowsed enemy positions: nearest 5 enemy tiles by Manhattan distance.
-  // Scans a wider square around the player than the visible viewport so
-  // off-screen targets still count toward the 5.
-  const dowsedKeys = (() => {
+  // ─────────────────────────────────────────────────────────────────
+  // PERFORMANCE FIX #4: Memoized dowsed keys calculation
+  // ─────────────────────────────────────────────────────────────────
+  // Only recalculate when dowsing state changes or player moves.
+  // Move the sort outside the Set constructor so we don't re-sort on every render.
+  const dowsedKeys = useMemo(() => {
     if (!dowsingOn) return new Set<string>();
     const SCAN = VIEW_RANGE * 3;
     const candidates: { x: number; y: number; d: number }[] = [];
@@ -286,17 +564,26 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
     }
     candidates.sort((a, b) => a.d - b.d);
     return new Set(candidates.slice(0, DOWSING_HIGHLIGHT_COUNT).map(c => `${c.x},${c.y}`));
-  })();
+  }, [dowsingOn, px, py, overworld]);
 
-  // Find enemies for rendering
-  const getEnemy = (enemyId: string): Monster | null => {
+  // ─────────────────────────────────────────────────────────────────
+  // PERFORMANCE FIX #5: Memoized enemy lookup with Map
+  // ─────────────────────────────────────────────────────────────────
+  // Build a Map of all visible enemies once instead of linear search per tile.
+  const enemyMap = useMemo(() => {
+    const map = new Map<string, Monster>();
     for (const chunk of Object.values(overworld.chunks)) {
-      const enemy = chunk.enemies.find(e => e.id === enemyId);
-      if (enemy) return enemy;
+      for (const enemy of chunk.enemies) {
+        map.set(enemy.id, enemy);
+      }
     }
-    return null;
-  };
-  
+    return map;
+  }, [overworld.chunks]);
+
+  const getEnemy = useCallback((enemyId: string): Monster | null => {
+    return enemyMap.get(enemyId) ?? null;
+  }, [enemyMap]);
+   
   // Player is always at (VIEW_RANGE, VIEW_RANGE) in the grid.
   // We translate the grid so the player tile is centered in the container.
   
@@ -323,8 +610,6 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
           
           const enemy = tile.type === 'enemy' && tile.enemyId ? getEnemy(tile.enemyId) : null;
           
-          const tileSeed = worldX * 1000 + worldY;
-          
           // Look up dungeon depth if this is a dungeon entrance
           const dungeonDepth = tile.type === 'dungeon_entrance' && tile.dungeonId
             ? overworld.dungeonEntrances?.[tile.dungeonId]?.deepestFloor
@@ -339,190 +624,38 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
           const nestData = tile.type === 'nest' && tile.nestId
             ? overworld.nests?.[tile.nestId]
             : undefined;
-          
-          const tileContent = (
-            <div
-              key={`${worldX},${worldY}`}
-              className={`absolute cursor-pointer overflow-hidden lp-tile ${
-                isTargetable && !isAffected ? 'ring-1 ring-red-500/40' : ''
-              } ${isAffected ? 'ring-2 ring-red-500' : ''} ${isHovered ? 'ring-2 ring-yellow-400' : ''} ${
-                !tile.visible && tile.explored ? 'opacity-40' : ''
-              }`}
-              style={{
-                left: relX * tileSize,
-                top: relY * tileSize,
-                width: tileSize,
-                height: tileSize,
-              }}
-              onClick={(e) => {
-                // If a long-press just fired, swallow the synthetic click.
-                const el = e.currentTarget as HTMLDivElement;
-                if (el.dataset.longPressFired) {
-                  delete el.dataset.longPressFired;
-                  e.preventDefault();
-                  e.stopPropagation();
-                  return;
-                }
-                handleTileTap(worldX, worldY);
-              }}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                lastTapRef.current = null;
-                onTileRightClick?.(worldX, worldY);
-              }}
-              onTouchStart={(e) => {
-                const el = e.currentTarget;
-                const timer = setTimeout(() => {
-                  el.dataset.longPressFired = '1';
-                  lastTapRef.current = null;
-                  onTileRightClick?.(worldX, worldY);
-                }, 450);
-                el.dataset.longPressTimer = String(timer);
-              }}
-              onTouchMove={(e) => {
-                const el = e.currentTarget;
-                if (el.dataset.longPressTimer) {
-                  clearTimeout(Number(el.dataset.longPressTimer));
-                  delete el.dataset.longPressTimer;
-                }
-              }}
-              onTouchEnd={(e) => {
-                const el = e.currentTarget;
-                if (el.dataset.longPressTimer) {
-                  clearTimeout(Number(el.dataset.longPressTimer));
-                  delete el.dataset.longPressTimer;
-                }
-                if (el.dataset.longPressFired) {
-                  // Keep the flag for the click handler to swallow, but
-                  // also stop the touchend chain so the menu stays open.
-                  e.preventDefault();
-                  e.stopPropagation();
-                }
-              }}
-              onTouchCancel={(e) => {
-                const el = e.currentTarget;
-                if (el.dataset.longPressTimer) {
-                  clearTimeout(Number(el.dataset.longPressTimer));
-                  delete el.dataset.longPressTimer;
-                }
-              }}
-              onMouseEnter={() => onTileHover?.(worldX, worldY)}
-              onMouseLeave={() => onTileHoverEnd?.()}
-            >
-              {/* Background tile graphic */}
-              {renderTileGraphic(tile, tileSize, tileSeed, worldX, worldY, overworld, dungeonDepth, playerBuilding, nestData)}
-              {/* Overlay: player or enemy sprite */}
-              {isPlayer ? (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <MonsterSprite
-                    species={(playerSpecies || 'slime') as any}
-                    element={(playerElement || 'normal') as any}
-                    classType={(playerClass || 'normal') as any}
-                    size={tileSize * 0.8}
-                  />
-                </div>
-              ) : enemy ? (
-                <>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <MonsterSprite
-                      species={enemy.species}
-                      element={enemy.element}
-                      classType={enemy.class}
-                      size={tileSize * 0.7}
-                    />
-                  </div>
-                  <MatchupIndicator
-                    playerElement={playerElement as ElementType}
-                    playerClass={playerClass as ClassType | undefined}
-                    enemyElement={enemy.element}
-                    enemyClass={enemy.class}
-                    size={tileSize}
-                  />
-                </>
-              ) : null}
-              {/* Assigned monster on scout towers */}
-              {tile.type === 'player_building' && playerBuilding?.type === 'scout_tower' && playerBuilding.assignedMonsterId && (() => {
-                const assigned = party.find(m => m.id === playerBuilding.assignedMonsterId);
-                return assigned ? (
-                  <div className="absolute inset-0 flex items-end justify-center" style={{ paddingBottom: tileSize * 0.05 }}>
-                    <MonsterSprite
-                      species={assigned.species}
-                      element={assigned.element}
-                      classType={assigned.class}
-                      size={tileSize * 0.5}
-                    />
-                  </div>
-                ) : null;
-              })()}
-              {/* Harvest-ready glow on farms */}
-              {tile.type === 'player_building' && playerBuilding?.type === 'farm' && playerBuilding.harvestReady && (
-                <div className="absolute inset-0 ring-2 ring-yellow-400 animate-pulse pointer-events-none" />
-              )}
-              {/* Player-dropped waypoint pin (emerald pulsing ring). */}
-              {(overworld.waypoints || []).some(w => w.x === worldX && w.y === worldY) && (
-                <div
-                  className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center"
-                  aria-label="Pinned waypoint"
-                >
-                  <div className="absolute inset-0 pointer-events-none rounded-full border-2 border-emerald-400 animate-ping opacity-60" />
-                  <div className="absolute inset-1 pointer-events-none rounded-full border-2 border-emerald-300 opacity-90" />
-                  <span className="relative pointer-events-none text-sm drop-shadow-[0_0_4px_rgba(52,211,153,0.9)]">📍</span>
-                </div>
-              )}
-              {/* AoE / area-of-effect shading — drawn on top so it's clearly visible.
-                  Center (hovered) tile gets a slightly darker red so it stands out. */}
-              {isAffected && (
-                <div
-                  className={`absolute inset-0 pointer-events-none ${
-                    isHovered ? 'bg-red-600/55' : 'bg-red-500/40'
-                  }`}
-                />
-              )}
-            </div>
-          );
-
-
-          // Pick the right tooltip body for this tile
-          const dungeonEntrance = tile.type === 'dungeon_entrance' && tile.dungeonId
-            ? overworld.dungeonEntrances?.[tile.dungeonId]
-            : undefined;
-
-          // Suppress hover tooltips on plain grass — they get in the way of exploration.
-          // Right-click on grass still opens a tile context menu (handled by OverworldView).
-          const suppressTooltip = tile.type === 'grass';
-
-          if (suppressTooltip) {
-            return <div key={`${worldX},${worldY}`}>{tileContent}</div>;
-          }
-
-          // Touch devices: skip the hover-card. They open on tap and obscure
-          // the map; mobile users open the same info via double-tap → context menu.
-          if (isTouch) {
-            return <div key={`${worldX},${worldY}`}>{tileContent}</div>;
-          }
-
-          const tooltipBody = tile.type === 'player_building' && playerBuilding
-            ? <BuildingTooltipContent building={playerBuilding} party={party} />
-            : <OverworldTooltipContent
-                tile={tile}
-                worldX={worldX}
-                worldY={worldY}
-                dungeonEntrance={dungeonEntrance}
-                enemy={enemy}
-                nest={nestData}
-                playerBuilding={playerBuilding}
-              />;
 
           return (
-            <HoverCard key={`${worldX},${worldY}`} openDelay={250} closeDelay={80}>
-              <HoverCardTrigger asChild>{tileContent}</HoverCardTrigger>
-              <HoverCardContent
-                side="top"
-                className={tile.type === 'player_building' ? 'w-72 p-3' : 'w-64 p-3'}
-              >
-                {tooltipBody}
-              </HoverCardContent>
-            </HoverCard>
+            <TileRenderer
+              key={`${worldX},${worldY}`}
+              worldX={worldX}
+              worldY={worldY}
+              tile={tile}
+              relX={relX}
+              relY={relY}
+              tileSize={tileSize}
+              isPlayer={isPlayer}
+              isTargetable={isTargetable}
+              isAffected={isAffected}
+              isHovered={isHovered}
+              enemy={enemy}
+              playerElement={playerElement}
+              playerClass={playerClass}
+              playerSpecies={playerSpecies}
+              playerBuilding={playerBuilding}
+              dungeon={overworld.dungeonEntrances?.[tile.dungeonId || '']}
+              nest={nestData}
+              dungeonDepth={dungeonDepth}
+              party={party}
+              isTouch={isTouch}
+              waypoints={overworld.waypoints || []}
+              onTileClick={onTileClick || (() => {})}
+              onTileRightClick={onTileRightClick || (() => {})}
+              onTileHover={onTileHover || (() => {})}
+              onTileHoverEnd={onTileHoverEnd || (() => {})}
+              state={overworld}
+              neighborCache={neighborCache}
+            />
           );
         })}
         <ParticleLayer
@@ -551,7 +684,7 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
                 style={{ left, top }}
                 title={`${wp.name ? wp.name + ' — ' : 'Waypoint '}(${wp.x}, ${wp.y}) — ${dist} tiles`}
               >
-                <div className="pointer-events-none flex items-center gap-1 px-1.5 py-0.5 rounded-full border backdrop-blur-sm shadow-md text-[10px] font-medium leading-none text-emerald-300 bg-emerald-500/15 border-emerald-400/60">
+                <div className="pointer-events-none flex items-center gap-1 px-1.5 py-0.5 rounded-full border backdrop-blur-sm shadow-md text-[10px] font-medium leading-none text-emerald-300 bg-emerald-950/40">
                   <span
                     className="pointer-events-none inline-block text-[12px] leading-none"
                     style={{ transform: `rotate(${(angle * 180) / Math.PI}deg)` }}

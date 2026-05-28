@@ -20,12 +20,13 @@ export const TIER_PREFIXES: Record<MoveTier, string> = {
 };
 
 export const TIER_MULTIPLIERS: Record<MoveTier, { power: number; accuracy: number; staminaCost: number }> = {
-  lesser: { power: 0.6, accuracy: 1.05, staminaCost: 0.7 },   // Weaker but more reliable, cheaper
-  minor: { power: 0.8, accuracy: 1.02, staminaCost: 0.85 },   // Slightly weaker
+  lesser: { power: 0.6, accuracy: 0.90, staminaCost: 0.7 },   // Weaker, less reliable, cheaper
+  minor: { power: 0.8, accuracy: 0.95, staminaCost: 0.85 },   // Slightly weaker
   base: { power: 1.0, accuracy: 1.0, staminaCost: 1.0 },      // Standard
-  greater: { power: 1.3, accuracy: 0.95, staminaCost: 1.25 }, // Stronger but less accurate, more expensive
-  omega: { power: 1.6, accuracy: 0.90, staminaCost: 1.5 },    // Ultimate power
+  greater: { power: 1.3, accuracy: 1.02, staminaCost: 1.25 }, // Stronger and more accurate, more expensive
+  omega: { power: 1.6, accuracy: 1.05, staminaCost: 1.5 },    // Ultimate power and precision
 };
+
 
 // Mass variants: slightly reduced power, hit multiple targets (future AoE support)
 export const MASS_MULTIPLIERS = {

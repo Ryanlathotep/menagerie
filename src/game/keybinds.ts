@@ -1,6 +1,19 @@
 // Keyboard Shortcut System
 // Per-monster attack keybinds + Shift+1-9 inventory hotbar
 
+// True when the event originated from an editable field (input, textarea,
+// contentEditable, select). Used to suppress global game shortcuts so typing
+// "d" in a bug-report textarea doesn't trigger the dungeon exit menu.
+export function isTypingTarget(target: EventTarget | null): boolean {
+  if (!target || !(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  if (target.isContentEditable) return true;
+  // shadcn Select / Radix combobox trigger
+  if (target.getAttribute('role') === 'combobox') return true;
+  return false;
+}
+
 const KEYBINDS_STORAGE_KEY = 'monster-roguelike-keybinds';
 
 export interface MonsterKeybinds {

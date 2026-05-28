@@ -91,7 +91,7 @@ import {
 } from '@/game/dungeonCombat';
 import { playParticleEffectForMove } from '@/game/particles/api';
 import { MoveInfoPanel } from '@/game/AttackTargeting';
-import { loadKeybinds, getMonsterKeybinds as getMonsterKeybindsImport } from '@/game/keybinds';
+import { loadKeybinds, getMonsterKeybinds as getMonsterKeybindsImport, isTypingTarget } from '@/game/keybinds';
 import { useAuth } from '@/hooks/useAuth';
 import { useCloudSave } from '@/hooks/useCloudSave';
 import { useCloudAutosave } from '@/hooks/useCloudAutosave';

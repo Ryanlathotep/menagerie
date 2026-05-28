@@ -1195,7 +1195,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   useEffect(() => {
     if (!monster) return;
     const handleKeybindPress = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (isTypingTarget(e.target)) return;
       if (e.shiftKey || targetingMove) return;
       
       const key = e.key.toLowerCase();

@@ -1222,7 +1222,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   useEffect(() => {
     const handleInventoryShortcut = (e: KeyboardEvent) => {
       if (!e.shiftKey) return;
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (isTypingTarget(e.target)) return;
       
       const num = parseInt(e.key);
       if (isNaN(num) || num < 1 || num > 9) return;

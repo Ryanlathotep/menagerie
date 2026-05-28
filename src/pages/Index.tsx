@@ -1011,6 +1011,7 @@ function DungeonView({
   // Keyboard input with double-tap detection
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isTypingTarget(e.target)) return;
       if (showShop) return;
       
       // If auto-running or path-walking, any key stops it

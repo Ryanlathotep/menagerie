@@ -1135,6 +1135,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   // ─── Keyboard ───
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isTypingTarget(e.target)) return;
       if (showBuildingMenu || showDungeonPrompt || showRecruitment || levelUpQueue.length > 0) return;
       
       if (e.key === 'Escape') {

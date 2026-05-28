@@ -3986,7 +3986,7 @@ function BattleView({
     if (battle.turn !== 'player') return;
     
     const handleKeybindPress = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (isTypingTarget(e.target)) return;
       if (e.shiftKey) return;
       
       const key = e.key.toLowerCase();

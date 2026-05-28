@@ -2637,7 +2637,7 @@ function DungeonView({
     if (!monster) return;
     
     const handleKeybindPress = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (isTypingTarget(e.target)) return;
       if (e.shiftKey) return;
       if (targetingMove) return;
       

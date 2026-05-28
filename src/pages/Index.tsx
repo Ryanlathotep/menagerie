@@ -91,7 +91,7 @@ import {
 } from '@/game/dungeonCombat';
 import { playParticleEffectForMove } from '@/game/particles/api';
 import { MoveInfoPanel } from '@/game/AttackTargeting';
-import { loadKeybinds, getMonsterKeybinds as getMonsterKeybindsImport } from '@/game/keybinds';
+import { loadKeybinds, getMonsterKeybinds as getMonsterKeybindsImport, isTypingTarget } from '@/game/keybinds';
 import { useAuth } from '@/hooks/useAuth';
 import { useCloudSave } from '@/hooks/useCloudSave';
 import { useCloudAutosave } from '@/hooks/useCloudAutosave';
@@ -1011,6 +1011,7 @@ function DungeonView({
   // Keyboard input with double-tap detection
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isTypingTarget(e.target)) return;
       if (showShop) return;
       
       // If auto-running or path-walking, any key stops it
@@ -2636,7 +2637,7 @@ function DungeonView({
     if (!monster) return;
     
     const handleKeybindPress = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (isTypingTarget(e.target)) return;
       if (e.shiftKey) return;
       if (targetingMove) return;
       
@@ -2664,7 +2665,7 @@ function DungeonView({
   useEffect(() => {
     const handleInventoryShortcut = (e: KeyboardEvent) => {
       if (!e.shiftKey) return;
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (isTypingTarget(e.target)) return;
       
       const num = parseInt(e.key);
       if (isNaN(num) || num < 1 || num > 9) return;
@@ -3985,7 +3986,7 @@ function BattleView({
     if (battle.turn !== 'player') return;
     
     const handleKeybindPress = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (isTypingTarget(e.target)) return;
       if (e.shiftKey) return;
       
       const key = e.key.toLowerCase();
@@ -4014,7 +4015,7 @@ function BattleView({
     
     const handleInventoryShortcut = (e: KeyboardEvent) => {
       if (!e.shiftKey) return;
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (isTypingTarget(e.target)) return;
       if (battle.turn !== 'player') return;
       
       const num = parseInt(e.key);

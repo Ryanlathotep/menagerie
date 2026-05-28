@@ -61,7 +61,7 @@ import { RecruitmentModal, calculateRecruitChance } from './RecruitmentModal';
 import { LevelUpScreen } from './LevelUpScreen';
 import { EquipmentView } from './EquipmentView';
 import { ReviveTargetModal } from './ReviveTargetModal';
-import { loadKeybinds, getMonsterKeybinds as getMonsterKeybindsImport } from './keybinds';
+import { loadKeybinds, getMonsterKeybinds as getMonsterKeybindsImport, isTypingTarget } from './keybinds';
 import { LogMessage } from './GameLog';
 import { ScrollText } from 'lucide-react';
 import { toast } from 'sonner';
@@ -1135,6 +1135,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   // ─── Keyboard ───
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isTypingTarget(e.target)) return;
       if (showBuildingMenu || showDungeonPrompt || showRecruitment || levelUpQueue.length > 0) return;
       
       if (e.key === 'Escape') {
@@ -1194,7 +1195,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   useEffect(() => {
     if (!monster) return;
     const handleKeybindPress = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (isTypingTarget(e.target)) return;
       if (e.shiftKey || targetingMove) return;
       
       const key = e.key.toLowerCase();
@@ -1221,7 +1222,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   useEffect(() => {
     const handleInventoryShortcut = (e: KeyboardEvent) => {
       if (!e.shiftKey) return;
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (isTypingTarget(e.target)) return;
       
       const num = parseInt(e.key);
       if (isNaN(num) || num < 1 || num > 9) return;

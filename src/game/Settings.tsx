@@ -872,7 +872,11 @@ function ReturnToMainMenuSection({ onClose }: { onClose: () => void }) {
 function AdminPanelDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-6xl h-[90vh] p-0 overflow-hidden">
+      <DialogContent
+        className="max-w-6xl h-[90vh] p-0 overflow-hidden"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <AdminPanel />
       </DialogContent>
     </Dialog>

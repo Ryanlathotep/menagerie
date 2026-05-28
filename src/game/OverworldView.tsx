@@ -61,7 +61,7 @@ import { RecruitmentModal, calculateRecruitChance } from './RecruitmentModal';
 import { LevelUpScreen } from './LevelUpScreen';
 import { EquipmentView } from './EquipmentView';
 import { ReviveTargetModal } from './ReviveTargetModal';
-import { loadKeybinds, getMonsterKeybinds as getMonsterKeybindsImport } from './keybinds';
+import { loadKeybinds, getMonsterKeybinds as getMonsterKeybindsImport, isTypingTarget } from './keybinds';
 import { LogMessage } from './GameLog';
 import { ScrollText } from 'lucide-react';
 import { toast } from 'sonner';

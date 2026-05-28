@@ -4015,7 +4015,7 @@ function BattleView({
     
     const handleInventoryShortcut = (e: KeyboardEvent) => {
       if (!e.shiftKey) return;
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (isTypingTarget(e.target)) return;
       if (battle.turn !== 'player') return;
       
       const num = parseInt(e.key);

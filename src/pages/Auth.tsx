@@ -98,6 +98,27 @@ export default function Auth() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    try {
+      emailSchema.parse(email);
+    } catch {
+      setErrors((e) => ({ ...e, email: 'Enter your email above first' }));
+      return;
+    }
+    setResetSending(true);
+    // HashRouter — recovery tokens must land on the hashed route.
+    const redirectUrl = `${window.location.origin}${window.location.pathname}#/reset-password`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl,
+    });
+    setResetSending(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success('Password reset email sent. Check your inbox.');
+  };
+
   const handleContinueAsGuest = () => {
     navigate('/');
   };

@@ -18,6 +18,7 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [resetSending, setResetSending] = useState(false);
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -68,7 +69,8 @@ export default function Auth() {
         toast.success('Welcome back!');
         navigate('/');
       } else {
-        const redirectUrl = `${window.location.origin}/`;
+        // Use the hashed root so itch.io builds (HashRouter) land on a real route.
+        const redirectUrl = `${window.location.origin}${window.location.pathname}#/`;
         
         const { error } = await supabase.auth.signUp({
           email,
@@ -95,6 +97,27 @@ export default function Auth() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleForgotPassword = async () => {
+    try {
+      emailSchema.parse(email);
+    } catch {
+      setErrors((e) => ({ ...e, email: 'Enter your email above first' }));
+      return;
+    }
+    setResetSending(true);
+    // HashRouter — recovery tokens must land on the hashed route.
+    const redirectUrl = `${window.location.origin}${window.location.pathname}#/reset-password`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl,
+    });
+    setResetSending(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success('Password reset email sent. Check your inbox.');
   };
 
   const handleContinueAsGuest = () => {
@@ -159,6 +182,16 @@ export default function Auth() {
         </form>
 
         <div className="text-center space-y-3">
+          {isLogin && (
+            <button
+              type="button"
+              className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground transition-colors block w-full"
+              onClick={handleForgotPassword}
+              disabled={resetSending}
+            >
+              {resetSending ? 'Sending reset email…' : 'Forgot your password?'}
+            </button>
+          )}
           <button
             type="button"
             className="text-base font-semibold text-primary underline underline-offset-4 hover:text-primary/80 transition-colors"

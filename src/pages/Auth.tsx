@@ -69,7 +69,8 @@ export default function Auth() {
         toast.success('Welcome back!');
         navigate('/');
       } else {
-        const redirectUrl = `${window.location.origin}/`;
+        // Use the hashed root so itch.io builds (HashRouter) land on a real route.
+        const redirectUrl = `${window.location.origin}${window.location.pathname}#/`;
         
         const { error } = await supabase.auth.signUp({
           email,

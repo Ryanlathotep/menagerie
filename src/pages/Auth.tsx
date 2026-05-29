@@ -18,6 +18,7 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [resetSending, setResetSending] = useState(false);
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};

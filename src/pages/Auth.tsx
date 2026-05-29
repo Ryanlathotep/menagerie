@@ -181,6 +181,16 @@ export default function Auth() {
         </form>
 
         <div className="text-center space-y-3">
+          {isLogin && (
+            <button
+              type="button"
+              className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground transition-colors block w-full"
+              onClick={handleForgotPassword}
+              disabled={resetSending}
+            >
+              {resetSending ? 'Sending reset email…' : 'Forgot your password?'}
+            </button>
+          )}
           <button
             type="button"
             className="text-base font-semibold text-primary underline underline-offset-4 hover:text-primary/80 transition-colors"

@@ -89,7 +89,7 @@ export default function Auth() {
           return;
         }
         
-        toast.success('Account created! Welcome to Menagerie!');
+        toast.success('Account created! Welcome to Monster Menagerie!');
         navigate('/');
       }
     } catch (error) {
@@ -129,7 +129,7 @@ export default function Auth() {
       <Card className="w-full max-w-md p-6 space-y-6">
         <div className="text-center">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-            Menagerie
+            Monster Menagerie
           </h1>
           <p className="text-muted-foreground mt-2">
             {isLogin ? 'Welcome back, trainer!' : 'Create your account'}

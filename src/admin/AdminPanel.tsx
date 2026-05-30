@@ -129,6 +129,10 @@ export function AdminPanel() {
           <TabsContent value="particles" className="p-4 m-0">
             <ParticlesEditor />
           </TabsContent>
+          <TabsContent value="worldgen" className="p-4 m-0">
+            <WorldGenEditor />
+          </TabsContent>
+
           <TabsContent value="bugs" className="p-4 m-0">
             <BugReportsEditor />
           </TabsContent>

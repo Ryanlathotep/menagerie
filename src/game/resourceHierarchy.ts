@@ -1,6 +1,8 @@
 // Resource Hierarchy System - Trees and stones upgrade over time
 // Trees: Oak → Maple → Elder Oak
 // Stones: Stone → Copper → Iron → Gold → Mithril
+import { getOverworldGen } from './worldGenConfig';
+
 
 export type TreeTier = 'oak' | 'maple' | 'elder_oak';
 export type StoneTier = 'stone' | 'copper' | 'iron' | 'gold' | 'mithril';

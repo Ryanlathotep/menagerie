@@ -88,7 +88,7 @@ function AdminQAInner() {
       <div className="max-w-5xl mx-auto space-y-6">
         <header className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Menagerie QA</h1>
+            <h1 className="text-2xl font-bold">Monster Menagerie QA</h1>
             <p className="text-sm text-muted-foreground">In-app regression suite for persistence, inventory, and reducer invariants.</p>
           </div>
           <Link to="/" className="text-sm underline">← Back to game</Link>

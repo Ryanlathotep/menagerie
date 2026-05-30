@@ -384,44 +384,46 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
       // Low elevation = water (lakes / ponds / ocean); high elevation = stone
       // outcrops. Because they share the same field, water naturally forms
       // away from rocky peaks, and rivers (ridged noise) follow valleys.
+      const gen = getOverworldGen();
       const elevation = getElevation(worldX, worldY);
-      // Don't drown the spawn area — push elevation up near (0,0) so home
-      // base is reliably surrounded by walkable land.
+      // Near spawn we pull elevation toward a mid value (above water, below
+      // stone) so home base is reliably surrounded by walkable grass.
+      // (Bug fix: the old version only pushed elevation UP, which created a
+      // giant ore vein right on top of the campfire.)
       const distFromHome = Math.sqrt(worldX * worldX + worldY * worldY);
-      const homeLandBias = distFromHome < 6 ? (6 - distFromHome) * 0.12 : 0;
-      const adjElev = Math.min(1, elevation + homeLandBias);
+      let adjElev = elevation;
+      if (distFromHome < gen.spawn.homeBiasRadius) {
+        const t = (gen.spawn.homeBiasRadius - distFromHome) / gen.spawn.homeBiasRadius;
+        const pull = t * gen.spawn.biasStrength;
+        adjElev = elevation * (1 - pull) + gen.spawn.targetElev * pull;
+      }
+      adjElev = Math.max(0, Math.min(1, adjElev));
 
       // Biome tweaks the thresholds slightly so a "water" biome has more lakes,
-      // an "earth" biome has more crags, etc. — but the core anti-correlation
-      // between water and stone is preserved.
-      // Density tuned down for solo play — fewer rocks/lakes feel less cluttered.
-      let waterCutoff = 0.30; // adjElev below this -> water (lake)
-      let stoneCutoff = 0.80; // adjElev above this -> rock (outcrop)
-      if (biome === 'water') { waterCutoff = 0.38; stoneCutoff = 0.84; }
-      else if (biome === 'earth') { waterCutoff = 0.22; stoneCutoff = 0.72; }
-      else if (biome === 'fire') { waterCutoff = 0.18; stoneCutoff = 0.76; }
-      else if (biome === 'air') { waterCutoff = 0.26; stoneCutoff = 0.82; }
-      else if (biome === 'void') { waterCutoff = 0.26; stoneCutoff = 0.78; }
+      // an "earth" biome has more crags, etc.
+      let waterCutoff = gen.elevation.waterCutoff;
+      let stoneCutoff = gen.elevation.stoneCutoff;
+      const biomeOv = biome ? gen.elevation.biome[biome as 'water' | 'earth' | 'fire' | 'air' | 'void'] : undefined;
+      if (biomeOv?.waterCutoff !== undefined) waterCutoff = biomeOv.waterCutoff;
+      if (biomeOv?.stoneCutoff !== undefined) stoneCutoff = biomeOv.stoneCutoff;
 
       const isLake = adjElev < waterCutoff && distFromHome > 4;
       const isStone = adjElev > stoneCutoff;
-      // Rivers carve thin meandering water through mid-elevation valleys.
-      // They don't run through high stone (the noise rejects elev > 0.55),
-      // so rivers naturally flow AWAY from rocky terrain.
       const isRiver = !isStone && distFromHome > 5 && isRiverTile(worldX, worldY);
 
-      // Trees are governed by classic random + biome bias (independent system).
-      // Density reduced for less visual clutter; forests still cluster via noise.
-      let treeChance = 0.06;
-      if (biome === 'water') treeChance = 0.03;
-      else if (biome === 'fire') treeChance = 0.02;
-      else if (biome === 'air') treeChance = 0.025;
-      else if (biome === 'earth') treeChance = 0.04;
-
-      // Cluster bias for trees (forests). Stone clustering already comes from
-      // the elevation field, so we no longer need a separate outcrop noise.
+      // Trees: per-biome base chance + forest clustering noise.
+      const biomeKey = (biome ?? 'grass') as keyof typeof gen.trees.baseChance;
+      let treeChance = gen.trees.baseChance[biomeKey] ?? gen.trees.baseChance.grass;
       const forestNoise = biomeNoise(worldX, worldY, 0.18);
-      if (forestNoise > 0.6) treeChance += (forestNoise - 0.6) * 0.6;
+      if (forestNoise > gen.trees.forestThreshold) {
+        treeChance += (forestNoise - gen.trees.forestThreshold) * gen.trees.forestGain;
+      }
+
+      // Enemy spawn chance (capped, scales with difficulty).
+      const enemyChance = Math.min(
+        gen.enemies.maxChance,
+        Math.max(0, gen.enemies.baseChance + (difficulty - 1) * gen.enemies.perDifficulty),
+      );
 
       // Decide tile type. Order matters:
       //   water (lake or river)  >  stone  >  tree  >  enemy  >  grass
@@ -431,9 +433,11 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
         type = 'rock';
       } else if (r < treeChance) {
         type = 'tree';
-      } else if (r < treeChance + Math.min(0.06, Math.max(0, (difficulty - 1) * 0.012))) {
+      } else if (r < treeChance + enemyChance) {
         type = 'enemy';
       }
+
+
       
       const tile: OverworldTile = { type, explored: false, visible: false };
       

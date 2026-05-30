@@ -130,9 +130,7 @@ export function getNextStoneTier(current: StoneTier): StoneTier | null {
 export function getInitialTreeTier(worldX: number, worldY: number, tileSeed: number): TreeTier {
   const dist = Math.sqrt(worldX * worldX + worldY * worldY);
   const r = seededRandom(tileSeed + 7777);
-  // Higher tiers more likely further from spawn (thresholds tunable via admin)
-  // Lazy import to avoid a cycle at module-init time.
-  const cfg = require('./worldGenConfig').getOverworldGen().treeTierRolls;
+  const cfg = getOverworldGen().treeTierRolls;
   if (dist > cfg.elderOak.minDist && r < cfg.elderOak.chance) return 'elder_oak';
   if (dist > cfg.maple.minDist && r < cfg.maple.chance) return 'maple';
   return 'oak';
@@ -141,14 +139,14 @@ export function getInitialTreeTier(worldX: number, worldY: number, tileSeed: num
 export function getInitialStoneTier(worldX: number, worldY: number, tileSeed: number): StoneTier {
   const dist = Math.sqrt(worldX * worldX + worldY * worldY);
   const r = seededRandom(tileSeed + 8888);
-  // Higher tiers more likely further from spawn (thresholds tunable via admin)
-  const cfg = require('./worldGenConfig').getOverworldGen().stoneTierRolls;
+  const cfg = getOverworldGen().stoneTierRolls;
   if (dist > cfg.mithril.minDist && r < cfg.mithril.chance) return 'mithril';
   if (dist > cfg.gold.minDist && r < cfg.gold.chance) return 'gold';
   if (dist > cfg.iron.minDist && r < cfg.iron.chance) return 'iron';
   if (dist > cfg.copper.minDist && r < cfg.copper.chance) return 'copper';
   return 'stone';
 }
+
 
 
 function seededRandom(seed: number): number {

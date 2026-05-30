@@ -154,7 +154,7 @@ export function MainMenu() {
       <div className="w-full max-w-md mx-auto text-center space-y-6 sm:space-y-8 px-2">
         <div className="relative inline-block">
           <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent pb-2 break-words">
-            Menagerie
+            Monster Menagerie
           </h1>
           <span
             aria-label="Beta"

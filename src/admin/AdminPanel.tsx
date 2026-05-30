@@ -13,7 +13,9 @@ import { ShapeDesigner } from './ShapeDesigner';
 import { EquipmentIconEditor } from './EquipmentIconEditor';
 import { AssetLibrary } from './AssetLibrary';
 import { ParticlesEditor } from './ParticlesEditor';
-import { Shield, Swords, Package, Ghost, UserCog, Bug, Crosshair, Image as ImageIcon, Palette, Sparkles } from 'lucide-react';
+import { WorldGenEditor } from './WorldGenEditor';
+import { Shield, Swords, Package, Ghost, UserCog, Bug, Crosshair, Image as ImageIcon, Palette, Sparkles, Globe2 } from 'lucide-react';
+
 
 export function AdminPanel() {
   const { isAdmin, loading } = useAdminRole();

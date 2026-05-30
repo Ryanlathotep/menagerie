@@ -37,7 +37,7 @@ const AppRoutes = () => {
       const { data, error } = await supabase
         .from('game_data_overrides')
         .select('data_type, data_key, data_value')
-        .in('data_type', ['moves', 'sprites', 'asset_image', 'particle_template', 'particle_effect', 'particle_default']);
+        .in('data_type', ['moves', 'sprites', 'asset_image', 'particle_template', 'particle_effect', 'particle_default', 'world_gen']);
       if (cancelled || error || !data) return;
       const rows = data as { data_type: string; data_key: string; data_value: Record<string, unknown> }[];
       setMoveOverrides(rows.filter((r) => r.data_type === 'moves'));
@@ -46,6 +46,8 @@ const AppRoutes = () => {
       setParticleTemplateOverrides(rows.filter((r) => r.data_type === 'particle_template'));
       setParticleEffectOverrides(rows.filter((r) => r.data_type === 'particle_effect'));
       setParticleDefaultOverrides(rows.filter((r) => r.data_type === 'particle_default'));
+      setWorldGenOverrides(rows.filter((r) => r.data_type === 'world_gen'));
+
     })();
     return () => { cancelled = true; };
   }, []);

@@ -88,6 +88,11 @@ export function AdminPanel() {
               <Sparkles className="w-4 h-4" />
               Particles
             </TabsTrigger>
+            <TabsTrigger value="worldgen" className="gap-2 shrink-0">
+              <Globe2 className="w-4 h-4" />
+              World Gen
+            </TabsTrigger>
+
             <TabsTrigger value="bugs" className="gap-2 shrink-0">
               <Bug className="w-4 h-4" />
               Bug Reports

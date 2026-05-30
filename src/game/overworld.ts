@@ -13,6 +13,8 @@ import {
 import { isCreativeMode } from './creativeMode';
 import { getTileElevation, getCliffDrops, pickRampHere, shouldBeWaterfall } from './elevation';
 import { getTileEffectiveZ, isElevationConnectorAt, isWalkableWallTop } from './wallTop';
+import { getOverworldGen } from './worldGenConfig';
+
 
 const ALL_SPECIES = Object.keys(SPECIES_DATA) as SpeciesType[];
 

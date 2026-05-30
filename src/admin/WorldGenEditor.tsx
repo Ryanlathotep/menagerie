@@ -154,125 +154,118 @@ export function WorldGenEditor() {
         </div>
       </Card>
 
-      <Accordion type="multiple" defaultValue={['spawn', 'elevation', 'stones']} className="space-y-2">
-        <AccordionItem value="spawn">
-          <AccordionTrigger>Spawn safety (fixes giant ore at home base)</AccordionTrigger>
-          <AccordionContent className="space-y-3 pt-2">
-            <NumField label="Home bias radius" hint="Tiles around (0,0) where elevation is pulled toward target."
-              value={draft.spawn.homeBiasRadius} step={1} min={0} max={20}
-              onChange={(v) => update('spawn', { homeBiasRadius: v })} />
-            <NumField label="Target elevation" hint="Mid value pulled toward (between water and stone cutoffs). Default 0.55."
-              value={draft.spawn.targetElev} min={0} max={1}
-              onChange={(v) => update('spawn', { targetElev: v })} />
-            <NumField label="Bias strength" hint="0 = no pull, 1 = fully replace elevation at center."
-              value={draft.spawn.biasStrength} min={0} max={1}
-              onChange={(v) => update('spawn', { biasStrength: v })} />
-          </AccordionContent>
-        </AccordionItem>
+      {(() => {
+        const Section = ({ title, open = false, children }: { title: string; open?: boolean; children: React.ReactNode }) => (
+          <details open={open} className="group border rounded-md bg-card">
+            <summary className="cursor-pointer select-none px-4 py-3 font-semibold text-sm hover:bg-muted/50 rounded-md">
+              {title}
+            </summary>
+            <div className="px-4 pb-4 pt-2 space-y-3">{children}</div>
+          </details>
+        );
+        const Hr = () => <hr className="my-2 border-border" />;
+        return (
+          <div className="space-y-2">
+            <Section title="Spawn safety (fixes giant ore at home base)" open>
+              <NumField label="Home bias radius" hint="Tiles around (0,0) where elevation is pulled toward target."
+                value={draft.spawn.homeBiasRadius} step={1} min={0} max={20}
+                onChange={(v) => update('spawn', { homeBiasRadius: v })} />
+              <NumField label="Target elevation" hint="Mid value pulled toward (between water and stone cutoffs). Default 0.55."
+                value={draft.spawn.targetElev} min={0} max={1}
+                onChange={(v) => update('spawn', { targetElev: v })} />
+              <NumField label="Bias strength" hint="0 = no pull, 1 = fully replace elevation at center."
+                value={draft.spawn.biasStrength} min={0} max={1}
+                onChange={(v) => update('spawn', { biasStrength: v })} />
+            </Section>
 
-        <AccordionItem value="elevation">
-          <AccordionTrigger>Elevation cutoffs (water vs stone)</AccordionTrigger>
-          <AccordionContent className="space-y-4 pt-2">
-            <NumField label="Default waterCutoff" value={draft.elevation.waterCutoff} min={0} max={1}
-              onChange={(v) => update('elevation', { waterCutoff: v })} />
-            <NumField label="Default stoneCutoff" value={draft.elevation.stoneCutoff} min={0} max={1}
-              onChange={(v) => update('elevation', { stoneCutoff: v })} />
-            <Separator />
-            {biomes.map((b) => {
-              const ov = draft.elevation.biome[b] ?? {};
-              return (
-                <div key={b} className="space-y-2">
-                  <h4 className="text-sm font-semibold capitalize">{b} biome</h4>
-                  <NumField label={`${b} waterCutoff`} value={ov.waterCutoff ?? draft.elevation.waterCutoff}
-                    min={0} max={1}
-                    onChange={(v) => {
-                      const biome = { ...draft.elevation.biome, [b]: { ...ov, waterCutoff: v } };
-                      update('elevation', { biome });
-                    }} />
-                  <NumField label={`${b} stoneCutoff`} value={ov.stoneCutoff ?? draft.elevation.stoneCutoff}
-                    min={0} max={1}
-                    onChange={(v) => {
-                      const biome = { ...draft.elevation.biome, [b]: { ...ov, stoneCutoff: v } };
-                      update('elevation', { biome });
-                    }} />
+            <Section title="Elevation cutoffs (water vs stone)" open>
+              <NumField label="Default waterCutoff" value={draft.elevation.waterCutoff} min={0} max={1}
+                onChange={(v) => update('elevation', { waterCutoff: v })} />
+              <NumField label="Default stoneCutoff" value={draft.elevation.stoneCutoff} min={0} max={1}
+                onChange={(v) => update('elevation', { stoneCutoff: v })} />
+              <Hr />
+              {biomes.map((b) => {
+                const ov = draft.elevation.biome[b] ?? {};
+                return (
+                  <div key={b} className="space-y-2">
+                    <h4 className="text-sm font-semibold capitalize">{b} biome</h4>
+                    <NumField label={`${b} waterCutoff`} value={ov.waterCutoff ?? draft.elevation.waterCutoff}
+                      min={0} max={1}
+                      onChange={(v) => {
+                        const biome = { ...draft.elevation.biome, [b]: { ...ov, waterCutoff: v } };
+                        update('elevation', { biome });
+                      }} />
+                    <NumField label={`${b} stoneCutoff`} value={ov.stoneCutoff ?? draft.elevation.stoneCutoff}
+                      min={0} max={1}
+                      onChange={(v) => {
+                        const biome = { ...draft.elevation.biome, [b]: { ...ov, stoneCutoff: v } };
+                        update('elevation', { biome });
+                      }} />
+                  </div>
+                );
+              })}
+            </Section>
+
+            <Section title="Tree density">
+              {treeBiomes.map((b) => (
+                <NumField key={b} label={`${b} base chance`} value={draft.trees.baseChance[b]} min={0} max={1}
+                  onChange={(v) => update('trees', { baseChance: { ...draft.trees.baseChance, [b]: v } })} />
+              ))}
+              <Hr />
+              <NumField label="Forest cluster threshold" hint="Noise above this clusters into forests."
+                value={draft.trees.forestThreshold} min={0} max={1}
+                onChange={(v) => update('trees', { forestThreshold: v })} />
+              <NumField label="Forest cluster gain" value={draft.trees.forestGain} min={0} max={4}
+                onChange={(v) => update('trees', { forestGain: v })} />
+            </Section>
+
+            <Section title="Stone tier rolls (copper / iron / gold / mithril)" open>
+              {stoneTiers.map((tier) => (
+                <div key={tier} className="space-y-2">
+                  <h4 className="text-sm font-semibold capitalize">{tier}</h4>
+                  <NumField label="Min distance" value={draft.stoneTierRolls[tier].minDist} step={1} min={0} max={500}
+                    onChange={(v) => updateNested(['stoneTierRolls', tier, 'minDist'], v)} />
+                  <NumField label="Chance" value={draft.stoneTierRolls[tier].chance} min={0} max={1}
+                    onChange={(v) => updateNested(['stoneTierRolls', tier, 'chance'], v)} />
                 </div>
-              );
-            })}
-          </AccordionContent>
-        </AccordionItem>
+              ))}
+            </Section>
 
-        <AccordionItem value="trees">
-          <AccordionTrigger>Tree density</AccordionTrigger>
-          <AccordionContent className="space-y-3 pt-2">
-            {treeBiomes.map((b) => (
-              <NumField key={b} label={`${b} base chance`} value={draft.trees.baseChance[b]} min={0} max={1}
-                onChange={(v) => update('trees', { baseChance: { ...draft.trees.baseChance, [b]: v } })} />
-            ))}
-            <Separator />
-            <NumField label="Forest cluster threshold" hint="Noise above this clusters into forests."
-              value={draft.trees.forestThreshold} min={0} max={1}
-              onChange={(v) => update('trees', { forestThreshold: v })} />
-            <NumField label="Forest cluster gain" value={draft.trees.forestGain} min={0} max={4}
-              onChange={(v) => update('trees', { forestGain: v })} />
-          </AccordionContent>
-        </AccordionItem>
+            <Section title="Tree tier rolls (maple / elder oak)">
+              {treeTiers.map((tier) => (
+                <div key={tier} className="space-y-2">
+                  <h4 className="text-sm font-semibold capitalize">{tier}</h4>
+                  <NumField label="Min distance" value={draft.treeTierRolls[tier].minDist} step={1} min={0} max={500}
+                    onChange={(v) => updateNested(['treeTierRolls', tier, 'minDist'], v)} />
+                  <NumField label="Chance" value={draft.treeTierRolls[tier].chance} min={0} max={1}
+                    onChange={(v) => updateNested(['treeTierRolls', tier, 'chance'], v)} />
+                </div>
+              ))}
+            </Section>
 
-        <AccordionItem value="stones">
-          <AccordionTrigger>Stone tier rolls (copper / iron / gold / mithril)</AccordionTrigger>
-          <AccordionContent className="space-y-4 pt-2">
-            {stoneTiers.map((tier) => (
-              <div key={tier} className="space-y-2">
-                <h4 className="text-sm font-semibold capitalize">{tier}</h4>
-                <NumField label="Min distance" value={draft.stoneTierRolls[tier].minDist} step={1} min={0} max={500}
-                  onChange={(v) => updateNested(['stoneTierRolls', tier, 'minDist'], v)} />
-                <NumField label="Chance" value={draft.stoneTierRolls[tier].chance} min={0} max={1}
-                  onChange={(v) => updateNested(['stoneTierRolls', tier, 'chance'], v)} />
-              </div>
-            ))}
-          </AccordionContent>
-        </AccordionItem>
+            <Section title="Enemy spawns">
+              <NumField label="Base chance" value={draft.enemies.baseChance} min={0} max={1}
+                onChange={(v) => update('enemies', { baseChance: v })} />
+              <NumField label="Per-difficulty bonus" value={draft.enemies.perDifficulty} min={0} max={0.2}
+                onChange={(v) => update('enemies', { perDifficulty: v })} />
+              <NumField label="Max chance (cap)" value={draft.enemies.maxChance} min={0} max={1}
+                onChange={(v) => update('enemies', { maxChance: v })} />
+            </Section>
 
-        <AccordionItem value="trees-tier">
-          <AccordionTrigger>Tree tier rolls (maple / elder oak)</AccordionTrigger>
-          <AccordionContent className="space-y-4 pt-2">
-            {treeTiers.map((tier) => (
-              <div key={tier} className="space-y-2">
-                <h4 className="text-sm font-semibold capitalize">{tier}</h4>
-                <NumField label="Min distance" value={draft.treeTierRolls[tier].minDist} step={1} min={0} max={500}
-                  onChange={(v) => updateNested(['treeTierRolls', tier, 'minDist'], v)} />
-                <NumField label="Chance" value={draft.treeTierRolls[tier].chance} min={0} max={1}
-                  onChange={(v) => updateNested(['treeTierRolls', tier, 'chance'], v)} />
-              </div>
-            ))}
-          </AccordionContent>
-        </AccordionItem>
-
-        <AccordionItem value="enemies">
-          <AccordionTrigger>Enemy spawns</AccordionTrigger>
-          <AccordionContent className="space-y-3 pt-2">
-            <NumField label="Base chance" value={draft.enemies.baseChance} min={0} max={1}
-              onChange={(v) => update('enemies', { baseChance: v })} />
-            <NumField label="Per-difficulty bonus" value={draft.enemies.perDifficulty} min={0} max={0.2}
-              onChange={(v) => update('enemies', { perDifficulty: v })} />
-            <NumField label="Max chance (cap)" value={draft.enemies.maxChance} min={0} max={1}
-              onChange={(v) => update('enemies', { maxChance: v })} />
-          </AccordionContent>
-        </AccordionItem>
-
-        <AccordionItem value="difficulty">
-          <AccordionTrigger>Difficulty scaling</AccordionTrigger>
-          <AccordionContent className="space-y-3 pt-2">
-            <NumField label="Tiles per +1 difficulty" value={draft.difficulty.tilesPerLevel} step={1} min={1} max={100}
-              onChange={(v) => update('difficulty', { tilesPerLevel: v })} />
-            <NumField label="Starting difficulty" value={draft.difficulty.starting} step={1} min={1} max={100}
-              onChange={(v) => update('difficulty', { starting: v })} />
-            <p className="text-xs text-muted-foreground">
-              Note: difficulty scaling here is informational for now — the runtime difficulty
-              formula is wired into overworld step logic and will read these in a follow-up.
-            </p>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+            <Section title="Difficulty scaling">
+              <NumField label="Tiles per +1 difficulty" value={draft.difficulty.tilesPerLevel} step={1} min={1} max={100}
+                onChange={(v) => update('difficulty', { tilesPerLevel: v })} />
+              <NumField label="Starting difficulty" value={draft.difficulty.starting} step={1} min={1} max={100}
+                onChange={(v) => update('difficulty', { starting: v })} />
+              <p className="text-xs text-muted-foreground">
+                Note: difficulty scaling values are stored now and will be wired into the live overworld
+                difficulty formula in a follow-up pass (currently still uses Manhattan distance / 10).
+              </p>
+            </Section>
+          </div>
+        );
+      })()}
     </div>
   );
 }
+

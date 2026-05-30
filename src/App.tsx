@@ -19,6 +19,8 @@ import {
   setParticleEffectOverrides,
   setParticleDefaultOverrides,
 } from "@/game/particles/registry";
+import { setWorldGenOverrides } from "@/game/worldGenConfig";
+
 import { FloatingBugButton } from "@/game/FloatingBugButton";
 
 const queryClient = new QueryClient();

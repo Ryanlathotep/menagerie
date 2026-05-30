@@ -13,7 +13,9 @@ import { ShapeDesigner } from './ShapeDesigner';
 import { EquipmentIconEditor } from './EquipmentIconEditor';
 import { AssetLibrary } from './AssetLibrary';
 import { ParticlesEditor } from './ParticlesEditor';
-import { Shield, Swords, Package, Ghost, UserCog, Bug, Crosshair, Image as ImageIcon, Palette, Sparkles } from 'lucide-react';
+import { WorldGenEditor } from './WorldGenEditor';
+import { Shield, Swords, Package, Ghost, UserCog, Bug, Crosshair, Image as ImageIcon, Palette, Sparkles, Globe2 } from 'lucide-react';
+
 
 export function AdminPanel() {
   const { isAdmin, loading } = useAdminRole();
@@ -86,6 +88,11 @@ export function AdminPanel() {
               <Sparkles className="w-4 h-4" />
               Particles
             </TabsTrigger>
+            <TabsTrigger value="worldgen" className="gap-2 shrink-0">
+              <Globe2 className="w-4 h-4" />
+              World Gen
+            </TabsTrigger>
+
             <TabsTrigger value="bugs" className="gap-2 shrink-0">
               <Bug className="w-4 h-4" />
               Bug Reports
@@ -122,6 +129,10 @@ export function AdminPanel() {
           <TabsContent value="particles" className="p-4 m-0">
             <ParticlesEditor />
           </TabsContent>
+          <TabsContent value="worldgen" className="p-4 m-0">
+            <WorldGenEditor />
+          </TabsContent>
+
           <TabsContent value="bugs" className="p-4 m-0">
             <BugReportsEditor />
           </TabsContent>

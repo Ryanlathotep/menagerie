@@ -1,6 +1,8 @@
 // Resource Hierarchy System - Trees and stones upgrade over time
 // Trees: Oak → Maple → Elder Oak
 // Stones: Stone → Copper → Iron → Gold → Mithril
+import { getOverworldGen } from './worldGenConfig';
+
 
 export type TreeTier = 'oak' | 'maple' | 'elder_oak';
 export type StoneTier = 'stone' | 'copper' | 'iron' | 'gold' | 'mithril';
@@ -130,22 +132,24 @@ export function getNextStoneTier(current: StoneTier): StoneTier | null {
 export function getInitialTreeTier(worldX: number, worldY: number, tileSeed: number): TreeTier {
   const dist = Math.sqrt(worldX * worldX + worldY * worldY);
   const r = seededRandom(tileSeed + 7777);
-  // Higher tiers more likely further from spawn
-  if (dist > 40 && r < 0.15) return 'elder_oak';
-  if (dist > 20 && r < 0.25) return 'maple';
+  const cfg = getOverworldGen().treeTierRolls;
+  if (dist > cfg.elderOak.minDist && r < cfg.elderOak.chance) return 'elder_oak';
+  if (dist > cfg.maple.minDist && r < cfg.maple.chance) return 'maple';
   return 'oak';
 }
 
 export function getInitialStoneTier(worldX: number, worldY: number, tileSeed: number): StoneTier {
   const dist = Math.sqrt(worldX * worldX + worldY * worldY);
   const r = seededRandom(tileSeed + 8888);
-  // Higher tiers more likely further from spawn
-  if (dist > 60 && r < 0.08) return 'mithril';
-  if (dist > 45 && r < 0.12) return 'gold';
-  if (dist > 30 && r < 0.20) return 'iron';
-  if (dist > 15 && r < 0.30) return 'copper';
+  const cfg = getOverworldGen().stoneTierRolls;
+  if (dist > cfg.mithril.minDist && r < cfg.mithril.chance) return 'mithril';
+  if (dist > cfg.gold.minDist && r < cfg.gold.chance) return 'gold';
+  if (dist > cfg.iron.minDist && r < cfg.iron.chance) return 'iron';
+  if (dist > cfg.copper.minDist && r < cfg.copper.chance) return 'copper';
   return 'stone';
 }
+
+
 
 function seededRandom(seed: number): number {
   const x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;

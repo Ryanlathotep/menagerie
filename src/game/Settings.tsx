@@ -12,6 +12,7 @@ import { Settings as SettingsIcon, X, Download, Upload, Shield, Globe2, Dices, H
 import { WaypointManager } from './WaypointManager';
 
 import { ReportBugDialog } from './ReportBugDialog';
+import { FeatureRequestDialog } from './FeatureRequestDialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminRole } from '@/hooks/useAdminRole';
@@ -166,6 +167,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [adminOpen, setAdminOpen] = useState(false);
   const [bugOpen, setBugOpen] = useState(false);
+  const [featureOpen, setFeatureOpen] = useState(false);
   const [waypointMgrOpen, setWaypointMgrOpen] = useState(false);
 
 

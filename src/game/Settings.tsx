@@ -518,12 +518,15 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           </div>
 
           {/* Report a Bug */}
-          <div className="pt-2 border-t">
+          <div className="pt-2 border-t space-y-2">
             <Button variant="outline" className="w-full" onClick={() => setBugOpen(true)}>
               <Bug className="w-4 h-4 mr-2" /> Report a Bug
             </Button>
-            <p className="text-xs text-muted-foreground mt-1 text-center">
-              Send a bug report to the dev team. No account required.
+            <Button variant="outline" className="w-full" onClick={() => setFeatureOpen(true)}>
+              <Lightbulb className="w-4 h-4 mr-2" /> Suggest a Feature
+            </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              Send a bug report or feature idea to the dev team. Sign-in required.
             </p>
           </div>
 
@@ -544,6 +547,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
         </div>
       </Card>
       <ReportBugDialog isOpen={bugOpen} onClose={() => setBugOpen(false)} />
+      <FeatureRequestDialog isOpen={featureOpen} onClose={() => setFeatureOpen(false)} />
     </div>
     <AdminPanelDialog isOpen={adminOpen} onClose={() => setAdminOpen(false)} />
     <WaypointManager isOpen={waypointMgrOpen} onClose={() => setWaypointMgrOpen(false)} />

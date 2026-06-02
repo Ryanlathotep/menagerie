@@ -8,10 +8,11 @@ import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Settings as SettingsIcon, X, Download, Upload, Shield, Globe2, Dices, Home, Bug, Flag } from 'lucide-react';
+import { Settings as SettingsIcon, X, Download, Upload, Shield, Globe2, Dices, Home, Bug, Flag, Lightbulb } from 'lucide-react';
 import { WaypointManager } from './WaypointManager';
 
 import { ReportBugDialog } from './ReportBugDialog';
+import { FeatureRequestDialog } from './FeatureRequestDialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminRole } from '@/hooks/useAdminRole';
@@ -166,6 +167,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [adminOpen, setAdminOpen] = useState(false);
   const [bugOpen, setBugOpen] = useState(false);
+  const [featureOpen, setFeatureOpen] = useState(false);
   const [waypointMgrOpen, setWaypointMgrOpen] = useState(false);
 
 
@@ -516,12 +518,15 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           </div>
 
           {/* Report a Bug */}
-          <div className="pt-2 border-t">
+          <div className="pt-2 border-t space-y-2">
             <Button variant="outline" className="w-full" onClick={() => setBugOpen(true)}>
               <Bug className="w-4 h-4 mr-2" /> Report a Bug
             </Button>
-            <p className="text-xs text-muted-foreground mt-1 text-center">
-              Send a bug report to the dev team. No account required.
+            <Button variant="outline" className="w-full" onClick={() => setFeatureOpen(true)}>
+              <Lightbulb className="w-4 h-4 mr-2" /> Suggest a Feature
+            </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              Send a bug report or feature idea to the dev team. Sign-in required.
             </p>
           </div>
 
@@ -542,6 +547,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
         </div>
       </Card>
       <ReportBugDialog isOpen={bugOpen} onClose={() => setBugOpen(false)} />
+      <FeatureRequestDialog isOpen={featureOpen} onClose={() => setFeatureOpen(false)} />
     </div>
     <AdminPanelDialog isOpen={adminOpen} onClose={() => setAdminOpen(false)} />
     <WaypointManager isOpen={waypointMgrOpen} onClose={() => setWaypointMgrOpen(false)} />

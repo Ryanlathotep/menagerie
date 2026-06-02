@@ -9,12 +9,13 @@ import { RecipesEditor } from './RecipesEditor';
 import { MonstersEditor } from './MonstersEditor';
 import { AdminAccessEditor } from './AdminAccessEditor';
 import { BugReportsEditor } from './BugReportsEditor';
+import { FeatureRequestsEditor } from './FeatureRequestsEditor';
 import { ShapeDesigner } from './ShapeDesigner';
 import { EquipmentIconEditor } from './EquipmentIconEditor';
 import { AssetLibrary } from './AssetLibrary';
 import { ParticlesEditor } from './ParticlesEditor';
 import { WorldGenEditor } from './WorldGenEditor';
-import { Shield, Swords, Package, Ghost, UserCog, Bug, Crosshair, Image as ImageIcon, Palette, Sparkles, Globe2 } from 'lucide-react';
+import { Shield, Swords, Package, Ghost, UserCog, Bug, Crosshair, Image as ImageIcon, Palette, Sparkles, Globe2, Lightbulb } from 'lucide-react';
 
 
 export function AdminPanel() {
@@ -97,6 +98,10 @@ export function AdminPanel() {
               <Bug className="w-4 h-4" />
               Bug Reports
             </TabsTrigger>
+            <TabsTrigger value="features" className="gap-2 shrink-0">
+              <Lightbulb className="w-4 h-4" />
+              Features
+            </TabsTrigger>
             <TabsTrigger value="access" className="gap-2 shrink-0">
               <UserCog className="w-4 h-4" />
               Access
@@ -135,6 +140,9 @@ export function AdminPanel() {
 
           <TabsContent value="bugs" className="p-4 m-0">
             <BugReportsEditor />
+          </TabsContent>
+          <TabsContent value="features" className="p-4 m-0">
+            <FeatureRequestsEditor />
           </TabsContent>
           <TabsContent value="access" className="p-4 m-0">
             <AdminAccessEditor />

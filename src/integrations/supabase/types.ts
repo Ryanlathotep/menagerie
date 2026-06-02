@@ -137,6 +137,51 @@ export type Database = {
         }
         Relationships: []
       }
+      feature_requests: {
+        Row: {
+          admin_notes: string | null
+          category: string | null
+          context: Json | null
+          created_at: string
+          description: string
+          id: string
+          status: string
+          title: string
+          updated_at: string
+          upvotes: number
+          user_id: string | null
+          username: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          category?: string | null
+          context?: Json | null
+          created_at?: string
+          description: string
+          id?: string
+          status?: string
+          title: string
+          updated_at?: string
+          upvotes?: number
+          user_id?: string | null
+          username?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          category?: string | null
+          context?: Json | null
+          created_at?: string
+          description?: string
+          id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          upvotes?: number
+          user_id?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
       game_data_overrides: {
         Row: {
           created_at: string

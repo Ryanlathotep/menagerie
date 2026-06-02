@@ -602,10 +602,13 @@ export function regenerateOverworld(seed: number = 0): OverworldState {
 // open world is always a safer place to level up than the dungeons themselves.
 // Procedural dungeons start at floor(dist/6); we keep wild enemies a bit gentler.
 export function getDifficulty(worldX: number, worldY: number): number {
+  const gen = getOverworldGen();
+  const tilesPerLevel = Math.max(1, gen.difficulty.tilesPerLevel ?? 10);
+  const starting = Math.max(1, gen.difficulty.starting ?? 1);
   const dist = Math.sqrt(worldX * worldX + worldY * worldY);
-  // Floor 1 within ~8 tiles of town, then scales slowly with distance.
-  if (dist < 8) return 1;
-  return Math.max(1, Math.floor((dist - 8) / 7) + 1);
+  // Safe zone: starting difficulty within ~8 tiles of town, then scales by tilesPerLevel.
+  if (dist < 8) return starting;
+  return Math.max(starting, Math.floor((dist - 8) / tilesPerLevel) + starting);
 }
 
 // Visible radius (in tiles) that the overworld renderer draws around the player.

@@ -1,65 +1,111 @@
-# Overworld Movement & Targeting Repairs
+# Code-Quality Refactor Plan
 
-Six related bugs are making the overworld nearly unplayable on mobile. Fixes are grouped by root cause so I can verify each one independently.
+Goal: shrink the five biggest files and decouple data access, without regressing any of the memory-locked invariants (END_RUN / FLEE_DUNGEON persistence, movement timing, world-seed hashing, unified inventory).
 
-## 1. Player locked out when a visible enemy is on screen
+Each phase is independently shippable and ends with `window.__menagerie.runSmokeTest()` + a quick visual sanity pass. If any invariant turns red, STOP and roll that phase back before continuing.
 
-**Cause:** `handleMove` returns `prev` on `result.type === 'enemy'`, refusing to step into the enemy. That is correct for the bumped tile, but `startAutoWalk` *also* bails the moment any enemy is visible within 6 tiles, AND tap-to-move on an empty tile away from the enemy still routes through `findOverworldPath` → `startAutoWalk`, so the player can't move at all while an enemy is on-screen.
+---
 
-**Fix:** Loosen `startAutoWalk`'s halt condition: only stop when the next queued step is adjacent to a visible enemy (or the enemy is within 2 tiles of the player), not just "any enemy visible anywhere on screen." Also allow a single-tile manual tap (already adjacent path) to bypass the halt entirely. Show a single toast on halt instead of repeated logs.
+## Phase 1 — Split `src/game/state.ts` (1,980 lines, 61 cases)
+**Why first:** Index.tsx and OverworldView import from it; refactoring them on top of a clean reducer is easier than the reverse.
 
-## 2. "Move" missing from the universal (long-press) menu
+- New folder `src/game/reducers/`:
+  - `runReducer.ts` — START_RUN, END_RUN, FLEE_DUNGEON, party/monster/XP cases
+  - `inventoryReducer.ts` — ADD_ITEM, USE_ITEM, DROP_ITEM, equipment cases (mirror to storedItems stays here)
+  - `overworldReducer.ts` — overworld movement, build, road, base cases
+  - `dungeonReducer.ts` — dungeon movement, tile, combat-resolution cases
+  - `metaReducer.ts` — settings, waypoints, UI flags
+- `state.ts` keeps `GameProvider`, `useGame`, `gameReducer` (now just a `switch(action.type)` that delegates), `persistRunPartyProgress`, `buildProgressSnapshot`.
+- No action-shape changes. No behavior changes.
 
-**Cause:** In `OverworldView.tsx` the per-tile branches (`grass`, road) add a `Move here` action only when `isAdjacent`. For non-adjacent tiles the fallback "Walk here (N steps)" is added only when `findOverworldPath` succeeds AND the tile is grass/road. For `tree`/`rock`/`water`/`dungeon_entrance`/`enemy`/`nest` the walk fallback is skipped entirely, so the player has no Move/Walk affordance.
+**Risk:** cross-domain actions (END_RUN touches party + inventory + overworld). Keep those in `runReducer` and have it call helpers from the others — do NOT split END_RUN across files.
 
-**Fix:** Move the universal "Walk here" affordance out of the type-specific blocks and into the shared `tile.explored` block already at the bottom (~line 2509). Allow it for any tile that pathfinding can reach OR whose neighbor is reachable (so you can walk *to* a tree/rock/enemy and let the final step interact). Always include `Move here` (1-step) for any adjacent reachable tile, regardless of type.
+**Gate:** all 6 invariants ✅.
 
-## 3. Tap-to-move often not working on mobile
+---
 
-**Causes:**
-- `handleTileClick` requires the tap to land on a tile whose dest is walkable; taps on harvestables fall through silently in some branches.
-- Long-press detection on mobile fires the unified menu *and* a click — the click then dismisses the menu before the user sees it (and no move starts).
-- `findOverworldPath` requires `tile.explored` for every path tile, so a tap one square past the fog boundary returns `null` and is silently ignored.
+## Phase 2 — Extract data hooks (`src/hooks/data/`)
+**Why second:** small, isolated, gives us testable seams before touching the big UI files.
 
-**Fix:**
-- In `handleTileClick`, when the target tile is a harvestable or enemy more than 1 step away, run the A* path to the tile *adjacent* to it and auto-walk to that tile (then the next tap interacts).
-- Suppress the synthetic click that follows a long-press (use a `suppressNextClickRef` set in `handleTileRightClick`, cleared after 300ms).
-- Allow A* to traverse the last 1-2 unexplored tiles next to the destination (relaxed `tile.explored` check for the goal's immediate neighborhood) so taps right at the fog edge succeed.
+- `useBugReports.ts` — wraps `ReportBugDialog` + `BugReportsEditor` queries
+- `useFeatureRequests.ts` — wraps `FeatureRequestDialog` + `FeatureRequestsEditor`
+- `useGameDataOverrides.ts` — central read of overrides used at boot
+- `useAuthSession.ts` — single subscriber for `auth.onAuthStateChange`
 
-## 4. Movement-only moves (dash/blink/etc.) don't fire
+Replace direct `supabase.*` calls in 9 components. Admin editors keep their write logic but call shared hooks for reads.
 
-**Cause:** The targeting branch in `Index.tsx` (line 1629-1666) correctly enters targeting for `isMovementSkill`, but `getAttackConfig` returns `pattern: 'movement'` only when the move has a `movement.offsets` array. Admin-panel-created moves with `type: 'movement'` but an empty/undefined `movement` object fall back to the melee/ranged path and either error or do nothing.
+**Risk:** RLS-scoped queries differ slightly per call site — verify each migration preserves filters.
 
-**Fix:**
-- In `MovesEditor.tsx`, when saving a move with `type === 'movement'` and no `movement.offsets`, auto-attach a default 1-tile orthogonal `movement.offsets` block so the move is executable. Surface a small inline warning if the designer set type=movement but never opened the Shapes tab.
-- In `getAttackConfig` (or the executor), treat `type === 'movement'` without offsets as a single-step dash toward the targeted tile rather than crashing.
-- Ensure overworld targeting (not just dungeon) handles `pattern === 'movement'` — currently the movement branch is dungeon-only (Index.tsx:1876). Add an equivalent in `OverworldView.handleTargetingClick`.
+**Gate:** sign in, submit a bug report, submit a feature request, load admin panel.
 
-## 5. Pathing improvements
+---
 
-**Fix:**
-- Increase A* node budget from 4000 to 8000 so long taps across explored land succeed.
-- Add diagonal-aware tie-breaking (still 4-connected steps, but prefer the path that hugs roads — roads currently aren't preferred, so the walker often takes the grass parallel to a road).
-- When pathfinding to an interactable tile, return the path *up to and including* the adjacent tile, then mark the interaction step as a separate "final tap" the caller can fire after auto-walk completes.
+## Phase 3 — Split `src/pages/Index.tsx` (5,780 lines) → `src/pages/DungeonView/`
+**Why third:** biggest payoff, but needs Phase 1 done so extracted hooks dispatch against a clean reducer.
 
-## 6. Map generation lets harvestables block the only path
+- `DungeonView/index.tsx` — composition root (~400 lines target)
+- `useDungeonInput.ts` — keyboard handler, tap/click targeting, attack menu
+- `useDungeonAutoRun.ts` — auto-run state + step throttling
+- `useDungeonRecruitment.ts` — recruit queue, defeated-enemy modal flow
+- `useDungeonRevive.ts` — revive prompt + last-stand flow
+- `useDungeonBuild.ts` — build panel + dungeon build mode
+- `DungeonOverlays.tsx` — modal stack (revive, stair, recruit, level-up)
+- `DungeonContext.tsx` — shared refs (isMovingRef, targetPath, etc.) so hooks aren't prop-drilled
 
-**Cause:** Trees/rocks/water can spawn in 1-wide corridors between cliffs/walls, fully blocking traversal. The generator (`overworld.ts`) doesn't validate that each tile has at least one walkable neighbor.
+**Risk:** `isMovingRef` and the rAF movement loop are timing-sensitive (movement-sync memory). Keep them in ONE hook (`useDungeonInput`) and pass the ref via context — do not duplicate.
 
-**Fix:** After chunk generation, run a quick local sweep: for every harvestable tile (tree/rock), check the 4-neighborhood. If removing this tile would disconnect a chokepoint (i.e., both sides are walkable and there's no alternative within a small radius), demote it to plain grass. Implementation: in `overworld.ts` `generateChunk` post-pass, iterate tree/rock tiles and if `walkableNeighbors === 2` and those two neighbors are opposite sides AND no diagonal walkable exists, replace with grass. Cheap and only runs once per chunk.
+**Gate:** all 6 invariants ✅ + manual: move 10 tiles, auto-run, attack an enemy, recruit, level-up, stair down.
 
-## Bonus: render-phase setState warning
+---
 
-The console shows `Cannot update a component (GameProvider) while rendering a different component (OverworldView)` from line ~199. This is the `setOverworld(prev => { … dispatch(…) … })` pattern — dispatching during a state updater. Wrap the cross-component dispatches in `queueMicrotask(() => dispatch(...))` or move them into a `useEffect` keyed off the relevant overworld field. Low-risk and removes the warning.
+## Phase 4 — Split `src/game/OverworldView.tsx` (2,860 lines) → `src/game/OverworldView/`
+Mirror of Phase 3 for overworld:
+- `useOverworldInput.ts`, `useOverworldBuild.ts`, `useOverworldRoads.ts`, `OverworldOverlays.tsx`, shared `OverworldContext.tsx`.
 
-## Files touched
+**Risk:** world-seed mixing (memory: `_worldSeed` at every hash site). Do NOT touch `overworld.ts` in this phase.
 
-- `src/game/OverworldView.tsx` — auto-walk halt rules, unified menu walk affordance, click handler, suppress-click-after-longpress, movement targeting
-- `src/game/overworldPathfinding.ts` — node budget, fog-edge relaxation, road preference
-- `src/game/overworld.ts` — chokepoint sweep in `generateChunk`
-- `src/game/overworldCombat.ts` — movement pattern handling
-- `src/pages/Index.tsx` — movement-skill fallback when offsets missing
-- `src/admin/MovesEditor.tsx` — auto-attach default movement offsets + warning
-- `src/game/moves.ts` (small) — helper for default movement offsets
+**Gate:** invariants ✅ + manual: move, gather, build a structure, enter a dungeon entrance.
 
-No DB / schema changes. No new dependencies.
+---
+
+## Phase 5 — Split `src/game/equipment.ts` (1,929 lines)
+- `equipment/data.ts` — base tables
+- `equipment/stats.ts` — modifier math
+- `equipment/sets.ts` — set bonuses (2/3/4 pc)
+- `equipment/affinity.ts` — element/class affinity
+- `equipment.ts` re-exports for back-compat (zero call-site changes).
+
+**Gate:** invariants ✅ + equip/unequip a 3-piece set and confirm bonus shows.
+
+---
+
+## Phase 6 — Split `src/game/overworld.ts` (1,500 lines)
+- `overworld/generation.ts` (world-seed-mixed hashes stay here, untouched)
+- `overworld/chunks.ts` (load/unload)
+- `overworld/biomes.ts`
+- `overworld/roads.ts`
+- `overworld.ts` re-exports.
+
+**Risk:** highest seed-fragility. Do this last and review every `hash(...)` call site for an unchanged `_worldSeed` argument.
+
+**Gate:** Settings → Rebuild Overworld produces the same map for the same seed before vs after.
+
+---
+
+## Out of scope for this pass
+- Admin editors (MovesEditor, ShapeDesigner) — internal tooling, lower priority
+- DungeonRenderer / OverworldTileGraphics — performance-sensitive; needs profiling first, separate effort
+- CraftingWorkshop / Settings / GameSidebar / UnifiedMovePanel — 900-line range, can wait
+
+## Verification after every phase
+1. `bun run build` (harness does this automatically after edits)
+2. `window.__menagerie.runSmokeTest()` — all 6 invariants must be ✅
+3. Targeted manual check listed under each phase's Gate
+4. `code--read_runtime_errors` clean
+
+## What I need from you
+- **Approve the plan** to start with Phase 1, OR
+- **Approve a subset** (e.g. just Phases 1+2 for now), OR
+- **Adjust scope** if you want a different file first
+
+Given the scale, I'd recommend approving phase-by-phase rather than all six at once.

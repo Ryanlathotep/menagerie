@@ -1,26 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
 import { Bug, RefreshCw, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
-
-interface BugReport {
-  id: string;
-  user_id: string | null;
-  username: string | null;
-  title: string;
-  description: string;
-  category: string | null;
-  context: Record<string, unknown> | null;
-  status: string;
-  admin_notes: string | null;
-  created_at: string;
-  updated_at: string;
-}
+import { useBugReports } from '@/hooks/data/useBugReports';
 
 const STATUSES = ['open', 'in-progress', 'resolved', 'wont-fix'];
 

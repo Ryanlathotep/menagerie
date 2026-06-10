@@ -213,6 +213,7 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
   const [displayW, setDisplayW] = useState(0);
   const [loadingRemote, setLoadingRemote] = useState(false);
   const [selectedRemote, setSelectedRemote] = useState<string>('');
+  const [zoom, setZoom] = useState(3);
   const imgRef = useRef<HTMLImageElement>(null);
 
   // Already-uploaded raw sheets the admin can re-open in the slicer.
@@ -515,6 +516,19 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
         )}
       </div>
 
+      <div className="flex items-center gap-3">
+        <Label className="text-xs whitespace-nowrap">Zoom {zoom}x</Label>
+        <input
+          type="range"
+          min={1}
+          max={10}
+          step={1}
+          value={zoom}
+          onChange={(e) => setZoom(parseInt(e.target.value))}
+          className="w-48"
+        />
+      </div>
+
 
       {imgUrl && (
         <div className="border rounded p-2 bg-muted/20 overflow-auto max-h-[60vh]">
@@ -531,7 +545,7 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
               alt="preview"
               draggable={false}
               className="block max-w-none"
-              style={{ imageRendering: 'pixelated' }}
+              style={{ imageRendering: 'pixelated', width: dims.w * zoom }}
               onLoad={(e) => setDisplayW((e.target as HTMLImageElement).clientWidth)}
             />
             {/* Grid + region overlay, scaled with the rendered image */}

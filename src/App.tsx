@@ -22,6 +22,7 @@ import {
 import { setWorldGenOverrides } from "@/game/worldGenConfig";
 
 import { FloatingBugButton } from "@/game/FloatingBugButton";
+import { FloatingFeatureButton } from "@/game/FloatingFeatureButton";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
@@ -74,6 +75,7 @@ const App = () => (
         <HashRouter>
           <AppRoutes />
           <FloatingBugButton />
+          <FloatingFeatureButton />
         </HashRouter>
       </TooltipProvider>
     </QueryClientProvider>

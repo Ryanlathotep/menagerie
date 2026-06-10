@@ -75,6 +75,8 @@ const DEFAULT_SETTINGS: GameSettings = {
   autoEquipOnPickup: false,
 
   autoMine: false,
+
+  itemWorldTowerGreedRisk: false,
 };
 
 

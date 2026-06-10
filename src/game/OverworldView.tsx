@@ -2538,21 +2538,41 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       if (tile && tile.explored) {
         const hasId = (id: string) => actions.some(a => a.id === id);
 
+        // Adjacent universal "Move here" — every tile type should offer a
+        // direct step affordance, not just grass/roads. Bumping into a tree
+        // / rock / enemy / building lets movePlayer handle the interaction.
+        if (!hasId('move') && isAdjacent) {
+          actions.push({
+            id: 'move',
+            label: 'Move here',
+            icon: Footprints,
+            onClick: () => { const dx = unifiedMenu.x - px, dy = unifiedMenu.y - py; close(); handleMove(dx, dy); },
+          });
+        }
+
         // Walk here via A* (skip if already adjacent — that branch gets
-        // its own "Move here" step action above).
-        if (!hasId('move') && !hasId('path-here') && !isAdjacent && dist > 0) {
-          const path = findOverworldPath(overworld, overworld.playerPosition, { x: unifiedMenu.x, y: unifiedMenu.y });
+        // its own "Move here" step action above). Falls back to pathing to
+        // an adjacent walkable tile when the goal itself is non-walkable.
+        if (!hasId('path-here') && !isAdjacent && dist > 0) {
+          let path = findOverworldPath(overworld, overworld.playerPosition, { x: unifiedMenu.x, y: unifiedMenu.y });
+          if (!path || path.length === 0) {
+            // Try adjacent tiles for non-walkable interactables.
+            const offsets = [ [0, -1], [0, 1], [-1, 0], [1, 0] ];
+            for (const [ox, oy] of offsets) {
+              const p = findOverworldPath(overworld, overworld.playerPosition, { x: unifiedMenu.x + ox, y: unifiedMenu.y + oy });
+              if (p && p.length > 0 && (!path || p.length < path.length)) path = p;
+            }
+          }
           if (path && path.length > 0) {
+            const finalPath = path;
             actions.push({
               id: 'path-here',
-              label: `Walk here (${path.length} step${path.length === 1 ? '' : 's'})`,
+              label: `Walk here (${finalPath.length} step${finalPath.length === 1 ? '' : 's'})`,
               icon: Footprints,
               hint: 'Auto-walks along the shortest path',
               onClick: () => {
-                const p = findOverworldPath(overworld, overworld.playerPosition, { x: unifiedMenu.x, y: unifiedMenu.y });
                 close();
-                if (p && p.length > 0) startAutoWalk(p);
-                else toast.info('No path to that tile.');
+                startAutoWalk(finalPath);
               },
             });
           }

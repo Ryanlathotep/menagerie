@@ -156,7 +156,31 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 export function useSettings() {
   const context = useContext(SettingsContext);
   if (!context) {
-    throw new Error('useSettings must be used within a SettingsProvider');
+    // Fallback: don't crash the tree if a hot-reloaded module instance loses
+    // its provider link. Reads from localStorage so values still reflect the
+    // user's saved prefs; writes are best-effort (no live re-render).
+    if (typeof console !== 'undefined') {
+      console.warn('[useSettings] No SettingsProvider in tree — using fallback.');
+    }
+    let saved: GameSettings = DEFAULT_SETTINGS;
+    try {
+      const raw = typeof localStorage !== 'undefined'
+        ? localStorage.getItem('monster-roguelike-settings')
+        : null;
+      if (raw) saved = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    } catch { /* ignore */ }
+    return {
+      settings: saved,
+      updateSetting: <K extends keyof GameSettings>(key: K, value: GameSettings[K]) => {
+        try {
+          const next = { ...saved, [key]: value };
+          localStorage.setItem('monster-roguelike-settings', JSON.stringify(next));
+        } catch { /* ignore */ }
+      },
+      resetSettings: () => {
+        try { localStorage.removeItem('monster-roguelike-settings'); } catch { /* ignore */ }
+      },
+    } as SettingsContextType;
   }
   return context;
 }

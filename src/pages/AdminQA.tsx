@@ -84,7 +84,7 @@ function AdminQAInner() {
   if (!isAdmin) return <Navigate to="/" replace />;
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-4 md:p-8">
+    <main className="min-h-screen bg-background text-foreground p-4 md:p-8">
       <div className="max-w-5xl mx-auto space-y-6">
         <header className="flex items-center justify-between gap-4">
           <div>
@@ -196,7 +196,7 @@ function AdminQAInner() {
           </p>
         </Card>
       </div>
-    </div>
+    </main>
   );
 }
 

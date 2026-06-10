@@ -176,7 +176,6 @@ export function WaypointManager({ isOpen, onClose }: WaypointManagerProps) {
                       <div className="flex-1 min-w-0">
                         {isEditing ? (
                           <Input
-                            autoFocus
                             value={draftName}
                             onChange={e => setDraftName(e.target.value)}
                             onKeyDown={e => {
@@ -245,7 +244,6 @@ export function WaypointManager({ isOpen, onClose }: WaypointManagerProps) {
                         <div className="flex-1 min-w-0">
                           {isEditing ? (
                             <Input
-                              autoFocus
                               value={draftName}
                               onChange={e => setDraftName(e.target.value)}
                               onKeyDown={e => {
@@ -324,7 +322,6 @@ export function WaypointManager({ isOpen, onClose }: WaypointManagerProps) {
                         <div className="flex-1 min-w-0">
                           {isEditing ? (
                             <Input
-                              autoFocus
                               value={draftName}
                               onChange={e => setDraftName(e.target.value)}
                               onKeyDown={e => {

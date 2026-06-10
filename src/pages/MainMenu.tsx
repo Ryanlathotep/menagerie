@@ -17,6 +17,9 @@ import { SettingsButton } from '@/game/Settings';
 import { TownShop } from '@/game/TownShop';
 import { CraftingWorkshop } from '@/game/CraftingWorkshop';
 import { DungeonListPanel } from '@/game/DungeonListPanel';
+import { ItemWorldTowerPicker } from '@/game/ItemWorldTowerPicker';
+import { getItemWorldTowerType } from '@/game/itemWorldTowers';
+import { DungeonEntrance } from '@/game/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useCloudSave } from '@/hooks/useCloudSave';
 

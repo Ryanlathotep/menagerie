@@ -100,6 +100,7 @@ import { useCloudAutosave } from '@/hooks/useCloudAutosave';
 import { useAdminRole } from '@/hooks/useAdminRole';
 
 import { MainMenu } from './MainMenu';
+import { FloatingActionButton } from '@/game/FloatingActionButton';
 import { CharacterSelect } from './CharacterSelect';
 import { RunSummary } from './RunSummary';
 
@@ -3098,10 +3099,12 @@ function DungeonView({
       <div className="fixed inset-0 overflow-hidden transition-all duration-300" style={dungeonBottomStyle}>
         <div className="h-full flex flex-col">
           {/* Get Unstuck button — teleports player to nearest walkable tile.
-              Persists in dungeon view so a stuck player can always recover. */}
-          <button
-            type="button"
-            onClick={() => {
+              Persists in dungeon view so a stuck player can always recover.
+              Draggable + position persists across sessions. */}
+          <FloatingActionButton
+            storageKey="unstuck-button-position-v1"
+            defaultPosition={{ x: 8, y: 8 }}
+            onTap={() => {
               if (!dungeon) return;
               const safe = findNearestWalkableTile(
                 dungeon.tiles,
@@ -3114,11 +3117,14 @@ function DungeonView({
               addLog('🆘 Teleported to nearest safe tile.', 'system');
               toast.success('Unstuck!');
             }}
-            title="Teleport to nearest walkable tile if you're stuck"
-            className="fixed top-2 left-2 z-50 px-2 py-1 text-xs rounded-md border border-border bg-card/90 text-foreground shadow-md backdrop-blur hover:bg-accent hover:text-accent-foreground"
+            size={44}
+            title="Teleport to nearest walkable tile (drag to reposition)"
+            ariaLabel="Get unstuck — teleport to nearest walkable tile"
+            zIndex={50}
+            className="bg-card/90 text-foreground hover:bg-accent hover:text-accent-foreground text-base"
           >
-            🆘 Unstuck
-          </button>
+            🆘
+          </FloatingActionButton>
           {/* Scrollable dungeon viewport - fills available space */}
           <div className="flex-1 overflow-hidden bg-card">
             <DungeonRenderer 

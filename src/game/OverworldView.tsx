@@ -1123,14 +1123,34 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     // Far tap → A* path to destination and walk it step-by-step. This is what
     // makes mobile tap-to-move actually usable when the target isn't right
     // next to you.
-    const path = findOverworldPath(overworld, overworld.playerPosition, { x: worldX, y: worldY });
+    let path = findOverworldPath(overworld, overworld.playerPosition, { x: worldX, y: worldY });
     if (!path || path.length === 0) {
-      toast.info('No path to that tile.');
-      return;
+      // Fallback: if the target is a harvestable / enemy / building / nest /
+      // dungeon (non-walkable goal types), try pathing to its closest adjacent
+      // walkable tile so the player can step up and interact.
+      const interactable = tile && (
+        tile.type === 'tree' || tile.type === 'rock' || tile.type === 'enemy' ||
+        tile.type === 'nest' || tile.type === 'building' || tile.type === 'dungeon_entrance' ||
+        tile.type === 'water'
+      );
+      if (interactable) {
+        const offsets = [ [0, -1], [0, 1], [-1, 0], [1, 0] ];
+        let best: Position[] | null = null;
+        for (const [ox, oy] of offsets) {
+          const ax = worldX + ox, ay = worldY + oy;
+          if (ax === overworld.playerPosition.x && ay === overworld.playerPosition.y) {
+            best = []; break;
+          }
+          const p = findOverworldPath(overworld, overworld.playerPosition, { x: ax, y: ay });
+          if (p && p.length > 0 && (!best || p.length < best.length)) best = p;
+        }
+        path = best;
+      }
+      if (!path || path.length === 0) {
+        toast.info('No path to that tile.');
+        return;
+      }
     }
-    // If the destination is an interactable (tree/rock/enemy/nest/building/dungeon),
-    // stop one step before so the final move triggers the interaction via
-    // movePlayer (which already handles harvest/enter/attack logic).
     startAutoWalk(path);
   }, [overworld, monster, targetingMove, handleTargetingClick, handleMove, addLog, buildMode, selectedBuildType, roadBuildMode, selectedRoadType, saveOverworld, settings.autoMine, startAutoMine]);
   

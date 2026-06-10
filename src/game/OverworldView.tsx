@@ -35,6 +35,8 @@ import {
   processScoutTowerAttacks, PlayerBuilding, getDisassembleRefund, getRepairCost, isWallActingAsGate,
 } from './buildings';
 import { isCreativeMode, effectiveTools } from './creativeMode';
+import { ItemWorldTowerPicker } from './ItemWorldTowerPicker';
+import { getItemWorldTowerType } from './itemWorldTowers';
 import { detectConnectorDir, nextConnectorDir } from './wallTop';
 import { OverworldRenderer, OverworldRendererHandle } from './OverworldRenderer';
 import { findOverworldPath } from './overworldPathfinding';
@@ -178,6 +180,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [showBuildingMenu, setShowBuildingMenu] = useState(false);
   const [showDungeonPrompt, setShowDungeonPrompt] = useState(false);
   const [selectedDungeon, setSelectedDungeon] = useState<DungeonEntrance | null>(null);
+  const [pendingItemWorldEntrance, setPendingItemWorldEntrance] = useState<DungeonEntrance | null>(null);
   const [showEquipment, setShowEquipment] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   
@@ -1384,6 +1387,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   
   const handleEnterDungeon = () => {
     setShowDungeonPrompt(false);
+    // Item World towers must pick a base asset before generating the dungeon.
+    if (selectedDungeon?.category === 'item_world') {
+      setPendingItemWorldEntrance(selectedDungeon);
+      return;
+    }
     // Store which dungeon we're entering for tracking
     if (selectedDungeon) {
       localStorage.setItem('menagerie_active_dungeon_id', selectedDungeon.id);
@@ -1980,6 +1988,23 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         </Card>
       </div>
     )}
+
+    <ItemWorldTowerPicker
+      open={pendingItemWorldEntrance !== null}
+      towerType={pendingItemWorldEntrance ? getItemWorldTowerType(pendingItemWorldEntrance.id) : null}
+      onCancel={() => setPendingItemWorldEntrance(null)}
+      onConfirmed={() => {
+        const entrance = pendingItemWorldEntrance;
+        setPendingItemWorldEntrance(null);
+        if (!entrance) return;
+        localStorage.setItem('menagerie_active_dungeon_id', entrance.id);
+        dispatch({ type: 'SNAPSHOT_RUN_PROGRESS', overworld });
+        localStorage.setItem('menagerie_run_destination', 'dungeon');
+        localStorage.setItem('menagerie_run_origin', 'overworld');
+        dispatch({ type: 'SET_PHASE', phase: 'character_select' });
+      }}
+    />
+
     
     {/* Build Panel */}
     {showBuildPanel && (

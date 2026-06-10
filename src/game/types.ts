@@ -487,7 +487,7 @@ export interface DungeonEntrance {
   discovered?: boolean;           // True once the player has seen this entrance
   isHome?: boolean;               // True for the starter Tower of the Infinite
   theme?: DungeonTheme;           // Content theme (filters what monsters spawn)
-  category?: 'home' | 'element' | 'class' | 'species' | 'procedural'; // For grouping in UI
+  category?: 'home' | 'element' | 'class' | 'species' | 'procedural' | 'item_world'; // For grouping in UI
   // Cross-run persistent per-floor snapshots. Mined walls, opened tiles,
   // collected chests, placed buildings/roads survive between runs.
   // Enemies are intentionally NOT stored — they respawn on re-entry.
@@ -696,6 +696,10 @@ export interface SaveData {
   overworldState?: import('./overworld').OverworldState; // Persisted overworld
   dungeonEntrances: Record<string, DungeonEntrance>; // Persistent dungeon data
   tools?: import('./tools').PlayerTools; // Singleton upgradeable tools (pickaxe, etc.)
+  /** Per-tower state for the three Item World towers (Prototyping / Training / Skill Forge).
+   *  Tracks which asset is currently slotted, its generation seed, and whether the
+   *  Floor-50 reward has been extracted. */
+  itemWorldTowerState?: import('./itemWorldTowers').ItemWorldTowerStateMap;
 }
 
 export interface GameState {

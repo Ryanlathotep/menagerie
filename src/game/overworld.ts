@@ -1,6 +1,7 @@
 // Overworld system - infinite chunk-based exploration world
 
 import { Monster, Position, SpeciesType, ElementType, SPECIES_DATA, DungeonEntrance, createAllThemedTowers } from './types';
+import { createAllItemWorldTowerEntrances } from './itemWorldTowers';
 import { generateRandomMonster } from './utils';
 import { PlayerBuilding, isWallActingAsGate } from './buildings';
 import { NestState, isNestAt, createNest } from './nests';
@@ -287,6 +288,7 @@ function findThemedTowerAt(
   for (const id in dungeonEntrances) {
     const d = dungeonEntrances[id];
     if (!d || !d.category || d.category === 'procedural') continue;
+    // home / element / class / species / item_world all live at fixed world coords.
     if (d.worldX === worldX && d.worldY === worldY) return id;
   }
   return null;
@@ -569,7 +571,7 @@ export function createOverworldState(seed: number = 0): OverworldState {
     // Seed with the canonical themed-tower set so the initial chunk
     // generation places the Tower of the Infinite + element/class/species
     // towers on the map.
-    dungeonEntrances: createAllThemedTowers(),
+    dungeonEntrances: { ...createAllThemedTowers(), ...createAllItemWorldTowerEntrances() },
     nests: {},
     roads: {},
     resourceUpgrades: {},

@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { getComboId, UnlockedMonster, InventoryItem, MonsterStats, Monster, Position, DungeonState, hydrateDungeonFromSnapshot } from '@/game/types';
 import { createMonster, calculateStats } from '@/game/utils';
 import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, hasVisibleEnemy, LOOT_TABLE, mineWall, mineableWallName, digRune, damageDungeonNest, tickDungeonNests, prepareDungeonForEntry, findNearestWalkableTile, updateVisibility, getDungeonTowerVisionSources } from '@/game/dungeon';
+import { getItemWorldTowerType, ITEM_WORLD_REWARD_FLOOR_DELTA } from '@/game/itemWorldTowers';
 import { spawnNestMonster, getNestDestroyRewards } from '@/game/nests';
 import { expandDungeonIfNeeded, findStairsPosition } from '@/game/dungeonExpansion';
 import { PICKAXE_TIERS, hitsToBreak } from '@/game/tools';
@@ -677,6 +678,23 @@ function DungeonView({
           species: m.species, class: m.class, element: m.element, level: m.level,
         })) ?? null;
         void submitTowerFloor(towerId, nextFloorNum, partySnapshot);
+      }
+      // Item World tower reward check.
+      if (towerId) {
+        const iwType = getItemWorldTowerType(towerId);
+        const iwState = iwType ? state.saveData.itemWorldTowerState?.[iwType] : null;
+        if (iwType && iwState && !iwState.hasExtractedReward) {
+          const threshold = (iwState.baseAssetLevel ?? 1) + ITEM_WORLD_REWARD_FLOOR_DELTA;
+          if (nextFloorNum >= threshold) {
+            dispatch({ type: 'CLAIM_ITEM_WORLD_REWARD', towerType: iwType, floorReached: nextFloorNum });
+            const rewardMsg =
+              iwType === 'prototyping' ? `🔨 Recipe unlocked: ${iwState.baseAssetName}!` :
+              iwType === 'training'    ? `⚔️ ${iwState.baseAssetName} gained a permanent +1 base level!` :
+                                         `✨ Scroll of ${iwState.baseAssetName} added to town storage!`;
+            addLog(rewardMsg, 'system');
+            toast.success(rewardMsg);
+          }
+        }
       }
       return;
     } else if (result.stairsUp && dungeon.floor <= (dungeon.startingFloor ?? 1)) {

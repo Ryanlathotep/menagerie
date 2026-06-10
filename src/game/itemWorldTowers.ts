@@ -1,131 +1,127 @@
 /**
- * Item World Towers - Three permanent, reusable progression dungeons
- * 
- * Design: One Prototyping Tower, one Training Tower, one Skill Forge.
- * Players bring an item/creature/move scroll and enter the tower to process it.
- * All three leverage the standard dungeon generation engine with no duplication.
- * 
- * The towers are placed near the starting area, always accessible, and track
- * which asset is currently being processed via SaveData.itemWorldTowerState.
+ * Item World Towers - Three permanent, reusable progression dungeons.
+ *
+ * Players slot a base asset (item / monster / move scroll) at the entrance,
+ * then climb a procedurally generated tower seeded from that asset. Crossing
+ * REWARD_FLOOR_DELTA new floors beyond your personal best with that asset
+ * spawns an Extraction Altar — claim the reward to forge a permanent
+ * recipe / stat boost / scroll.
+ *
+ * Greed-risk (lose-everything-on-wipe) is intentionally OPT-IN — see
+ * GameSettings.itemWorldTowerGreedRisk (default off). When off, defeats
+ * follow the normal No-Death-Losses rule.
  */
 
 import { DungeonEntrance, DungeonTheme } from './types';
 
 export type ItemWorldTowerType = 'prototyping' | 'training' | 'skill_creation';
 
-/**
- * Current state of an item world tower - what's being processed and progress.
- * Stored in SaveData.itemWorldTowerState[towerType].
- */
+/** How many floors above your personal best with this asset before the
+ *  Extraction Altar spawns. Design bible says 50; we use 10 during beta so
+ *  testers can actually reach the reward loop. */
+export const ITEM_WORLD_REWARD_FLOOR_DELTA = 10;
+
 export interface ItemWorldTowerState {
   type: ItemWorldTowerType;
-  
-  // The asset currently being processed (ID, name, level)
   baseAssetId: string;
   baseAssetName: string;
   baseAssetLevel: number;
-  
-  // Seeds for deterministic dungeon generation (from asset or generated fresh)
+  /** Deterministic seed derived from the asset — drives dungeon generation. */
   generationSeed: string;
-  
-  // Progress tracking
+  /** Highest floor reached on the current asset run. */
   highestFloorReached: number;
+  /** True after the player has claimed the Floor-N reward at least once for this asset. */
   hasExtractedReward: boolean;
-  
-  // Timestamp of when this asset was last entered (for re-entry logic)
   lastEnteredTimestamp?: number;
 }
 
-/**
- * Storage shape: SaveData.itemWorldTowerState
- */
 export type ItemWorldTowerStateMap = Partial<Record<ItemWorldTowerType, ItemWorldTowerState>>;
 
-// ============= TOWER ENTRANCE FACTORIES =============
+// ============= ENTRANCE FACTORIES =============
 
-/**
- * Create the permanent Prototyping Tower entrance.
- * Positioned just west of home so it's one of the first things beta testers see.
- */
+export const PROTOTYPING_TOWER_ID = 'tower_prototyping';
+export const TRAINING_TOWER_ID = 'tower_training';
+export const SKILL_FORGE_TOWER_ID = 'tower_skill_creation';
+
 export function createPrototypingTowerEntrance(): DungeonEntrance {
   return {
-    id: 'tower_prototyping',
-    worldX: -5,
-    worldY: 0,
-    seed: 31337, // Fixed seed for this tower type
+    id: PROTOTYPING_TOWER_ID,
+    worldX: -4,
+    worldY: -1,
+    seed: 31337,
     deepestFloor: 0,
     difficulty: 1,
     name: '🔨 Prototyping Tower',
     discovered: false,
     theme: { kind: 'all' } as DungeonTheme,
-    category: 'procedural',
+    category: 'item_world',
   };
 }
 
-/**
- * Create the permanent Training Tower entrance.
- * Positioned just east of home.
- */
 export function createTrainingTowerEntrance(): DungeonEntrance {
   return {
-    id: 'tower_training',
-    worldX: 5,
-    worldY: 0,
-    seed: 31338, // Fixed seed for this tower type
+    id: TRAINING_TOWER_ID,
+    worldX: 4,
+    worldY: -1,
+    seed: 31338,
     deepestFloor: 0,
     difficulty: 1,
     name: '⚔️ Training Tower',
     discovered: false,
     theme: { kind: 'all' } as DungeonTheme,
-    category: 'procedural',
+    category: 'item_world',
   };
 }
 
-/**
- * Create the permanent Skill Forge entrance.
- * Positioned just south of home.
- */
-export function createSkillCreationTowerEntrance(): DungeonEntrance {
+export function createSkillForgeEntrance(): DungeonEntrance {
   return {
-    id: 'tower_skill_creation',
+    id: SKILL_FORGE_TOWER_ID,
     worldX: 0,
-    worldY: 5,
-    seed: 31339, // Fixed seed for this tower type
+    worldY: 4,
+    seed: 31339,
     deepestFloor: 0,
     difficulty: 1,
     name: '✨ Skill Forge',
     discovered: false,
     theme: { kind: 'all' } as DungeonTheme,
-    category: 'procedural',
+    category: 'item_world',
   };
 }
 
-/**
- * Initialize all three towers for a new save.
- */
 export function createAllItemWorldTowerEntrances(): Record<string, DungeonEntrance> {
   return {
-    tower_prototyping: createPrototypingTowerEntrance(),
-    tower_training: createTrainingTowerEntrance(),
-    tower_skill_creation: createSkillCreationTowerEntrance(),
+    [PROTOTYPING_TOWER_ID]: createPrototypingTowerEntrance(),
+    [TRAINING_TOWER_ID]: createTrainingTowerEntrance(),
+    [SKILL_FORGE_TOWER_ID]: createSkillForgeEntrance(),
   };
 }
 
-/**
- * Check if a dungeon entrance ID is an item world tower.
- */
 export function isItemWorldTower(id: string): boolean {
-  return id === 'tower_prototyping' ||
-         id === 'tower_training' ||
-         id === 'tower_skill_creation';
+  return id === PROTOTYPING_TOWER_ID ||
+         id === TRAINING_TOWER_ID ||
+         id === SKILL_FORGE_TOWER_ID;
 }
 
-/**
- * Extract tower type from entrance ID.
- */
 export function getItemWorldTowerType(id: string): ItemWorldTowerType | null {
-  if (id === 'tower_prototyping') return 'prototyping';
-  if (id === 'tower_training') return 'training';
-  if (id === 'tower_skill_creation') return 'skill_creation';
+  if (id === PROTOTYPING_TOWER_ID) return 'prototyping';
+  if (id === TRAINING_TOWER_ID) return 'training';
+  if (id === SKILL_FORGE_TOWER_ID) return 'skill_creation';
   return null;
+}
+
+export function getItemWorldTowerIdForType(type: ItemWorldTowerType): string {
+  if (type === 'prototyping') return PROTOTYPING_TOWER_ID;
+  if (type === 'training') return TRAINING_TOWER_ID;
+  return SKILL_FORGE_TOWER_ID;
+}
+
+/** Stable 31-bit hash of an arbitrary string. Used to derive a per-asset
+ *  dungeon seed so the same item always produces the same maze. */
+export function hashAssetSeed(input: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = (h * 16777619) >>> 0;
+  }
+  return h & 0x7fffffff;
 }

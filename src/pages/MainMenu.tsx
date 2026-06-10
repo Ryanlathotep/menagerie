@@ -17,6 +17,9 @@ import { SettingsButton } from '@/game/Settings';
 import { TownShop } from '@/game/TownShop';
 import { CraftingWorkshop } from '@/game/CraftingWorkshop';
 import { DungeonListPanel } from '@/game/DungeonListPanel';
+import { ItemWorldTowerPicker } from '@/game/ItemWorldTowerPicker';
+import { getItemWorldTowerType } from '@/game/itemWorldTowers';
+import { DungeonEntrance } from '@/game/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useCloudSave } from '@/hooks/useCloudSave';
 
@@ -26,6 +29,7 @@ export function MainMenu() {
   const { state, dispatch } = useGame();
   const [showCrafting, setShowCrafting] = useState(false);
   const [showShop, setShowShop] = useState(false);
+  const [pendingItemWorldEntrance, setPendingItemWorldEntrance] = useState<DungeonEntrance | null>(null);
   const { signOut, isAuthenticated } = useAuth();
   const { syncSave, saveToCloud, syncing, lastSyncTime } = useCloudSave();
   const navigate = useNavigate();
@@ -214,6 +218,11 @@ export function MainMenu() {
           <DungeonListPanel
             dungeonEntrances={state.saveData.dungeonEntrances || {}}
             onLaunch={(entrance) => {
+              // Item World towers must pick a base asset first.
+              if (entrance.category === 'item_world') {
+                setPendingItemWorldEntrance(entrance);
+                return;
+              }
               localStorage.setItem('menagerie_run_destination', 'dungeon');
               localStorage.setItem('menagerie_run_origin', 'main_menu');
               localStorage.setItem('menagerie_active_dungeon_id', entrance.id);
@@ -224,6 +233,23 @@ export function MainMenu() {
             quickStartPartySize={quickStartParty.length}
             highestMonsterLevel={highestMonsterLevel}
           />
+
+          <ItemWorldTowerPicker
+            open={pendingItemWorldEntrance !== null}
+            towerType={pendingItemWorldEntrance ? getItemWorldTowerType(pendingItemWorldEntrance.id) : null}
+            onCancel={() => setPendingItemWorldEntrance(null)}
+            onConfirmed={() => {
+              const entrance = pendingItemWorldEntrance;
+              setPendingItemWorldEntrance(null);
+              if (!entrance) return;
+              localStorage.setItem('menagerie_run_destination', 'dungeon');
+              localStorage.setItem('menagerie_run_origin', 'main_menu');
+              localStorage.setItem('menagerie_active_dungeon_id', entrance.id);
+              localStorage.setItem('menagerie_active_dungeon_difficulty', String(entrance.difficulty || 1));
+              dispatch({ type: 'SET_PHASE', phase: 'character_select' });
+            }}
+          />
+
 
           <div className="flex gap-2 justify-center">
             <Button variant="outline" className="w-32" onClick={() => setShowShop(true)}>

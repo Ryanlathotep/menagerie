@@ -581,6 +581,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     cancelAutoWalk();
     autoWalkPathRef.current = [...path];
     const stepDelay = Math.max(80, settings.autoRunSpeed || 100);
+    // The player must NEVER be fully locked out of moving: nearby enemies only
+    // cancel *multi-step* auto-walking. The first step of any deliberate move
+    // command always executes, then we halt the rest of the queue with a
+    // warning if danger is close.
+    let tookFirstStep = false;
     autoWalkTimerRef.current = window.setInterval(() => {
       const queue = autoWalkPathRef.current;
       const ow = overworldRef.current;
@@ -588,10 +593,10 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         cancelAutoWalk();
         return;
       }
-      // Only halt if a visible enemy is within 2 tiles of the player OR sits
-      // on the next queued step. Previously we halted whenever ANY enemy was
-      // visible on screen, which locked the player out of moving away from
-      // distant enemies on mobile.
+      // Only treat enemies as danger when a visible enemy is within 2 tiles of
+      // the player OR sits next to the queued step. Previously we halted
+      // whenever ANY enemy was visible on screen, which locked the player out
+      // of moving away from distant enemies on mobile.
       const next = queue[0];
       const enemies = getVisibleOverworldEnemies(ow, 8);
       const dangerNearby = enemies.some(({ pos }) => {
@@ -599,9 +604,10 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         const dNext = Math.abs(pos.x - next.x) + Math.abs(pos.y - next.y);
         return dPlayer <= 2 || dNext <= 1;
       });
-      if (dangerNearby) {
+      if (dangerNearby && tookFirstStep) {
+        // Already moved at least once this command — stop further auto-steps.
         cancelAutoWalk();
-        addLog('⚠️ Stopped — enemy too close!', 'info');
+        addLog('⚠️ Auto-walk stopped — enemy too close! Tap again to keep moving.', 'info');
         return;
       }
       queue.shift();
@@ -613,6 +619,14 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         return;
       }
       handleMoveRef.current(dx, dy);
+      tookFirstStep = true;
+      if (dangerNearby) {
+        // Took the guaranteed single step into danger range — warn and stop
+        // the remaining queued steps so the player isn't auto-walked into a fight.
+        cancelAutoWalk();
+        if (queue.length > 0) addLog('⚠️ Auto-walk stopped — enemy too close! Tap again to keep moving.', 'info');
+        return;
+      }
       if (queue.length === 0) cancelAutoWalk();
     }, stepDelay);
   }, [cancelAutoWalk, settings.autoRunSpeed, addLog]);

@@ -18,7 +18,7 @@ import { ExpandedStats } from './CharacterSheet';
 
 import { UnifiedMovePanel } from './UnifiedMovePanel';
 import { SettingsPanel } from './Settings';
-import { MonsterEquipment, EquipmentItem, RARITY_COLORS, CRAFTING_MATERIALS, calculateEquipmentBonuses, calculateSetBonusStats } from './equipment';
+import { MonsterEquipment, EquipmentItem, RARITY_COLORS, CRAFTING_MATERIALS, calculateEquipmentBonuses, calculateSetBonusStats, getRecipesUsingMaterial } from './equipment';
 import { PartyPanel } from './PartyPanel';
 import { EvolvedMove } from './moveMastery';
 

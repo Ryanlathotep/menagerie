@@ -17,6 +17,7 @@ import {
   createAllThemedTowers,
   snapshotDungeonToEntrance,
 } from './types';
+import { createAllItemWorldTowerEntrances, isItemWorldTower, hashAssetSeed, ItemWorldTowerState, ItemWorldTowerType, getItemWorldTowerIdForType } from './itemWorldTowers';
 import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot, dismantleEquipment, getRecipeFromEquipment, getConsumableRecipeFromItem } from './equipment';
 import type { PickaxeTier, ShovelTier } from './tools';
 import { xpToNextLevel } from './combat';

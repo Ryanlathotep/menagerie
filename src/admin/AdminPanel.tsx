@@ -1,4 +1,23 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
+
+function SwitchAccountButton() {
+  const { signOut, isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
+  if (!isAuthenticated) return null;
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={async () => { await signOut(); navigate('/auth'); }}
+      title={user?.email ? `Signed in as ${user.email} — click to switch` : 'Switch account'}
+    >
+      🔁 Switch Account
+    </Button>
+  );
+}
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';

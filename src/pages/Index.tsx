@@ -3772,7 +3772,7 @@ function DungeonView({
                     onClick: () => { close(); handleUseItemOutOfCombat(item); },
                   });
                 }
-                const selfMoves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level).filter(
+                const selfMoves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level, `${monster.species}_${monster.element}_${monster.class}`).filter(
                   (mv) => (mv.targeting === 'self' || (mv.type === 'heal' && mv.power === 0))
                     && (mv.staminaCost || 0) <= (monster.stats.currentStamina ?? monster.stats.stamina ?? 50),
                 );

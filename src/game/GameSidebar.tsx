@@ -734,7 +734,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                                 </div>
                               </Card>
                             </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-[200px] z-[100]">
+                            <TooltipContent side="top" className="max-w-[240px] z-[100]">
                               <p className="font-semibold text-sm">{item.name}</p>
                               <p className="text-xs text-muted-foreground">{description}</p>
                               {item.effect && (
@@ -742,6 +742,12 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                                   ✨ {item.effect.replace(/_/g, ' ')}
                                   {item.value > 0 && ` (+${item.value})`}
                                 </p>
+                              )}
+                              {item.quantity > 1 && (
+                                <p className="text-[10px] text-muted-foreground mt-1">Stack: {item.quantity}</p>
+                              )}
+                              {item.value > 0 && (
+                                <p className="text-[10px] text-yellow-500 mt-0.5">💰 {item.value}g each</p>
                               )}
                               {hotbarKey && (
                                 <p className="text-xs text-secondary mt-1">⌨ Shift+{hotbarKey}</p>

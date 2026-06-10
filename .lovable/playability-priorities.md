@@ -1,49 +1,50 @@
 ---
-generated_at: 2026-06-10T20:00:00Z
+generated_at: 2026-06-10T21:00:00Z
 sources:
-  bugs_considered: 14
+  bugs_considered: 11
   features_considered: 0
   planned_considered: 1
 top_ids:
-  - bug:ffcffd41 — mobile-longpress-tooltips
-  - cluster:overworld-movement — b4c013f2 + 03cd6bec + 69a179cd + plan.md
-  - bug:a712c559 — one-hit-ko-ends-run
+  - bug:5cfcdab5 — shortcuts-fire-in-text-inputs
+  - bug:ccef9d63 — crafting-materials-inventory-verify
+  - cluster:dockable-utility-buttons — 77efe74a + 1099eb75
 ---
 
-## Playability Priorities — 2026-06-10
-Sources: 14 bugs · 0 feature requests · 1 planned doc (`.lovable/plan.md`) · prev list: no
+## Playability Priorities — 2026-06-10 (re-run)
+Sources: 11 bugs still open · 0 feature requests · 1 planned doc · prev list: yes (2026-06-10 20:00Z)
 
 ### 🎯 Top 3 — ship these next
 
-1. **Mobile long-press shows no tooltip for Tower of the Infinite (and likely all dungeon entrances)** — playability 4/5 · reach 5/5 · effort 1/5 · priority **20.0**
-   Source: bug `ffcffd41`
-   Why it matters: Mobile is a first-class target, and the entire pre-run decision (which tower, what level, what to bring) hangs on that tooltip. Without it, mobile players are launching runs blind, which directly costs them runs and gold.
-   Suggested first step: In the unified long-press handler that drives `UnifiedTileMenu` / building-tooltip on overworld, pin the tooltip card to the menu (keep it open until dismissed) — same behavior we just shipped for the menu itself. Likely a one-flag change in `src/game/OverworldView.tsx` + the tooltip component used by `dungeon_entrance` tiles.
+1. **Keyboard shortcuts fire while typing in text inputs (can trigger Exit Dungeon on a "d")** — playability 4/5 · reach 4/5 · effort 1/5 · priority **16.0**
+   Source: bug `5cfcdab5`
+   Why it matters: A stray keystroke in a rename/chat/admin field can end a run or open a destructive modal — that's silent run-loss territory. The fix is one global guard and prevents a whole class of accidents across every text input in the app.
+   Suggested first step: In the global keydown handler (likely the one in `src/pages/Index.tsx` that powers Shift+1-9 hotbar and movement keys), early-return when `document.activeElement` is `INPUT`, `TEXTAREA`, or has `contentEditable`. One block, applies everywhere.
 
-2. **Overworld movement + targeting cluster — invisible enemies, locked movement, wall-walking pathing, broken auto-harvest** — playability 5/5 · reach 5/5 · effort 3/5 · priority **8.3** (×1.2 carry-over → **10.0**)
-   Source: bugs `b4c013f2`, `03cd6bec`, `69a179cd` + `.lovable/plan.md` (Overworld Movement & Targeting Repairs)
-   Why it matters: The overworld is the only path into every dungeon. Right now any visible enemy locks all movement, pathing tries to mine through walls, and auto-harvest stops after one tile — together they make the overworld "nearly unplayable on mobile" (the user's own words). A plan already exists and is unshipped; every day it sits, every other priority is being judged on a broken substrate.
-   Suggested first step: Execute the existing plan in `.lovable/plan.md` — start with sections 1 (loosen `startAutoWalk` halt) and 3 (tap-to-move + suppress long-press synthetic click) in `OverworldView.tsx`, since those two unlock manual play even before pathing is perfect.
+2. **Verify (or finish) the crafting-materials inventory/tooltip fix** — playability 3/5 · reach 5/5 · effort 1/5 · priority **15.0**
+   Source: bug `ccef9d63`
+   Why it matters: Crafting is the gateway from materials to gear, which is the gateway to climbing higher floors. The recent inventory/tooltip pass should have addressed this, but no one has confirmed and the bug is still flagged `open` in the DB. Five minutes of verify-or-close keeps the backlog honest.
+   Suggested first step: Open the inventory on mobile + desktop with a fresh save that contains at least one crafting material; confirm the material card renders, shows the rarity-colored tooltip, and the new "Used in N recipes" block populates. If green, mark the report `resolved`. If still broken, the gap is almost certainly in the materials → `InventoryItemCard` render path in `GameSidebar.tsx`.
 
-3. **Dungeon run ended on a one-hit KO without the revive/switch prompt** — playability 5/5 · reach 4/5 · effort 2/5 · priority **10.0**
-   Source: bug `a712c559`
-   Why it matters: Memory says `last-stand-revive-prompt` and switch-on-faint already exist, but a real run ended without either firing — that's effectively save/run data loss the player can't recover from. Roguelike runs are the headline loop; a silent dead-end here erodes trust faster than any visual bug.
-   Suggested first step: Reproduce by KO'ing the active monster from full HP in one hit, then check the END_RUN gate in `Index.tsx` — the revive prompt likely only runs when HP ticks to 0 via damage step, not when a single hit overflows. Branch on "active fainted AND party not fully fainted" → force `ReviveTargetModal` or the swap modal before any END_RUN dispatch.
+3. **Make Unstuck (and Feature Request / Bug Report) buttons draggable + dockable** — playability 3/5 · reach 4/5 · effort 2/5 · priority **6.0**
+   Source: bugs `77efe74a` + `1099eb75` (duplicate reports)
+   Why it matters: Two reports about the same thing means it's actively in the way during real play, especially on mobile where it overlaps combat controls. Not a crash, but the highest-reach UX papercut still open.
+   Suggested first step: Mirror the drag/dock logic already used by the Bug Report button onto the Unstuck button, then refactor both into a shared `<FloatingActionButton>` so the Feature Request button can opt in too. Persist position to localStorage keyed by button id.
 
-### Honorable mentions (4–8)
+### Honorable mentions
 | # | Item | Source | Pri | Why it's close |
 |---|---|---|---|---|
-| 4 | Keyboard shortcuts fire while typing in text inputs (exit-dungeon on "d") | bug `5cfcdab5` | 9.0 | Trivial fix (guard on `document.activeElement` tag) and prevents accidental run-ending keystrokes. |
-| 5 | Unstuck button should be draggable/dockable (incl. feature-request button) | bugs `77efe74a`, `1099eb75` | 6.0 | Two duplicate reports — players are tripping over the button's position; small UX win. |
-| 6 | Crafting materials inventory tooltips / visibility | bug `ccef9d63` | — | Likely already addressed in the recent inventory/tooltip pass; verify and close before re-prioritizing. |
-| 7 | Movement-type custom moves silently no-op (dash/blink) | plan.md §4 + bug `2f91909c` | 5.0 | Blocks designer/admin iteration on move set, but no end-user reach yet. |
-| 8 | Map gen lets harvestables block 1-wide corridors | plan.md §6 | 4.0 | Rare but unrecoverable when it hits; cheap post-pass. |
+| 4 | Movement-type custom moves silently no-op (dash/blink) | plan.md §4 + bug `2f91909c` | 5.0 | Unblocks designer iteration; was in the original plan — confirm it was actually shipped in the movement cluster pass, otherwise it should jump back into the top 3. |
+| 5 | Harvestables can fully block 1-wide corridors | plan.md §6 | 4.0 | Rare but unrecoverable when it hits. Cheap chunk-gen post-pass — also confirm whether it shipped. |
 
 ### Changes from previous list
-- Dropped: — (no previous list)
-- Carried over (still open): — (n/a)
-- New entrants: all items above
+- **Dropped (user says shipped):**
+  - `ffcffd41` — Mobile long-press dungeon tooltips
+  - Overworld movement cluster (`b4c013f2`, `03cd6bec`, `69a179cd` + `.lovable/plan.md` §1, §3)
+  - `a712c559` — One-hit KO revive prompt
+- **Carried over (still open):** none — all three prior priorities are out.
+- **New entrants:** `5cfcdab5` (typing-shortcut guard), `ccef9d63` (verify crafting inventory), `77efe74a`/`1099eb75` (dockable buttons). Promoted from honorable-mentions in the previous list.
+- ⚠️ Note: every bug row in the DB is still marked `open`. Once the prior top 3 are verified live, flipping their `status` keeps future re-runs accurate without leaning on memory.
 
 ### Out of scope / blocked
-- **Admin panel off-screen on mobile** (`39e002c9`), **admin minimizes on bug-report select** (`49c0b24b`), **Move tab copy/accuracy-tier issues** (`759910f0`, `35c295e6`), **custom moves disappearing from admin panel** (`2f91909c`) — admin-only surface; doesn't affect player-facing playability. Worth a separate admin-polish pass, not this list.
+- Admin-only bugs: `39e002c9` (panel off-screen mobile), `49c0b24b` (panel minimizes on bug select), `759910f0` (copy-move function), `35c295e6` (accuracy tier direction) — don't affect player-facing playability. Worth a dedicated admin-polish pass, not this list.
 - Anything that would re-introduce the Sprite Editor or branch menu content by viewport — excluded by Core memory rules.

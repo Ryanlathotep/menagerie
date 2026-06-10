@@ -63,7 +63,7 @@ export function findOverworldPath(
   state: OverworldState,
   start: Position,
   goal: Position,
-  maxNodes = 4000,
+  maxNodes = 8000,
 ): Position[] | null {
   if (start.x === goal.x && start.y === goal.y) return [];
 

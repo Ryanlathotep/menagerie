@@ -1,71 +1,22 @@
-import { useCallback, useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
 import { Lightbulb, RefreshCw, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
-
-interface FeatureRequest {
-  id: string;
-  user_id: string | null;
-  username: string | null;
-  title: string;
-  description: string;
-  category: string | null;
-  context: Record<string, unknown> | null;
-  status: string;
-  admin_notes: string | null;
-  upvotes: number;
-  created_at: string;
-  updated_at: string;
-}
+import { useFeatureRequests } from '@/hooks/data/useFeatureRequests';
 
 const STATUSES = ['open', 'planned', 'in-progress', 'shipped', 'declined'];
 
 export function FeatureRequestsEditor() {
-  const { toast } = useToast();
-  const [items, setItems] = useState<FeatureRequest[]>([]);
-  const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<string>('all');
+  const { items, loading, refresh: load, update, remove } = useFeatureRequests(filter);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      let q = supabase.from('feature_requests').select('*').order('created_at', { ascending: false }).limit(500);
-      if (filter !== 'all') q = q.eq('status', filter);
-      const { data, error } = await q;
-      if (error) throw error;
-      setItems((data ?? []) as FeatureRequest[]);
-    } catch (e) {
-      toast({ title: 'Failed to load requests', description: String((e as Error).message), variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
-  }, [filter, toast]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const update = async (id: string, patch: Partial<FeatureRequest>) => {
-    const { error } = await supabase.from('feature_requests').update(patch as any).eq('id', id);
-    if (error) {
-      toast({ title: 'Update failed', description: error.message, variant: 'destructive' });
-      return;
-    }
-    setItems((r) => r.map((x) => (x.id === id ? { ...x, ...patch } : x)));
-  };
-
-  const remove = async (id: string) => {
+  const onDelete = async (id: string) => {
     if (!confirm('Delete this feature request?')) return;
-    const { error } = await supabase.from('feature_requests').delete().eq('id', id);
-    if (error) {
-      toast({ title: 'Delete failed', description: error.message, variant: 'destructive' });
-      return;
-    }
-    setItems((r) => r.filter((x) => x.id !== id));
+    await remove(id);
   };
 
   const toggle = (id: string) => {
@@ -132,7 +83,7 @@ export function FeatureRequestsEditor() {
                     {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => remove(r.id)} aria-label="Delete feature request">
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(r.id)} aria-label="Delete feature request">
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>

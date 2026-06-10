@@ -958,6 +958,10 @@ function DungeonView({
     
     let lastMoveTime = 0;
     let animationFrameId: number;
+    // The player must never be locked out of moving entirely: a visible enemy
+    // only stops *continued* auto-running. The first step of a deliberate
+    // auto-run command always executes.
+    let stepsTaken = 0;
     
     const runStep = (timestamp: number) => {
       // Check stop flag first (immediate response)
@@ -995,8 +999,9 @@ function DungeonView({
             return;
           }
           
-          // Also stop if any enemy is currently visible (spotted!)
-          if (hasVisibleEnemy(currentDungeon.tiles)) {
+          // Stop CONTINUED running when any enemy is visible (spotted!) — but
+          // always allow the first step so the player is never frozen in place.
+          if (stepsTaken > 0 && hasVisibleEnemy(currentDungeon.tiles)) {
             setIsAutoRunning(false);
             autoRunDirection.current = null;
             return;

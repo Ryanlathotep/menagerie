@@ -113,7 +113,7 @@ export function EnemyAttackMenu({
               {usableCount} of {ordered.length} moves usable
             </p>
           </div>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose} aria-label="Close attack menu">
             <X className="h-4 w-4" />
           </Button>
         </div>

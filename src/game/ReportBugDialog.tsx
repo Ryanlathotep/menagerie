@@ -186,7 +186,7 @@ export function ReportBugDialog({ isOpen, onClose, context }: Props) {
             <Bug className="w-5 h-5 text-primary" />
             Report a Bug
           </h2>
-          <Button variant="ghost" size="icon" onClick={onClose}><X className="w-4 h-4" /></Button>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close bug report dialog"><X className="w-4 h-4" /></Button>
         </div>
 
         <div className="space-y-2">

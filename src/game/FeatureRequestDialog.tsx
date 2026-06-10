@@ -99,7 +99,7 @@ export function FeatureRequestDialog({ isOpen, onClose, context }: Props) {
             <Lightbulb className="w-5 h-5 text-primary" />
             Suggest a Feature
           </h2>
-          <Button variant="ghost" size="icon" onClick={onClose}><X className="w-4 h-4" /></Button>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close feature request dialog"><X className="w-4 h-4" /></Button>
         </div>
 
         <div className="space-y-2">

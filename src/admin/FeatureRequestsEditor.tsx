@@ -83,7 +83,7 @@ export function FeatureRequestsEditor() {
                     {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => remove(r.id)} aria-label="Delete feature request">
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(r.id)} aria-label="Delete feature request">
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>

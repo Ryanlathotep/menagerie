@@ -1385,6 +1385,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   
   const handleEnterDungeon = () => {
     setShowDungeonPrompt(false);
+    // Item World towers must pick a base asset before generating the dungeon.
+    if (selectedDungeon?.category === 'item_world') {
+      setPendingItemWorldEntrance(selectedDungeon);
+      return;
+    }
     // Store which dungeon we're entering for tracking
     if (selectedDungeon) {
       localStorage.setItem('menagerie_active_dungeon_id', selectedDungeon.id);

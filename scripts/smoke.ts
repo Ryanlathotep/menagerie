@@ -1,7 +1,8 @@
 // One-shot CLI smoke test runner. Imports the same invariants the
 // Admin QA panel uses and prints results to stdout.
-import { runAllInvariants, summarize } from './src/dev/qaInvariants';
-import type { GameState } from './src/game/types';
+import { runAllInvariants, summarize } from '../src/dev/qaInvariants';
+import type { GameState } from '../src/game/types';
+
 
 // Minimal live state stub — only inv_unifiedInventoryLive reads it,
 // and only checks run.inventory mirroring (skips if no active run).

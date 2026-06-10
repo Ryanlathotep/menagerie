@@ -24,6 +24,8 @@ import { xpToNextLevel } from './combat';
 import { setTaughtMovesProvider } from './moves';
 import { calculateStats } from './utils';
 import { findNearestEmptyOverworldTile, slimOverworldForSave } from './overworld';
+import { handleStartRun, handleEndRun, handleFleeDungeon } from './reducers/runHandlers';
+
 
 // Starting monster - Normal Normal Slime
 const STARTER_MONSTER = {
@@ -260,7 +262,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'FLEE_DUNGEON':
       return handleFleeDungeon(state, action);
 
+    case 'SET_DUNGEON':
       if (!state.run) return state;
+
       return {
         ...state,
         run: { ...state.run, dungeon: action.dungeon },

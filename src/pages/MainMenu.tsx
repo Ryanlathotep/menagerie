@@ -29,6 +29,7 @@ export function MainMenu() {
   const { state, dispatch } = useGame();
   const [showCrafting, setShowCrafting] = useState(false);
   const [showShop, setShowShop] = useState(false);
+  const [pendingItemWorldEntrance, setPendingItemWorldEntrance] = useState<DungeonEntrance | null>(null);
   const { signOut, isAuthenticated } = useAuth();
   const { syncSave, saveToCloud, syncing, lastSyncTime } = useCloudSave();
   const navigate = useNavigate();

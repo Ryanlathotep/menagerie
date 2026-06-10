@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Json } from '@/integrations/supabase/types';
 
-export type DataType = 'moves' | 'equipment' | 'recipes' | 'monsters' | 'sprites' | 'shape_templates' | 'asset_image' | 'particle_template' | 'particle_effect' | 'particle_default' | 'world_gen';
+export type DataType = 'moves' | 'equipment' | 'recipes' | 'monsters' | 'sprites' | 'shape_templates' | 'asset_image' | 'particle_template' | 'particle_effect' | 'particle_default' | 'world_gen' | 'tile_asset';
 
 interface GameDataOverride {
   id: string;

@@ -15,7 +15,8 @@ import { EquipmentIconEditor } from './EquipmentIconEditor';
 import { AssetLibrary } from './AssetLibrary';
 import { ParticlesEditor } from './ParticlesEditor';
 import { WorldGenEditor } from './WorldGenEditor';
-import { Shield, Swords, Package, Ghost, UserCog, Bug, Crosshair, Image as ImageIcon, Palette, Sparkles, Globe2, Lightbulb } from 'lucide-react';
+import { TileAssetManager } from './TileAssetManager';
+import { Shield, Swords, Package, Ghost, UserCog, Bug, Crosshair, Image as ImageIcon, Palette, Sparkles, Globe2, Lightbulb, Grid3x3 } from 'lucide-react';
 
 
 export function AdminPanel() {
@@ -89,6 +90,10 @@ export function AdminPanel() {
               <Sparkles className="w-4 h-4" />
               Particles
             </TabsTrigger>
+            <TabsTrigger value="tiles" className="gap-2 shrink-0">
+              <Grid3x3 className="w-4 h-4" />
+              Tiles
+            </TabsTrigger>
             <TabsTrigger value="worldgen" className="gap-2 shrink-0">
               <Globe2 className="w-4 h-4" />
               World Gen
@@ -133,6 +138,9 @@ export function AdminPanel() {
           </TabsContent>
           <TabsContent value="particles" className="p-4 m-0">
             <ParticlesEditor />
+          </TabsContent>
+          <TabsContent value="tiles" className="p-4 m-0">
+            <TileAssetManager />
           </TabsContent>
           <TabsContent value="worldgen" className="p-4 m-0">
             <WorldGenEditor />

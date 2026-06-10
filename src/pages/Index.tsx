@@ -3071,6 +3071,22 @@ function DungeonView({
         itemName={pendingDungeonReviveItem?.name || 'Revive'}
         onRevive={handleDungeonReviveTarget}
       />
+
+      {/* Scroll use dialog (Skill Forge scrolls) */}
+      <ScrollUseDialog
+        open={!!pendingScrollItem}
+        scroll={pendingScrollItem}
+        party={state.run?.party || []}
+        canCast={false}
+        onTeach={(comboId, moveId, itemId) => {
+          dispatch({ type: 'TEACH_MOVE_FROM_SCROLL', comboId, moveId, itemId });
+          addLog(`📜 The scroll's knowledge fuses into your monster!`, 'system');
+          toast.success('Move learned!');
+        }}
+        onCast={() => { /* Cast Only available in battle */ }}
+        onClose={() => setPendingScrollItem(null)}
+      />
+      
       
       <div className="fixed inset-0 overflow-hidden transition-all duration-300" style={dungeonBottomStyle}>
         <div className="h-full flex flex-col">

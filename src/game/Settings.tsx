@@ -475,6 +475,19 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 onCheckedChange={(v) => updateSetting('autoMine', v)}
               />
             </div>
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <Label htmlFor="iw-greed-risk" className="cursor-pointer">Item World greed risk</Label>
+                <span className="text-xs text-muted-foreground">
+                  When ON, getting wiped inside an Item World tower (Prototyping / Training / Skill Forge) costs you everything you found that run. OFF during beta — losses are forgiven like other towers.
+                </span>
+              </div>
+              <Switch
+                id="iw-greed-risk"
+                checked={settings.itemWorldTowerGreedRisk}
+                onCheckedChange={(v) => updateSetting('itemWorldTowerGreedRisk', v)}
+              />
+            </div>
           </div>
 
 

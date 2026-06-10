@@ -232,6 +232,8 @@ function DungeonView({
   // Dungeon revive modal state
   const [showDungeonReviveModal, setShowDungeonReviveModal] = useState(false);
   const [pendingDungeonReviveItem, setPendingDungeonReviveItem] = useState<InventoryItem | null>(null);
+  // Scroll use dialog (Skill Forge scrolls — Teach / Cast Once)
+  const [pendingScrollItem, setPendingScrollItem] = useState<InventoryItem | null>(null);
   const [stairExitDialogOpen, setStairExitDialogOpen] = useState(false);
 
   // Dungeon build mode (per-floor buildings persisted via snapshots)

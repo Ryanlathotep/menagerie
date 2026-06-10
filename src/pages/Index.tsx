@@ -3956,6 +3956,9 @@ function BattleView({
   // Revive target modal state
   const [showReviveModal, setShowReviveModal] = useState(false);
   const [pendingReviveItem, setPendingReviveItem] = useState<InventoryItem | null>(null);
+  // Scroll use dialog (Skill Forge scrolls — Teach / Cast Once)
+  const [pendingScrollItem, setPendingScrollItem] = useState<InventoryItem | null>(null);
+  
   
   // Combat switch mode state
   const [showCombatSwitch, setShowCombatSwitch] = useState(false);

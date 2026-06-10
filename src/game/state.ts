@@ -211,6 +211,9 @@ type GameAction =
   | { type: 'SNAPSHOT_RUN_PROGRESS'; overworld?: import('./overworld').OverworldState }
   | { type: 'LOAD_SAVE'; saveData: SaveData }
   | { type: 'RESET_SAVE' }
+  // Item World towers
+  | { type: 'SET_ITEM_WORLD_TOWER_ASSET'; towerType: ItemWorldTowerType; baseAssetId: string; baseAssetName: string; baseAssetLevel: number }
+  | { type: 'CLAIM_ITEM_WORLD_REWARD'; towerType: ItemWorldTowerType; floorReached: number }
   // Party management
   | { type: 'SWITCH_ACTIVE_MONSTER'; index: number }
   | { type: 'SWITCH_ACTIVE_IN_BATTLE'; index: number }  // Switch during battle (updates battle.playerMonster too)

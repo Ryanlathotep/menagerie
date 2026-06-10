@@ -571,7 +571,7 @@ export function createOverworldState(seed: number = 0): OverworldState {
     // Seed with the canonical themed-tower set so the initial chunk
     // generation places the Tower of the Infinite + element/class/species
     // towers on the map.
-    dungeonEntrances: createAllThemedTowers(),
+    dungeonEntrances: { ...createAllThemedTowers(), ...createAllItemWorldTowerEntrances() },
     nests: {},
     roads: {},
     resourceUpgrades: {},

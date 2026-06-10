@@ -196,7 +196,23 @@ export function getAttackConfig(move: Move | EvolvedMove): AttackConfig {
   const wallPenetrate = 'wallPenetrate' in move ? (move as Move).wallPenetrate : false;
   
   const customShape = 'customShape' in move ? (move as Move).customShape : undefined;
-  const movement = 'movement' in move ? (move as Move).movement : undefined;
+  let movement = 'movement' in move ? (move as Move).movement : undefined;
+
+  // Admin can create a move with type='movement' but forget to design the
+  // movement pattern in the Shapes tab. Rather than silently falling through
+  // to the melee/ranged branch (which then does nothing useful), give it a
+  // sensible default: a 4-step orthogonal dash like a generic Move skill.
+  if (!movement && move.type === 'movement') {
+    movement = {
+      offsets: [
+        { dx: 1, dy: 0 }, { dx: 2, dy: 0 }, { dx: 3, dy: 0 }, { dx: 4, dy: 0 },
+        { dx: -1, dy: 0 }, { dx: -2, dy: 0 }, { dx: -3, dy: 0 }, { dx: -4, dy: 0 },
+        { dx: 0, dy: 1 }, { dx: 0, dy: 2 }, { dx: 0, dy: 3 }, { dx: 0, dy: 4 },
+        { dx: 0, dy: -1 }, { dx: 0, dy: -2 }, { dx: 0, dy: -3 }, { dx: 0, dy: -4 },
+      ],
+      range: 4,
+    };
+  }
 
   // Admin-designed movement skill: caster picks one of the listed offsets as a destination.
   if (movement && movement.offsets.length > 0) {

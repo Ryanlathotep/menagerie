@@ -551,14 +551,23 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         cancelAutoWalk();
         return;
       }
-      // Stop if a visible enemy is on the field — mirrors auto-run behaviour.
-      const enemiesNearby = getVisibleOverworldEnemies(ow, 6);
-      if (enemiesNearby.length > 0) {
+      // Only halt if a visible enemy is within 2 tiles of the player OR sits
+      // on the next queued step. Previously we halted whenever ANY enemy was
+      // visible on screen, which locked the player out of moving away from
+      // distant enemies on mobile.
+      const next = queue[0];
+      const enemies = getVisibleOverworldEnemies(ow, 8);
+      const dangerNearby = enemies.some(({ pos }) => {
+        const dPlayer = Math.abs(pos.x - ow.playerPosition.x) + Math.abs(pos.y - ow.playerPosition.y);
+        const dNext = Math.abs(pos.x - next.x) + Math.abs(pos.y - next.y);
+        return dPlayer <= 2 || dNext <= 1;
+      });
+      if (dangerNearby) {
         cancelAutoWalk();
-        addLog('⚠️ Stopped — enemy spotted!', 'info');
+        addLog('⚠️ Stopped — enemy too close!', 'info');
         return;
       }
-      const next = queue.shift()!;
+      queue.shift();
       const dx = next.x - ow.playerPosition.x;
       const dy = next.y - ow.playerPosition.y;
       // If pathfinder result is no longer a single step from us, abort.
@@ -729,6 +738,55 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     }
     
     const config = getAttackConfig(targetingMove);
+
+    // ── Movement skill (dash / blink / admin-designed Move-pattern) ──
+    // The chosen tile IS the destination — relocate the player, consume
+    // stamina, then exit targeting. No damage / FX besides the warp particle.
+    if (config.pattern === 'movement') {
+      const staminaCost = targetingMove.staminaCost || 0;
+      const maxSta = monster.stats.stamina ?? 50;
+      const curSta = monster.stats.currentStamina ?? maxSta;
+      if (curSta < staminaCost) {
+        toast.error('Not enough stamina!');
+        return;
+      }
+      try {
+        playParticleEffectForMove({
+          surface: 'overworld', monster, move: targetingMove,
+          from: overworld.playerPosition, to: { x: worldX, y: worldY },
+          affected: [{ x: worldX, y: worldY }],
+        });
+      } catch { /* FX never blocks combat */ }
+      setOverworld(prev => {
+        const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
+        ensureChunksLoaded(newOw, worldX, worldY);
+        newOw.playerPosition = { x: worldX, y: worldY };
+        updateVisibility(newOw);
+        applyRoadsToChunks(newOw);
+        saveOverworld(newOw);
+        // Defer the player-stat dispatch out of the updater to dodge the
+        // "setState during render of another component" warning.
+        queueMicrotask(() => {
+          dispatch({
+            type: 'UPDATE_PLAYER_MONSTER',
+            monster: { ...monster, stats: { ...monster.stats, currentStamina: curSta - staminaCost } },
+          });
+        });
+        return newOw;
+      });
+      addLog(`🌀 ${monster.name} used ${targetingMove.name} to reposition!`, 'system');
+      setTargetingMove(null);
+      setTargetingTiles([]);
+      setAffectedTiles([]);
+      setHoveredTile(null);
+      // Process enemy turns after the relocation settles.
+      setTimeout(() => {
+        const ow = overworldRef.current;
+        if (ow) processEnemyTurns(ow);
+      }, 120);
+      return;
+    }
+
 
     // Mobile/touch tap-to-preview, tap-again-to-confirm for AoE moves.
     const isTouchDevice = typeof window !== 'undefined'
@@ -1114,14 +1172,34 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     // Far tap → A* path to destination and walk it step-by-step. This is what
     // makes mobile tap-to-move actually usable when the target isn't right
     // next to you.
-    const path = findOverworldPath(overworld, overworld.playerPosition, { x: worldX, y: worldY });
+    let path = findOverworldPath(overworld, overworld.playerPosition, { x: worldX, y: worldY });
     if (!path || path.length === 0) {
-      toast.info('No path to that tile.');
-      return;
+      // Fallback: if the target is a harvestable / enemy / building / nest /
+      // dungeon (non-walkable goal types), try pathing to its closest adjacent
+      // walkable tile so the player can step up and interact.
+      const interactable = tile && (
+        tile.type === 'tree' || tile.type === 'rock' || tile.type === 'enemy' ||
+        tile.type === 'nest' || tile.type === 'building' || tile.type === 'dungeon_entrance' ||
+        tile.type === 'water'
+      );
+      if (interactable) {
+        const offsets = [ [0, -1], [0, 1], [-1, 0], [1, 0] ];
+        let best: Position[] | null = null;
+        for (const [ox, oy] of offsets) {
+          const ax = worldX + ox, ay = worldY + oy;
+          if (ax === overworld.playerPosition.x && ay === overworld.playerPosition.y) {
+            best = []; break;
+          }
+          const p = findOverworldPath(overworld, overworld.playerPosition, { x: ax, y: ay });
+          if (p && p.length > 0 && (!best || p.length < best.length)) best = p;
+        }
+        path = best;
+      }
+      if (!path || path.length === 0) {
+        toast.info('No path to that tile.');
+        return;
+      }
     }
-    // If the destination is an interactable (tree/rock/enemy/nest/building/dungeon),
-    // stop one step before so the final move triggers the interaction via
-    // movePlayer (which already handles harvest/enter/attack logic).
     startAutoWalk(path);
   }, [overworld, monster, targetingMove, handleTargetingClick, handleMove, addLog, buildMode, selectedBuildType, roadBuildMode, selectedRoadType, saveOverworld, settings.autoMine, startAutoMine]);
   
@@ -2509,21 +2587,41 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       if (tile && tile.explored) {
         const hasId = (id: string) => actions.some(a => a.id === id);
 
+        // Adjacent universal "Move here" — every tile type should offer a
+        // direct step affordance, not just grass/roads. Bumping into a tree
+        // / rock / enemy / building lets movePlayer handle the interaction.
+        if (!hasId('move') && isAdjacent) {
+          actions.push({
+            id: 'move',
+            label: 'Move here',
+            icon: Footprints,
+            onClick: () => { const dx = unifiedMenu.x - px, dy = unifiedMenu.y - py; close(); handleMove(dx, dy); },
+          });
+        }
+
         // Walk here via A* (skip if already adjacent — that branch gets
-        // its own "Move here" step action above).
-        if (!hasId('move') && !hasId('path-here') && !isAdjacent && dist > 0) {
-          const path = findOverworldPath(overworld, overworld.playerPosition, { x: unifiedMenu.x, y: unifiedMenu.y });
+        // its own "Move here" step action above). Falls back to pathing to
+        // an adjacent walkable tile when the goal itself is non-walkable.
+        if (!hasId('path-here') && !isAdjacent && dist > 0) {
+          let path = findOverworldPath(overworld, overworld.playerPosition, { x: unifiedMenu.x, y: unifiedMenu.y });
+          if (!path || path.length === 0) {
+            // Try adjacent tiles for non-walkable interactables.
+            const offsets = [ [0, -1], [0, 1], [-1, 0], [1, 0] ];
+            for (const [ox, oy] of offsets) {
+              const p = findOverworldPath(overworld, overworld.playerPosition, { x: unifiedMenu.x + ox, y: unifiedMenu.y + oy });
+              if (p && p.length > 0 && (!path || p.length < path.length)) path = p;
+            }
+          }
           if (path && path.length > 0) {
+            const finalPath = path;
             actions.push({
               id: 'path-here',
-              label: `Walk here (${path.length} step${path.length === 1 ? '' : 's'})`,
+              label: `Walk here (${finalPath.length} step${finalPath.length === 1 ? '' : 's'})`,
               icon: Footprints,
               hint: 'Auto-walks along the shortest path',
               onClick: () => {
-                const p = findOverworldPath(overworld, overworld.playerPosition, { x: unifiedMenu.x, y: unifiedMenu.y });
                 close();
-                if (p && p.length > 0) startAutoWalk(p);
-                else toast.info('No path to that tile.');
+                startAutoWalk(finalPath);
               },
             });
           }

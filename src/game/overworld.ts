@@ -550,7 +550,57 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
     }
     tiles.push(row);
   }
-  
+
+  // ─── Chokepoint sweep ────────────────────────────────────────────────
+  // Harvestables (trees/rocks) shouldn't be the only thing blocking a 1-wide
+  // corridor — players have repeatedly hit map layouts where a row of grass
+  // is fully closed off by a tree wedged between two cliffs. After the chunk
+  // generates, demote any tree/rock whose only walkable neighbors are on
+  // opposite sides (i.e. removing it would re-open a corridor). This is a
+  // local check inside the chunk only — cross-chunk awareness isn't worth
+  // the extra cost, and most real-world chokepoints are local.
+  const isLocallyWalkable = (t: OverworldTile | undefined): boolean => {
+    if (!t) return false;
+    switch (t.type) {
+      case 'grass':
+      case 'dirt_road':
+      case 'stone_road':
+      case 'building':
+      case 'dungeon_entrance':
+        return true;
+      default:
+        return false;
+    }
+  };
+  for (let y = 0; y < CHUNK_SIZE; y++) {
+    for (let x = 0; x < CHUNK_SIZE; x++) {
+      const tile = tiles[y][x];
+      if (!tile || (tile.type !== 'tree' && tile.type !== 'rock')) continue;
+      const n = y > 0 ? tiles[y - 1][x] : undefined;
+      const s = y < CHUNK_SIZE - 1 ? tiles[y + 1][x] : undefined;
+      const w = x > 0 ? tiles[y][x - 1] : undefined;
+      const e = x < CHUNK_SIZE - 1 ? tiles[y][x + 1] : undefined;
+      const nw = isLocallyWalkable(n);
+      const sw = isLocallyWalkable(s);
+      const ww = isLocallyWalkable(w);
+      const ew = isLocallyWalkable(e);
+      const walkCount = (nw ? 1 : 0) + (sw ? 1 : 0) + (ww ? 1 : 0) + (ew ? 1 : 0);
+      // Opposite-side chokepoint: walkable to the N and S (no E/W escape),
+      // or walkable to the E and W (no N/S escape). Demote to grass.
+      const verticalChoke = nw && sw && !ww && !ew;
+      const horizontalChoke = ew && ww && !nw && !sw;
+      if (walkCount === 2 && (verticalChoke || horizontalChoke)) {
+        tiles[y][x] = {
+          type: 'grass',
+          explored: tile.explored,
+          visible: tile.visible,
+          harvested: false,
+          elevation: tile.elevation,
+        };
+      }
+    }
+  }
+
   return { cx, cy, tiles, enemies };
 }
 

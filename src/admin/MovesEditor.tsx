@@ -245,6 +245,21 @@ export function MovesEditor() {
       toast.error('Move is missing required fields');
       return;
     }
+    // Movement-type moves NEED a movement pattern or they'll do nothing at
+    // runtime. Auto-fill a sensible 4-step orthogonal dash when the designer
+    // forgot to design one in the Shapes tab.
+    if (merged.type === 'movement' && (!merged.movement || !merged.movement.offsets || merged.movement.offsets.length === 0)) {
+      merged.movement = {
+        offsets: [
+          { dx: 1, dy: 0 }, { dx: 2, dy: 0 }, { dx: 3, dy: 0 }, { dx: 4, dy: 0 },
+          { dx: -1, dy: 0 }, { dx: -2, dy: 0 }, { dx: -3, dy: 0 }, { dx: -4, dy: 0 },
+          { dx: 0, dy: 1 }, { dx: 0, dy: 2 }, { dx: 0, dy: 3 }, { dx: 0, dy: 4 },
+          { dx: 0, dy: -1 }, { dx: 0, dy: -2 }, { dx: 0, dy: -3 }, { dx: 0, dy: -4 },
+        ],
+        range: 4,
+      };
+      toast.info('Auto-attached a default 4-step dash pattern. Edit it in the Shapes tab.');
+    }
     const ok = await saveOverride('moves', base.id, merged as unknown as Record<string, unknown>);
     if (ok) {
       setSingleMoveOverride(base.id, merged);

@@ -63,7 +63,7 @@ export function findOverworldPath(
   state: OverworldState,
   start: Position,
   goal: Position,
-  maxNodes = 4000,
+  maxNodes = 8000,
 ): Position[] | null {
   if (start.x === goal.x && start.y === goal.y) return [];
 
@@ -129,9 +129,12 @@ export function findOverworldPath(
       const isGoal = nb.x === goal.x && nb.y === goal.y;
       const tile = getOverworldTile(state, nb.x, nb.y);
       if (!tile) continue;
-      // We don't path through fog — only through known terrain. This keeps
-      // tap-to-move from blindly marching into hazards.
-      if (!tile.explored) continue;
+      // Fog-of-war rule: we usually only path through explored terrain so
+      // players can't blindly march into hazards. But for the last 2 tiles
+      // around the goal we relax this — tapping just past the fog edge
+      // should auto-walk to the boundary instead of silently failing.
+      const distToGoal = Math.abs(nb.x - goal.x) + Math.abs(nb.y - goal.y);
+      if (!tile.explored && distToGoal > 2) continue;
       if (!isGoal && !isTraversable(tile, state, nb.x, nb.y)) continue;
       if (isGoal && !isTraversable(tile, state, nb.x, nb.y) && !goalIsInteractable) continue;
 
@@ -150,7 +153,12 @@ export function findOverworldPath(
         if (!fromIsConnector && !toIsConnector) continue;
       }
 
-      const g = current.g + 1;
+      // Step cost: roads are cheaper so the walker hugs them when possible.
+      // Stone roads (with the speed boost) get a deeper discount than dirt.
+      let stepCost = 1;
+      if (tile.type === 'stone_road') stepCost = 0.6;
+      else if (tile.type === 'dirt_road') stepCost = 0.8;
+      const g = current.g + stepCost;
       const h = heuristic(nb, goal);
       const f = g + h;
       const existing = open.find(o => o.x === nb.x && o.y === nb.y);

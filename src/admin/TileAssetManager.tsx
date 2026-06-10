@@ -213,6 +213,7 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
   const [displayW, setDisplayW] = useState(0);
   const [loadingRemote, setLoadingRemote] = useState(false);
   const [selectedRemote, setSelectedRemote] = useState<string>('');
+  const [zoom, setZoom] = useState(3);
   const imgRef = useRef<HTMLImageElement>(null);
 
   // Already-uploaded raw sheets the admin can re-open in the slicer.

@@ -1785,6 +1785,13 @@ interface GameProviderProps {
 export function GameProvider({ children }: GameProviderProps) {
   const [state, dispatch] = useReducer(gameReducer, INITIAL_STATE);
 
+  // Wire taught-moves provider so getMonsterMoves() can see scroll-taught
+  // moves when callers pass a comboId.
+  useEffect(() => {
+    setTaughtMovesProvider((comboId) => state.saveData.taughtMoves?.[comboId] || []);
+    return () => setTaughtMovesProvider(null);
+  }, [state.saveData.taughtMoves]);
+
   // Load save data from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('monster-roguelike-save');

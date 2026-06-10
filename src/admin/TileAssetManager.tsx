@@ -186,20 +186,31 @@ function readImageSize(file: File): Promise<{ w: number; h: number }> {
 
 // ---------- Sheet slicer ----------
 
+interface SliceRegion {
+  id: string;
+  r0: number; c0: number; r1: number; c1: number; // inclusive cell coords
+  role: TileRole;
+  name?: string;
+}
+
 function SheetSlicer({ onDone }: { onDone: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [dims, setDims] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
-  const [tileW, setTileW] = useState(16);
-  const [tileH, setTileH] = useState(16);
+  const [tileW, setTileW] = useState(32);
+  const [tileH, setTileH] = useState(32);
   const [marginX, setMarginX] = useState(0);
   const [marginY, setMarginY] = useState(0);
   const [spacingX, setSpacingX] = useState(0);
   const [spacingY, setSpacingY] = useState(0);
   const [sheetName, setSheetName] = useState('');
-  const [defaultRole, setDefaultRole] = useState<TileRole>('floor');
+  const [defaultRole, setDefaultRole] = useState<TileRole>('multi_tile_prop');
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
+  const [regions, setRegions] = useState<SliceRegion[]>([]);
+  const [drag, setDrag] = useState<{ r0: number; c0: number; r1: number; c1: number } | null>(null);
+  const [displayW, setDisplayW] = useState(0);
+  const imgRef = useRef<HTMLImageElement>(null);
 
   const onPick = async (f: File) => {
     setFile(f);
@@ -209,6 +220,7 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
     const d = await readImageSize(f);
     setDims(d);
     setSheetName((prev) => prev || safeName(f.name.replace(/\.[^.]+$/, '')));
+    setRegions([]);
   };
 
   const grid = useMemo(() => {
@@ -218,63 +230,167 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
     return { cols, rows };
   }, [dims, tileW, tileH, marginX, marginY, spacingX, spacingY]);
 
+  // Auto-detect base cell size. Tries common power-of-2 sizes and small
+  // margins; picks the largest size that divides the sheet evenly on both
+  // axes. Spacing is assumed 0 here (most packed sheets), user can tweak.
+  const autoDetect = () => {
+    if (!dims.w || !dims.h) { toast.error('Pick a sheet first'); return; }
+    const candidates = [64, 48, 32, 24, 16, 8];
+    const margins = [0, 1, 2, 4, 8];
+    let best: { size: number; margin: number } | null = null;
+    for (const size of candidates) {
+      for (const m of margins) {
+        if ((dims.w - 2 * m) % size === 0 && (dims.h - 2 * m) % size === 0) {
+          best = { size, margin: m };
+          break;
+        }
+      }
+      if (best) break;
+    }
+    if (!best) { toast.warning('No clean grid found — adjust manually'); return; }
+    setTileW(best.size); setTileH(best.size);
+    setMarginX(best.margin); setMarginY(best.margin);
+    setSpacingX(0); setSpacingY(0);
+    toast.success(`Detected ${best.size}×${best.size} cells, margin ${best.margin}`);
+  };
+
+  // ---- Drag-to-select cell regions on the preview ----
+  const cellFromEvent = useCallback((e: React.MouseEvent): { r: number; c: number } | null => {
+    if (!imgRef.current || !dims.w || displayW === 0) return null;
+    const rect = imgRef.current.getBoundingClientRect();
+    const scale = rect.width / dims.w;
+    const x = (e.clientX - rect.left) / scale;
+    const y = (e.clientY - rect.top) / scale;
+    const c = Math.floor((x - marginX) / (tileW + spacingX));
+    const r = Math.floor((y - marginY) / (tileH + spacingY));
+    if (r < 0 || c < 0 || r >= grid.rows || c >= grid.cols) return null;
+    return { r, c };
+  }, [dims.w, displayW, marginX, marginY, tileW, tileH, spacingX, spacingY, grid.rows, grid.cols]);
+
+  const onOverlayMouseDown = (e: React.MouseEvent) => {
+    const cell = cellFromEvent(e);
+    if (!cell) return;
+    setDrag({ r0: cell.r, c0: cell.c, r1: cell.r, c1: cell.c });
+  };
+  const onOverlayMouseMove = (e: React.MouseEvent) => {
+    if (!drag) return;
+    const cell = cellFromEvent(e);
+    if (!cell) return;
+    setDrag({ ...drag, r1: cell.r, c1: cell.c });
+  };
+  const onOverlayMouseUp = () => {
+    if (!drag) return;
+    const r0 = Math.min(drag.r0, drag.r1);
+    const r1 = Math.max(drag.r0, drag.r1);
+    const c0 = Math.min(drag.c0, drag.c1);
+    const c1 = Math.max(drag.c0, drag.c1);
+    setRegions((prev) => [
+      ...prev,
+      { id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, r0, c0, r1, c1, role: defaultRole },
+    ]);
+    setDrag(null);
+  };
+
+  const removeRegion = (id: string) => setRegions((p) => p.filter((r) => r.id !== id));
+  const setRegionRole = (id: string, role: TileRole) =>
+    setRegions((p) => p.map((r) => (r.id === id ? { ...r, role } : r)));
+  const setRegionName = (id: string, name: string) =>
+    setRegions((p) => p.map((r) => (r.id === id ? { ...r, name } : r)));
+  const clearRegions = () => setRegions([]);
+
+  // Render the slice plan: regions if any, otherwise the full uniform grid.
+  const sliceJobs = useMemo(() => {
+    if (regions.length > 0) {
+      return regions.map((reg) => ({
+        sx: marginX + reg.c0 * (tileW + spacingX),
+        sy: marginY + reg.r0 * (tileH + spacingY),
+        sw: (reg.c1 - reg.c0 + 1) * tileW + (reg.c1 - reg.c0) * spacingX,
+        sh: (reg.r1 - reg.r0 + 1) * tileH + (reg.r1 - reg.r0) * spacingY,
+        name: reg.name || `${reg.r0}_${reg.c0}_${reg.r1 - reg.r0 + 1}x${reg.c1 - reg.c0 + 1}`,
+        role: reg.role,
+        row: reg.r0, col: reg.c0,
+        spanRows: reg.r1 - reg.r0 + 1, spanCols: reg.c1 - reg.c0 + 1,
+      }));
+    }
+    const jobs: Array<{
+      sx: number; sy: number; sw: number; sh: number; name: string;
+      role: TileRole; row: number; col: number; spanRows: number; spanCols: number;
+    }> = [];
+    for (let r = 0; r < grid.rows; r++) {
+      for (let c = 0; c < grid.cols; c++) {
+        jobs.push({
+          sx: marginX + c * (tileW + spacingX),
+          sy: marginY + r * (tileH + spacingY),
+          sw: tileW, sh: tileH,
+          name: `${r}_${c}`, role: defaultRole,
+          row: r, col: c, spanRows: 1, spanCols: 1,
+        });
+      }
+    }
+    return jobs;
+  }, [regions, grid, marginX, marginY, tileW, tileH, spacingX, spacingY, defaultRole]);
+
   const doSlice = async () => {
     if (!file || !imgUrl) return;
     if (!sheetName) { toast.error('Sheet name required'); return; }
-    if (grid.cols === 0 || grid.rows === 0) { toast.error('Grid is empty — check tile size'); return; }
+    if (sliceJobs.length === 0) { toast.error('Nothing to slice'); return; }
+    if (sliceJobs.length > 4096) {
+      toast.error(`Too many tiles (${sliceJobs.length}). Limit is 4096.`);
+      return;
+    }
     const img = new Image();
     img.src = imgUrl;
     await new Promise((res) => { img.onload = () => res(null); });
-    const total = grid.cols * grid.rows;
-    if (total > 4096) {
-      toast.error(`Too many tiles (${total}). Limit is 4096; check your tile size.`);
-      return;
-    }
     setBusy(true);
-    setProgress({ done: 0, total });
+    setProgress({ done: 0, total: sliceJobs.length });
 
     const canvas = document.createElement('canvas');
-    canvas.width = tileW;
-    canvas.height = tileH;
     const ctx = canvas.getContext('2d')!;
     let ok = 0;
-    for (let r = 0; r < grid.rows; r++) {
-      for (let c = 0; c < grid.cols; c++) {
-        try {
-          const sx = marginX + c * (tileW + spacingX);
-          const sy = marginY + r * (tileH + spacingY);
-          ctx.clearRect(0, 0, tileW, tileH);
-          ctx.drawImage(img, sx, sy, tileW, tileH, 0, 0, tileW, tileH);
-          const blob: Blob = await new Promise((res, rej) =>
-            canvas.toBlob((b) => (b ? res(b) : rej(new Error('toBlob failed'))), 'image/png')
-          );
-          const path = `tiles/sliced/${safeName(sheetName)}/${r}_${c}.png`;
-          const { error } = await supabase.storage
-            .from(BUCKET)
-            .upload(path, blob, { upsert: true, contentType: 'image/png' });
-          if (error) throw error;
-          const url = publicUrl(path);
-          const meta: TileAssetMeta = {
-            url, path,
-            role: defaultRole,
-            sheet: sheetName, row: r, col: c,
-            width: tileW, height: tileH,
-            contentType: 'image/png',
-          };
-          await supabase.from('game_data_overrides').upsert(
-            { data_type: 'tile_asset', data_key: path, data_value: meta },
-            { onConflict: 'data_type,data_key' }
-          );
-          ok++;
-        } catch (err) {
-          console.error('Slice failed', r, c, err);
-        }
-        setProgress((p) => ({ ...p, done: p.done + 1 }));
+    for (const job of sliceJobs) {
+      try {
+        canvas.width = job.sw;
+        canvas.height = job.sh;
+        ctx.clearRect(0, 0, job.sw, job.sh);
+        ctx.drawImage(img, job.sx, job.sy, job.sw, job.sh, 0, 0, job.sw, job.sh);
+        const blob: Blob = await new Promise((res, rej) =>
+          canvas.toBlob((b) => (b ? res(b) : rej(new Error('toBlob failed'))), 'image/png')
+        );
+        const path = `tiles/sliced/${safeName(sheetName)}/${safeName(job.name)}.png`;
+        const { error } = await supabase.storage
+          .from(BUCKET)
+          .upload(path, blob, { upsert: true, contentType: 'image/png' });
+        if (error) throw error;
+        const url = publicUrl(path);
+        const meta: TileAssetMeta = {
+          url, path,
+          role: job.role,
+          sheet: sheetName, row: job.row, col: job.col,
+          width: job.sw, height: job.sh,
+          spanCols: job.spanCols, spanRows: job.spanRows,
+          contentType: 'image/png',
+        };
+        await supabase.from('game_data_overrides').upsert(
+          { data_type: 'tile_asset', data_key: path, data_value: meta },
+          { onConflict: 'data_type,data_key' }
+        );
+        ok++;
+      } catch (err) {
+        console.error('Slice failed', job, err);
       }
+      setProgress((p) => ({ ...p, done: p.done + 1 }));
     }
     setBusy(false);
-    toast.success(`Sliced ${ok}/${total} tiles from ${sheetName}`);
+    toast.success(`Sliced ${ok}/${sliceJobs.length} sprites from ${sheetName}`);
     onDone();
+  };
+
+  // Drag-rect highlight (during drag) in cell coords
+  const dragRect = drag && {
+    r0: Math.min(drag.r0, drag.r1),
+    r1: Math.max(drag.r0, drag.r1),
+    c0: Math.min(drag.c0, drag.c1),
+    c1: Math.max(drag.c0, drag.c1),
   };
 
   return (
@@ -284,8 +400,10 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
         <h4 className="font-semibold">Tilesheet Slicer</h4>
       </div>
       <p className="text-xs text-muted-foreground">
-        Upload a single sheet image and slice it into a uniform grid. Each
-        tile is saved as a separate asset with role &amp; grid coordinates.
+        Upload a sheet, set the base cell size (or hit <b>Auto-detect</b>), then
+        either slice every cell uniformly <i>or</i> drag rectangles on the
+        preview to lasso multi-cell sprites (doorways, stairs, props). Each
+        region uploads as one image with role + span metadata.
       </p>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -335,23 +453,132 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) onPick(f); }}
           className="text-sm"
         />
+        <Button size="sm" variant="outline" onClick={autoDetect} disabled={!dims.w}>
+          Auto-detect grid
+        </Button>
         {dims.w > 0 && (
           <span className="text-xs text-muted-foreground">
-            {dims.w}×{dims.h}px → {grid.cols}×{grid.rows} = {grid.cols * grid.rows} tiles
+            {dims.w}×{dims.h}px → {grid.cols}×{grid.rows} cells
+            {regions.length > 0 && ` • ${regions.length} region${regions.length === 1 ? '' : 's'} selected`}
           </span>
         )}
       </div>
 
       {imgUrl && (
-        <div className="border rounded p-2 bg-muted/20 overflow-auto max-h-72">
-          <img src={imgUrl} alt="preview" className="max-w-none" style={{ imageRendering: 'pixelated' }} />
+        <div className="border rounded p-2 bg-muted/20 overflow-auto max-h-[60vh]">
+          <div
+            className="relative inline-block select-none"
+            onMouseDown={onOverlayMouseDown}
+            onMouseMove={onOverlayMouseMove}
+            onMouseUp={onOverlayMouseUp}
+            onMouseLeave={() => setDrag(null)}
+          >
+            <img
+              ref={imgRef}
+              src={imgUrl}
+              alt="preview"
+              draggable={false}
+              className="block max-w-none"
+              style={{ imageRendering: 'pixelated' }}
+              onLoad={(e) => setDisplayW((e.target as HTMLImageElement).clientWidth)}
+            />
+            {/* Grid + region overlay, scaled with the rendered image */}
+            {displayW > 0 && grid.cols > 0 && (() => {
+              const scale = displayW / dims.w;
+              const px = (n: number) => `${n * scale}px`;
+              return (
+                <div className="absolute inset-0 pointer-events-none">
+                  {/* Vertical grid lines */}
+                  {Array.from({ length: grid.cols + 1 }).map((_, c) => (
+                    <div key={`v${c}`} className="absolute top-0 bottom-0 border-l border-primary/30"
+                      style={{ left: px(marginX + c * (tileW + spacingX)) }} />
+                  ))}
+                  {/* Horizontal grid lines */}
+                  {Array.from({ length: grid.rows + 1 }).map((_, r) => (
+                    <div key={`h${r}`} className="absolute left-0 right-0 border-t border-primary/30"
+                      style={{ top: px(marginY + r * (tileH + spacingY)) }} />
+                  ))}
+                  {/* Saved regions */}
+                  {regions.map((reg) => (
+                    <div key={reg.id}
+                      className="absolute bg-emerald-400/25 border-2 border-emerald-400"
+                      style={{
+                        left: px(marginX + reg.c0 * (tileW + spacingX)),
+                        top: px(marginY + reg.r0 * (tileH + spacingY)),
+                        width: px((reg.c1 - reg.c0 + 1) * tileW + (reg.c1 - reg.c0) * spacingX),
+                        height: px((reg.r1 - reg.r0 + 1) * tileH + (reg.r1 - reg.r0) * spacingY),
+                      }}
+                    />
+                  ))}
+                  {/* Active drag */}
+                  {dragRect && (
+                    <div className="absolute bg-amber-400/30 border-2 border-amber-400"
+                      style={{
+                        left: px(marginX + dragRect.c0 * (tileW + spacingX)),
+                        top: px(marginY + dragRect.r0 * (tileH + spacingY)),
+                        width: px((dragRect.c1 - dragRect.c0 + 1) * tileW + (dragRect.c1 - dragRect.c0) * spacingX),
+                        height: px((dragRect.r1 - dragRect.r0 + 1) * tileH + (dragRect.r1 - dragRect.r0) * spacingY),
+                      }}
+                    />
+                  )}
+                </div>
+              );
+            })()}
+          </div>
         </div>
       )}
 
-      <Button onClick={doSlice} disabled={busy || !file} className="gap-2">
-        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Scissors className="w-4 h-4" />}
-        {busy ? `Slicing ${progress.done}/${progress.total}…` : 'Slice & Upload'}
-      </Button>
+      {regions.length > 0 && (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs">Selected regions ({regions.length})</Label>
+            <Button size="sm" variant="ghost" onClick={clearRegions}>Clear all</Button>
+          </div>
+          <div className="border rounded divide-y max-h-40 overflow-y-auto">
+            {regions.map((reg) => (
+              <div key={reg.id} className="flex items-center gap-2 p-2 text-xs">
+                <span className="font-mono w-28 shrink-0">
+                  r{reg.r0}-{reg.r1} c{reg.c0}-{reg.c1}
+                </span>
+                <span className="text-muted-foreground w-16 shrink-0">
+                  {reg.c1 - reg.c0 + 1}×{reg.r1 - reg.r0 + 1}
+                </span>
+                <Input
+                  className="h-7 text-xs"
+                  placeholder="name (optional)"
+                  value={reg.name || ''}
+                  onChange={(e) => setRegionName(reg.id, e.target.value)}
+                />
+                <Select value={reg.role} onValueChange={(v) => setRegionRole(reg.id, v as TileRole)}>
+                  <SelectTrigger className="h-7 w-40 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TILE_ROLES.map((r) => <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => removeRegion(reg.id)}>
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2">
+        <Button onClick={doSlice} disabled={busy || !file} className="gap-2">
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Scissors className="w-4 h-4" />}
+          {busy
+            ? `Slicing ${progress.done}/${progress.total}…`
+            : regions.length > 0
+              ? `Upload ${regions.length} region${regions.length === 1 ? '' : 's'}`
+              : `Slice all ${grid.cols * grid.rows} cells`}
+        </Button>
+        <span className="text-xs text-muted-foreground">
+          {regions.length > 0
+            ? 'Region mode — only the lassoed sprites will be uploaded.'
+            : 'Uniform mode — every cell becomes one tile.'}
+        </span>
+      </div>
     </Card>
   );
 }

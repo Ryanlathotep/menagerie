@@ -210,7 +210,7 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
   const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
   const [regions, setRegions] = useState<SliceRegion[]>([]);
   const [drag, setDrag] = useState<{ r0: number; c0: number; r1: number; c1: number } | null>(null);
-  const [displayW, setDisplayW] = useState(0);
+  
   const [loadingRemote, setLoadingRemote] = useState(false);
   const [selectedRemote, setSelectedRemote] = useState<string>('');
   const [zoom, setZoom] = useState(3);
@@ -546,7 +546,6 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
               draggable={false}
               className="block max-w-none"
               style={{ imageRendering: 'pixelated', width: dims.w * zoom }}
-              onLoad={(e) => setDisplayW((e.target as HTMLImageElement).clientWidth)}
             />
             {/* Grid + region overlay, scaled with the rendered image */}
             {dims.w > 0 && grid.cols > 0 && (() => {

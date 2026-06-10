@@ -4082,7 +4082,7 @@ function BattleView({
   }, [battle, state.run]);
   
   if (!battle || !state.run) return null;
-  const playerMoves = getMonsterMoves(battle.playerMonster.species, battle.playerMonster.element, battle.playerMonster.class, battle.playerMonster.level);
+  const playerMoves = getMonsterMoves(battle.playerMonster.species, battle.playerMonster.element, battle.playerMonster.class, battle.playerMonster.level, `${battle.playerMonster.species}_${battle.playerMonster.element}_${battle.playerMonster.class}`);
   const experienceToNext = xpToNextLevel(battle.playerMonster.level);
   const currentStamina = battle.playerMonster.stats.currentStamina ?? battle.playerMonster.stats.stamina ?? 50;
   const maxStamina = battle.playerMonster.stats.stamina ?? 50;

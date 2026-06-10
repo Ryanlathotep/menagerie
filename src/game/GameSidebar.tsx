@@ -770,36 +770,85 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                   <div className="border-t border-border/50 pt-2">
                     <div className="flex items-center gap-1 mb-2">
                       <Gem className="w-3 h-3 text-secondary" />
-                      <p className="text-xs font-semibold text-muted-foreground">Materials Found (kept on flee)</p>
+                      <p className="text-xs font-semibold text-muted-foreground">Crafting Materials (kept on flee)</p>
                     </div>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                       {Object.entries(runMaterials).map(([materialId, quantity]) => {
                         const material = CRAFTING_MATERIALS.find(m => m.id === materialId);
                         const rarityColor = material ? RARITY_COLORS[material.rarity] : null;
-                        
+                        const usages = getRecipesUsingMaterial(materialId);
+                        const affinity = material?.elementAffinity || material?.classAffinity || material?.speciesAffinity;
+                        const affinityKind = material?.elementAffinity ? 'Element' : material?.classAffinity ? 'Class' : material?.speciesAffinity ? 'Species' : null;
+
                         return (
                           <Tooltip key={materialId}>
                             <TooltipTrigger asChild>
-                              <span 
-                                className={`
-                                  px-2 py-1 rounded text-xs flex items-center gap-1
-                                  ${rarityColor?.bg || 'bg-muted'} ${rarityColor?.border || 'border-muted'} border
-                                `}
+                              <Card
+                                className={`p-2 cursor-default border ${rarityColor?.border || 'border-border'} hover:bg-muted/50 transition-all`}
                               >
-                                <span>{material?.icon || '📦'}</span>
-                                <span className={rarityColor?.text}>{quantity}</span>
-                              </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-lg">{material?.icon || '📦'}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1">
+                                      <span className={`font-semibold text-xs truncate ${rarityColor?.text || ''}`}>
+                                        {material?.name || materialId}
+                                      </span>
+                                      <span className="text-[10px] text-muted-foreground">x{quantity}</span>
+                                    </div>
+                                    <p className="text-[9px] text-muted-foreground capitalize">
+                                      {material?.rarity || 'common'} {material?.type || 'material'}
+                                    </p>
+                                  </div>
+                                </div>
+                              </Card>
                             </TooltipTrigger>
-                            <TooltipContent side="top" className="z-[100]">
+                            <TooltipContent side="top" className="max-w-[260px] z-[100]">
                               <p className={`font-semibold text-sm ${rarityColor?.text}`}>
                                 {material?.name || materialId}
                               </p>
-                              <p className="text-xs text-muted-foreground">
-                                {material?.type || 'Material'} • {quantity}x
+                              <p className="text-[10px] text-muted-foreground capitalize">
+                                {material?.rarity || 'common'} • {material?.type || 'material'}
+                                {affinity && affinityKind && ` • ${affinityKind}: ${affinity}`}
                               </p>
-                              <p className="text-xs text-green-400 mt-1">
-                                ✓ Kept when you flee!
-                              </p>
+                              {material?.description && (
+                                <p className="text-xs text-muted-foreground mt-1 italic">{material.description}</p>
+                              )}
+                              <div className="flex items-center gap-2 mt-1 text-[10px]">
+                                <span className="text-yellow-500">💰 {material?.value ?? 0}g each</span>
+                                <span className="text-muted-foreground">•</span>
+                                <span>Have: {quantity}</span>
+                              </div>
+                              <p className="text-[10px] text-green-400 mt-1">✓ Kept when you flee</p>
+                              {usages.length > 0 ? (
+                                <div className="mt-2 pt-2 border-t border-border/50">
+                                  <p className="text-[10px] font-semibold text-muted-foreground mb-1">
+                                    Used in {usages.length} recipe{usages.length === 1 ? '' : 's'}:
+                                  </p>
+                                  <div className="space-y-0.5 max-h-32 overflow-y-auto">
+                                    {usages.slice(0, 12).map(u => {
+                                      const uColor = RARITY_COLORS[u.rarity];
+                                      return (
+                                        <div key={u.id} className="flex items-center gap-1 text-[10px]">
+                                          <span>{u.icon}</span>
+                                          <span className={uColor?.text}>{u.name}</span>
+                                          <span className="text-muted-foreground">
+                                            ({u.quantity}× {u.kind === 'consumable' ? '🧪' : '⚒'})
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                    {usages.length > 12 && (
+                                      <p className="text-[9px] text-muted-foreground italic">
+                                        +{usages.length - 12} more…
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="text-[10px] text-muted-foreground mt-2 italic">
+                                  No known recipes yet — may unlock with new crafts.
+                                </p>
+                              )}
                             </TooltipContent>
                           </Tooltip>
                         );

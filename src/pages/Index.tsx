@@ -2674,7 +2674,7 @@ function DungeonView({
       
       for (const [moveId, boundKey] of Object.entries(binds)) {
         if (boundKey === key) {
-          const moves = getMonsterMoves(monster.species, monster.element, (monster as any).class, monster.level);
+          const moves = getMonsterMoves(monster.species, monster.element, (monster as any).class, monster.level, `${monster.species}_${monster.element}_${(monster as any).class}`);
           const move = moves.find(m => m.id === moveId);
           if (move) {
             e.preventDefault();

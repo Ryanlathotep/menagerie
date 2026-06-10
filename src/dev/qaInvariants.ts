@@ -88,7 +88,7 @@ function fakeRun(party: Monster[], gold = 0): GameState['run'] {
     itemsCollected: [],
     inventory: [],
     equipmentInventory: [],
-    partyEquipment: party.map(() => createEmptyEquipment()),
+    partyEquipment: party.map((m) => ({ ...createEmptyEquipment(), ...(m.equipment || {}) })),
     runMaterials: {},
     enemiesDefeated: 0,
     moveOrder: [],

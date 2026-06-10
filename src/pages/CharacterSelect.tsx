@@ -411,6 +411,6 @@ export function CharacterSelect() {
           </Button>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

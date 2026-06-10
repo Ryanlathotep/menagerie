@@ -263,6 +263,7 @@ export function DungeonListPanel({ dungeonEntrances, onLaunch, onQuickStart, qui
   const elementTowers = discovered.filter(d => d.category === 'element').sort(sortByDifficulty);
   const classTowers = discovered.filter(d => d.category === 'class').sort(sortByDifficulty);
   const speciesTowers = discovered.filter(d => d.category === 'species').sort(sortByDifficulty);
+  const itemWorldTowers = discovered.filter(d => d.category === 'item_world').sort(sortByDifficulty);
   const overworldDungeons = discovered.filter(d =>
     !d.isHome && (!d.category || d.category === 'procedural')
   ).sort(sortByDifficulty);
@@ -289,6 +290,7 @@ export function DungeonListPanel({ dungeonEntrances, onLaunch, onQuickStart, qui
       <ScrollArea className="h-[360px] pr-2">
         <div className="space-y-4">
           <Section title="Home" items={home} onLaunch={safeLaunch} onQuickStart={safeQuickStart} quickStartPartySize={quickStartPartySize} highestMonsterLevel={highestMonsterLevel} />
+          <Section title="Item World Towers" items={itemWorldTowers} onLaunch={safeLaunch} onQuickStart={undefined} quickStartPartySize={quickStartPartySize} highestMonsterLevel={highestMonsterLevel} />
           <Section title="Elemental Towers" items={elementTowers} onLaunch={safeLaunch} onQuickStart={safeQuickStart} quickStartPartySize={quickStartPartySize} highestMonsterLevel={highestMonsterLevel} />
           <Section title="Class Towers" items={classTowers} onLaunch={safeLaunch} onQuickStart={safeQuickStart} quickStartPartySize={quickStartPartySize} highestMonsterLevel={highestMonsterLevel} />
           <Section title="Species Towers" items={speciesTowers} onLaunch={safeLaunch} onQuickStart={safeQuickStart} quickStartPartySize={quickStartPartySize} highestMonsterLevel={highestMonsterLevel} />

@@ -739,6 +739,55 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     
     const config = getAttackConfig(targetingMove);
 
+    // ── Movement skill (dash / blink / admin-designed Move-pattern) ──
+    // The chosen tile IS the destination — relocate the player, consume
+    // stamina, then exit targeting. No damage / FX besides the warp particle.
+    if (config.pattern === 'movement') {
+      const staminaCost = targetingMove.staminaCost || 0;
+      const maxSta = monster.stats.stamina ?? 50;
+      const curSta = monster.stats.currentStamina ?? maxSta;
+      if (curSta < staminaCost) {
+        toast.error('Not enough stamina!');
+        return;
+      }
+      try {
+        playParticleEffectForMove({
+          surface: 'overworld', monster, move: targetingMove,
+          from: overworld.playerPosition, to: { x: worldX, y: worldY },
+          affected: [{ x: worldX, y: worldY }],
+        });
+      } catch { /* FX never blocks combat */ }
+      setOverworld(prev => {
+        const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
+        ensureChunksLoaded(newOw, worldX, worldY);
+        newOw.playerPosition = { x: worldX, y: worldY };
+        updateVisibility(newOw);
+        applyRoadsToChunks(newOw);
+        saveOverworld(newOw);
+        // Defer the player-stat dispatch out of the updater to dodge the
+        // "setState during render of another component" warning.
+        queueMicrotask(() => {
+          dispatch({
+            type: 'UPDATE_PLAYER_MONSTER',
+            monster: { ...monster, stats: { ...monster.stats, currentStamina: curSta - staminaCost } },
+          });
+        });
+        return newOw;
+      });
+      addLog(`🌀 ${monster.name} used ${targetingMove.name} to reposition!`, 'system');
+      setTargetingMove(null);
+      setTargetingTiles([]);
+      setAffectedTiles([]);
+      setHoveredTile(null);
+      // Process enemy turns after the relocation settles.
+      setTimeout(() => {
+        const ow = overworldRef.current;
+        if (ow) processEnemyTurns(ow);
+      }, 120);
+      return;
+    }
+
+
     // Mobile/touch tap-to-preview, tap-again-to-confirm for AoE moves.
     const isTouchDevice = typeof window !== 'undefined'
       && window.matchMedia?.('(hover: none), (pointer: coarse)').matches;

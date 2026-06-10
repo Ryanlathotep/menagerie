@@ -30,6 +30,7 @@ const TILE_ROLES = [
   'unassigned',
   'floor',
   'wall',
+  'wall_autotile',
   'door',
   'trap',
   'switch',
@@ -39,6 +40,9 @@ const TILE_ROLES = [
   'water',
   'lava',
   'decoration',
+  'decal',
+  'multi_tile_prop',
+  'animation_frame',
   'creature',
   'equipment',
   'spell_fx',
@@ -56,6 +60,9 @@ interface TileAssetMeta {
   col?: number;
   width?: number;
   height?: number;
+  // For multi-cell regions: how many base cells this sprite occupies.
+  spanCols?: number;
+  spanRows?: number;
   contentType?: string;
 }
 

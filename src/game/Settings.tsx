@@ -51,6 +51,11 @@ export interface GameSettings {
   // Keep mining an adjacent rock until it's exhausted or a visible enemy
   // appears. Mirrors the auto-run "halt on enemy spotted" behaviour.
   autoMine: boolean;
+
+  /** Opt-in: when true, defeats inside an Item World tower wipe the run's
+   *  gold/materials/items/equipment (the "greed risk" from the design bible).
+   *  Default OFF for beta so testers aren't punished for experimenting. */
+  itemWorldTowerGreedRisk: boolean;
 }
 
 const DEFAULT_SETTINGS: GameSettings = {

@@ -195,7 +195,7 @@ export function CharacterSelect() {
   const partyOrder = selectedParty.map(m => m.comboId);
 
   return (
-    <div className="min-h-screen w-full bg-background flex flex-col p-4">
+    <main className="min-h-screen w-full bg-background flex flex-col p-4">
       <div className="flex-1 flex flex-col w-full max-w-7xl mx-auto space-y-4">
         <h2 className="text-3xl font-bold text-center bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
           Build Your Party {runDestination === 'overworld' ? '🗺️' : '🗼'}

@@ -1845,15 +1845,46 @@ export function GameProvider({ children }: GameProviderProps) {
         for (const [id, def] of Object.entries(itemWorldDefaults)) {
           const existing = saveData.dungeonEntrances[id];
           if (!existing) {
-            saveData.dungeonEntrances[id] = def;
+            saveData.dungeonEntrances[id] = { ...def, discovered: true };
           } else {
             saveData.dungeonEntrances[id] = {
               ...def,
               ...existing,
+              // Force canonical on-map position in case a legacy save stored
+              // these towers somewhere unreachable.
+              worldX: def.worldX,
+              worldY: def.worldY,
               category: 'item_world',
               theme: existing.theme || def.theme,
               name: existing.name || def.name,
+              // Force visible in the dungeon list so the player can find them.
+              discovered: true,
             };
+          }
+        }
+        // Patch already-generated overworld chunks so the tower tiles appear
+        // on the map (legacy chunks were generated before these towers
+        // existed and have whatever terrain happened to roll on those tiles).
+        if (saveData.overworldState?.chunks) {
+          const CSZ = 16; // CHUNK_SIZE
+          for (const id of Object.keys(itemWorldDefaults)) {
+            const def = saveData.dungeonEntrances[id];
+            if (!def) continue;
+            const cx = Math.floor(def.worldX / CSZ);
+            const cy = Math.floor(def.worldY / CSZ);
+            const chunk = saveData.overworldState.chunks[`${cx},${cy}`];
+            if (!chunk?.tiles) continue;
+            const lx = ((def.worldX % CSZ) + CSZ) % CSZ;
+            const ly = ((def.worldY % CSZ) + CSZ) % CSZ;
+            const prev = chunk.tiles[ly]?.[lx];
+            if (prev && (prev.type !== 'dungeon_entrance' || prev.dungeonId !== id)) {
+              chunk.tiles[ly][lx] = {
+                type: 'dungeon_entrance',
+                explored: prev.explored ?? false,
+                visible: prev.visible ?? false,
+                dungeonId: id,
+              };
+            }
           }
         }
         if (!saveData.itemWorldTowerState) {

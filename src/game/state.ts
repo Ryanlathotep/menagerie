@@ -21,6 +21,7 @@ import { createAllItemWorldTowerEntrances, isItemWorldTower, hashAssetSeed, Item
 import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot, dismantleEquipment, getRecipeFromEquipment, getConsumableRecipeFromItem } from './equipment';
 import type { PickaxeTier, ShovelTier } from './tools';
 import { xpToNextLevel } from './combat';
+import { setTaughtMovesProvider } from './moves';
 import { calculateStats } from './utils';
 import { findNearestEmptyOverworldTile, slimOverworldForSave } from './overworld';
 

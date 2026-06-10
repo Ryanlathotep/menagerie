@@ -545,7 +545,7 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
               alt="preview"
               draggable={false}
               className="block max-w-none"
-              style={{ imageRendering: 'pixelated' }}
+              style={{ imageRendering: 'pixelated', width: dims.w * zoom }}
               onLoad={(e) => setDisplayW((e.target as HTMLImageElement).clientWidth)}
             />
             {/* Grid + region overlay, scaled with the rendered image */}

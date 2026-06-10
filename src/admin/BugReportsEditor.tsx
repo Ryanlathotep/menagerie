@@ -144,10 +144,8 @@ export function BugReportsEditor() {
                         Screenshots ({(r.context as any).screenshots.length})
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {((r.context as any).screenshots as string[]).map((url, i) => (
-                          <a key={i} href={url} target="_blank" rel="noreferrer" className="block border rounded overflow-hidden hover:opacity-80">
-                            <img src={url} alt={`screenshot ${i + 1}`} className="w-full h-32 object-cover" />
-                          </a>
+                        {((r.context as any).screenshots as string[]).map((ref, i) => (
+                          <SignedScreenshot key={i} pathOrUrl={ref} index={i} />
                         ))}
                       </div>
                     </div>

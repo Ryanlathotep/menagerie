@@ -4278,6 +4278,11 @@ function BattleView({
 
   // Use item during battle
   const handleUseItem = (item: InventoryItem) => {
+    // Skill Forge scroll — open the Teach / Cast dialog instead of consuming.
+    if (item.effect?.startsWith('teach_move:')) {
+      setPendingScrollItem(item);
+      return;
+    }
     let message = '';
     let newStats = {
       ...battle.playerMonster.stats

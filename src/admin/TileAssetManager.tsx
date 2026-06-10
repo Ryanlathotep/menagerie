@@ -485,6 +485,25 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) onPick(f); }}
           className="text-sm"
         />
+        <span className="text-xs text-muted-foreground">or</span>
+        <Select value={selectedRemote} onValueChange={loadFromLibrary}>
+          <SelectTrigger className="h-9 w-64">
+            <SelectValue placeholder={loadingRemote ? 'Loading…' : `Pick uploaded sheet (${rawSheets.length})`} />
+          </SelectTrigger>
+          <SelectContent>
+            {rawSheets.length === 0 && (
+              <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                No uploaded sheets — use Bulk Upload first.
+              </div>
+            )}
+            {rawSheets.map((r) => (
+              <SelectItem key={r.key} value={r.key}>
+                {r.key.replace(/^tiles\/raw\/\d+_/, '')}
+                {r.meta.width ? ` (${r.meta.width}×${r.meta.height})` : ''}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button size="sm" variant="outline" onClick={autoDetect} disabled={!dims.w}>
           Auto-detect grid
         </Button>
@@ -495,6 +514,7 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
           </span>
         )}
       </div>
+
 
       {imgUrl && (
         <div className="border rounded p-2 bg-muted/20 overflow-auto max-h-[60vh]">

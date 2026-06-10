@@ -358,6 +358,7 @@ export type Database = {
       }
       usernames: {
         Row: {
+          auto_generated: boolean
           created_at: string
           updated_at: string
           user_id: string
@@ -365,6 +366,7 @@ export type Database = {
           username_lower: string | null
         }
         Insert: {
+          auto_generated?: boolean
           created_at?: string
           updated_at?: string
           user_id: string
@@ -372,6 +374,7 @@ export type Database = {
           username_lower?: string | null
         }
         Update: {
+          auto_generated?: boolean
           created_at?: string
           updated_at?: string
           user_id?: string
@@ -385,6 +388,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ensure_username: { Args: never; Returns: Json }
       get_discovery_leaderboard: {
         Args: { _limit?: number }
         Returns: {
@@ -406,6 +410,7 @@ export type Database = {
         }[]
       }
       get_my_username: { Args: never; Returns: string }
+      get_my_username_info: { Args: never; Returns: Json }
       get_tower_leaderboard: {
         Args: { _limit?: number; _tower_id: string }
         Returns: {

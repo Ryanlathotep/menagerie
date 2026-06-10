@@ -91,7 +91,10 @@ function AdminQAInner() {
             <h1 className="text-2xl font-bold">Monster Menagerie QA</h1>
             <p className="text-sm text-muted-foreground">In-app regression suite for persistence, inventory, and reducer invariants.</p>
           </div>
-          <Link to="/" className="text-sm underline">← Back to game</Link>
+          <div className="flex items-center gap-3">
+            <Link to="/admin/tiles" className="text-sm underline">Tile Assets →</Link>
+            <Link to="/" className="text-sm underline">← Back to game</Link>
+          </div>
         </header>
 
         <Card className="p-4 space-y-3">

@@ -194,6 +194,7 @@ interface SliceRegion {
 }
 
 function SheetSlicer({ onDone }: { onDone: () => void }) {
+  const { overrides: uploaded } = useGameDataOverrides('tile_asset');
   const [file, setFile] = useState<File | null>(null);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [dims, setDims] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
@@ -210,17 +211,48 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
   const [regions, setRegions] = useState<SliceRegion[]>([]);
   const [drag, setDrag] = useState<{ r0: number; c0: number; r1: number; c1: number } | null>(null);
   const [displayW, setDisplayW] = useState(0);
+  const [loadingRemote, setLoadingRemote] = useState(false);
+  const [selectedRemote, setSelectedRemote] = useState<string>('');
   const imgRef = useRef<HTMLImageElement>(null);
+
+  // Already-uploaded raw sheets the admin can re-open in the slicer.
+  const rawSheets = useMemo(() => {
+    return uploaded
+      .map((o) => ({ key: o.data_key, meta: o.data_value as unknown as TileAssetMeta }))
+      .filter((r) => r.key.startsWith('tiles/raw/') && !r.meta.sheet);
+  }, [uploaded]);
 
   const onPick = async (f: File) => {
     setFile(f);
-    if (imgUrl) URL.revokeObjectURL(imgUrl);
+    if (imgUrl && imgUrl.startsWith('blob:')) URL.revokeObjectURL(imgUrl);
     const url = URL.createObjectURL(f);
     setImgUrl(url);
     const d = await readImageSize(f);
     setDims(d);
     setSheetName((prev) => prev || safeName(f.name.replace(/\.[^.]+$/, '')));
     setRegions([]);
+  };
+
+  const loadFromLibrary = async (path: string) => {
+    setSelectedRemote(path);
+    if (!path) return;
+    setLoadingRemote(true);
+    try {
+      const meta = rawSheets.find((r) => r.key === path)?.meta;
+      const url = meta?.url || publicUrl(path);
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`Fetch failed (${resp.status})`);
+      const blob = await resp.blob();
+      const filename = path.split('/').pop() || 'sheet.png';
+      const f = new File([blob], filename, { type: blob.type || 'image/png' });
+      await onPick(f);
+      toast.success(`Loaded ${filename}`);
+    } catch (err) {
+      console.error(err);
+      toast.error(`Could not load sheet: ${(err as Error).message}`);
+    } finally {
+      setLoadingRemote(false);
+    }
   };
 
   const grid = useMemo(() => {
@@ -453,6 +485,25 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) onPick(f); }}
           className="text-sm"
         />
+        <span className="text-xs text-muted-foreground">or</span>
+        <Select value={selectedRemote} onValueChange={loadFromLibrary}>
+          <SelectTrigger className="h-9 w-64">
+            <SelectValue placeholder={loadingRemote ? 'Loading…' : `Pick uploaded sheet (${rawSheets.length})`} />
+          </SelectTrigger>
+          <SelectContent>
+            {rawSheets.length === 0 && (
+              <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                No uploaded sheets — use Bulk Upload first.
+              </div>
+            )}
+            {rawSheets.map((r) => (
+              <SelectItem key={r.key} value={r.key}>
+                {r.key.replace(/^tiles\/raw\/\d+_/, '')}
+                {r.meta.width ? ` (${r.meta.width}×${r.meta.height})` : ''}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button size="sm" variant="outline" onClick={autoDetect} disabled={!dims.w}>
           Auto-detect grid
         </Button>
@@ -463,6 +514,7 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
           </span>
         )}
       </div>
+
 
       {imgUrl && (
         <div className="border rounded p-2 bg-muted/20 overflow-auto max-h-[60vh]">

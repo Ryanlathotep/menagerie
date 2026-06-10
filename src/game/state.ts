@@ -246,6 +246,14 @@ export type GameAction =
 
 // Reducer
 export function gameReducer(state: GameState, action: GameAction): GameState {
+  // Delegate to extracted sub-reducers first. Each returns the next state if
+  // it handled the action, or null to fall through to the main switch.
+  const subResult =
+    inventoryReducer(state, action) ??
+    equipmentReducer(state, action) ??
+    dungeonReducer(state, action);
+  if (subResult) return subResult;
+
   switch (action.type) {
     case 'SET_PHASE':
       return { ...state, phase: action.phase };

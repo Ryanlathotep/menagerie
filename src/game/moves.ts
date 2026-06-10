@@ -715,7 +715,14 @@ export function passesAvailability(
 
 // Get all moves available to a monster based on its aspects and level.
 // Honors admin-registered overrides + custom moves.
-export function getMonsterMoves(species: SpeciesType, element: ElementType, classType: ClassType, level: number = 99): Move[] {
+// Optional provider so callers (Index/UI) can pass a comboId and we look up
+// any scroll-taught moves for that monster from the GameProvider's saveData.
+let taughtMovesProvider: ((comboId: string) => string[]) | null = null;
+export function setTaughtMovesProvider(fn: ((comboId: string) => string[]) | null) {
+  taughtMovesProvider = fn;
+}
+
+export function getMonsterMoves(species: SpeciesType, element: ElementType, classType: ClassType, level: number = 99, comboId?: string): Move[] {
   const moves: Move[] = [];
 
   const filterByLevel = (m: Move) => (m.unlockLevel || 1) <= level;
@@ -749,6 +756,22 @@ export function getMonsterMoves(species: SpeciesType, element: ElementType, clas
   // Admin-defined custom moves (data_type='moves' rows with custom:true).
   for (const m of getCustomMovesFor(species, element, classType, level)) {
     moves.push(m);
+  }
+
+  // Scroll-taught moves: append any move IDs the player has permanently
+  // taught to this comboId via Skill Forge scrolls. Dedup against existing.
+  const taughtKey = comboId ?? tripleKey;
+  if (taughtMovesProvider) {
+    const taughtIds = taughtMovesProvider(taughtKey) || [];
+    const existing = new Set(moves.map(m => m.id));
+    for (const id of taughtIds) {
+      if (existing.has(id)) continue;
+      const m = getMoveById(id);
+      if (m) {
+        moves.push(m);
+        existing.add(id);
+      }
+    }
   }
 
   return moves;

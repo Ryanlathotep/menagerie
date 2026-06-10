@@ -700,6 +700,11 @@ export interface SaveData {
    *  Tracks which asset is currently slotted, its generation seed, and whether the
    *  Floor-50 reward has been extracted. */
   itemWorldTowerState?: import('./itemWorldTowers').ItemWorldTowerStateMap;
+  /** Moves taught to specific monster combos via Skill Forge scrolls.
+   *  Keyed by comboId (e.g. "slime_fire_kinetic"), value is the list of
+   *  extra move IDs that monster has permanently learned. Appended on top
+   *  of its species/element/class moves. */
+  taughtMoves?: Record<string, string[]>;
 }
 
 export interface GameState {

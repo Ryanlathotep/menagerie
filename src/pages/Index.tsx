@@ -63,6 +63,7 @@ import { findPath, getDirection } from '@/game/pathfinding';
 import { RecruitmentModal, calculateRecruitChance } from '@/game/RecruitmentModal';
 import { PartySwitchModal } from '@/game/PartySwitchModal';
 import { ReviveTargetModal } from '@/game/ReviveTargetModal';
+import { ScrollUseDialog } from '@/game/ScrollUseDialog';
 import { CombatSwitchPanel } from '@/game/CombatSwitchPanel';
 import { LogMessage, createLogMessage, parseLogMessage } from '@/game/GameLog';
 import { isMonsterFavoredOnTerrain, calculateTerrainDamage, TERRAIN_CONFIG, shovelHitsToBreak, rollRuneDrop } from '@/game/terrain';
@@ -232,6 +233,8 @@ function DungeonView({
   // Dungeon revive modal state
   const [showDungeonReviveModal, setShowDungeonReviveModal] = useState(false);
   const [pendingDungeonReviveItem, setPendingDungeonReviveItem] = useState<InventoryItem | null>(null);
+  // Scroll use dialog (Skill Forge scrolls — Teach / Cast Once)
+  const [pendingScrollItem, setPendingScrollItem] = useState<InventoryItem | null>(null);
   const [stairExitDialogOpen, setStairExitDialogOpen] = useState(false);
 
   // Dungeon build mode (per-floor buildings persisted via snapshots)
@@ -1437,10 +1440,17 @@ function DungeonView({
 
   const handleUseItemOutOfCombat = (item: InventoryItem) => {
     if (!state.run) return;
-    
+
+    // Skill Forge scroll — open the Teach / Cast dialog instead of consuming.
+    if (item.effect?.startsWith('teach_move:')) {
+      setPendingScrollItem(item);
+      return;
+    }
+
     const monster = state.run.currentMonster;
     let message = '';
     let updatedMonster = { ...monster };
+    
     
     if (item.effect === 'heal_hp') {
       const hpBefore = monster.stats.currentHp;
@@ -2594,7 +2604,7 @@ function DungeonView({
     const tile = dungeon?.tiles[y]?.[x];
     if (tile?.type === 'enemy' && tile.enemyId && state.run) {
       const monster = state.run.currentMonster;
-      const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
+      const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level, `${monster.species}_${monster.element}_${monster.class}`);
       const attackMove = moves.find(m => m.type === 'melee' || m.type === 'ranged');
 
       if (attackMove) {
@@ -2664,7 +2674,7 @@ function DungeonView({
       
       for (const [moveId, boundKey] of Object.entries(binds)) {
         if (boundKey === key) {
-          const moves = getMonsterMoves(monster.species, monster.element, (monster as any).class, monster.level);
+          const moves = getMonsterMoves(monster.species, monster.element, (monster as any).class, monster.level, `${monster.species}_${monster.element}_${(monster as any).class}`);
           const move = moves.find(m => m.id === moveId);
           if (move) {
             e.preventDefault();
@@ -3062,6 +3072,22 @@ function DungeonView({
         itemName={pendingDungeonReviveItem?.name || 'Revive'}
         onRevive={handleDungeonReviveTarget}
       />
+
+      {/* Scroll use dialog (Skill Forge scrolls) */}
+      <ScrollUseDialog
+        open={!!pendingScrollItem}
+        scroll={pendingScrollItem}
+        party={state.run?.party || []}
+        canCast={false}
+        onTeach={(comboId, moveId, itemId) => {
+          dispatch({ type: 'TEACH_MOVE_FROM_SCROLL', comboId, moveId, itemId });
+          addLog(`📜 The scroll's knowledge fuses into your monster!`, 'system');
+          toast.success('Move learned!');
+        }}
+        onCast={() => { /* Cast Only available in battle */ }}
+        onClose={() => setPendingScrollItem(null)}
+      />
+      
       
       <div className="fixed inset-0 overflow-hidden transition-all duration-300" style={dungeonBottomStyle}>
         <div className="h-full flex flex-col">
@@ -3290,7 +3316,7 @@ function DungeonView({
               };
               const directTileAttack = (() => {
                 const moveOrderIndex = new Map((state.run.moveOrder || []).map((id, index) => [id, index]));
-                return getMonsterMoves(monster.species, monster.element, monster.class, monster.level)
+                return getMonsterMoves(monster.species, monster.element, monster.class, monster.level, `${monster.species}_${monster.element}_${monster.class}`)
                   .filter((move) => (move.type === 'melee' || move.type === 'ranged' || move.power > 0) && (move.staminaCost || 0) <= (monster.stats.currentStamina ?? monster.stats.stamina ?? 50))
                   .sort((a, b) => (moveOrderIndex.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (moveOrderIndex.get(b.id) ?? Number.MAX_SAFE_INTEGER))
                   .map((move) => {
@@ -3746,7 +3772,7 @@ function DungeonView({
                     onClick: () => { close(); handleUseItemOutOfCombat(item); },
                   });
                 }
-                const selfMoves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level).filter(
+                const selfMoves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level, `${monster.species}_${monster.element}_${monster.class}`).filter(
                   (mv) => (mv.targeting === 'self' || (mv.type === 'heal' && mv.power === 0))
                     && (mv.staminaCost || 0) <= (monster.stats.currentStamina ?? monster.stats.stamina ?? 50),
                 );
@@ -3930,6 +3956,9 @@ function BattleView({
   // Revive target modal state
   const [showReviveModal, setShowReviveModal] = useState(false);
   const [pendingReviveItem, setPendingReviveItem] = useState<InventoryItem | null>(null);
+  // Scroll use dialog (Skill Forge scrolls — Teach / Cast Once)
+  const [pendingScrollItem, setPendingScrollItem] = useState<InventoryItem | null>(null);
+  
   
   // Combat switch mode state
   const [showCombatSwitch, setShowCombatSwitch] = useState(false);
@@ -4012,7 +4041,7 @@ function BattleView({
       
       for (const [moveId, boundKey] of Object.entries(binds)) {
         if (boundKey === key) {
-          const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
+          const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level, `${monster.species}_${monster.element}_${monster.class}`);
           const move = moves.find(m => m.id === moveId);
           if (move && executeMoveRef.current) {
             e.preventDefault();
@@ -4053,7 +4082,7 @@ function BattleView({
   }, [battle, state.run]);
   
   if (!battle || !state.run) return null;
-  const playerMoves = getMonsterMoves(battle.playerMonster.species, battle.playerMonster.element, battle.playerMonster.class, battle.playerMonster.level);
+  const playerMoves = getMonsterMoves(battle.playerMonster.species, battle.playerMonster.element, battle.playerMonster.class, battle.playerMonster.level, `${battle.playerMonster.species}_${battle.playerMonster.element}_${battle.playerMonster.class}`);
   const experienceToNext = xpToNextLevel(battle.playerMonster.level);
   const currentStamina = battle.playerMonster.stats.currentStamina ?? battle.playerMonster.stats.stamina ?? 50;
   const maxStamina = battle.playerMonster.stats.stamina ?? 50;
@@ -4249,6 +4278,11 @@ function BattleView({
 
   // Use item during battle
   const handleUseItem = (item: InventoryItem) => {
+    // Skill Forge scroll — open the Teach / Cast dialog instead of consuming.
+    if (item.effect?.startsWith('teach_move:')) {
+      setPendingScrollItem(item);
+      return;
+    }
     let message = '';
     let newStats = {
       ...battle.playerMonster.stats
@@ -5323,6 +5357,26 @@ function BattleView({
         itemName={pendingReviveItem?.name || 'Revive'}
         onRevive={handleReviveTarget}
       />
+
+      {/* Scroll use dialog (Skill Forge scrolls — Teach / Cast Once) */}
+      <ScrollUseDialog
+        open={!!pendingScrollItem}
+        scroll={pendingScrollItem}
+        party={state.run?.party || []}
+        canCast={true}
+        onTeach={(comboId, moveId, itemId) => {
+          dispatch({ type: 'TEACH_MOVE_FROM_SCROLL', comboId, moveId, itemId });
+          toast.success('Move learned!');
+        }}
+        onCast={(move, itemId) => {
+          // Consume the scroll, then fire the move once for free.
+          dispatch({ type: 'USE_ITEM', itemId });
+          executeMove({ ...move, staminaCost: 0 });
+        }}
+        onClose={() => setPendingScrollItem(null)}
+      />
+
+      
       
       {/* Recruitment modal */}
       {showRecruitment && defeatedEnemy && (

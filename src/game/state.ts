@@ -21,6 +21,7 @@ import { createAllItemWorldTowerEntrances, isItemWorldTower, hashAssetSeed, Item
 import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot, dismantleEquipment, getRecipeFromEquipment, getConsumableRecipeFromItem } from './equipment';
 import type { PickaxeTier, ShovelTier } from './tools';
 import { xpToNextLevel } from './combat';
+import { setTaughtMovesProvider } from './moves';
 import { calculateStats } from './utils';
 import { findNearestEmptyOverworldTile, slimOverworldForSave } from './overworld';
 
@@ -51,6 +52,7 @@ const DEFAULT_SAVE_DATA: SaveData = {
   dungeonEntrances: { ...createAllThemedTowers(), ...createAllItemWorldTowerEntrances() },
   tools: {},                  // Singleton tools (pickaxe, etc.) - undefined until crafted
   itemWorldTowerState: {},    // Per-tower asset slot for the three Item World towers
+  taughtMoves: {},            // Scroll-taught moves per comboId
 };
 
 // Initial game state
@@ -214,6 +216,7 @@ type GameAction =
   // Item World towers
   | { type: 'SET_ITEM_WORLD_TOWER_ASSET'; towerType: ItemWorldTowerType; baseAssetId: string; baseAssetName: string; baseAssetLevel: number }
   | { type: 'CLAIM_ITEM_WORLD_REWARD'; towerType: ItemWorldTowerType; floorReached: number }
+  | { type: 'TEACH_MOVE_FROM_SCROLL'; comboId: string; moveId: string; itemId: string }
   // Party management
   | { type: 'SWITCH_ACTIVE_MONSTER'; index: number }
   | { type: 'SWITCH_ACTIVE_IN_BATTLE'; index: number }  // Switch during battle (updates battle.playerMonster too)
@@ -1727,6 +1730,40 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case 'TEACH_MOVE_FROM_SCROLL': {
+      // Persist the move under the comboId so it appears for every instance
+      // of that monster (current run + future runs). Also consume the scroll
+      // from both run.inventory and saveData.storedItems (unified inventory).
+      const prevTaught = state.saveData.taughtMoves || {};
+      const prevForCombo = prevTaught[action.comboId] || [];
+      const nextForCombo = prevForCombo.includes(action.moveId)
+        ? prevForCombo
+        : [...prevForCombo, action.moveId];
+
+      const decrement = (list: InventoryItem[]): InventoryItem[] => {
+        const idx = list.findIndex(i => i.id === action.itemId);
+        if (idx === -1) return list;
+        const cur = list[idx];
+        if (cur.quantity <= 1) return list.filter((_, i) => i !== idx);
+        const next = [...list];
+        next[idx] = { ...cur, quantity: cur.quantity - 1 };
+        return next;
+      };
+
+      return {
+        ...state,
+        run: state.run
+          ? { ...state.run, inventory: decrement(state.run.inventory) }
+          : state.run,
+        saveData: {
+          ...state.saveData,
+          taughtMoves: { ...prevTaught, [action.comboId]: nextForCombo },
+          storedItems: decrement(state.saveData.storedItems || []),
+        },
+      };
+    }
+
+
     default:
       return state;
   }
@@ -1747,6 +1784,13 @@ interface GameProviderProps {
 
 export function GameProvider({ children }: GameProviderProps) {
   const [state, dispatch] = useReducer(gameReducer, INITIAL_STATE);
+
+  // Wire taught-moves provider so getMonsterMoves() can see scroll-taught
+  // moves when callers pass a comboId.
+  useEffect(() => {
+    setTaughtMovesProvider((comboId) => state.saveData.taughtMoves?.[comboId] || []);
+    return () => setTaughtMovesProvider(null);
+  }, [state.saveData.taughtMoves]);
 
   // Load save data from localStorage on mount
   useEffect(() => {
@@ -1814,6 +1858,9 @@ export function GameProvider({ children }: GameProviderProps) {
         }
         if (!saveData.itemWorldTowerState) {
           saveData.itemWorldTowerState = {};
+        }
+        if (!saveData.taughtMoves) {
+          saveData.taughtMoves = {};
         }
         dispatch({ type: 'LOAD_SAVE', saveData });
       } catch (e) {

@@ -178,6 +178,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [showBuildingMenu, setShowBuildingMenu] = useState(false);
   const [showDungeonPrompt, setShowDungeonPrompt] = useState(false);
   const [selectedDungeon, setSelectedDungeon] = useState<DungeonEntrance | null>(null);
+  const [pendingItemWorldEntrance, setPendingItemWorldEntrance] = useState<DungeonEntrance | null>(null);
   const [showEquipment, setShowEquipment] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   

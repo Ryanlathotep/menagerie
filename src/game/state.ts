@@ -1729,6 +1729,40 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case 'TEACH_MOVE_FROM_SCROLL': {
+      // Persist the move under the comboId so it appears for every instance
+      // of that monster (current run + future runs). Also consume the scroll
+      // from both run.inventory and saveData.storedItems (unified inventory).
+      const prevTaught = state.saveData.taughtMoves || {};
+      const prevForCombo = prevTaught[action.comboId] || [];
+      const nextForCombo = prevForCombo.includes(action.moveId)
+        ? prevForCombo
+        : [...prevForCombo, action.moveId];
+
+      const decrement = (list: InventoryItem[]): InventoryItem[] => {
+        const idx = list.findIndex(i => i.id === action.itemId);
+        if (idx === -1) return list;
+        const cur = list[idx];
+        if (cur.quantity <= 1) return list.filter((_, i) => i !== idx);
+        const next = [...list];
+        next[idx] = { ...cur, quantity: cur.quantity - 1 };
+        return next;
+      };
+
+      return {
+        ...state,
+        run: state.run
+          ? { ...state.run, inventory: decrement(state.run.inventory) }
+          : state.run,
+        saveData: {
+          ...state.saveData,
+          taughtMoves: { ...prevTaught, [action.comboId]: nextForCombo },
+          storedItems: decrement(state.saveData.storedItems || []),
+        },
+      };
+    }
+
+
     default:
       return state;
   }

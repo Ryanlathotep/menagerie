@@ -3316,7 +3316,7 @@ function DungeonView({
               };
               const directTileAttack = (() => {
                 const moveOrderIndex = new Map((state.run.moveOrder || []).map((id, index) => [id, index]));
-                return getMonsterMoves(monster.species, monster.element, monster.class, monster.level)
+                return getMonsterMoves(monster.species, monster.element, monster.class, monster.level, `${monster.species}_${monster.element}_${monster.class}`)
                   .filter((move) => (move.type === 'melee' || move.type === 'ranged' || move.power > 0) && (move.staminaCost || 0) <= (monster.stats.currentStamina ?? monster.stats.stamina ?? 50))
                   .sort((a, b) => (moveOrderIndex.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (moveOrderIndex.get(b.id) ?? Number.MAX_SAFE_INTEGER))
                   .map((move) => {

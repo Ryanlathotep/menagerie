@@ -516,6 +516,19 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
         )}
       </div>
 
+      <div className="flex items-center gap-3">
+        <Label className="text-xs whitespace-nowrap">Zoom {zoom}x</Label>
+        <input
+          type="range"
+          min={1}
+          max={10}
+          step={1}
+          value={zoom}
+          onChange={(e) => setZoom(parseInt(e.target.value))}
+          className="w-48"
+        />
+      </div>
+
 
       {imgUrl && (
         <div className="border rounded p-2 bg-muted/20 overflow-auto max-h-[60vh]">

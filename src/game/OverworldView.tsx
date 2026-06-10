@@ -1986,6 +1986,23 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         </Card>
       </div>
     )}
+
+    <ItemWorldTowerPicker
+      open={pendingItemWorldEntrance !== null}
+      towerType={pendingItemWorldEntrance ? getItemWorldTowerType(pendingItemWorldEntrance.id) : null}
+      onCancel={() => setPendingItemWorldEntrance(null)}
+      onConfirmed={() => {
+        const entrance = pendingItemWorldEntrance;
+        setPendingItemWorldEntrance(null);
+        if (!entrance) return;
+        localStorage.setItem('menagerie_active_dungeon_id', entrance.id);
+        dispatch({ type: 'SNAPSHOT_RUN_PROGRESS', overworld });
+        localStorage.setItem('menagerie_run_destination', 'dungeon');
+        localStorage.setItem('menagerie_run_origin', 'overworld');
+        dispatch({ type: 'SET_PHASE', phase: 'character_select' });
+      }}
+    />
+
     
     {/* Build Panel */}
     {showBuildPanel && (

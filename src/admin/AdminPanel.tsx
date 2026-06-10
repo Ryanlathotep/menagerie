@@ -45,14 +45,17 @@ export function AdminPanel() {
 
   return (
     <Card className="h-full flex flex-col overflow-hidden">
-      <div className="p-4 border-b bg-gradient-to-r from-primary/10 to-secondary/10">
-        <h2 className="text-xl font-bold flex items-center gap-2">
-          <Shield className="w-5 h-5 text-primary" />
-          Admin Panel
-        </h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Edit game data - changes are saved to the database and override defaults
-        </p>
+      <div className="p-4 border-b bg-gradient-to-r from-primary/10 to-secondary/10 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Shield className="w-5 h-5 text-primary" />
+            Admin Panel
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Edit game data - changes are saved to the database and override defaults
+          </p>
+        </div>
+        <SwitchAccountButton />
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">

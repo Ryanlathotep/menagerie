@@ -1631,7 +1631,102 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         },
       };
     }
-      
+
+    case 'SET_ITEM_WORLD_TOWER_ASSET': {
+      const towerId = getItemWorldTowerIdForType(action.towerType);
+      const generationSeed = `${action.towerType}:${action.baseAssetId}`;
+      const newSeed = hashAssetSeed(generationSeed);
+      const newTowerState: ItemWorldTowerState = {
+        type: action.towerType,
+        baseAssetId: action.baseAssetId,
+        baseAssetName: action.baseAssetName,
+        baseAssetLevel: action.baseAssetLevel,
+        generationSeed,
+        highestFloorReached: 0,
+        hasExtractedReward: false,
+        lastEnteredTimestamp: Date.now(),
+      };
+      const existingEntrance = state.saveData.dungeonEntrances[towerId];
+      const updatedEntrance = existingEntrance
+        ? {
+            ...existingEntrance,
+            seed: newSeed,
+            // Reset cross-run snapshots so the new asset gets a fresh maze.
+            floorSnapshots: undefined,
+            deepestFloor: 0,
+          }
+        : existingEntrance;
+      return {
+        ...state,
+        saveData: {
+          ...state.saveData,
+          itemWorldTowerState: {
+            ...(state.saveData.itemWorldTowerState || {}),
+            [action.towerType]: newTowerState,
+          },
+          dungeonEntrances: updatedEntrance
+            ? { ...state.saveData.dungeonEntrances, [towerId]: updatedEntrance }
+            : state.saveData.dungeonEntrances,
+        },
+      };
+    }
+
+    case 'CLAIM_ITEM_WORLD_REWARD': {
+      const existing = state.saveData.itemWorldTowerState?.[action.towerType];
+      if (!existing) return state;
+      const updated: ItemWorldTowerState = {
+        ...existing,
+        hasExtractedReward: true,
+        highestFloorReached: Math.max(existing.highestFloorReached, action.floorReached),
+      };
+      // Reward delivery (minimal end-to-end hook):
+      //  - prototyping: unlock crafting recipe matching the base item id (if any).
+      //  - training: grant a permanent +1 base level to the slotted monster.
+      //  - skill_creation: drop a Skill Scroll item into town storage.
+      // Greed-risk / lose-on-wipe is intentionally DEFERRED — see GameSettings.
+      let unlockedRecipes = state.saveData.unlockedRecipes;
+      let unlockedMonsters = state.saveData.unlockedMonsters;
+      let storedItems = state.saveData.storedItems;
+
+      if (action.towerType === 'prototyping') {
+        if (!unlockedRecipes.includes(existing.baseAssetId)) {
+          unlockedRecipes = [...unlockedRecipes, existing.baseAssetId];
+        }
+      } else if (action.towerType === 'training') {
+        unlockedMonsters = unlockedMonsters.map(m =>
+          m.comboId === existing.baseAssetId
+            ? { ...m, level: (m.level ?? 1) + 1 }
+            : m,
+        );
+      } else if (action.towerType === 'skill_creation') {
+        storedItems = [
+          ...storedItems,
+          {
+            id: `scroll_${existing.baseAssetId}_${Date.now()}`,
+            name: `Scroll of ${existing.baseAssetName}`,
+            type: 'potion',
+            value: 0,
+            effect: `teach_move:${existing.baseAssetId}`,
+            quantity: 1,
+          },
+        ];
+      }
+
+      return {
+        ...state,
+        saveData: {
+          ...state.saveData,
+          itemWorldTowerState: {
+            ...(state.saveData.itemWorldTowerState || {}),
+            [action.towerType]: updated,
+          },
+          unlockedRecipes,
+          unlockedMonsters,
+          storedItems,
+        },
+      };
+    }
+
     default:
       return state;
   }

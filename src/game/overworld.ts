@@ -287,6 +287,7 @@ function findThemedTowerAt(
   for (const id in dungeonEntrances) {
     const d = dungeonEntrances[id];
     if (!d || !d.category || d.category === 'procedural') continue;
+    // home / element / class / species / item_world all live at fixed world coords.
     if (d.worldX === worldX && d.worldY === worldY) return id;
   }
   return null;

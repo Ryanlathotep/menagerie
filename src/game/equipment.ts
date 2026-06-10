@@ -1786,6 +1786,37 @@ export function getConsumableRecipeFromItem(item: { id?: string; name?: string; 
   }) || null;
 }
 
+// Reverse lookup: list everything craftable from a given material.
+// Returns a merged list of equipment recipes and consumable recipes that consume it.
+export interface MaterialUsage {
+  id: string;
+  name: string;
+  icon: string;
+  rarity: Rarity;
+  quantity: number; // amount of this material the recipe consumes
+  kind: 'equipment' | 'consumable';
+}
+
+export function getRecipesUsingMaterial(materialId: string): MaterialUsage[] {
+  const out: MaterialUsage[] = [];
+  for (const r of CRAFTING_RECIPES) {
+    const req = r.materials.find(m => m.materialId === materialId);
+    if (req) {
+      out.push({ id: r.id, name: r.name, icon: r.icon, rarity: r.resultRarity, quantity: req.quantity, kind: 'equipment' });
+    }
+  }
+  for (const r of CONSUMABLE_RECIPES) {
+    const req = r.materials.find(m => m.materialId === materialId);
+    if (req) {
+      out.push({ id: r.id, name: r.name, icon: r.icon, rarity: r.rarity, quantity: req.quantity, kind: 'consumable' });
+    }
+  }
+  // Sort by rarity then name for readability
+  const rarityOrder: Record<Rarity, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+  out.sort((a, b) => rarityOrder[a.rarity] - rarityOrder[b.rarity] || a.name.localeCompare(b.name));
+  return out;
+}
+
 // Dismantle equipment into materials
 export interface DismantleResult {
   materials: { materialId: string; quantity: number }[];

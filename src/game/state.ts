@@ -25,6 +25,9 @@ import { setTaughtMovesProvider } from './moves';
 import { calculateStats } from './utils';
 import { findNearestEmptyOverworldTile, slimOverworldForSave } from './overworld';
 import { handleStartRun, handleEndRun, handleFleeDungeon } from './reducers/runHandlers';
+import { inventoryReducer } from './reducers/inventoryReducer';
+import { equipmentReducer } from './reducers/equipmentReducer';
+import { dungeonReducer } from './reducers/dungeonReducer';
 
 
 // Starting monster - Normal Normal Slime
@@ -170,7 +173,7 @@ export function buildProgressSnapshot(
 }
 
 // Action types
-type GameAction =
+export type GameAction =
   | { type: 'SET_PHASE'; phase: GamePhase }
   | { type: 'START_RUN'; monster: Monster; party?: Monster[]; preEquipped?: MonsterEquipment; partyPreEquipped?: MonsterEquipment[]; withdrawnIds?: string[]; preSelectedItems?: InventoryItem[]; destination?: 'dungeon' | 'overworld' }
   | { type: 'END_RUN'; victory: boolean }

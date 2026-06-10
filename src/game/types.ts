@@ -696,6 +696,10 @@ export interface SaveData {
   overworldState?: import('./overworld').OverworldState; // Persisted overworld
   dungeonEntrances: Record<string, DungeonEntrance>; // Persistent dungeon data
   tools?: import('./tools').PlayerTools; // Singleton upgradeable tools (pickaxe, etc.)
+  /** Per-tower state for the three Item World towers (Prototyping / Training / Skill Forge).
+   *  Tracks which asset is currently slotted, its generation seed, and whether the
+   *  Floor-50 reward has been extracted. */
+  itemWorldTowerState?: import('./itemWorldTowers').ItemWorldTowerStateMap;
 }
 
 export interface GameState {

@@ -678,6 +678,23 @@ function DungeonView({
         })) ?? null;
         void submitTowerFloor(towerId, nextFloorNum, partySnapshot);
       }
+      // Item World tower reward check.
+      if (towerId) {
+        const iwType = getItemWorldTowerType(towerId);
+        const iwState = iwType ? state.saveData.itemWorldTowerState?.[iwType] : null;
+        if (iwType && iwState && !iwState.hasExtractedReward) {
+          const threshold = (iwState.baseAssetLevel ?? 1) + ITEM_WORLD_REWARD_FLOOR_DELTA;
+          if (nextFloorNum >= threshold) {
+            dispatch({ type: 'CLAIM_ITEM_WORLD_REWARD', towerType: iwType, floorReached: nextFloorNum });
+            const rewardMsg =
+              iwType === 'prototyping' ? `🔨 Recipe unlocked: ${iwState.baseAssetName}!` :
+              iwType === 'training'    ? `⚔️ ${iwState.baseAssetName} gained a permanent +1 base level!` :
+                                         `✨ Scroll of ${iwState.baseAssetName} added to town storage!`;
+            addLog(rewardMsg, 'system');
+            toast.success(rewardMsg);
+          }
+        }
+      }
       return;
     } else if (result.stairsUp && dungeon.floor <= (dungeon.startingFloor ?? 1)) {
       // Stepped onto the entry staircase — ask where to exit to.

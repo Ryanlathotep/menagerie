@@ -5357,6 +5357,26 @@ function BattleView({
         itemName={pendingReviveItem?.name || 'Revive'}
         onRevive={handleReviveTarget}
       />
+
+      {/* Scroll use dialog (Skill Forge scrolls — Teach / Cast Once) */}
+      <ScrollUseDialog
+        open={!!pendingScrollItem}
+        scroll={pendingScrollItem}
+        party={state.run?.party || []}
+        canCast={true}
+        onTeach={(comboId, moveId, itemId) => {
+          dispatch({ type: 'TEACH_MOVE_FROM_SCROLL', comboId, moveId, itemId });
+          toast.success('Move learned!');
+        }}
+        onCast={(move, itemId) => {
+          // Consume the scroll, then fire the move once for free.
+          dispatch({ type: 'USE_ITEM', itemId });
+          executeMove({ ...move, staminaCost: 0 });
+        }}
+        onClose={() => setPendingScrollItem(null)}
+      />
+
+      
       
       {/* Recruitment modal */}
       {showRecruitment && defeatedEnemy && (

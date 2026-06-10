@@ -1439,10 +1439,17 @@ function DungeonView({
 
   const handleUseItemOutOfCombat = (item: InventoryItem) => {
     if (!state.run) return;
-    
+
+    // Skill Forge scroll — open the Teach / Cast dialog instead of consuming.
+    if (item.effect?.startsWith('teach_move:')) {
+      setPendingScrollItem(item);
+      return;
+    }
+
     const monster = state.run.currentMonster;
     let message = '';
     let updatedMonster = { ...monster };
+    
     
     if (item.effect === 'heal_hp') {
       const hpBefore = monster.stats.currentHp;

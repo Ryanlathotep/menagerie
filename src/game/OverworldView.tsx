@@ -551,14 +551,23 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         cancelAutoWalk();
         return;
       }
-      // Stop if a visible enemy is on the field — mirrors auto-run behaviour.
-      const enemiesNearby = getVisibleOverworldEnemies(ow, 6);
-      if (enemiesNearby.length > 0) {
+      // Only halt if a visible enemy is within 2 tiles of the player OR sits
+      // on the next queued step. Previously we halted whenever ANY enemy was
+      // visible on screen, which locked the player out of moving away from
+      // distant enemies on mobile.
+      const next = queue[0];
+      const enemies = getVisibleOverworldEnemies(ow, 8);
+      const dangerNearby = enemies.some(({ pos }) => {
+        const dPlayer = Math.abs(pos.x - ow.playerPosition.x) + Math.abs(pos.y - ow.playerPosition.y);
+        const dNext = Math.abs(pos.x - next.x) + Math.abs(pos.y - next.y);
+        return dPlayer <= 2 || dNext <= 1;
+      });
+      if (dangerNearby) {
         cancelAutoWalk();
-        addLog('⚠️ Stopped — enemy spotted!', 'info');
+        addLog('⚠️ Stopped — enemy too close!', 'info');
         return;
       }
-      const next = queue.shift()!;
+      queue.shift();
       const dx = next.x - ow.playerPosition.x;
       const dy = next.y - ow.playerPosition.y;
       // If pathfinder result is no longer a single step from us, abort.

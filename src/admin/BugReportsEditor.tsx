@@ -24,6 +24,33 @@ interface BugReport {
 
 const STATUSES = ['open', 'in-progress', 'resolved', 'wont-fix'];
 
+function SignedScreenshot({ pathOrUrl, index }: { pathOrUrl: string; index: number }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    // Legacy rows stored full public URLs; new rows store storage paths.
+    if (/^https?:\/\//i.test(pathOrUrl)) {
+      setUrl(pathOrUrl);
+      return;
+    }
+    (async () => {
+      const { data, error } = await supabase.storage
+        .from('bug-screenshots')
+        .createSignedUrl(pathOrUrl, 3600);
+      if (!cancelled && !error) setUrl(data?.signedUrl ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [pathOrUrl]);
+  if (!url) {
+    return <div className="w-full h-32 bg-muted/40 border rounded animate-pulse" aria-label="loading screenshot" />;
+  }
+  return (
+    <a href={url} target="_blank" rel="noreferrer" className="block border rounded overflow-hidden hover:opacity-80">
+      <img src={url} alt={`screenshot ${index + 1}`} className="w-full h-32 object-cover" />
+    </a>
+  );
+}
+
 export function BugReportsEditor() {
   const { toast } = useToast();
   const [reports, setReports] = useState<BugReport[]>([]);
@@ -144,10 +171,8 @@ export function BugReportsEditor() {
                         Screenshots ({(r.context as any).screenshots.length})
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {((r.context as any).screenshots as string[]).map((url, i) => (
-                          <a key={i} href={url} target="_blank" rel="noreferrer" className="block border rounded overflow-hidden hover:opacity-80">
-                            <img src={url} alt={`screenshot ${i + 1}`} className="w-full h-32 object-cover" />
-                          </a>
+                        {((r.context as any).screenshots as string[]).map((ref, i) => (
+                          <SignedScreenshot key={i} pathOrUrl={ref} index={i} />
                         ))}
                       </div>
                     </div>

@@ -25,6 +25,9 @@ import { setTaughtMovesProvider } from './moves';
 import { calculateStats } from './utils';
 import { findNearestEmptyOverworldTile, slimOverworldForSave } from './overworld';
 import { handleStartRun, handleEndRun, handleFleeDungeon } from './reducers/runHandlers';
+import { inventoryReducer } from './reducers/inventoryReducer';
+import { equipmentReducer } from './reducers/equipmentReducer';
+import { dungeonReducer } from './reducers/dungeonReducer';
 
 
 // Starting monster - Normal Normal Slime
@@ -170,7 +173,7 @@ export function buildProgressSnapshot(
 }
 
 // Action types
-type GameAction =
+export type GameAction =
   | { type: 'SET_PHASE'; phase: GamePhase }
   | { type: 'START_RUN'; monster: Monster; party?: Monster[]; preEquipped?: MonsterEquipment; partyPreEquipped?: MonsterEquipment[]; withdrawnIds?: string[]; preSelectedItems?: InventoryItem[]; destination?: 'dungeon' | 'overworld' }
   | { type: 'END_RUN'; victory: boolean }
@@ -243,6 +246,14 @@ type GameAction =
 
 // Reducer
 export function gameReducer(state: GameState, action: GameAction): GameState {
+  // Delegate to extracted sub-reducers first. Each returns the next state if
+  // it handled the action, or null to fall through to the main switch.
+  const subResult =
+    inventoryReducer(state, action) ??
+    equipmentReducer(state, action) ??
+    dungeonReducer(state, action);
+  if (subResult) return subResult;
+
   switch (action.type) {
     case 'SET_PHASE':
       return { ...state, phase: action.phase };
@@ -262,100 +273,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'FLEE_DUNGEON':
       return handleFleeDungeon(state, action);
 
-    case 'SET_DUNGEON':
-      if (!state.run) return state;
-
-      return {
-        ...state,
-        run: { ...state.run, dungeon: action.dungeon },
-      };
-      
-    case 'UPDATE_DUNGEON':
-      if (!state.run || !state.run.dungeon) return state;
-      return {
-        ...state,
-        run: {
-          ...state.run,
-          dungeon: { ...state.run.dungeon, ...action.dungeon },
-        },
-      };
-
-    case 'TOGGLE_DUNGEON_WAYPOINT': {
-      if (!state.run || !state.run.dungeon) return state;
-      const existing = state.run.dungeon.compassWaypoints || [];
-      const idx = existing.findIndex(p => p.x === action.x && p.y === action.y);
-      const next = idx >= 0
-        ? existing.filter((_, i) => i !== idx)
-        : [...existing, { x: action.x, y: action.y }];
-      return {
-        ...state,
-        run: {
-          ...state.run,
-          dungeon: { ...state.run.dungeon, compassWaypoints: next },
-        },
-      };
-    }
-
-    case 'RENAME_DUNGEON_WAYPOINT': {
-      if (!state.run || !state.run.dungeon) return state;
-      const existing = state.run.dungeon.compassWaypoints || [];
-      const trimmed = action.name.trim().slice(0, 32);
-      const next = existing.map(p =>
-        p.x === action.x && p.y === action.y
-          ? { ...p, name: trimmed || undefined }
-          : p
-      );
-      return {
-        ...state,
-        run: {
-          ...state.run,
-          dungeon: { ...state.run.dungeon, compassWaypoints: next },
-        },
-      };
-    }
-
-    case 'REMOVE_DUNGEON_WAYPOINT': {
-      if (!state.run || !state.run.dungeon) return state;
-      const existing = state.run.dungeon.compassWaypoints || [];
-      const next = existing.filter(p => !(p.x === action.x && p.y === action.y));
-      return {
-        ...state,
-        run: { ...state.run, dungeon: { ...state.run.dungeon, compassWaypoints: next } },
-      };
-    }
-
-    case 'CLEAR_DUNGEON_WAYPOINTS': {
-      if (!state.run || !state.run.dungeon) return state;
-      return {
-        ...state,
-        run: { ...state.run, dungeon: { ...state.run.dungeon, compassWaypoints: [] } },
-      };
-    }
-
-    
-    case 'DISARM_TRAP':
-      if (!state.run || !state.run.dungeon) return state;
-      const newTiles = state.run.dungeon.tiles.map((row, rowY) =>
-        row.map((tile, tileX) => {
-          if (tileX === action.x && rowY === action.y && tile.type === 'trap') {
-            if (action.success) {
-              // Successfully disarmed - convert to floor
-              return { ...tile, type: 'floor' as const, trapType: undefined, triggered: undefined };
-            } else {
-              // Failed - trigger the trap
-              return { ...tile, triggered: true };
-            }
-          }
-          return tile;
-        })
-      );
-      return {
-        ...state,
-        run: {
-          ...state.run,
-          dungeon: { ...state.run.dungeon, tiles: newTiles },
-        },
-      };
+    // SET_DUNGEON, UPDATE_DUNGEON, *_DUNGEON_WAYPOINT, DISARM_TRAP →
+    // see ./reducers/dungeonReducer.ts
       
     case 'START_BATTLE':
       if (!state.run) return state;
@@ -490,115 +409,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           party: syncedParty,
         },
       };
-      
-    case 'ADD_GOLD':
-      if (!state.run) return state;
-      return {
-        ...state,
-        run: { ...state.run, gold: state.run.gold + action.amount },
-      };
-    
-    case 'ADD_XP':
-      if (!state.run) return state;
-      return {
-        ...state,
-        run: { ...state.run, experience: state.run.experience + action.amount },
-      };
-    
-    // Unified inventory: every mutation to run.inventory is mirrored into
-    // saveData.storedItems so the run inventory and town storage are always
-    // the same list. Picking up an item in a dungeon means it's also in town.
-    case 'ADD_ITEM': {
-      if (!state.run) return state;
-      const addQty = action.item.quantity || 1;
-      const incoming = { ...action.item, quantity: addQty };
 
-      const stackInto = (list: InventoryItem[]): InventoryItem[] => {
-        // Collapse any pre-existing duplicate entries with the same id
-        // (defensive — older saves can have multiple stacks for one id).
-        const collapsed: InventoryItem[] = [];
-        for (const entry of list) {
-          const idx = collapsed.findIndex(i => i.id === entry.id);
-          if (idx !== -1) {
-            collapsed[idx] = {
-              ...collapsed[idx],
-              quantity: collapsed[idx].quantity + entry.quantity,
-            };
-          } else {
-            collapsed.push({ ...entry });
-          }
-        }
-        const idx = collapsed.findIndex(i => i.id === incoming.id);
-        if (idx !== -1) {
-          collapsed[idx] = { ...collapsed[idx], quantity: collapsed[idx].quantity + addQty };
-          return collapsed;
-        }
-        return [...collapsed, { ...incoming }];
-      };
+    // ADD_GOLD, ADD_XP, ADD_ITEM, USE_ITEM, DROP_ITEM →
+    // see ./reducers/inventoryReducer.ts
 
-      return {
-        ...state,
-        run: { ...state.run, inventory: stackInto(state.run.inventory) },
-        saveData: {
-          ...state.saveData,
-          storedItems: stackInto(state.saveData.storedItems || []),
-        },
-      };
-    }
 
-    case 'USE_ITEM': {
-      if (!state.run) return state;
-      const itemIndex = state.run.inventory.findIndex(i => i.id === action.itemId);
-      if (itemIndex === -1) return state;
-      const item = state.run.inventory[itemIndex];
-
-      const decrement = (list: InventoryItem[]): InventoryItem[] => {
-        const idx = list.findIndex(i => i.id === action.itemId);
-        if (idx === -1) return list;
-        const cur = list[idx];
-        if (cur.quantity <= 1) return list.filter((_, i) => i !== idx);
-        const next = [...list];
-        next[idx] = { ...cur, quantity: cur.quantity - 1 };
-        return next;
-      };
-
-      void item;
-      return {
-        ...state,
-        run: { ...state.run, inventory: decrement(state.run.inventory) },
-        saveData: {
-          ...state.saveData,
-          storedItems: decrement(state.saveData.storedItems || []),
-        },
-      };
-    }
-
-    case 'DROP_ITEM': {
-      if (!state.run) return state;
-      const dropIndex = state.run.inventory.findIndex(i => i.id === action.itemId);
-      if (dropIndex === -1) return state;
-      const dropItem = state.run.inventory[dropIndex];
-      const dropQuantity = action.quantity ?? dropItem.quantity;
-
-      const removeQty = (list: InventoryItem[]): InventoryItem[] => {
-        const idx = list.findIndex(i => i.id === action.itemId);
-        if (idx === -1) return list;
-        const cur = list[idx];
-        if (dropQuantity >= cur.quantity) return list.filter((_, i) => i !== idx);
-        const next = [...list];
-        next[idx] = { ...cur, quantity: cur.quantity - dropQuantity };
-        return next;
-      };
-
-      return {
-        ...state,
-        run: { ...state.run, inventory: removeQty(state.run.inventory) },
-        saveData: {
-          ...state.saveData,
-          storedItems: removeQty(state.saveData.storedItems || []),
-        },
-      };
-    }
     
     case 'SET_MOVE_ORDER':
       if (!state.run) return state;
@@ -620,161 +435,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         },
       };
     
-    // Equipment management.
-    // Unified equipment inventory: run.equipmentInventory and saveData.storedEquipment
-    // are kept in sync — they are the same shared list, just exposed under two names so
-    // existing callers (run UI vs town UI) keep working. Equipped items
-    // (state.run.partyEquipment[*]) are bound to monsters and intentionally NOT in
-    // either list while equipped.
-    case 'ADD_EQUIPMENT': {
-      if (!state.run) return state;
-      return {
-        ...state,
-        run: {
-          ...state.run,
-          equipmentInventory: [...state.run.equipmentInventory, action.item],
-        },
-        saveData: {
-          ...state.saveData,
-          storedEquipment: [...state.saveData.storedEquipment, action.item],
-        },
-      };
-    }
-    
-    case 'EQUIP_ITEM': {
-      if (!state.run) return state;
-      const equipIndex = action.partyIndex ?? state.run.activePartyIndex;
-      const slot = action.item.slot;
-      const currentEquipment = state.run.partyEquipment[equipIndex] || createEmptyEquipment();
-      const previouslyEquipped = currentEquipment[slot];
-      // Pull the equipped item out of the shared pool, push the displaced one back in.
-      const newEquipmentInv = state.run.equipmentInventory.filter(i => i.id !== action.item.id);
-      const newStored = state.saveData.storedEquipment.filter(i => i.id !== action.item.id);
-      if (previouslyEquipped) {
-        newEquipmentInv.push(previouslyEquipped);
-        newStored.push(previouslyEquipped);
-      }
-      const newPartyEquipment = [...state.run.partyEquipment];
-      newPartyEquipment[equipIndex] = {
-        ...currentEquipment,
-        [slot]: action.item,
-      };
-      return {
-        ...state,
-        run: {
-          ...state.run,
-          equipmentInventory: newEquipmentInv,
-          partyEquipment: newPartyEquipment,
-        },
-        saveData: {
-          ...state.saveData,
-          storedEquipment: newStored,
-        },
-      };
-    }
-    
-    case 'UNEQUIP_ITEM': {
-      if (!state.run) return state;
-      const unequipIndex = action.partyIndex ?? state.run.activePartyIndex;
-      const unequipSlot = action.slot;
-      const unequipCurrentEquipment = state.run.partyEquipment[unequipIndex] || createEmptyEquipment();
-      const itemToUnequip = unequipCurrentEquipment[unequipSlot];
-      if (!itemToUnequip) return state;
-      const unequipNewPartyEquipment = [...state.run.partyEquipment];
-      unequipNewPartyEquipment[unequipIndex] = {
-        ...unequipCurrentEquipment,
-        [unequipSlot]: null,
-      };
-      return {
-        ...state,
-        run: {
-          ...state.run,
-          equipmentInventory: [...state.run.equipmentInventory, itemToUnequip],
-          partyEquipment: unequipNewPartyEquipment,
-        },
-        saveData: {
-          ...state.saveData,
-          storedEquipment: [...state.saveData.storedEquipment, itemToUnequip],
-        },
-      };
-    }
-    
-    case 'BULK_EQUIP': {
-      if (!state.run) return state;
-      const bulkIndex = action.partyIndex;
-      // Remove newly-equipped items from the shared pool.
-      const usedSet = new Set(action.usedIds);
-      const bulkNewInventory = state.run.equipmentInventory.filter(i => !usedSet.has(i.id));
-      const bulkNewStored = state.saveData.storedEquipment.filter(i => !usedSet.has(i.id));
-      // Push displaced previously-equipped items back into the pool.
-      const bulkCurrentEquipment = state.run.partyEquipment[bulkIndex] || createEmptyEquipment();
-      const slots: EquipmentSlot[] = ['helmet', 'armor', 'mainHand', 'offHand', 'gloves', 'boots', 'accessory', 'back'];
-      for (const slot of slots) {
-        const oldItem = bulkCurrentEquipment[slot];
-        if (oldItem && !usedSet.has(oldItem.id)) {
-          bulkNewInventory.push(oldItem);
-          bulkNewStored.push(oldItem);
-        }
-      }
-      const bulkNewPartyEquipment = [...state.run.partyEquipment];
-      bulkNewPartyEquipment[bulkIndex] = action.equipment;
-      return {
-        ...state,
-        run: {
-          ...state.run,
-          equipmentInventory: bulkNewInventory,
-          partyEquipment: bulkNewPartyEquipment,
-        },
-        saveData: {
-          ...state.saveData,
-          storedEquipment: bulkNewStored,
-        },
-      };
-    }
-    
-    case 'DROP_EQUIPMENT':
-      if (!state.run) return state;
-      return {
-        ...state,
-        run: {
-          ...state.run,
-          equipmentInventory: state.run.equipmentInventory.filter(i => i.id !== action.itemId),
-        },
-        saveData: {
-          ...state.saveData,
-          storedEquipment: state.saveData.storedEquipment.filter(i => i.id !== action.itemId),
-        },
-      };
-    
-    // Material management - add to run inventory (kept when fleeing, lost on death)
-    case 'ADD_MATERIAL':
-      if (!state.run) return state;
-      return {
-        ...state,
-        run: {
-          ...state.run,
-          runMaterials: {
-            ...state.run.runMaterials,
-            [action.materialId]: (state.run.runMaterials[action.materialId] || 0) + action.quantity,
-          },
-        },
-      };
-    
-    case 'USE_MATERIALS':
-      const updatedMaterials = { ...state.saveData.materials };
-      for (const mat of action.materials) {
-        updatedMaterials[mat.materialId] = (updatedMaterials[mat.materialId] || 0) - mat.quantity;
-        if (updatedMaterials[mat.materialId] <= 0) {
-          delete updatedMaterials[mat.materialId];
-        }
-      }
-      return {
-        ...state,
-        saveData: {
-          ...state.saveData,
-          materials: updatedMaterials,
-        },
-      };
+    // ADD_EQUIPMENT, EQUIP_ITEM, UNEQUIP_ITEM, BULK_EQUIP, DROP_EQUIPMENT →
+    // see ./reducers/equipmentReducer.ts
+    // ADD_MATERIAL, USE_MATERIALS → see ./reducers/inventoryReducer.ts
+
+
 
     // Singleton tool upgrade — sets the pickaxe to a specific tier (replaces
     // any previous tier). Materials are spent separately via USE_MATERIALS.
@@ -816,150 +481,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         },
       };
     
-    case 'STORE_EQUIPMENT':
-      // Mirror into the run's loose inventory when a run is active so newly
-      // crafted/stored gear is immediately equippable.
-      return {
-        ...state,
-        run: state.run
-          ? {
-              ...state.run,
-              equipmentInventory: [...state.run.equipmentInventory, action.item],
-            }
-          : state.run,
-        saveData: {
-          ...state.saveData,
-          storedEquipment: [...state.saveData.storedEquipment, action.item],
-        },
-      };
-    
-    case 'WITHDRAW_EQUIPMENT': {
-      // Lists are unified, so withdrawal is a no-op functionally — but we
-      // keep the action available for older callers.
-      if (!state.run) return state;
-      const alreadyInRun = state.run.equipmentInventory.some(i => i.id === action.itemId);
-      if (alreadyInRun) return state;
-      const withdrawItem = state.saveData.storedEquipment.find(i => i.id === action.itemId);
-      if (!withdrawItem) return state;
-      return {
-        ...state,
-        run: {
-          ...state.run,
-          equipmentInventory: [...state.run.equipmentInventory, withdrawItem],
-        },
-      };
-    }
-    
-    case 'SELL_EQUIPMENT': {
-      // Sell shared equipment for gold — remove from both views.
-      const itemToSell = state.saveData.storedEquipment.find(i => i.id === action.itemId);
-      if (!itemToSell) return state;
-      return {
-        ...state,
-        run: state.run
-          ? {
-              ...state.run,
-              equipmentInventory: state.run.equipmentInventory.filter(i => i.id !== action.itemId),
-            }
-          : state.run,
-        saveData: {
-          ...state.saveData,
-          storedEquipment: state.saveData.storedEquipment.filter(i => i.id !== action.itemId),
-          gold: (state.saveData.gold || 0) + action.price,
-        },
-      };
-    }
-    
-    case 'DISMANTLE_EQUIPMENT': {
-      // Break shared equipment into materials — remove from both views.
-      const itemToDismantle = state.saveData.storedEquipment.find(i => i.id === action.itemId);
-      if (!itemToDismantle) return state;
-      
-      const dismantleResult = dismantleEquipment(itemToDismantle);
-      const updatedMaterials = { ...state.saveData.materials };
-      for (const { materialId, quantity } of dismantleResult.materials) {
-        updatedMaterials[materialId] = (updatedMaterials[materialId] || 0) + quantity;
-      }
-      return {
-        ...state,
-        run: state.run
-          ? {
-              ...state.run,
-              equipmentInventory: state.run.equipmentInventory.filter(i => i.id !== action.itemId),
-            }
-          : state.run,
-        saveData: {
-          ...state.saveData,
-          storedEquipment: state.saveData.storedEquipment.filter(i => i.id !== action.itemId),
-          materials: updatedMaterials,
-        },
-      };
-    }
-    
-    case 'ADD_TOWN_GOLD':
-      return {
-        ...state,
-        saveData: {
-          ...state.saveData,
-          gold: (state.saveData.gold || 0) + action.amount,
-        },
-      };
-    
-    case 'SPEND_TOWN_GOLD': {
-      const currentGold = state.saveData.gold || 0;
-      if (currentGold < action.amount) return state;
-      return {
-        ...state,
-        saveData: {
-          ...state.saveData,
-          gold: currentGold - action.amount,
-        },
-      };
-    }
-    
-    case 'STORE_ITEM': {
-      // Stack-by-id helper. Also collapses any pre-existing duplicate
-      // entries with the same id (defensive — older saves may contain
-      // multiple stacks for the same item id).
-      const addQty = action.item.quantity || 1;
-      const stackInto = (list: InventoryItem[]): InventoryItem[] => {
-        const collapsed: InventoryItem[] = [];
-        for (const entry of list) {
-          const idx = collapsed.findIndex(i => i.id === entry.id);
-          if (idx !== -1) {
-            collapsed[idx] = {
-              ...collapsed[idx],
-              quantity: collapsed[idx].quantity + entry.quantity,
-            };
-          } else {
-            collapsed.push({ ...entry });
-          }
-        }
-        const idx = collapsed.findIndex(i => i.id === action.item.id);
-        if (idx !== -1) {
-          collapsed[idx] = {
-            ...collapsed[idx],
-            quantity: collapsed[idx].quantity + addQty,
-          };
-          return collapsed;
-        }
-        return [...collapsed, { ...action.item, quantity: addQty }];
-      };
+    // STORE_EQUIPMENT, WITHDRAW_EQUIPMENT, SELL_EQUIPMENT, DISMANTLE_EQUIPMENT →
+    // see ./reducers/equipmentReducer.ts
+    // ADD_TOWN_GOLD, SPEND_TOWN_GOLD, STORE_ITEM → see ./reducers/inventoryReducer.ts
 
-      // Unified inventory: mirror into both the run and town storage so
-      // mid-run shop buys / workstation crafts stack instead of creating
-      // a parallel entry that the run never sees.
-      return {
-        ...state,
-        run: state.run
-          ? { ...state.run, inventory: stackInto(state.run.inventory) }
-          : state.run,
-        saveData: {
-          ...state.saveData,
-          storedItems: stackInto(state.saveData.storedItems || []),
-        },
-      };
-    }
+
     
     case 'UNLOCK_RECIPE': {
       const currentRecipes = state.saveData.unlockedRecipes || [];

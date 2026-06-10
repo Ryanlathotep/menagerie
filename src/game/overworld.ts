@@ -1,6 +1,7 @@
 // Overworld system - infinite chunk-based exploration world
 
 import { Monster, Position, SpeciesType, ElementType, SPECIES_DATA, DungeonEntrance, createAllThemedTowers } from './types';
+import { createAllItemWorldTowerEntrances } from './itemWorldTowers';
 import { generateRandomMonster } from './utils';
 import { PlayerBuilding, isWallActingAsGate } from './buildings';
 import { NestState, isNestAt, createNest } from './nests';

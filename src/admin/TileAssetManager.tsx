@@ -289,7 +289,7 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
 
   // ---- Drag-to-select cell regions on the preview ----
   const cellFromEvent = useCallback((e: React.MouseEvent): { r: number; c: number } | null => {
-    if (!imgRef.current || !dims.w || displayW === 0) return null;
+    if (!imgRef.current || !dims.w) return null;
     const rect = imgRef.current.getBoundingClientRect();
     const scale = rect.width / dims.w;
     const x = (e.clientX - rect.left) / scale;
@@ -298,7 +298,7 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
     const r = Math.floor((y - marginY) / (tileH + spacingY));
     if (r < 0 || c < 0 || r >= grid.rows || c >= grid.cols) return null;
     return { r, c };
-  }, [dims.w, displayW, marginX, marginY, tileW, tileH, spacingX, spacingY, grid.rows, grid.cols]);
+  }, [dims.w, marginX, marginY, tileW, tileH, spacingX, spacingY, grid.rows, grid.cols]);
 
   const onOverlayMouseDown = (e: React.MouseEvent) => {
     const cell = cellFromEvent(e);
@@ -549,8 +549,8 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
               onLoad={(e) => setDisplayW((e.target as HTMLImageElement).clientWidth)}
             />
             {/* Grid + region overlay, scaled with the rendered image */}
-            {displayW > 0 && grid.cols > 0 && (() => {
-              const scale = displayW / dims.w;
+            {dims.w > 0 && grid.cols > 0 && (() => {
+              const scale = zoom;
               const px = (n: number) => `${n * scale}px`;
               return (
                 <div className="absolute inset-0 pointer-events-none">

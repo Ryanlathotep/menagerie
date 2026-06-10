@@ -8,9 +8,11 @@
 // Opens from PC right-click and touch long-press. Tap / left-click is still
 // movement (handled upstream).
 
+import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { X, type LucideIcon } from 'lucide-react';
+
 
 export interface UnifiedTileAction {
   id: string;
@@ -68,17 +70,40 @@ export function UnifiedTileMenu({
   footnote,
   onClose,
 }: UnifiedTileMenuProps) {
+  // Touch long-press opens the menu, but the same finger lifting fires a
+  // synthesized click on whatever element is now under it — which is the
+  // overlay that just appeared. Without a grace period, the menu would
+  // close the moment the player releases their finger. We also require
+  // the closing press to *start* on the overlay (not bubble up from a
+  // button), to prevent accidental dismissal while tapping near a row.
+  const openedAtRef = useRef<number>(Date.now());
+  const overlayPressRef = useRef<boolean>(false);
+  useEffect(() => { openedAtRef.current = Date.now(); }, []);
+
+  const tryClose = () => {
+    if (Date.now() - openedAtRef.current < 450) return;
+    onClose();
+  };
+
   return (
     <div
       className="fixed inset-0 bg-background/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-      onContextMenu={(e) => { e.preventDefault(); onClose(); }}
+      onPointerDown={(e) => { overlayPressRef.current = e.target === e.currentTarget; }}
+      onClick={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (!overlayPressRef.current) return;
+        overlayPressRef.current = false;
+        tryClose();
+      }}
+      onContextMenu={(e) => { e.preventDefault(); tryClose(); }}
     >
       <Card
         className="p-4 max-w-sm w-full space-y-3 max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
         onContextMenu={(e) => e.stopPropagation()}
       >
+
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">

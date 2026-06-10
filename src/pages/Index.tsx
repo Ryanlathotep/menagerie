@@ -3367,20 +3367,38 @@ function DungeonView({
                     maxHp: enemy.stats.maxHp,
                   };
                   info.push({ label: 'Stamina', value: `${enemy.stats.currentStamina ?? enemy.stats.stamina ?? 0} / ${enemy.stats.stamina ?? 0}` });
-                  actions.push({
-                    id: 'attack',
-                    label: 'Pick a move to attack',
-                    icon: Swords,
-                    variant: 'default',
-                    onClick: () => {
-                      close();
-                      setAttackMenuTarget({
-                        enemy,
-                        enemyPos: { x, y },
-                        playerPos: dungeon.playerPosition,
-                      });
-                    },
-                  });
+                  // Only offer the attack action when at least one move on
+                  // the active monster can actually reach this enemy from
+                  // the player's current position. Otherwise the option is
+                  // misleading — there's nothing it can do.
+                  if (directTileAttack) {
+                    actions.push({
+                      id: 'attack',
+                      label: 'Pick a move to attack',
+                      icon: Swords,
+                      variant: 'default',
+                      onClick: () => {
+                        close();
+                        setAttackMenuTarget({
+                          enemy,
+                          enemyPos: { x, y },
+                          playerPos: dungeon.playerPosition,
+                        });
+                      },
+                    });
+                  } else {
+                    actions.push({
+                      id: 'attack',
+                      label: 'Attack',
+                      hint: 'No usable move reaches this tile from where you stand',
+                      icon: Swords,
+                      variant: 'secondary',
+                      disabled: true,
+                      disabledReason: 'Out of range — move closer or pick a move with longer reach',
+                      onClick: () => { /* noop */ },
+                    });
+                  }
+
                 }
               } else if (tile.type === 'nest' && tile.nestState) {
                 title = `🪺 ${tile.nestState.element[0].toUpperCase()}${tile.nestState.element.slice(1)} Nest`;

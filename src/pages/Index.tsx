@@ -2604,7 +2604,7 @@ function DungeonView({
     const tile = dungeon?.tiles[y]?.[x];
     if (tile?.type === 'enemy' && tile.enemyId && state.run) {
       const monster = state.run.currentMonster;
-      const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
+      const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level, `${monster.species}_${monster.element}_${monster.class}`);
       const attackMove = moves.find(m => m.type === 'melee' || m.type === 'ranged');
 
       if (attackMove) {

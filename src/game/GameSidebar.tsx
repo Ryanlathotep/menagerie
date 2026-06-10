@@ -223,7 +223,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                   <span className="text-[10px] text-primary font-bold">💰{gold}</span>
                 </div>
 
-                <Button variant="ghost" size="icon" className="w-9 h-9 flex-shrink-0" onClick={() => setShowSettings(true)} title="Settings">
+                <Button variant="ghost" size="icon" className="w-9 h-9 flex-shrink-0" onClick={() => setShowSettings(true)} title="Settings" aria-label="Settings">
                   <Settings className="w-5 h-5" />
                 </Button>
 
@@ -234,6 +234,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                     className="w-9 h-9 flex-shrink-0"
                     onClick={onFlee}
                     title={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
+                    aria-label={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
                   >
                     {fleeVariant === 'home'
                       ? <Home className="w-5 h-5" />
@@ -248,6 +249,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                     className="w-9 h-9 flex-shrink-0"
                     onClick={onMainMenu}
                     title={mainMenuTitle ?? 'Return to main menu (ends run)'}
+                    aria-label={mainMenuTitle ?? 'Return to main menu (ends run)'}
                   >
                     <LogOut className="w-5 h-5" />
                   </Button>
@@ -377,15 +379,15 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             )}
 
             <div className="flex gap-0.5 sm:gap-1 ml-auto min-w-0 flex-1 overflow-x-auto no-scrollbar justify-end">
-              <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('character')} title="Character Sheet">
+              <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('character')} title="Character Sheet" aria-label="Character Sheet">
                 <User className={desktopIconClass} />
               </Button>
 
-              <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('moves')} title="Moves / Attacks">
+              <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('moves')} title="Moves / Attacks" aria-label="Moves and attacks">
                 <Swords className={desktopIconClass} />
               </Button>
 
-              <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('inventory')} title="Inventory">
+              <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('inventory')} title="Inventory" aria-label="Inventory">
                 <Backpack className={desktopIconClass} />
               </Button>
 
@@ -396,6 +398,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                   className="w-9 h-9 sm:w-8 sm:h-8 relative flex-shrink-0"
                   onClick={onOpenEquipment}
                   title="Equipment"
+                  aria-label="Equipment"
                 >
                   <Shirt className={desktopIconClass} />
                   {equipmentInventory.length > 0 && (
@@ -413,6 +416,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                   className="w-9 h-9 sm:w-8 sm:h-8 relative flex-shrink-0"
                   onClick={() => handlePanelChange('party')}
                   title="Party"
+                  aria-label="Party"
                 >
                   <Users className={desktopIconClass} />
                   <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
@@ -428,12 +432,13 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                   className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
                   onClick={onOpenWorkshop}
                   title="Open Portable Workstation (crafting)"
+                  aria-label="Open Portable Workstation (crafting)"
                 >
                   <Hammer className={desktopIconClass} />
                 </Button>
               )}
 
-              <Button variant="ghost" size="icon" className="w-9 h-9 sm:w-8 sm:h-8 hidden sm:flex flex-shrink-0" onClick={() => setShowSettings(true)} title="Settings">
+              <Button variant="ghost" size="icon" className="w-9 h-9 sm:w-8 sm:h-8 hidden sm:flex flex-shrink-0" onClick={() => setShowSettings(true)} title="Settings" aria-label="Settings">
                 <Settings className={desktopIconClass} />
               </Button>
             </div>
@@ -460,6 +465,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
                 onClick={onFlee}
                 title={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
+                aria-label={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
               >
                 {fleeVariant === 'home'
                   ? <Home className={desktopIconClass} />
@@ -474,6 +480,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
                 onClick={onMainMenu}
                 title={mainMenuTitle ?? 'Return to main menu (ends run)'}
+                aria-label={mainMenuTitle ?? 'Return to main menu (ends run)'}
               >
                 <LogOut className={desktopIconClass} />
               </Button>
@@ -716,6 +723,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                                         onDropItem(item.id);
                                       }}
                                       title="Drop item"
+                                      aria-label="Drop item"
                                     >
                                       <Trash2 className="w-3 h-3" />
                                     </Button>

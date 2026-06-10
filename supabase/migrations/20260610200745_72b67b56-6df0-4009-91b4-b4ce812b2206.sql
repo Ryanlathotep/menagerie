@@ -1,0 +1,1 @@
+update public.bug_reports set status='resolved' where id in ('77efe74a-18ec-4b85-819a-59efd491b47e','5cfcdab5-4b5b-4db2-ab48-b58554a19a31','1099eb75-e43e-4c5a-9f2e-290e515b9372','ccef9d63-e98d-4df9-b0d0-6a44e8590f79');

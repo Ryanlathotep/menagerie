@@ -104,7 +104,8 @@ export function ReportBugDialog({ isOpen, onClose, context }: Props) {
   };
 
   const uploadShots = async (): Promise<string[]> => {
-    const urls: string[] = [];
+    // Bucket is private. Store storage paths; admin viewer signs URLs on demand.
+    const paths: string[] = [];
     for (const shot of shots) {
       const ext = shot.name.split('.').pop()?.toLowerCase() || 'png';
       const path = `${user?.id ?? 'anon'}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
@@ -112,10 +113,9 @@ export function ReportBugDialog({ isOpen, onClose, context }: Props) {
         .from('bug-screenshots')
         .upload(path, shot.blob, { contentType: shot.blob.type || 'image/png', upsert: false });
       if (error) throw error;
-      const { data } = supabase.storage.from('bug-screenshots').getPublicUrl(path);
-      urls.push(data.publicUrl);
+      paths.push(path);
     }
-    return urls;
+    return paths;
   };
 
   const submit = async () => {

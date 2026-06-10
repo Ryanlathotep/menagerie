@@ -258,15 +258,15 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             </div>
 
             <div className="flex items-center gap-1 w-full min-w-0">
-              <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('character')} title="Character Sheet">
+              <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('character')} title="Character Sheet" aria-label="Character Sheet">
                 <User className="w-5 h-5" />
               </Button>
 
-              <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('moves')} title="Moves / Attacks">
+              <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('moves')} title="Moves / Attacks" aria-label="Moves and attacks">
                 <Swords className="w-5 h-5" />
               </Button>
 
-              <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('inventory')} title="Inventory">
+              <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('inventory')} title="Inventory" aria-label="Inventory">
                 <Backpack className="w-5 h-5" />
               </Button>
 
@@ -277,6 +277,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                   className={`${mobileMenuButtonClass} relative`}
                   onClick={onOpenEquipment}
                   title="Equipment"
+                  aria-label="Equipment"
                 >
                   <Shirt className="w-5 h-5" />
                   {equipmentInventory.length > 0 && (
@@ -294,6 +295,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                   className={`${mobileMenuButtonClass} relative`}
                   onClick={() => handlePanelChange('party')}
                   title="Party"
+                  aria-label="Party"
                 >
                   <Users className="w-5 h-5" />
                   <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
@@ -309,6 +311,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                   className={mobileMenuButtonClass}
                   onClick={onOpenWorkshop}
                   title="Open Portable Workstation (crafting)"
+                  aria-label="Open Portable Workstation (crafting)"
                 >
                   <Hammer className="w-5 h-5" />
                 </Button>

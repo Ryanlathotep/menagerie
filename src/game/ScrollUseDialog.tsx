@@ -115,7 +115,7 @@ export function ScrollUseDialog({
                       }}
                     >
                       <div className="w-10 h-10 shrink-0">
-                        <MonsterSprite monster={m} size={40} />
+                        <MonsterSprite species={m.species} element={m.element} classType={m.class} size={40} />
                       </div>
                       <div className="flex-1">
                         <div className="font-semibold text-sm">{m.name}</div>

@@ -254,14 +254,51 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       // Prefer the freshly-built overworld passed from Settings to avoid
       // regenerating twice; fall back to building one here.
       const fresh = detail?.overworld ?? regenerateOverworld(seed);
+
+      // ─── Preserve player-placed structures across the rebuild ───
+      // Player buildings, roads, and assigned monsters live in the overworld
+      // state. We carry them over and re-stamp them onto the freshly generated
+      // chunks so terrain regenerates *around* the player's town instead of
+      // wiping it out.
+      const preservedBuildings = (overworld.playerBuildings || []).map(b => ({ ...b }));
+      const preservedRoads = { ...(overworld.roads || {}) };
+      fresh.playerBuildings = preservedBuildings;
+      fresh.roads = preservedRoads;
+
+      // Make sure every chunk containing a preserved building/road is loaded
+      // before we try to stamp tiles into it.
+      for (const b of preservedBuildings) {
+        ensureChunksLoaded(fresh, b.worldX, b.worldY);
+      }
+      for (const key of Object.keys(preservedRoads)) {
+        const [rx, ry] = key.split(',').map(Number);
+        if (Number.isFinite(rx) && Number.isFinite(ry)) {
+          ensureChunksLoaded(fresh, rx, ry);
+        }
+      }
+
+      // Re-stamp each building onto its tile, replacing whatever terrain rolled there.
+      for (const b of preservedBuildings) {
+        const existing = getOverworldTile(fresh, b.worldX, b.worldY);
+        setOverworldTile(fresh, b.worldX, b.worldY, {
+          type: 'player_building',
+          explored: true,
+          visible: existing?.visible ?? false,
+          playerBuildingId: b.id,
+        });
+      }
+      // Re-apply roads onto the new chunks.
+      applyRoadsToChunks(fresh);
+      updateVisibility(fresh);
+
       setOverworld(fresh);
       saveOverworld(fresh);
-      addLog(`🌍 Overworld rebuilt with seed ${label}.`, 'system');
+      addLog(`🌍 Overworld rebuilt with seed ${label} — kept ${preservedBuildings.length} structure(s) and ${Object.keys(preservedRoads).length} road tile(s).`, 'system');
       toast.success(`World rebuilt — seed ${label}`);
     };
     window.addEventListener('menagerie-rebuild-overworld', onRebuild);
     return () => window.removeEventListener('menagerie-rebuild-overworld', onRebuild);
-  }, [saveOverworld, addLog]);
+  }, [saveOverworld, addLog, overworld]);
 
   // ─── Manual save: flush in-memory overworld into saveData, then push to cloud
   // (or just confirm the local snapshot if not signed in). Useful for the player

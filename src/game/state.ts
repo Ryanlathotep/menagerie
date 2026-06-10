@@ -1696,6 +1696,25 @@ export function GameProvider({ children }: GameProviderProps) {
             };
           }
         }
+        // Migration: ensure the three Item World towers exist for legacy saves.
+        const itemWorldDefaults = createAllItemWorldTowerEntrances();
+        for (const [id, def] of Object.entries(itemWorldDefaults)) {
+          const existing = saveData.dungeonEntrances[id];
+          if (!existing) {
+            saveData.dungeonEntrances[id] = def;
+          } else {
+            saveData.dungeonEntrances[id] = {
+              ...def,
+              ...existing,
+              category: 'item_world',
+              theme: existing.theme || def.theme,
+              name: existing.name || def.name,
+            };
+          }
+        }
+        if (!saveData.itemWorldTowerState) {
+          saveData.itemWorldTowerState = {};
+        }
         dispatch({ type: 'LOAD_SAVE', saveData });
       } catch (e) {
         console.error('Failed to load save data:', e);

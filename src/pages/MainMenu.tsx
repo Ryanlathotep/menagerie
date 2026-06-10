@@ -218,6 +218,11 @@ export function MainMenu() {
           <DungeonListPanel
             dungeonEntrances={state.saveData.dungeonEntrances || {}}
             onLaunch={(entrance) => {
+              // Item World towers must pick a base asset first.
+              if (entrance.category === 'item_world') {
+                setPendingItemWorldEntrance(entrance);
+                return;
+              }
               localStorage.setItem('menagerie_run_destination', 'dungeon');
               localStorage.setItem('menagerie_run_origin', 'main_menu');
               localStorage.setItem('menagerie_active_dungeon_id', entrance.id);
@@ -228,6 +233,23 @@ export function MainMenu() {
             quickStartPartySize={quickStartParty.length}
             highestMonsterLevel={highestMonsterLevel}
           />
+
+          <ItemWorldTowerPicker
+            open={pendingItemWorldEntrance !== null}
+            towerType={pendingItemWorldEntrance ? getItemWorldTowerType(pendingItemWorldEntrance.id) : null}
+            onCancel={() => setPendingItemWorldEntrance(null)}
+            onConfirmed={() => {
+              const entrance = pendingItemWorldEntrance;
+              setPendingItemWorldEntrance(null);
+              if (!entrance) return;
+              localStorage.setItem('menagerie_run_destination', 'dungeon');
+              localStorage.setItem('menagerie_run_origin', 'main_menu');
+              localStorage.setItem('menagerie_active_dungeon_id', entrance.id);
+              localStorage.setItem('menagerie_active_dungeon_difficulty', String(entrance.difficulty || 1));
+              dispatch({ type: 'SET_PHASE', phase: 'character_select' });
+            }}
+          />
+
 
           <div className="flex gap-2 justify-center">
             <Button variant="outline" className="w-32" onClick={() => setShowShop(true)}>

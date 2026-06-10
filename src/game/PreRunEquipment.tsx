@@ -239,7 +239,7 @@ export function PreRunEquipment({
     <div className="game-container">
       <div className="space-y-4 max-w-5xl">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onBack}>
+          <Button variant="ghost" size="icon" onClick={onBack} aria-label="Back">
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <h2 className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent flex items-center gap-2">

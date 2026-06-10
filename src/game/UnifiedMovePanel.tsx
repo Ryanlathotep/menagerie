@@ -709,6 +709,7 @@ function UnifiedMoveCard({
                       onToggleHide();
                     }}
                     title={isHidden ? "Show move" : "Hide move"}
+                    aria-label={isHidden ? "Show move" : "Hide move"}
                   >
                     {isHidden ? <Eye className="w-2.5 h-2.5" /> : <EyeOff className="w-2.5 h-2.5" />}
                   </Button>

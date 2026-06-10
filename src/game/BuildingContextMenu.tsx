@@ -74,7 +74,7 @@ export function BuildingContextMenu({
               {assigned && ` • 👤 ${assigned.name}`}
             </p>
           </div>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose} aria-label="Close menu">
             <X className="h-4 w-4" />
           </Button>
         </div>

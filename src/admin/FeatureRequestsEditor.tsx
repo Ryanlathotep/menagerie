@@ -111,7 +111,7 @@ export function FeatureRequestsEditor() {
           return (
             <Card key={r.id} className="p-3">
               <div className="flex items-start gap-2">
-                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => toggle(r.id)}>
+                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => toggle(r.id)} aria-label={isOpen ? "Collapse row" : "Expand row"} aria-expanded={isOpen}>
                   {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </Button>
                 <div className="flex-1 min-w-0">
@@ -132,7 +132,7 @@ export function FeatureRequestsEditor() {
                     {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => remove(r.id)}>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => remove(r.id)} aria-label="Delete feature request">
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>

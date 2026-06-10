@@ -4,8 +4,8 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 export default defineConfig(({ mode }) => ({
-  // Use '/menagerie/' only for production (GitHub Pages); dev/preview serves from '/'
-  base: mode === 'production' ? '/menagerie/' : '/',
+  // Lovable hosting serves at root in all environments
+  base: '/',
   server: {
     host: "::",
     port: 8080,

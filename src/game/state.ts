@@ -409,11 +409,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           party: syncedParty,
         },
       };
-      
+
     // ADD_GOLD, ADD_XP, ADD_ITEM, USE_ITEM, DROP_ITEM →
     // see ./reducers/inventoryReducer.ts
-    
-    }
+
+
     
     case 'SET_MOVE_ORDER':
       if (!state.run) return state;

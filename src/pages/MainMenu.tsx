@@ -313,6 +313,14 @@ export function MainMenu() {
                 >
                   🔄 Sync Now
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => { await signOut(); navigate('/auth'); }}
+                  title="Sign out and sign in as a different user"
+                >
+                  🔁 Switch Account
+                </Button>
                 <Button variant="ghost" size="sm" onClick={signOut}>
                   Sign Out
                 </Button>

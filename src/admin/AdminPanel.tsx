@@ -1,4 +1,23 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
+
+function SwitchAccountButton() {
+  const { signOut, isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
+  if (!isAuthenticated) return null;
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={async () => { await signOut(); navigate('/auth'); }}
+      title={user?.email ? `Signed in as ${user.email} — click to switch` : 'Switch account'}
+    >
+      🔁 Switch Account
+    </Button>
+  );
+}
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -45,14 +64,17 @@ export function AdminPanel() {
 
   return (
     <Card className="h-full flex flex-col overflow-hidden">
-      <div className="p-4 border-b bg-gradient-to-r from-primary/10 to-secondary/10">
-        <h2 className="text-xl font-bold flex items-center gap-2">
-          <Shield className="w-5 h-5 text-primary" />
-          Admin Panel
-        </h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Edit game data - changes are saved to the database and override defaults
-        </p>
+      <div className="p-4 border-b bg-gradient-to-r from-primary/10 to-secondary/10 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Shield className="w-5 h-5 text-primary" />
+            Admin Panel
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Edit game data - changes are saved to the database and override defaults
+          </p>
+        </div>
+        <SwitchAccountButton />
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">

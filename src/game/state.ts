@@ -1851,6 +1851,9 @@ export function GameProvider({ children }: GameProviderProps) {
         if (!saveData.itemWorldTowerState) {
           saveData.itemWorldTowerState = {};
         }
+        if (!saveData.taughtMoves) {
+          saveData.taughtMoves = {};
+        }
         dispatch({ type: 'LOAD_SAVE', saveData });
       } catch (e) {
         console.error('Failed to load save data:', e);

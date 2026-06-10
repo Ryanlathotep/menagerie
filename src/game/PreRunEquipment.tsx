@@ -108,21 +108,34 @@ export function PreRunEquipment({
   // they aren't physically in town storage.
   const initiallyEquippedItems = useState<EquipmentItem[]>(() => {
     const items: EquipmentItem[] = [];
+    const seen = new Set<string>();
     for (const m of monsters) {
       if (!m.equipment) continue;
       for (const item of Object.values(m.equipment)) {
-        if (item) items.push(item);
+        if (item && !seen.has(item.id)) {
+          seen.add(item.id);
+          items.push(item);
+        }
       }
     }
     return items;
   })[0];
-  
+
   // Available items = stored loose loot + previously-equipped items, minus
-  // anything currently equipped this session.
-  const availableItems = [
-    ...storedEquipment,
-    ...initiallyEquippedItems.filter(it => !storedEquipment.some(s => s.id === it.id)),
-  ].filter(item => !allEquippedIds.includes(item.id));
+  // anything currently equipped this session. Dedupe by id so a corrupted save
+  // (same item id in storedEquipment AND on a monster, or duplicated across
+  // monsters) never produces duplicate React keys / blank screens.
+  const availableItems = (() => {
+    const merged: EquipmentItem[] = [];
+    const seen = new Set<string>();
+    for (const it of [...storedEquipment, ...initiallyEquippedItems]) {
+      if (!it || seen.has(it.id)) continue;
+      if (allEquippedIds.includes(it.id)) continue;
+      seen.add(it.id);
+      merged.push(it);
+    }
+    return merged;
+  })();
   
   // Filter and sort by selected slot
   const filteredItems = selectedSlot 

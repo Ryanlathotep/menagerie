@@ -51,6 +51,7 @@ const DEFAULT_SAVE_DATA: SaveData = {
   dungeonEntrances: { ...createAllThemedTowers(), ...createAllItemWorldTowerEntrances() },
   tools: {},                  // Singleton tools (pickaxe, etc.) - undefined until crafted
   itemWorldTowerState: {},    // Per-tower asset slot for the three Item World towers
+  taughtMoves: {},            // Scroll-taught moves per comboId
 };
 
 // Initial game state

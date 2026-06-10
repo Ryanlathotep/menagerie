@@ -63,6 +63,7 @@ import { findPath, getDirection } from '@/game/pathfinding';
 import { RecruitmentModal, calculateRecruitChance } from '@/game/RecruitmentModal';
 import { PartySwitchModal } from '@/game/PartySwitchModal';
 import { ReviveTargetModal } from '@/game/ReviveTargetModal';
+import { ScrollUseDialog } from '@/game/ScrollUseDialog';
 import { CombatSwitchPanel } from '@/game/CombatSwitchPanel';
 import { LogMessage, createLogMessage, parseLogMessage } from '@/game/GameLog';
 import { isMonsterFavoredOnTerrain, calculateTerrainDamage, TERRAIN_CONFIG, shovelHitsToBreak, rollRuneDrop } from '@/game/terrain';

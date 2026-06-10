@@ -4,8 +4,9 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 export default defineConfig(({ mode }) => ({
-  // Lovable hosting serves at root in all environments
-  base: '/',
+  // Lovable hosting serves at '/'. GitHub Pages serves at '/menagerie/'.
+  // The Pages workflow sets DEPLOY_TARGET=gh-pages; everywhere else stays at root.
+  base: process.env.DEPLOY_TARGET === 'gh-pages' ? '/menagerie/' : '/',
   server: {
     host: "::",
     port: 8080,

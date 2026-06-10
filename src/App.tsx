@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import AdminQA from "./pages/AdminQA";
+import AdminTiles from "./pages/AdminTiles";
 import NotFound from "./pages/NotFound";
 import { useDismissTooltipsOnTap } from "./hooks/useDismissTooltipsOnTap";
 import { supabase } from "@/integrations/supabase/client";

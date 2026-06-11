@@ -668,6 +668,13 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
     setRegions((p) => p.map((r) => (r.id === id ? { ...r, role } : r)));
   const setRegionName = (id: string, name: string) =>
     setRegions((p) => p.map((r) => (r.id === id ? { ...r, name } : r)));
+  const toggleRegionTag = (id: string, tag: string) =>
+    setRegions((p) => p.map((r) => {
+      if (r.id !== id) return r;
+      const cur = new Set(r.tags || []);
+      if (cur.has(tag)) cur.delete(tag); else cur.add(tag);
+      return { ...r, tags: Array.from(cur) };
+    }));
   const clearRegions = () => setRegions([]);
 
   const sliceJobs = useMemo(() => {

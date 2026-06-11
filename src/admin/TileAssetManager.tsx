@@ -104,7 +104,10 @@ interface TileAssetMeta {
     mask: number;                     // 0..255, must be valid blob-47
   };
   tilesets?: string[];                // which biomes/towers this asset belongs to
+  frames?: string[];                  // additional asset paths (siblings) cycled for animation
+  fps?: number;                       // frames per second for animation; default 6
 }
+
 
 function safeName(s: string): string {
   return s.replace(/[^a-zA-Z0-9._-]+/g, '_');

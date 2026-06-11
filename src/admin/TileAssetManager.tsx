@@ -364,8 +364,23 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
   // Auto-detect base cell size. Tries common power-of-2 sizes and small
   // margins; picks the largest size that divides the sheet evenly on both
   // axes. Spacing is assumed 0 here (most packed sheets), user can tweak.
-  const autoDetect = () => {
+  const autoDetect = async () => {
     if (!dims.w || !dims.h) { toast.error('Pick a sheet first'); return; }
+    // 1) Try pixel-scan first (works great when tiles are separated by
+    //    transparent margins/gaps — the common case for exported PSDs).
+    if (file) {
+      const pix = await detectGridFromImage(file);
+      if (pix && pix.tileW >= 4 && pix.tileH >= 4) {
+        setTileW(pix.tileW); setTileH(pix.tileH);
+        setMarginX(pix.marginX); setMarginY(pix.marginY);
+        setSpacingX(pix.spacingX); setSpacingY(pix.spacingY);
+        toast.success(
+          `Pixel-scan: ${pix.tileW}×${pix.tileH}, margin ${pix.marginX}/${pix.marginY}, gap ${pix.spacingX}/${pix.spacingY}`,
+        );
+        return;
+      }
+    }
+    // 2) Fallback: brute-force divisor search (packed sheets with no gaps).
     const candidates = [64, 48, 32, 24, 16, 8];
     const margins = [0, 1, 2, 4, 8];
     let best: { size: number; margin: number } | null = null;

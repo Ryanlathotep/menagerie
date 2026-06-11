@@ -1343,6 +1343,7 @@ export function TileAssetManager() {
           <TabsTrigger value="slice">Slice Sheet</TabsTrigger>
           <TabsTrigger value="library">Library</TabsTrigger>
           <TabsTrigger value="preview">Preview</TabsTrigger>
+          <TabsTrigger value="guide">Roles Guide</TabsTrigger>
         </TabsList>
         <TabsContent value="upload" className="mt-3">
           <BulkUploader onDone={refetch} />
@@ -1355,6 +1356,9 @@ export function TileAssetManager() {
         </TabsContent>
         <TabsContent value="preview" className="mt-3">
           <DungeonPreview />
+        </TabsContent>
+        <TabsContent value="guide" className="mt-3">
+          <RolesGuide />
         </TabsContent>
       </Tabs>
     </div>

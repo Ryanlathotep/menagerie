@@ -751,6 +751,7 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
           kind: 'sliced',
           ...(loadedSheetKey ? { parentSheet: loadedSheetKey } : {}),
           ...(defaultTileset && defaultTileset !== 'Global' ? { tilesets: [defaultTileset] } : {}),
+          ...(job.tags && job.tags.length ? { tags: job.tags } : {}),
         };
 
         await supabase.from('game_data_overrides').upsert(

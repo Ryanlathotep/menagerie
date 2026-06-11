@@ -686,13 +686,14 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
         sh: (reg.r1 - reg.r0 + 1) * tileH + (reg.r1 - reg.r0) * spacingY,
         name: reg.name || `${reg.r0}_${reg.c0}_${reg.r1 - reg.r0 + 1}x${reg.c1 - reg.c0 + 1}`,
         role: reg.role,
+        tags: reg.tags,
         row: reg.r0, col: reg.c0,
         spanRows: reg.r1 - reg.r0 + 1, spanCols: reg.c1 - reg.c0 + 1,
       }));
     }
     const jobs: Array<{
       sx: number; sy: number; sw: number; sh: number; name: string;
-      role: TileRole; row: number; col: number; spanRows: number; spanCols: number;
+      role: TileRole; tags?: string[]; row: number; col: number; spanRows: number; spanCols: number;
     }> = [];
     for (let r = 0; r < grid.rows; r++) {
       for (let c = 0; c < grid.cols; c++) {

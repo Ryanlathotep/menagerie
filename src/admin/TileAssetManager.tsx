@@ -74,6 +74,102 @@ function publicUrl(path: string): string {
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
+// Keyword → role inference (Bulk Upload + Library "Auto-tag from filename").
+// First match wins — order from most-specific to least-specific.
+const ROLE_KEYWORDS: Array<[RegExp, TileRole]> = [
+  [/\b(wall[-_ ]?auto|autotile|auto[-_ ]?wall)\b/i, 'wall_autotile'],
+  [/\b(wall|brick|stone[-_ ]?wall|fence|border)\b/i, 'wall'],
+  [/\b(floor|ground|grass|dirt|sand|carpet|path)\b/i, 'floor'],
+  [/\b(door|gate|portal|entrance|exit)\b/i, 'door'],
+  [/\b(stair|step).*\b(up|asc)\b|\bup[-_ ]?stair/i, 'stairs_up'],
+  [/\b(stair|step).*\b(down|desc)\b|\bdown[-_ ]?stair|\bhole\b/i, 'stairs_down'],
+  [/\b(stair|step|ladder)\b/i, 'stairs_up'],
+  [/\b(chest|loot|treasure|crate)\b/i, 'chest'],
+  [/\b(trap|spike|snare|mine)\b/i, 'trap'],
+  [/\b(switch|lever|button|pressure|plate|rune)\b/i, 'switch'],
+  [/\b(water|river|lake|pond|wave)\b/i, 'water'],
+  [/\b(lava|magma|fire[-_ ]?pit)\b/i, 'lava'],
+  [/\b(decal|crack|blood|stain|footprint|scorch)\b/i, 'decal'],
+  [/\b(prop|statue|altar|pillar|fountain|tree|rock|bush|barrel|pot)\b/i, 'multi_tile_prop'],
+  [/\b(anim|frame|fx[-_ ]?\d|sprite[-_ ]?\d)\b/i, 'animation_frame'],
+  [/\b(creature|monster|enemy|npc|mob)\b/i, 'creature'],
+  [/\b(equip|sword|axe|bow|shield|helm|armor|amulet|potion)\b/i, 'equipment'],
+  [/\b(spell|fx|effect|magic|cast|aura|bolt|blast)\b/i, 'spell_fx'],
+  [/\b(ui|hud|icon|cursor)\b/i, 'ui'],
+  [/\b(decor|deco|ornament|flower|leaf)\b/i, 'decoration'],
+];
+export function roleFromName(name: string): TileRole {
+  const base = name.toLowerCase().replace(/\.[^.]+$/, '');
+  for (const [re, role] of ROLE_KEYWORDS) {
+    if (re.test(base)) return role;
+  }
+  return 'unassigned';
+}
+
+// Pixel-scan auto-detect: load the image to a canvas, find runs of
+// fully-transparent rows/cols (gaps between tiles), and infer margin,
+// tile size and spacing from the first opaque block + the first gap.
+async function detectGridFromImage(file: File): Promise<{
+  tileW: number; tileH: number; marginX: number; marginY: number;
+  spacingX: number; spacingY: number;
+} | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const ctx = c.getContext('2d')!;
+        ctx.drawImage(img, 0, 0);
+        const data = ctx.getImageData(0, 0, c.width, c.height).data;
+        const rowEmpty = (y: number): boolean => {
+          const off = y * c.width * 4;
+          for (let x = 0; x < c.width; x++) if (data[off + x * 4 + 3] > 8) return false;
+          return true;
+        };
+        const colEmpty = (x: number): boolean => {
+          for (let y = 0; y < c.height; y++) if (data[(y * c.width + x) * 4 + 3] > 8) return false;
+          return true;
+        };
+        // Find first opaque row/col (margin), then run length of opaque (tile),
+        // then run length of transparent (spacing).
+        const measureAxis = (
+          empty: (i: number) => boolean,
+          size: number,
+        ): { margin: number; tile: number; spacing: number } | null => {
+          let i = 0;
+          while (i < size && empty(i)) i++;
+          const margin = i;
+          if (i >= size) return null;
+          const tileStart = i;
+          while (i < size && !empty(i)) i++;
+          const tile = i - tileStart;
+          if (tile === 0) return null;
+          const gapStart = i;
+          while (i < size && empty(i)) i++;
+          const spacing = i - gapStart;
+          return { margin, tile, spacing };
+        };
+        const xAxis = measureAxis(colEmpty, c.width);
+        const yAxis = measureAxis(rowEmpty, c.height);
+        URL.revokeObjectURL(url);
+        if (!xAxis || !yAxis) { resolve(null); return; }
+        resolve({
+          tileW: xAxis.tile, tileH: yAxis.tile,
+          marginX: xAxis.margin, marginY: yAxis.margin,
+          spacingX: xAxis.spacing, spacingY: yAxis.spacing,
+        });
+      } catch {
+        URL.revokeObjectURL(url);
+        resolve(null);
+      }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+
 // ---------- Bulk uploader ----------
 
 function BulkUploader({ onDone }: { onDone: () => void }) {

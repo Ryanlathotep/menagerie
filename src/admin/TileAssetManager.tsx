@@ -1628,11 +1628,19 @@ function TileLibrary({ onOpenSheet }: TileLibraryProps) {
                     </PopoverContent>
                   </Popover>
                   <Button
+                    size="sm" variant="outline" className="h-6 px-1.5 text-[10px] gap-1"
+                    title="Rename to convention"
+                    onClick={() => renameOne(row).then(() => refetch())}
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </Button>
+                  <Button
                     size="sm" variant="ghost" className="h-6 px-1.5 ml-auto"
                     onClick={() => removeOne(row)}
                   >
                     <Trash2 className="w-3 h-3" />
                   </Button>
+
                 </div>
                 {row.meta.tilesets && row.meta.tilesets.length > 0 && (
                   <div className="flex flex-wrap gap-0.5">

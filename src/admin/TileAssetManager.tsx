@@ -1938,8 +1938,10 @@ function DungeonPreview({ onDone }: { onDone: () => void }) {
     const map = new Map<TileRole, TileRow[]>();
     overrides.forEach((o) => {
       const meta = o.data_value as unknown as TileAssetMeta;
+      if (meta.kind === 'sheet') return; // sheets are not tiles
       const role = meta.role || 'unassigned';
       const arr = map.get(role) || [];
+
       arr.push({ id: o.id, key: o.data_key, meta });
       map.set(role, arr);
     });

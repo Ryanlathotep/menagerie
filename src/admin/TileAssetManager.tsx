@@ -502,6 +502,84 @@ interface SheetSlicerProps {
   clearPendingSheet: () => void;
 }
 
+interface SliceJobPreview {
+  sx: number; sy: number; sw: number; sh: number;
+  name: string; role: TileRole; tags?: string[];
+  spanRows: number; spanCols: number;
+}
+
+// Renders each upcoming slice as its own clipped thumbnail. Lets the admin
+// confirm the grid (or region selection) before kicking off the upload.
+function SlicedPreviewPanel({
+  imgUrl, jobs, totalJobs,
+}: { imgUrl: string; jobs: SliceJobPreview[]; totalJobs: number }) {
+  const [imgEl, setImgEl] = useState<HTMLImageElement | null>(null);
+  useEffect(() => {
+    const im = new Image();
+    im.onload = () => setImgEl(im);
+    im.src = imgUrl;
+  }, [imgUrl]);
+  const [thumbSize, setThumbSize] = useState(48);
+  const refs = useRef<Array<HTMLCanvasElement | null>>([]);
+
+  useEffect(() => {
+    if (!imgEl) return;
+    jobs.forEach((job, i) => {
+      const c = refs.current[i];
+      if (!c) return;
+      const aspect = job.sw / Math.max(1, job.sh);
+      const w = aspect >= 1 ? thumbSize : Math.round(thumbSize * aspect);
+      const h = aspect >= 1 ? Math.round(thumbSize / aspect) : thumbSize;
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      if (!ctx) return;
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, w, h);
+      try {
+        ctx.drawImage(imgEl, job.sx, job.sy, job.sw, job.sh, 0, 0, w, h);
+      } catch { /* out of bounds — leave blank */ }
+    });
+  }, [imgEl, jobs, thumbSize]);
+
+  return (
+    <div className="border rounded p-2 bg-muted/10 space-y-2">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <Label className="text-xs">
+          Sliced preview — {jobs.length}{totalJobs > jobs.length ? ` of ${totalJobs}` : ''} piece{jobs.length === 1 ? '' : 's'}
+          {totalJobs > jobs.length && <span className="text-[10px] text-muted-foreground"> (showing first {jobs.length})</span>}
+        </Label>
+        <div className="flex items-center gap-2">
+          <Label className="text-[10px] text-muted-foreground">Thumb</Label>
+          <input type="range" min={24} max={128} step={8}
+            value={thumbSize} onChange={(e) => setThumbSize(parseInt(e.target.value))}
+            className="w-32" />
+          <span className="text-[10px] text-muted-foreground w-10 text-right">{thumbSize}px</span>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 max-h-72 overflow-y-auto">
+        {jobs.map((job, i) => (
+          <div key={i} className="flex flex-col items-center gap-0.5 p-1 border rounded bg-background/40"
+            style={{ width: thumbSize + 12 }}
+            title={`${job.name} · ${job.sw}×${job.sh}px · ${job.role}${job.tags?.length ? ` · ${job.tags.join(',')}` : ''}`}>
+            <canvas
+              ref={(el) => { refs.current[i] = el; }}
+              style={{ imageRendering: 'pixelated', maxWidth: thumbSize, maxHeight: thumbSize }}
+            />
+            <span className="text-[9px] truncate w-full text-center text-muted-foreground">
+              {job.spanCols > 1 || job.spanRows > 1 ? `${job.spanCols}×${job.spanRows}` : job.name}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
+  pendingSheet: { key: string; url: string } | null;
+  clearPendingSheet: () => void;
+}
+
 function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerProps) {
   const { overrides: uploaded } = useGameDataOverrides('tile_asset');
   const [file, setFile] = useState<File | null>(null);

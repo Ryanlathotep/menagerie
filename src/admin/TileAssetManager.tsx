@@ -954,6 +954,33 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
         )}
       </div>
 
+      {candidates.length > 1 && (
+        <div className="border rounded p-2 space-y-1 bg-muted/20">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs">Grid candidates ({candidates.length})</Label>
+            <Button size="sm" variant="ghost" className="h-6 text-[10px]"
+              onClick={() => setCandidates([])}>Hide</Button>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {candidates.map((c, i) => {
+              const active = c.tileW === tileW && c.tileH === tileH
+                && c.marginX === marginX && c.marginY === marginY;
+              return (
+                <Button key={i} size="sm" variant={active ? 'default' : 'outline'}
+                  className="h-7 text-[11px]"
+                  onClick={() => applyCandidate(c)}
+                  title="Apply this grid">
+                  {c.label}
+                </Button>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Sheets without transparent gutters can fit many grids. Pick the one whose lines land on every tile edge in the preview.
+          </p>
+        </div>
+      )}
+
       <div className="flex items-center gap-3">
         <Label className="text-xs whitespace-nowrap">Zoom {zoom}x</Label>
         <input

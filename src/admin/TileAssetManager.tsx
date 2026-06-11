@@ -1550,12 +1550,24 @@ function TileLibrary({ onOpenSheet }: TileLibraryProps) {
                 onClick={() => { if (isPaintTarget) setRole(row, paintRole); }}
               >
                 <div className="w-full aspect-square rounded border bg-muted/30 flex items-center justify-center overflow-hidden relative">
-                  <TileThumb src={row.meta.url} alt={row.key} className="max-w-full max-h-full" />
+                  <TileAnim meta={row.meta} className="max-w-full max-h-full" />
+                  <div className="absolute top-1 right-1" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selected.has(row.key)}
+                      onCheckedChange={() => toggleSelect(row.key)}
+                      className="bg-background/80 border-foreground/40"
+                    />
+                  </div>
                   {isSheet && (
                     <span className="absolute top-0 left-0 text-[9px] bg-blue-600 text-white px-1 rounded-br">SHEET</span>
                   )}
                   {isSliced && (
                     <span className="absolute top-0 left-0 text-[9px] bg-muted-foreground/70 text-white px-1 rounded-br">child</span>
+                  )}
+                  {row.meta.frames && row.meta.frames.length > 0 && (
+                    <span className="absolute bottom-0 left-0 text-[9px] bg-purple-600 text-white px-1 rounded-tr">
+                      🎞 {row.meta.frames.length + 1}f
+                    </span>
                   )}
                   {row.meta.autotile && (
                     <span className="absolute bottom-0 right-0 text-[9px] bg-emerald-600 text-white px-1 rounded-tl">
@@ -1563,6 +1575,7 @@ function TileLibrary({ onOpenSheet }: TileLibraryProps) {
                     </span>
                   )}
                 </div>
+
                 <div className="text-[10px] truncate" title={row.key}>
                   {row.meta.sheet ? `${row.meta.sheet} ${row.meta.row},${row.meta.col}` : row.key.split('/').pop()}
                 </div>

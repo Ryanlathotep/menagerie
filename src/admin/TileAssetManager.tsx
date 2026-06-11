@@ -1856,6 +1856,17 @@ function Blob47Coverage({ families }: { families: Map<string, Map<number, TileRo
 // ---------- Dungeon preview ----------
 
 const PREVIEW_ROOMS: Record<string, string[]> = {
+  'Full sampler': [
+    'WWWWWWWWWWWWWWWW',
+    'W..*.....C....UW',
+    'W..............W',
+    'W..T.....~~....W',
+    'W........~~....W',
+    'W..S.....LL..d.W',
+    'W........LL....W',
+    'W..p..........XW',
+    'WWWWWDWWWWWWWWWW',
+  ],
   'Small room': [
     'WWWWWWWWWW',
     'W........W',
@@ -1867,6 +1878,7 @@ const PREVIEW_ROOMS: Record<string, string[]> = {
     'W........W',
     'WWWWDWWWWW',
   ],
+
   'Corridor + stairs': [
     'WWWWWWWWWWWW',
     'W..........W',

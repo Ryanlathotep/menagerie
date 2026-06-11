@@ -576,9 +576,6 @@ function SlicedPreviewPanel({
 }
 
 
-  pendingSheet: { key: string; url: string } | null;
-  clearPendingSheet: () => void;
-}
 
 function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerProps) {
   const { overrides: uploaded } = useGameDataOverrides('tile_asset');

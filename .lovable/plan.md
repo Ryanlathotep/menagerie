@@ -1,111 +1,68 @@
-# Code-Quality Refactor Plan
 
-Goal: shrink the five biggest files and decouple data access, without regressing any of the memory-locked invariants (END_RUN / FLEE_DUNGEON persistence, movement timing, world-seed hashing, unified inventory).
+## Goals
 
-Each phase is independently shippable and ends with `window.__menagerie.runSmokeTest()` + a quick visual sanity pass. If any invariant turns red, STOP and roll that phase back before continuing.
+1. Accept `.psd` files and split each visible layer into its own tile asset.
+2. Make sheets first-class: mark/re-slice from Library, and marquee-grab multi-tile props in Preview.
+3. Add Blob-47 (Wang 2-edge) sub-roles so autotile variants are taggable.
+4. Replace the Roles Guide tab with a **Coverage Dashboard** + tileset (biome/tower) scoping.
 
----
+## What changes
 
-## Phase 1 — Split `src/game/state.ts` (1,980 lines, 61 cases)
-**Why first:** Index.tsx and OverworldView import from it; refactoring them on top of a clean reducer is easier than the reverse.
+### 1. PSD support (`ag-psd`)
 
-- New folder `src/game/reducers/`:
-  - `runReducer.ts` — START_RUN, END_RUN, FLEE_DUNGEON, party/monster/XP cases
-  - `inventoryReducer.ts` — ADD_ITEM, USE_ITEM, DROP_ITEM, equipment cases (mirror to storedItems stays here)
-  - `overworldReducer.ts` — overworld movement, build, road, base cases
-  - `dungeonReducer.ts` — dungeon movement, tile, combat-resolution cases
-  - `metaReducer.ts` — settings, waypoints, UI flags
-- `state.ts` keeps `GameProvider`, `useGame`, `gameReducer` (now just a `switch(action.type)` that delegates), `persistRunPartyProgress`, `buildProgressSnapshot`.
-- No action-shape changes. No behavior changes.
+- Add `ag-psd` dep (~80KB, no native deps).
+- In `BulkUploader.handleFiles`, branch on `.psd` extension:
+  - Read as ArrayBuffer → `readPsd(buffer, { skipCompositeImageData: true })`.
+  - Walk leaf layers; for each visible non-empty layer, render its canvas to PNG blob.
+  - Upload as `tiles/raw/<psdName>/<layerPath>.png`; tag `meta.sourcePsd = psdName`, role inferred from layer name via existing `roleFromName`.
+- Drop zone hint updated: "PNG / JPG / WebP / SVG / PSD".
 
-**Risk:** cross-domain actions (END_RUN touches party + inventory + overworld). Keep those in `runReducer` and have it call helpers from the others — do NOT split END_RUN across files.
+### 2. Sheets as first-class
 
-**Gate:** all 6 invariants ✅.
+Schema bump: `TileAssetMeta.kind: 'tile' | 'sheet' | 'sliced'` (default `'tile'`; sliced children get `parentSheet` path).
 
----
+- **Library**: every asset gains a `Scissors` button → "Open in Slicer". It sets `kind='sheet'`, switches to Slicer tab pre-loaded with that asset's image (fetched as blob).
+- **Slicer**: when saving regions, mark parent as `kind='sheet'` and children with `parentSheet`. Library hides `sliced` children by default behind a "Show children of N sheets" toggle.
+- **Preview tab** gets a **Marquee mode**: pick any `sheet` asset, click+drag across cells in the rendered grid → "Save selection as multi-tile prop". Saves a region crop (canvas → blob) as a new `multi_tile_prop` asset with `spanCols/spanRows`.
 
-## Phase 2 — Extract data hooks (`src/hooks/data/`)
-**Why second:** small, isolated, gives us testable seams before touching the big UI files.
+### 3. Blob-47 autotile roles
 
-- `useBugReports.ts` — wraps `ReportBugDialog` + `BugReportsEditor` queries
-- `useFeatureRequests.ts` — wraps `FeatureRequestDialog` + `FeatureRequestsEditor`
-- `useGameDataOverrides.ts` — central read of overrides used at boot
-- `useAuthSession.ts` — single subscriber for `auth.onAuthStateChange`
+New constant `BLOB47_MASKS` (the 47 valid 8-neighbor reduced masks). Add to schema:
 
-Replace direct `supabase.*` calls in 9 components. Admin editors keep their write logic but call shared hooks for reads.
+```ts
+meta.autotile?: {
+  family: string;       // e.g. "stone_wall", "grass_floor" — groups the 47 slots
+  mask: number;         // 0..255, must be one of the 47 valid masks
+  fallbackOf?: number;  // optional: mask this should stand in for
+}
+```
 
-**Risk:** RLS-scoped queries differ slightly per call site — verify each migration preserves filters.
+- Library row gets an "Autotile…" popover: pick family + click a 3×3 mini-grid to set the mask.
+- New helper `src/game/blob47.ts`: exports `BLOB47_MASKS`, `reduceMask(n)`, `maskToCornersLabel(n)`, and `pickBlob47(family, neighborMask)` for the renderer to consume later.
 
-**Gate:** sign in, submit a bug report, submit a feature request, load admin panel.
+### 4. Coverage Dashboard (replaces Roles Guide)
 
----
+Replaces the current cheat-sheet tab. Two-level grid:
 
-## Phase 3 — Split `src/pages/Index.tsx` (5,780 lines) → `src/pages/DungeonView/`
-**Why third:** biggest payoff, but needs Phase 1 done so extracted hooks dispatch against a clean reducer.
+- Top selector: **Tileset scope** = `Global` | biome (`forest`, `desert`, …) | tower (`Tower of the Infinite`, themed towers from existing registry).
+- For each role: count of assets in scope, sample thumbnails (all of them, not just one), and for `wall_autotile` / `floor` the 47-slot Blob coverage grid with red cells where no asset is mapped.
+- Click any red cell → opens an inline picker of unassigned tiles to drop into that slot.
 
-- `DungeonView/index.tsx` — composition root (~400 lines target)
-- `useDungeonInput.ts` — keyboard handler, tap/click targeting, attack menu
-- `useDungeonAutoRun.ts` — auto-run state + step throttling
-- `useDungeonRecruitment.ts` — recruit queue, defeated-enemy modal flow
-- `useDungeonRevive.ts` — revive prompt + last-stand flow
-- `useDungeonBuild.ts` — build panel + dungeon build mode
-- `DungeonOverlays.tsx` — modal stack (revive, stair, recruit, level-up)
-- `DungeonContext.tsx` — shared refs (isMovingRef, targetPath, etc.) so hooks aren't prop-drilled
+Adds `meta.tilesets?: string[]` (assets can belong to multiple). Library gets a "Tilesets" multi-select tag editor; bulk-tag selected rows.
 
-**Risk:** `isMovingRef` and the rAF movement loop are timing-sensitive (movement-sync memory). Keep them in ONE hook (`useDungeonInput`) and pass the ref via context — do not duplicate.
+### 5. Misc fixes from feedback
 
-**Gate:** all 6 invariants ✅ + manual: move 10 tiles, auto-run, attack an enemy, recruit, level-up, stair down.
+- "Some images aren't loading" — add `onError` fallback that re-signs the public URL and a console warning; show a broken-image badge in the Library cell. (Most likely cause: stale path after manual storage deletes — surface, don't hide.)
+- Bulk uploader: also accept files with no `image/*` MIME (PSDs report `image/vnd.adobe.photoshop` only sometimes; accept by extension too).
 
----
+## Files touched
 
-## Phase 4 — Split `src/game/OverworldView.tsx` (2,860 lines) → `src/game/OverworldView/`
-Mirror of Phase 3 for overworld:
-- `useOverworldInput.ts`, `useOverworldBuild.ts`, `useOverworldRoads.ts`, `OverworldOverlays.tsx`, shared `OverworldContext.tsx`.
+- `src/admin/TileAssetManager.tsx` — bulk PSD branch, schema, sheet toggle, Library autotile editor + tileset tagger, Preview marquee, Coverage tab replaces RolesGuide.
+- `src/game/blob47.ts` — **new**: mask table + helpers.
+- `src/game/autoTiling.ts` — re-export Blob-47 helpers; no behavior change yet (renderer wiring is a follow-up).
+- `package.json` — add `ag-psd`.
 
-**Risk:** world-seed mixing (memory: `_worldSeed` at every hash site). Do NOT touch `overworld.ts` in this phase.
+## Out of scope (call out)
 
-**Gate:** invariants ✅ + manual: move, gather, build a structure, enter a dungeon entrance.
-
----
-
-## Phase 5 — Split `src/game/equipment.ts` (1,929 lines)
-- `equipment/data.ts` — base tables
-- `equipment/stats.ts` — modifier math
-- `equipment/sets.ts` — set bonuses (2/3/4 pc)
-- `equipment/affinity.ts` — element/class affinity
-- `equipment.ts` re-exports for back-compat (zero call-site changes).
-
-**Gate:** invariants ✅ + equip/unequip a 3-piece set and confirm bonus shows.
-
----
-
-## Phase 6 — Split `src/game/overworld.ts` (1,500 lines)
-- `overworld/generation.ts` (world-seed-mixed hashes stay here, untouched)
-- `overworld/chunks.ts` (load/unload)
-- `overworld/biomes.ts`
-- `overworld/roads.ts`
-- `overworld.ts` re-exports.
-
-**Risk:** highest seed-fragility. Do this last and review every `hash(...)` call site for an unchanged `_worldSeed` argument.
-
-**Gate:** Settings → Rebuild Overworld produces the same map for the same seed before vs after.
-
----
-
-## Out of scope for this pass
-- Admin editors (MovesEditor, ShapeDesigner) — internal tooling, lower priority
-- DungeonRenderer / OverworldTileGraphics — performance-sensitive; needs profiling first, separate effort
-- CraftingWorkshop / Settings / GameSidebar / UnifiedMovePanel — 900-line range, can wait
-
-## Verification after every phase
-1. `bun run build` (harness does this automatically after edits)
-2. `window.__menagerie.runSmokeTest()` — all 6 invariants must be ✅
-3. Targeted manual check listed under each phase's Gate
-4. `code--read_runtime_errors` clean
-
-## What I need from you
-- **Approve the plan** to start with Phase 1, OR
-- **Approve a subset** (e.g. just Phases 1+2 for now), OR
-- **Adjust scope** if you want a different file first
-
-Given the scale, I'd recommend approving phase-by-phase rather than all six at once.
+- Wiring Blob-47 into actual dungeon rendering — this PR only lets you tag the art. A follow-up will swap `OverworldTileGraphics` / `DungeonRenderer` over.
+- Per-biome rendering selection at runtime — schema lands now; renderer pickup later.

@@ -774,6 +774,9 @@ function TileLibrary() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<TileRole | 'all'>('all');
   const [sheetFilter, setSheetFilter] = useState<string>('all');
+  // Click-to-paint mode: pick a role then click tiles to bulk-tag them.
+  const [paintRole, setPaintRole] = useState<TileRole>('floor');
+  const [paintMode, setPaintMode] = useState(false);
 
   const rows: TileRow[] = useMemo(
     () => overrides.map((o) => ({
@@ -809,6 +812,29 @@ function TileLibrary() {
       .update({ data_value: next as unknown as Record<string, unknown> })
       .eq('id', row.id);
     if (error) { toast.error(error.message); return; }
+    refetch();
+  };
+
+  // Bulk: walk every unassigned tile, infer a role from its key (filename or
+  // sheet/region name), update in one batch.
+  const autoTagByName = async () => {
+    const targets = rows.filter((r) => r.meta.role === 'unassigned');
+    if (targets.length === 0) { toast.info('Nothing to tag — no unassigned tiles.'); return; }
+    let n = 0;
+    for (const row of targets) {
+      const hint = row.meta.sheet
+        ? `${row.meta.sheet} ${row.key.split('/').pop() || ''}`
+        : row.key;
+      const r = roleFromName(hint);
+      if (r === 'unassigned') continue;
+      const next = { ...row.meta, role: r };
+      const { error } = await supabase
+        .from('game_data_overrides')
+        .update({ data_value: next as unknown as Record<string, unknown> })
+        .eq('id', row.id);
+      if (!error) n++;
+    }
+    toast.success(`Auto-tagged ${n}/${targets.length} tiles from filenames`);
     refetch();
   };
 
@@ -867,32 +893,77 @@ function TileLibrary() {
         )}
       </div>
 
+      {/* Bulk-tag toolbar */}
+      <div className="flex items-center gap-2 flex-wrap border-t pt-2">
+        <Button size="sm" variant="outline" onClick={autoTagByName}>
+          Auto-tag from filename
+        </Button>
+        <div className="h-5 w-px bg-border mx-1" />
+        <Label className="text-xs">Paint role:</Label>
+        <Select value={paintRole} onValueChange={(v) => setPaintRole(v as TileRole)}>
+          <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {TILE_ROLES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Button
+          size="sm"
+          variant={paintMode ? 'default' : 'outline'}
+          onClick={() => setPaintMode((m) => !m)}
+        >
+          {paintMode ? `Painting "${paintRole}" — click tiles` : 'Enable paint mode'}
+        </Button>
+        {paintMode && (
+          <span className="text-[10px] text-muted-foreground">
+            Click a tile to tag it. Toggle off when done.
+          </span>
+        )}
+      </div>
+
       {loading && <div className="text-xs text-muted-foreground">Loading…</div>}
 
       <ScrollArea className="h-[55vh]">
         <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2 p-1">
-          {filtered.map((row) => (
-            <Card key={row.id} className="p-2 flex flex-col gap-1">
-              <div
-                className="w-full aspect-square rounded border bg-muted/30 flex items-center justify-center overflow-hidden"
-                style={{ imageRendering: 'pixelated' }}
+          {filtered.map((row) => {
+            const isPaintTarget = paintMode && row.meta.role !== paintRole;
+            return (
+              <Card
+                key={row.id}
+                className={`p-2 flex flex-col gap-1 transition-colors ${
+                  paintMode ? 'cursor-crosshair hover:border-amber-400 hover:bg-amber-400/10' : ''
+                } ${row.meta.role === paintRole && paintMode ? 'border-emerald-500/60' : ''}`}
+                onClick={() => { if (isPaintTarget) setRole(row, paintRole); }}
               >
-                <img src={row.meta.url} alt={row.key} className="max-w-full max-h-full" style={{ imageRendering: 'pixelated' }} />
-              </div>
-              <div className="text-[10px] truncate" title={row.key}>
-                {row.meta.sheet ? `${row.meta.sheet} ${row.meta.row},${row.meta.col}` : row.key.split('/').pop()}
-              </div>
-              <Select value={row.meta.role} onValueChange={(v) => setRole(row, v as TileRole)}>
-                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {TILE_ROLES.map((r) => <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Button size="sm" variant="ghost" className="h-7" onClick={() => removeOne(row)}>
-                <Trash2 className="w-3 h-3" />
-              </Button>
-            </Card>
-          ))}
+                <div
+                  className="w-full aspect-square rounded border bg-muted/30 flex items-center justify-center overflow-hidden"
+                  style={{ imageRendering: 'pixelated' }}
+                >
+                  <img src={row.meta.url} alt={row.key} className="max-w-full max-h-full" style={{ imageRendering: 'pixelated' }} />
+                </div>
+                <div className="text-[10px] truncate" title={row.key}>
+                  {row.meta.sheet ? `${row.meta.sheet} ${row.meta.row},${row.meta.col}` : row.key.split('/').pop()}
+                </div>
+                <Select
+                  value={row.meta.role}
+                  onValueChange={(v) => setRole(row, v as TileRole)}
+                >
+                  <SelectTrigger
+                    className="h-7 text-xs"
+                    onClick={(e) => e.stopPropagation()}
+                  ><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TILE_ROLES.map((r) => <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="sm" variant="ghost" className="h-7"
+                  onClick={(e) => { e.stopPropagation(); removeOne(row); }}
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </Card>
+            );
+          })}
           {filtered.length === 0 && !loading && (
             <div className="col-span-full text-center text-sm text-muted-foreground py-8">
               No tiles match. Upload some above.
@@ -903,6 +974,63 @@ function TileLibrary() {
     </Card>
   );
 }
+
+// ---------- Roles Guide (cheat-sheet) ----------
+
+function RolesGuide() {
+  const { overrides } = useGameDataOverrides('tile_asset');
+  const exampleByRole = useMemo(() => {
+    const map = new Map<TileRole, TileAssetMeta>();
+    for (const o of overrides) {
+      const meta = o.data_value as unknown as TileAssetMeta;
+      const r = (meta.role || 'unassigned') as TileRole;
+      if (!map.has(r)) map.set(r, meta);
+    }
+    return map;
+  }, [overrides]);
+
+  return (
+    <Card className="p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Eye className="w-4 h-4" />
+        <h4 className="font-semibold">Roles Guide</h4>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Every tile asset is tagged with one <i>role</i> so dungeon rendering
+        knows where to use it. This cheat-sheet shows what each role is for
+        plus the first example you've uploaded for that role.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {TILE_ROLES.map((role) => {
+          const ex = exampleByRole.get(role);
+          return (
+            <div key={role} className="border rounded p-2 flex gap-3 items-start">
+              <div className="w-14 h-14 shrink-0 rounded border bg-muted/30 flex items-center justify-center overflow-hidden">
+                {ex ? (
+                  <img
+                    src={ex.url}
+                    alt={role}
+                    className="max-w-full max-h-full"
+                    style={{ imageRendering: 'pixelated' }}
+                  />
+                ) : (
+                  <span className="text-[10px] text-muted-foreground">no asset</span>
+                )}
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold">{role}</div>
+                <div className="text-[11px] text-muted-foreground leading-snug">
+                  {ROLE_HINTS[role] || 'No description yet.'}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
 
 // ---------- Dungeon preview ----------
 

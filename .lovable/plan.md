@@ -1,68 +1,64 @@
+# Tile Manager — round 2 of fixes
 
-## Goals
+Addresses 9 distinct asks. Grouped by panel.
 
-1. Accept `.psd` files and split each visible layer into its own tile asset.
-2. Make sheets first-class: mark/re-slice from Library, and marquee-grab multi-tile props in Preview.
-3. Add Blob-47 (Wang 2-edge) sub-roles so autotile variants are taggable.
-4. Replace the Roles Guide tab with a **Coverage Dashboard** + tileset (biome/tower) scoping.
+## 1. Library — mark/unmark sheets, bulk fix mistakes
 
-## What changes
+- Each row gets a `kind` chip ( `tile` / `sheet` / `sliced` ) that's a clickable toggle. Clicking opens a 3-button popover: **Tile**, **Sheet** (also clears any auto-assigned `role`/`autotile` so it stops rendering as a tile), **Sliced child**.
+- Add row checkboxes + sticky bulk-action bar: **Delete**, **Set kind → …**, **Set role → …**, **Add to tileset → …**, **Clear autotile**, **Clear role**. Solves "quick way to remove things improperly assigned."
+- "Hide sliced children" toggle stays; add "Show only sheets" / "Show only unassigned" quick filters.
 
-### 1. PSD support (`ag-psd`)
+## 2. Tileset scoping (so things don't all dump into Global)
 
-- Add `ag-psd` dep (~80KB, no native deps).
-- In `BulkUploader.handleFiles`, branch on `.psd` extension:
-  - Read as ArrayBuffer → `readPsd(buffer, { skipCompositeImageData: true })`.
-  - Walk leaf layers; for each visible non-empty layer, render its canvas to PNG blob.
-  - Upload as `tiles/raw/<psdName>/<layerPath>.png`; tag `meta.sourcePsd = psdName`, role inferred from layer name via existing `roleFromName`.
-- Drop zone hint updated: "PNG / JPG / WebP / SVG / PSD".
+- Bulk-upload form gains a **Default Tileset** dropdown (Global, biomes from `worldGenConfig`, towers from `itemWorldTowers`, plus a free-text "+ new tileset"). Every uploaded asset (and every PSD layer) inherits it.
+- Top of Library: a "Default tileset for new uploads" persists in `localStorage` so the next session keeps your dungeon-default.
+- Per-row tileset chip is editable inline (multi-select); bulk-tag from the action bar.
+- Coverage Dashboard already filters by scope — now its scope selector also drives Library filtering when you pick it there (single source of truth via URL `?scope=` param).
 
-### 2. Sheets as first-class
+## 3. Preview — right-click menu on tiles, more roles in sample room, swappable cells
 
-Schema bump: `TileAssetMeta.kind: 'tile' | 'sheet' | 'sliced'` (default `'tile'`; sliced children get `parentSheet` path).
+- Sample room expanded from current handful to a curated layout that exercises every role we render: floor, wall + wall_autotile (with all 8 neighbors so Blob-47 picks fire), door (open/closed), stairs up + down, chest, trap, switch, water edge, lava edge, decoration, multi_tile_prop (2×2 + 2×1), pit, bridge, rubble.
+- Each cell in the sample room is right-clickable → context menu: **Change tile…** (picker filtered to that role + current tileset), **Clear**, **Pin asset to this slot**, **Copy slot config**, **Open asset in Library**.
+- Left rail in Preview lists every role used by the sample room with the current asset's thumb; click to cycle, or drag-drop an asset from a side drawer onto the role.
+- Animation: if an asset has `meta.frames` (list of sibling asset paths) or is a sheet with `meta.animation = { cols, fps }`, render via `<TileAnim>` that cycles frames at the configured fps. Adds a global "Animate previews" toggle (default on).
 
-- **Library**: every asset gains a `Scissors` button → "Open in Slicer". It sets `kind='sheet'`, switches to Slicer tab pre-loaded with that asset's image (fetched as blob).
-- **Slicer**: when saving regions, mark parent as `kind='sheet'` and children with `parentSheet`. Library hides `sliced` children by default behind a "Show children of N sheets" toggle.
-- **Preview tab** gets a **Marquee mode**: pick any `sheet` asset, click+drag across cells in the rendered grid → "Save selection as multi-tile prop". Saves a region crop (canvas → blob) as a new `multi_tile_prop` asset with `spanCols/spanRows`.
+## 4. Marquee zoom
 
-### 3. Blob-47 autotile roles
+- Preview tab gets a zoom slider (25% – 400%, default 100%) and Ctrl+wheel zoom on the canvas. Marquee math switches to use the on-screen px → source px ratio so selections stay accurate at any zoom. Pan with middle-mouse / space-drag when zoomed in.
 
-New constant `BLOB47_MASKS` (the 47 valid 8-neighbor reduced masks). Add to schema:
+## 5. Slicer — sliders with live preview
 
-```ts
-meta.autotile?: {
-  family: string;       // e.g. "stone_wall", "grass_floor" — groups the 47 slots
-  mask: number;         // 0..255, must be one of the 47 valid masks
-  fallbackOf?: number;  // optional: mask this should stand in for
-}
-```
+- Replace the tileWidth / tileHeight / marginX / marginY / spacingX / spacingY number inputs with `<Slider>` components (range 4–256 for tile size, 0–64 for margin/spacing).
+- The slice grid overlay updates in real time on every slider tick (already re-renders, just wire to slider state).
+- Add a numeric input next to each slider for keyboard precision, plus an "Auto-detect grid" button that we already have.
+- Persist the last-used slicer config per sheet in `meta.sliceConfig` so reopening it restores.
 
-- Library row gets an "Autotile…" popover: pick family + click a 3×3 mini-grid to set the mask.
-- New helper `src/game/blob47.ts`: exports `BLOB47_MASKS`, `reduceMask(n)`, `maskToCornersLabel(n)`, and `pickBlob47(family, neighborMask)` for the renderer to consume later.
+## 6. Rename to standard structure
 
-### 4. Coverage Dashboard (replaces Roles Guide)
+- New "Rename to convention" action (per-row + bulk). Pattern:
+  `{tileset}__{role}__{family-or-variant}__{maskLabel-or-index}.{ext}`
+  e.g. `dungeon-default__wall_autotile__stone_wall__N-E-S.png`.
+- Implementation: copies object to new path in Storage, updates the `game_data_overrides` row's `data_key`, deletes the old object. Shows a dry-run diff modal first so nothing renames blindly.
+- Bulk version processes selection sequentially with a progress toast.
 
-Replaces the current cheat-sheet tab. Two-level grid:
+## 7. Animation viewer
 
-- Top selector: **Tileset scope** = `Global` | biome (`forest`, `desert`, …) | tower (`Tower of the Infinite`, themed towers from existing registry).
-- For each role: count of assets in scope, sample thumbnails (all of them, not just one), and for `wall_autotile` / `floor` the 47-slot Blob coverage grid with red cells where no asset is mapped.
-- Click any red cell → opens an inline picker of unassigned tiles to drop into that slot.
+- New `<TileAnim>` component used in Library thumbs, Preview sample room, and Coverage dashboard. Renders single frame if asset has none, otherwise loops `meta.frames` / sheet strip.
+- Library row gets an "Animate…" popover to: pick sibling frames (multi-select from same folder), set fps, preview, save.
 
-Adds `meta.tilesets?: string[]` (assets can belong to multiple). Library gets a "Tilesets" multi-select tag editor; bulk-tag selected rows.
+## 8. Misc
 
-### 5. Misc fixes from feedback
-
-- "Some images aren't loading" — add `onError` fallback that re-signs the public URL and a console warning; show a broken-image badge in the Library cell. (Most likely cause: stale path after manual storage deletes — surface, don't hide.)
-- Bulk uploader: also accept files with no `image/*` MIME (PSDs report `image/vnd.adobe.photoshop` only sometimes; accept by extension too).
+- Right-click on Library thumbs uses the same menu structure as the Preview cell menu, so the workflow matches.
+- `kind === 'sheet'` assets are excluded from `tilesByRole` lookups everywhere (renderer, sample room, coverage) — fixes "sheets being treated as tiles."
 
 ## Files touched
 
-- `src/admin/TileAssetManager.tsx` — bulk PSD branch, schema, sheet toggle, Library autotile editor + tileset tagger, Preview marquee, Coverage tab replaces RolesGuide.
-- `src/game/blob47.ts` — **new**: mask table + helpers.
-- `src/game/autoTiling.ts` — re-export Blob-47 helpers; no behavior change yet (renderer wiring is a follow-up).
-- `package.json` — add `ag-psd`.
+- `src/admin/TileAssetManager.tsx` — bulk action bar, kind chip, tileset selectors, slider-based slicer, expanded sample room, right-click menus, zoomable marquee, rename modal.
+- `src/admin/TileAnim.tsx` — **new**, shared animated thumbnail.
+- `src/admin/tileRename.ts` — **new**, path-building + storage move helper.
+- `src/game/blob47.ts` — no change (already exports what we need).
 
-## Out of scope (call out)
+## Out of scope
 
-- Wiring Blob-47 into actual dungeon rendering — this PR only lets you tag the art. A follow-up will swap `OverworldTileGraphics` / `DungeonRenderer` over.
-- Per-biome rendering selection at runtime — schema lands now; renderer pickup later.
+- Hooking animated tiles into the actual dungeon renderer at runtime — this PR only previews them in the admin tool.
+- A drag-to-reorder frame editor (frames are picked by checkbox for now).

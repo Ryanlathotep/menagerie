@@ -20,10 +20,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Slider } from '@/components/ui/slider';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import {
   Upload, Trash2, Search, Image as ImageIcon, Scissors, FolderUp, Loader2,
-  LayoutGrid, Layers, MousePointerSquareDashed, FileImage,
+  LayoutGrid, Layers, MousePointerSquareDashed, FileImage, Pencil, X,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useGameDataOverrides } from '@/hooks/useGameDataOverrides';
@@ -33,6 +35,17 @@ import {
 } from '@/game/blob47';
 
 const BUCKET = 'game-assets';
+const DEFAULT_TILESET_KEY = 'tileAssetMgr.defaultTileset';
+const ANIMATE_PREVIEWS_KEY = 'tileAssetMgr.animatePreviews';
+
+function loadDefaultTileset(): string {
+  try { return localStorage.getItem(DEFAULT_TILESET_KEY) || 'Global'; } catch { return 'Global'; }
+}
+function saveDefaultTileset(v: string): void {
+  try { localStorage.setItem(DEFAULT_TILESET_KEY, v); } catch { /* ignore */ }
+}
+
+
 
 const TILE_ROLES = [
   'unassigned',
@@ -91,7 +104,10 @@ interface TileAssetMeta {
     mask: number;                     // 0..255, must be valid blob-47
   };
   tilesets?: string[];                // which biomes/towers this asset belongs to
+  frames?: string[];                  // additional asset paths (siblings) cycled for animation
+  fps?: number;                       // frames per second for animation; default 6
 }
+
 
 function safeName(s: string): string {
   return s.replace(/[^a-zA-Z0-9._-]+/g, '_');
@@ -270,7 +286,11 @@ function BulkUploader({ onDone }: { onDone: () => void }) {
     { done: 0, total: 0, label: '' },
   );
   const [defaultRole, setDefaultRole] = useState<TileRole>('unassigned');
+  const [defaultTileset, setDefaultTileset] = useState<string>(loadDefaultTileset());
+  const [defaultKind, setDefaultKind] = useState<'tile' | 'sheet'>('tile');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { saveDefaultTileset(defaultTileset); }, [defaultTileset]);
 
   const handleFiles = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -281,7 +301,6 @@ function BulkUploader({ onDone }: { onDone: () => void }) {
     }
     setBusy(true);
 
-    // Expand PSDs to per-layer PNGs up front so the progress bar is accurate.
     type Job = { file: File; sourcePsd?: string };
     const jobs: Job[] = [];
     for (const f of list) {
@@ -289,9 +308,7 @@ function BulkUploader({ onDone }: { onDone: () => void }) {
         try {
           setProgress({ done: 0, total: list.length, label: `Parsing PSD ${f.name}…` });
           const layers = await psdToLayerFiles(f);
-          if (layers.length === 0) {
-            toast.warning(`${f.name}: no visible layers`);
-          }
+          if (layers.length === 0) toast.warning(`${f.name}: no visible layers`);
           for (const lf of layers) jobs.push({ file: lf, sourcePsd: f.name });
         } catch (err) {
           console.error('PSD parse failed', f.name, err);
@@ -317,15 +334,19 @@ function BulkUploader({ onDone }: { onDone: () => void }) {
         if (error) throw error;
         const url = publicUrl(path);
         const dims = await readImageSize(file);
-        const inferred = defaultRole === 'unassigned' ? roleFromName(file.name) : defaultRole;
+        // Sheets: don't try to guess a tile role.
+        const inferred = defaultKind === 'sheet'
+          ? 'unassigned'
+          : (defaultRole === 'unassigned' ? roleFromName(file.name) : defaultRole);
         const meta: TileAssetMeta = {
           url, path,
           role: inferred,
           width: dims.w,
           height: dims.h,
           contentType: file.type || 'image/png',
-          kind: 'tile',
+          kind: defaultKind,
           ...(job.sourcePsd ? { sourcePsd: job.sourcePsd } : {}),
+          ...(defaultTileset && defaultTileset !== 'Global' ? { tilesets: [defaultTileset] } : {}),
         };
         const { error: dbErr } = await supabase
           .from('game_data_overrides')
@@ -341,7 +362,7 @@ function BulkUploader({ onDone }: { onDone: () => void }) {
     setBusy(false);
     toast.success(`Uploaded ${okCount}/${jobs.length} tile assets`);
     onDone();
-  }, [defaultRole, onDone]);
+  }, [defaultRole, defaultKind, defaultTileset, onDone]);
 
   return (
     <Card className="p-4 space-y-3">
@@ -350,25 +371,41 @@ function BulkUploader({ onDone }: { onDone: () => void }) {
         <h4 className="font-semibold">Bulk Upload</h4>
       </div>
       <p className="text-xs text-muted-foreground">
-        Drop or pick PNG / JPG / WebP / SVG / <b>PSD</b> files. PSDs are
-        expanded so each visible layer becomes its own tile asset (named after
-        the layer). Use the Slicer tab for a packed tilesheet.
+        PNG / JPG / WebP / SVG / <b>PSD</b>. PSDs are expanded so each visible
+        layer becomes its own asset. Everything uploaded here inherits the
+        tileset, kind, and role below — switch <b>Kind</b> to <i>Sheet</i> if
+        you're dropping in tilesheets to slice later.
       </p>
       <div className="flex items-end gap-2 flex-wrap">
         <div className="space-y-1">
+          <Label className="text-xs">Default tileset</Label>
+          <Select value={defaultTileset} onValueChange={setDefaultTileset}>
+            <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {SUGGESTED_TILESETS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Kind</Label>
+          <Select value={defaultKind} onValueChange={(v) => setDefaultKind(v as 'tile' | 'sheet')}>
+            <SelectTrigger className="w-28 h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="tile">Tile</SelectItem>
+              <SelectItem value="sheet">Sheet</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
           <Label className="text-xs">Default role</Label>
-          <Select value={defaultRole} onValueChange={(v) => setDefaultRole(v as TileRole)}>
+          <Select value={defaultRole} onValueChange={(v) => setDefaultRole(v as TileRole)} disabled={defaultKind === 'sheet'}>
             <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               {TILE_ROLES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
-        <Button
-          onClick={() => inputRef.current?.click()}
-          disabled={busy}
-          className="gap-2"
-        >
+        <Button onClick={() => inputRef.current?.click()} disabled={busy} className="gap-2">
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
           {busy
             ? (progress.label || `Uploading ${progress.done}/${progress.total}…`)
@@ -393,6 +430,7 @@ function BulkUploader({ onDone }: { onDone: () => void }) {
     </Card>
   );
 }
+
 
 // ---------- Sheet slicer ----------
 
@@ -422,6 +460,8 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
   const [spacingY, setSpacingY] = useState(0);
   const [sheetName, setSheetName] = useState('');
   const [defaultRole, setDefaultRole] = useState<TileRole>('multi_tile_prop');
+  const [defaultTileset, setDefaultTileset] = useState<string>(loadDefaultTileset());
+
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
   const [regions, setRegions] = useState<SliceRegion[]>([]);
@@ -641,7 +681,9 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
           contentType: 'image/png',
           kind: 'sliced',
           ...(loadedSheetKey ? { parentSheet: loadedSheetKey } : {}),
+          ...(defaultTileset && defaultTileset !== 'Global' ? { tilesets: [defaultTileset] } : {}),
         };
+
         await supabase.from('game_data_overrides').upsert(
           { data_type: 'tile_asset', data_key: path, data_value: meta },
           { onConflict: 'data_type,data_key' }
@@ -695,45 +737,66 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
         to it.
       </p>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label className="text-xs">Sheet name</Label>
           <Input value={sheetName} onChange={(e) => setSheetName(e.target.value)} placeholder="dungeon_walls" />
         </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Tile W</Label>
-          <Input type="number" value={tileW} onChange={(e) => setTileW(parseInt(e.target.value) || 0)} />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Tile H</Label>
-          <Input type="number" value={tileH} onChange={(e) => setTileH(parseInt(e.target.value) || 0)} />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Default role</Label>
-          <Select value={defaultRole} onValueChange={(v) => setDefaultRole(v as TileRole)}>
-            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {TILE_ROLES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Margin X</Label>
-          <Input type="number" value={marginX} onChange={(e) => setMarginX(parseInt(e.target.value) || 0)} />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Margin Y</Label>
-          <Input type="number" value={marginY} onChange={(e) => setMarginY(parseInt(e.target.value) || 0)} />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Spacing X</Label>
-          <Input type="number" value={spacingX} onChange={(e) => setSpacingX(parseInt(e.target.value) || 0)} />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Spacing Y</Label>
-          <Input type="number" value={spacingY} onChange={(e) => setSpacingY(parseInt(e.target.value) || 0)} />
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs">Default role</Label>
+            <Select value={defaultRole} onValueChange={(v) => setDefaultRole(v as TileRole)}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {TILE_ROLES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Tileset</Label>
+            <Select value={defaultTileset} onValueChange={setDefaultTileset}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {SUGGESTED_TILESETS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
+
+      {/* Slider controls — live preview updates as you drag. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 border-t pt-3">
+        {([
+          ['Tile W',    tileW,    setTileW,    4, 256],
+          ['Tile H',    tileH,    setTileH,    4, 256],
+          ['Margin X',  marginX,  setMarginX,  0, 64],
+          ['Margin Y',  marginY,  setMarginY,  0, 64],
+          ['Spacing X', spacingX, setSpacingX, 0, 64],
+          ['Spacing Y', spacingY, setSpacingY, 0, 64],
+        ] as Array<[string, number, (n: number) => void, number, number]>).map(([label, val, set, min, max]) => (
+          <div key={label} className="space-y-1">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">{label}</Label>
+              <Input
+                type="number"
+                value={val}
+                min={min}
+                max={max}
+                onChange={(e) => set(Math.max(min, Math.min(max, parseInt(e.target.value) || 0)))}
+                className="h-7 w-20 text-xs"
+              />
+            </div>
+            <Slider
+              min={min}
+              max={max}
+              step={1}
+              value={[val]}
+              onValueChange={([n]) => set(n)}
+            />
+          </div>
+        ))}
+      </div>
+
 
       <div className="flex items-center gap-2 flex-wrap">
         <input
@@ -945,6 +1008,29 @@ function TileThumb({ src, alt, className }: { src: string; alt: string; classNam
   );
 }
 
+// Animated thumbnail that cycles meta.frames at meta.fps when animation is enabled.
+// Falls back to a single frame (the primary url) otherwise.
+function TileAnim({ meta, className, animate = true }: {
+  meta: Pick<TileAssetMeta, 'url' | 'frames' | 'fps'>;
+  className?: string;
+  animate?: boolean;
+}) {
+  const frames = useMemo(() => {
+    const list = [meta.url, ...((meta.frames || []).map((p) => p.startsWith('http') ? p : publicUrl(p)))];
+    return list.filter(Boolean);
+  }, [meta.url, meta.frames]);
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (!animate || frames.length < 2) return;
+    const fps = Math.max(1, Math.min(30, meta.fps ?? 6));
+    const t = window.setInterval(() => setI((v) => (v + 1) % frames.length), Math.round(1000 / fps));
+    return () => window.clearInterval(t);
+  }, [animate, frames, meta.fps]);
+  return <TileThumb src={frames[i] ?? meta.url} alt="" className={className} />;
+}
+
+
+
 // Inline editor for Blob-47 autotile masks. 3x3 grid; center = self.
 function AutotileEditor({ row, onChange }: { row: TileRow; onChange: (next: TileAssetMeta) => void }) {
   const current = row.meta.autotile;
@@ -1081,9 +1167,15 @@ function TileLibrary({ onOpenSheet }: TileLibraryProps) {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<TileRole | 'all'>('all');
   const [sheetFilter, setSheetFilter] = useState<string>('all');
+  const [tilesetFilter, setTilesetFilter] = useState<string>('all');
+  const [kindFilter, setKindFilter] = useState<'all' | 'tile' | 'sheet' | 'sliced' | 'unassigned'>('all');
   const [showSliced, setShowSliced] = useState(true);
   const [paintRole, setPaintRole] = useState<TileRole>('floor');
   const [paintMode, setPaintMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkRole, setBulkRole] = useState<TileRole>('floor');
+  const [bulkTileset, setBulkTileset] = useState<string>('Global');
+
 
   const rows: TileRow[] = useMemo(
     () => overrides.map((o) => ({
@@ -1100,12 +1192,27 @@ function TileLibrary({ onOpenSheet }: TileLibraryProps) {
     return Array.from(set).sort();
   }, [rows]);
 
+  const knownTilesets = useMemo(() => {
+    const set = new Set<string>(SUGGESTED_TILESETS);
+    rows.forEach((r) => (r.meta.tilesets || []).forEach((t) => set.add(t)));
+    return Array.from(set).sort();
+  }, [rows]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
       if (!showSliced && r.meta.kind === 'sliced') return false;
+      if (kindFilter === 'tile' && (r.meta.kind ?? 'tile') !== 'tile') return false;
+      if (kindFilter === 'sheet' && r.meta.kind !== 'sheet') return false;
+      if (kindFilter === 'sliced' && r.meta.kind !== 'sliced') return false;
+      if (kindFilter === 'unassigned' && r.meta.role !== 'unassigned') return false;
       if (roleFilter !== 'all' && r.meta.role !== roleFilter) return false;
       if (sheetFilter !== 'all' && r.meta.sheet !== sheetFilter) return false;
+      if (tilesetFilter !== 'all') {
+        const ts = r.meta.tilesets || [];
+        if (tilesetFilter === 'Global') { if (ts.length > 0) return false; }
+        else if (!ts.includes(tilesetFilter)) return false;
+      }
       if (!q) return true;
       return r.key.toLowerCase().includes(q)
         || (r.meta.sheet || '').toLowerCase().includes(q)
@@ -1113,12 +1220,23 @@ function TileLibrary({ onOpenSheet }: TileLibraryProps) {
         || (r.meta.tags || []).join(' ').toLowerCase().includes(q)
         || (r.meta.tilesets || []).join(' ').toLowerCase().includes(q);
     });
-  }, [rows, search, roleFilter, sheetFilter, showSliced]);
+  }, [rows, search, roleFilter, sheetFilter, showSliced, kindFilter, tilesetFilter]);
 
   const slicedCount = useMemo(
     () => rows.filter((r) => r.meta.kind === 'sliced').length,
     [rows],
   );
+
+  const toggleSelect = (key: string) => setSelected((prev) => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+  const selectAllFiltered = () => setSelected(new Set(filtered.map((r) => r.key)));
+  const clearSelection = () => setSelected(new Set());
+  const selectedRows = useMemo(() => filtered.filter((r) => selected.has(r.key)), [filtered, selected]);
+
+
 
   const updateMeta = async (row: TileRow, next: TileAssetMeta) => {
     const { error } = await supabase
@@ -1153,9 +1271,13 @@ function TileLibrary({ onOpenSheet }: TileLibraryProps) {
   };
 
   const markAsSheet = async (row: TileRow) => {
-    const next: TileAssetMeta = { ...row.meta, kind: row.meta.kind === 'sheet' ? 'tile' : 'sheet' };
+    const becomingSheet = row.meta.kind !== 'sheet';
+    const next: TileAssetMeta = becomingSheet
+      ? { ...row.meta, kind: 'sheet', role: 'unassigned', autotile: undefined }
+      : { ...row.meta, kind: 'tile' };
+    if (next.autotile === undefined) delete next.autotile;
     await updateMeta(row, next);
-    toast.success(next.kind === 'sheet' ? 'Marked as sheet' : 'Marked as tile');
+    toast.success(becomingSheet ? 'Marked as sheet (role cleared)' : 'Marked as tile');
   };
 
   const removeOne = async (row: TileRow) => {
@@ -1177,6 +1299,113 @@ function TileLibrary({ onOpenSheet }: TileLibraryProps) {
     toast.success(`Removed sheet ${sheet}`);
     refetch();
   };
+
+  // ---- Bulk actions over `selectedRows` ----
+  const bulkDelete = async () => {
+    if (selectedRows.length === 0) return;
+    if (!confirm(`Delete ${selectedRows.length} selected asset(s)?`)) return;
+    const paths = selectedRows.map((r) => r.meta.path);
+    const ids = selectedRows.map((r) => r.id);
+    await supabase.storage.from(BUCKET).remove(paths).catch(() => undefined);
+    await supabase.from('game_data_overrides').delete().in('id', ids);
+    toast.success(`Deleted ${selectedRows.length}`);
+    clearSelection();
+    refetch();
+  };
+  const bulkSetKind = async (kind: 'tile' | 'sheet' | 'sliced') => {
+    for (const row of selectedRows) {
+      const next: TileAssetMeta = kind === 'sheet'
+        ? { ...row.meta, kind, role: 'unassigned', autotile: undefined }
+        : { ...row.meta, kind };
+      if (next.autotile === undefined) delete next.autotile;
+      await supabase.from('game_data_overrides')
+        .update({ data_value: next as unknown as Record<string, unknown> })
+        .eq('id', row.id);
+    }
+    toast.success(`Set kind=${kind} on ${selectedRows.length}`);
+    clearSelection();
+    refetch();
+  };
+  const bulkSetRole = async (role: TileRole) => {
+    for (const row of selectedRows) {
+      await supabase.from('game_data_overrides')
+        .update({ data_value: { ...row.meta, role } as unknown as Record<string, unknown> })
+        .eq('id', row.id);
+    }
+    toast.success(`Set role=${role} on ${selectedRows.length}`);
+    clearSelection();
+    refetch();
+  };
+  const bulkAddTileset = async (tileset: string) => {
+    for (const row of selectedRows) {
+      const cur = row.meta.tilesets || [];
+      const ts = cur.includes(tileset) ? cur : [...cur, tileset];
+      await supabase.from('game_data_overrides')
+        .update({ data_value: { ...row.meta, tilesets: ts } as unknown as Record<string, unknown> })
+        .eq('id', row.id);
+    }
+    toast.success(`Tagged ${selectedRows.length} with "${tileset}"`);
+    clearSelection();
+    refetch();
+  };
+  const bulkClearAutotile = async () => {
+    for (const row of selectedRows) {
+      const next = { ...row.meta };
+      delete next.autotile;
+      await supabase.from('game_data_overrides')
+        .update({ data_value: next as unknown as Record<string, unknown> })
+        .eq('id', row.id);
+    }
+    toast.success(`Cleared autotile on ${selectedRows.length}`);
+    clearSelection();
+    refetch();
+  };
+
+  // Rename a single asset to the standardized convention:
+  //   {tileset}__{role}__{family-or-sheet}__{maskLabel-or-rowCol}.{ext}
+  const renameOne = async (row: TileRow) => {
+    const ts = (row.meta.tilesets && row.meta.tilesets[0]) || 'global';
+    const role = row.meta.role || 'unassigned';
+    const family = row.meta.autotile?.family || row.meta.sheet || (row.meta.sourcePsd?.replace(/\.psd$/i, '') ?? 'misc');
+    const variant = row.meta.autotile
+      ? maskLabel(row.meta.autotile.mask).replace(/\s+/g, '-') || `mask${row.meta.autotile.mask}`
+      : (typeof row.meta.row === 'number' && typeof row.meta.col === 'number'
+          ? `${row.meta.row}_${row.meta.col}${row.meta.spanCols && row.meta.spanCols > 1 ? `_${row.meta.spanCols}x${row.meta.spanRows}` : ''}`
+          : (row.key.split('/').pop()?.replace(/\.[^.]+$/, '') || 'tile'));
+    const ext = (row.key.match(/\.[a-z0-9]+$/i)?.[0] || '.png');
+    const dir = row.key.includes('/') ? row.key.slice(0, row.key.lastIndexOf('/')) : 'tiles/raw';
+    const fname = safeName(`${ts}__${role}__${family}__${variant}`).slice(0, 120) + ext;
+    const newPath = `${dir}/${fname}`;
+    if (newPath === row.key) { toast.info('Already at convention.'); return; }
+    // Copy in storage (download + re-upload) then delete old.
+    try {
+      const { data: blob, error: dlErr } = await supabase.storage.from(BUCKET).download(row.meta.path);
+      if (dlErr) throw dlErr;
+      const { error: upErr } = await supabase.storage.from(BUCKET)
+        .upload(newPath, blob, { upsert: true, contentType: row.meta.contentType || 'image/png' });
+      if (upErr) throw upErr;
+      const newUrl = publicUrl(newPath);
+      // Insert new override row, delete old.
+      const nextMeta: TileAssetMeta = { ...row.meta, url: newUrl, path: newPath };
+      await supabase.from('game_data_overrides').insert({
+        data_type: 'tile_asset', data_key: newPath, data_value: nextMeta as unknown as Record<string, unknown>,
+      });
+      await supabase.from('game_data_overrides').delete().eq('id', row.id);
+      await supabase.storage.from(BUCKET).remove([row.meta.path]).catch(() => undefined);
+      toast.success(`Renamed → ${fname}`);
+    } catch (err) {
+      toast.error(`Rename failed: ${(err as Error).message}`);
+    }
+  };
+  const bulkRename = async () => {
+    if (selectedRows.length === 0) return;
+    if (!confirm(`Rename ${selectedRows.length} asset(s) to the standard convention?`)) return;
+    for (const row of selectedRows) await renameOne(row);
+    clearSelection();
+    refetch();
+  };
+
+
 
   return (
     <Card className="p-4 space-y-3">
@@ -1206,11 +1435,26 @@ function TileLibrary({ onOpenSheet }: TileLibraryProps) {
             {sheets.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
           </SelectContent>
         </Select>
-        {sheetFilter !== 'all' && (
-          <Button size="sm" variant="destructive" onClick={() => removeSheet(sheetFilter)}>
-            <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete sheet
-          </Button>
-        )}
+        <Select value={kindFilter} onValueChange={(v) => setKindFilter(v as typeof kindFilter)}>
+          <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All kinds</SelectItem>
+            <SelectItem value="tile">Tiles only</SelectItem>
+            <SelectItem value="sheet">Sheets only</SelectItem>
+            <SelectItem value="sliced">Sliced only</SelectItem>
+            <SelectItem value="unassigned">Unassigned role</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={tilesetFilter} onValueChange={setTilesetFilter}>
+          <SelectTrigger className="h-8 w-40"><SelectValue placeholder="Tileset…" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All tilesets</SelectItem>
+            <SelectItem value="Global">(untagged / Global)</SelectItem>
+            {knownTilesets.filter((t) => t !== 'Global').map((t) => (
+              <SelectItem key={t} value={t}>{t}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap border-t pt-2">
@@ -1239,6 +1483,54 @@ function TileLibrary({ onOpenSheet }: TileLibraryProps) {
         </Label>
       </div>
 
+      {/* Bulk-action sticky bar (only when there's a selection). */}
+      {selected.size > 0 && (
+        <div className="sticky top-0 z-10 flex items-center gap-2 flex-wrap border rounded p-2 bg-amber-100/40 dark:bg-amber-900/30">
+          <span className="text-xs font-semibold">{selected.size} selected</span>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={selectAllFiltered}>
+            Select all ({filtered.length})
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={clearSelection}>
+            <X className="w-3 h-3" /> Clear
+          </Button>
+          <div className="h-5 w-px bg-border" />
+          <Button size="sm" variant="destructive" className="h-7 text-xs gap-1" onClick={bulkDelete}>
+            <Trash2 className="w-3 h-3" /> Delete
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => bulkSetKind('sheet')}>
+            → Sheet
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => bulkSetKind('tile')}>
+            → Tile
+          </Button>
+          <Select value={bulkRole} onValueChange={(v) => setBulkRole(v as TileRole)}>
+            <SelectTrigger className="h-7 w-32 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {TILE_ROLES.map((r) => <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => bulkSetRole(bulkRole)}>
+            Set role
+          </Button>
+          <Select value={bulkTileset} onValueChange={setBulkTileset}>
+            <SelectTrigger className="h-7 w-36 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {knownTilesets.map((t) => <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => bulkAddTileset(bulkTileset)}>
+            + Tileset
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={bulkClearAutotile}>
+            Clear autotile
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={bulkRename}>
+            <Pencil className="w-3 h-3" /> Rename
+          </Button>
+        </div>
+      )}
+
+
       {loading && <div className="text-xs text-muted-foreground">Loading…</div>}
 
       <ScrollArea className="h-[55vh]">
@@ -1258,12 +1550,24 @@ function TileLibrary({ onOpenSheet }: TileLibraryProps) {
                 onClick={() => { if (isPaintTarget) setRole(row, paintRole); }}
               >
                 <div className="w-full aspect-square rounded border bg-muted/30 flex items-center justify-center overflow-hidden relative">
-                  <TileThumb src={row.meta.url} alt={row.key} className="max-w-full max-h-full" />
+                  <TileAnim meta={row.meta} className="max-w-full max-h-full" />
+                  <div className="absolute top-1 right-1" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selected.has(row.key)}
+                      onCheckedChange={() => toggleSelect(row.key)}
+                      className="bg-background/80 border-foreground/40"
+                    />
+                  </div>
                   {isSheet && (
                     <span className="absolute top-0 left-0 text-[9px] bg-blue-600 text-white px-1 rounded-br">SHEET</span>
                   )}
                   {isSliced && (
                     <span className="absolute top-0 left-0 text-[9px] bg-muted-foreground/70 text-white px-1 rounded-br">child</span>
+                  )}
+                  {row.meta.frames && row.meta.frames.length > 0 && (
+                    <span className="absolute bottom-0 left-0 text-[9px] bg-purple-600 text-white px-1 rounded-tr">
+                      🎞 {row.meta.frames.length + 1}f
+                    </span>
                   )}
                   {row.meta.autotile && (
                     <span className="absolute bottom-0 right-0 text-[9px] bg-emerald-600 text-white px-1 rounded-tl">
@@ -1271,6 +1575,7 @@ function TileLibrary({ onOpenSheet }: TileLibraryProps) {
                     </span>
                   )}
                 </div>
+
                 <div className="text-[10px] truncate" title={row.key}>
                   {row.meta.sheet ? `${row.meta.sheet} ${row.meta.row},${row.meta.col}` : row.key.split('/').pop()}
                 </div>
@@ -1323,11 +1628,19 @@ function TileLibrary({ onOpenSheet }: TileLibraryProps) {
                     </PopoverContent>
                   </Popover>
                   <Button
+                    size="sm" variant="outline" className="h-6 px-1.5 text-[10px] gap-1"
+                    title="Rename to convention"
+                    onClick={() => renameOne(row).then(() => refetch())}
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </Button>
+                  <Button
                     size="sm" variant="ghost" className="h-6 px-1.5 ml-auto"
                     onClick={() => removeOne(row)}
                   >
                     <Trash2 className="w-3 h-3" />
                   </Button>
+
                 </div>
                 {row.meta.tilesets && row.meta.tilesets.length > 0 && (
                   <div className="flex flex-wrap gap-0.5">
@@ -1543,6 +1856,17 @@ function Blob47Coverage({ families }: { families: Map<string, Map<number, TileRo
 // ---------- Dungeon preview ----------
 
 const PREVIEW_ROOMS: Record<string, string[]> = {
+  'Full sampler': [
+    'WWWWWWWWWWWWWWWW',
+    'W..*.....C....UW',
+    'W..............W',
+    'W..T.....~~....W',
+    'W........~~....W',
+    'W..S.....LL..d.W',
+    'W........LL....W',
+    'W..p..........XW',
+    'WWWWWDWWWWWWWWWW',
+  ],
   'Small room': [
     'WWWWWWWWWW',
     'W........W',
@@ -1554,6 +1878,7 @@ const PREVIEW_ROOMS: Record<string, string[]> = {
     'W........W',
     'WWWWDWWWWW',
   ],
+
   'Corridor + stairs': [
     'WWWWWWWWWWWW',
     'W..........W',
@@ -1578,7 +1903,9 @@ const PREVIEW_ROOMS: Record<string, string[]> = {
 const CHAR_TO_ROLE: Record<string, TileRole> = {
   W: 'wall', '.': 'floor', D: 'door', U: 'stairs_up', X: 'stairs_down',
   C: 'chest', T: 'trap', S: 'switch', '~': 'water', L: 'lava', '*': 'decoration',
+  d: 'decal', p: 'multi_tile_prop',
 };
+
 
 function DungeonPreview({ onDone }: { onDone: () => void }) {
   const { overrides, loading } = useGameDataOverrides('tile_asset');
@@ -1611,8 +1938,10 @@ function DungeonPreview({ onDone }: { onDone: () => void }) {
     const map = new Map<TileRole, TileRow[]>();
     overrides.forEach((o) => {
       const meta = o.data_value as unknown as TileAssetMeta;
+      if (meta.kind === 'sheet') return; // sheets are not tiles
       const role = meta.role || 'unassigned';
       const arr = map.get(role) || [];
+
       arr.push({ id: o.id, key: o.data_key, meta });
       map.set(role, arr);
     });

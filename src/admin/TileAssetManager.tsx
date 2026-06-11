@@ -198,9 +198,11 @@ function BulkUploader({ onDone }: { onDone: () => void }) {
         const url = publicUrl(path);
         // Load to read dimensions
         const dims = await readImageSize(file);
+        // If admin left default at "unassigned", try to infer from filename.
+        const inferred = defaultRole === 'unassigned' ? roleFromName(file.name) : defaultRole;
         const meta: TileAssetMeta = {
           url, path,
-          role: defaultRole,
+          role: inferred,
           width: dims.w,
           height: dims.h,
           contentType: file.type,

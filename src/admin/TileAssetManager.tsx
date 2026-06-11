@@ -74,6 +74,102 @@ function publicUrl(path: string): string {
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
+// Keyword → role inference (Bulk Upload + Library "Auto-tag from filename").
+// First match wins — order from most-specific to least-specific.
+const ROLE_KEYWORDS: Array<[RegExp, TileRole]> = [
+  [/\b(wall[-_ ]?auto|autotile|auto[-_ ]?wall)\b/i, 'wall_autotile'],
+  [/\b(wall|brick|stone[-_ ]?wall|fence|border)\b/i, 'wall'],
+  [/\b(floor|ground|grass|dirt|sand|carpet|path)\b/i, 'floor'],
+  [/\b(door|gate|portal|entrance|exit)\b/i, 'door'],
+  [/\b(stair|step).*\b(up|asc)\b|\bup[-_ ]?stair/i, 'stairs_up'],
+  [/\b(stair|step).*\b(down|desc)\b|\bdown[-_ ]?stair|\bhole\b/i, 'stairs_down'],
+  [/\b(stair|step|ladder)\b/i, 'stairs_up'],
+  [/\b(chest|loot|treasure|crate)\b/i, 'chest'],
+  [/\b(trap|spike|snare|mine)\b/i, 'trap'],
+  [/\b(switch|lever|button|pressure|plate|rune)\b/i, 'switch'],
+  [/\b(water|river|lake|pond|wave)\b/i, 'water'],
+  [/\b(lava|magma|fire[-_ ]?pit)\b/i, 'lava'],
+  [/\b(decal|crack|blood|stain|footprint|scorch)\b/i, 'decal'],
+  [/\b(prop|statue|altar|pillar|fountain|tree|rock|bush|barrel|pot)\b/i, 'multi_tile_prop'],
+  [/\b(anim|frame|fx[-_ ]?\d|sprite[-_ ]?\d)\b/i, 'animation_frame'],
+  [/\b(creature|monster|enemy|npc|mob)\b/i, 'creature'],
+  [/\b(equip|sword|axe|bow|shield|helm|armor|amulet|potion)\b/i, 'equipment'],
+  [/\b(spell|fx|effect|magic|cast|aura|bolt|blast)\b/i, 'spell_fx'],
+  [/\b(ui|hud|icon|cursor)\b/i, 'ui'],
+  [/\b(decor|deco|ornament|flower|leaf)\b/i, 'decoration'],
+];
+export function roleFromName(name: string): TileRole {
+  const base = name.toLowerCase().replace(/\.[^.]+$/, '');
+  for (const [re, role] of ROLE_KEYWORDS) {
+    if (re.test(base)) return role;
+  }
+  return 'unassigned';
+}
+
+// Pixel-scan auto-detect: load the image to a canvas, find runs of
+// fully-transparent rows/cols (gaps between tiles), and infer margin,
+// tile size and spacing from the first opaque block + the first gap.
+async function detectGridFromImage(file: File): Promise<{
+  tileW: number; tileH: number; marginX: number; marginY: number;
+  spacingX: number; spacingY: number;
+} | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const ctx = c.getContext('2d')!;
+        ctx.drawImage(img, 0, 0);
+        const data = ctx.getImageData(0, 0, c.width, c.height).data;
+        const rowEmpty = (y: number): boolean => {
+          const off = y * c.width * 4;
+          for (let x = 0; x < c.width; x++) if (data[off + x * 4 + 3] > 8) return false;
+          return true;
+        };
+        const colEmpty = (x: number): boolean => {
+          for (let y = 0; y < c.height; y++) if (data[(y * c.width + x) * 4 + 3] > 8) return false;
+          return true;
+        };
+        // Find first opaque row/col (margin), then run length of opaque (tile),
+        // then run length of transparent (spacing).
+        const measureAxis = (
+          empty: (i: number) => boolean,
+          size: number,
+        ): { margin: number; tile: number; spacing: number } | null => {
+          let i = 0;
+          while (i < size && empty(i)) i++;
+          const margin = i;
+          if (i >= size) return null;
+          const tileStart = i;
+          while (i < size && !empty(i)) i++;
+          const tile = i - tileStart;
+          if (tile === 0) return null;
+          const gapStart = i;
+          while (i < size && empty(i)) i++;
+          const spacing = i - gapStart;
+          return { margin, tile, spacing };
+        };
+        const xAxis = measureAxis(colEmpty, c.width);
+        const yAxis = measureAxis(rowEmpty, c.height);
+        URL.revokeObjectURL(url);
+        if (!xAxis || !yAxis) { resolve(null); return; }
+        resolve({
+          tileW: xAxis.tile, tileH: yAxis.tile,
+          marginX: xAxis.margin, marginY: yAxis.margin,
+          spacingX: xAxis.spacing, spacingY: yAxis.spacing,
+        });
+      } catch {
+        URL.revokeObjectURL(url);
+        resolve(null);
+      }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+
 // ---------- Bulk uploader ----------
 
 function BulkUploader({ onDone }: { onDone: () => void }) {
@@ -102,9 +198,11 @@ function BulkUploader({ onDone }: { onDone: () => void }) {
         const url = publicUrl(path);
         // Load to read dimensions
         const dims = await readImageSize(file);
+        // If admin left default at "unassigned", try to infer from filename.
+        const inferred = defaultRole === 'unassigned' ? roleFromName(file.name) : defaultRole;
         const meta: TileAssetMeta = {
           url, path,
-          role: defaultRole,
+          role: inferred,
           width: dims.w,
           height: dims.h,
           contentType: file.type,
@@ -266,8 +364,23 @@ function SheetSlicer({ onDone }: { onDone: () => void }) {
   // Auto-detect base cell size. Tries common power-of-2 sizes and small
   // margins; picks the largest size that divides the sheet evenly on both
   // axes. Spacing is assumed 0 here (most packed sheets), user can tweak.
-  const autoDetect = () => {
+  const autoDetect = async () => {
     if (!dims.w || !dims.h) { toast.error('Pick a sheet first'); return; }
+    // 1) Try pixel-scan first (works great when tiles are separated by
+    //    transparent margins/gaps — the common case for exported PSDs).
+    if (file) {
+      const pix = await detectGridFromImage(file);
+      if (pix && pix.tileW >= 4 && pix.tileH >= 4) {
+        setTileW(pix.tileW); setTileH(pix.tileH);
+        setMarginX(pix.marginX); setMarginY(pix.marginY);
+        setSpacingX(pix.spacingX); setSpacingY(pix.spacingY);
+        toast.success(
+          `Pixel-scan: ${pix.tileW}×${pix.tileH}, margin ${pix.marginX}/${pix.marginY}, gap ${pix.spacingX}/${pix.spacingY}`,
+        );
+        return;
+      }
+    }
+    // 2) Fallback: brute-force divisor search (packed sheets with no gaps).
     const candidates = [64, 48, 32, 24, 16, 8];
     const margins = [0, 1, 2, 4, 8];
     let best: { size: number; margin: number } | null = null;
@@ -661,6 +774,9 @@ function TileLibrary() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<TileRole | 'all'>('all');
   const [sheetFilter, setSheetFilter] = useState<string>('all');
+  // Click-to-paint mode: pick a role then click tiles to bulk-tag them.
+  const [paintRole, setPaintRole] = useState<TileRole>('floor');
+  const [paintMode, setPaintMode] = useState(false);
 
   const rows: TileRow[] = useMemo(
     () => overrides.map((o) => ({
@@ -696,6 +812,29 @@ function TileLibrary() {
       .update({ data_value: next as unknown as Record<string, unknown> })
       .eq('id', row.id);
     if (error) { toast.error(error.message); return; }
+    refetch();
+  };
+
+  // Bulk: walk every unassigned tile, infer a role from its key (filename or
+  // sheet/region name), update in one batch.
+  const autoTagByName = async () => {
+    const targets = rows.filter((r) => r.meta.role === 'unassigned');
+    if (targets.length === 0) { toast.info('Nothing to tag — no unassigned tiles.'); return; }
+    let n = 0;
+    for (const row of targets) {
+      const hint = row.meta.sheet
+        ? `${row.meta.sheet} ${row.key.split('/').pop() || ''}`
+        : row.key;
+      const r = roleFromName(hint);
+      if (r === 'unassigned') continue;
+      const next = { ...row.meta, role: r };
+      const { error } = await supabase
+        .from('game_data_overrides')
+        .update({ data_value: next as unknown as Record<string, unknown> })
+        .eq('id', row.id);
+      if (!error) n++;
+    }
+    toast.success(`Auto-tagged ${n}/${targets.length} tiles from filenames`);
     refetch();
   };
 
@@ -754,32 +893,77 @@ function TileLibrary() {
         )}
       </div>
 
+      {/* Bulk-tag toolbar */}
+      <div className="flex items-center gap-2 flex-wrap border-t pt-2">
+        <Button size="sm" variant="outline" onClick={autoTagByName}>
+          Auto-tag from filename
+        </Button>
+        <div className="h-5 w-px bg-border mx-1" />
+        <Label className="text-xs">Paint role:</Label>
+        <Select value={paintRole} onValueChange={(v) => setPaintRole(v as TileRole)}>
+          <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {TILE_ROLES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Button
+          size="sm"
+          variant={paintMode ? 'default' : 'outline'}
+          onClick={() => setPaintMode((m) => !m)}
+        >
+          {paintMode ? `Painting "${paintRole}" — click tiles` : 'Enable paint mode'}
+        </Button>
+        {paintMode && (
+          <span className="text-[10px] text-muted-foreground">
+            Click a tile to tag it. Toggle off when done.
+          </span>
+        )}
+      </div>
+
       {loading && <div className="text-xs text-muted-foreground">Loading…</div>}
 
       <ScrollArea className="h-[55vh]">
         <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2 p-1">
-          {filtered.map((row) => (
-            <Card key={row.id} className="p-2 flex flex-col gap-1">
-              <div
-                className="w-full aspect-square rounded border bg-muted/30 flex items-center justify-center overflow-hidden"
-                style={{ imageRendering: 'pixelated' }}
+          {filtered.map((row) => {
+            const isPaintTarget = paintMode && row.meta.role !== paintRole;
+            return (
+              <Card
+                key={row.id}
+                className={`p-2 flex flex-col gap-1 transition-colors ${
+                  paintMode ? 'cursor-crosshair hover:border-amber-400 hover:bg-amber-400/10' : ''
+                } ${row.meta.role === paintRole && paintMode ? 'border-emerald-500/60' : ''}`}
+                onClick={() => { if (isPaintTarget) setRole(row, paintRole); }}
               >
-                <img src={row.meta.url} alt={row.key} className="max-w-full max-h-full" style={{ imageRendering: 'pixelated' }} />
-              </div>
-              <div className="text-[10px] truncate" title={row.key}>
-                {row.meta.sheet ? `${row.meta.sheet} ${row.meta.row},${row.meta.col}` : row.key.split('/').pop()}
-              </div>
-              <Select value={row.meta.role} onValueChange={(v) => setRole(row, v as TileRole)}>
-                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {TILE_ROLES.map((r) => <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Button size="sm" variant="ghost" className="h-7" onClick={() => removeOne(row)}>
-                <Trash2 className="w-3 h-3" />
-              </Button>
-            </Card>
-          ))}
+                <div
+                  className="w-full aspect-square rounded border bg-muted/30 flex items-center justify-center overflow-hidden"
+                  style={{ imageRendering: 'pixelated' }}
+                >
+                  <img src={row.meta.url} alt={row.key} className="max-w-full max-h-full" style={{ imageRendering: 'pixelated' }} />
+                </div>
+                <div className="text-[10px] truncate" title={row.key}>
+                  {row.meta.sheet ? `${row.meta.sheet} ${row.meta.row},${row.meta.col}` : row.key.split('/').pop()}
+                </div>
+                <Select
+                  value={row.meta.role}
+                  onValueChange={(v) => setRole(row, v as TileRole)}
+                >
+                  <SelectTrigger
+                    className="h-7 text-xs"
+                    onClick={(e) => e.stopPropagation()}
+                  ><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TILE_ROLES.map((r) => <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="sm" variant="ghost" className="h-7"
+                  onClick={(e) => { e.stopPropagation(); removeOne(row); }}
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </Card>
+            );
+          })}
           {filtered.length === 0 && !loading && (
             <div className="col-span-full text-center text-sm text-muted-foreground py-8">
               No tiles match. Upload some above.
@@ -790,6 +974,63 @@ function TileLibrary() {
     </Card>
   );
 }
+
+// ---------- Roles Guide (cheat-sheet) ----------
+
+function RolesGuide() {
+  const { overrides } = useGameDataOverrides('tile_asset');
+  const exampleByRole = useMemo(() => {
+    const map = new Map<TileRole, TileAssetMeta>();
+    for (const o of overrides) {
+      const meta = o.data_value as unknown as TileAssetMeta;
+      const r = (meta.role || 'unassigned') as TileRole;
+      if (!map.has(r)) map.set(r, meta);
+    }
+    return map;
+  }, [overrides]);
+
+  return (
+    <Card className="p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Eye className="w-4 h-4" />
+        <h4 className="font-semibold">Roles Guide</h4>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Every tile asset is tagged with one <i>role</i> so dungeon rendering
+        knows where to use it. This cheat-sheet shows what each role is for
+        plus the first example you've uploaded for that role.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {TILE_ROLES.map((role) => {
+          const ex = exampleByRole.get(role);
+          return (
+            <div key={role} className="border rounded p-2 flex gap-3 items-start">
+              <div className="w-14 h-14 shrink-0 rounded border bg-muted/30 flex items-center justify-center overflow-hidden">
+                {ex ? (
+                  <img
+                    src={ex.url}
+                    alt={role}
+                    className="max-w-full max-h-full"
+                    style={{ imageRendering: 'pixelated' }}
+                  />
+                ) : (
+                  <span className="text-[10px] text-muted-foreground">no asset</span>
+                )}
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold">{role}</div>
+                <div className="text-[11px] text-muted-foreground leading-snug">
+                  {ROLE_HINTS[role] || 'No description yet.'}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
 
 // ---------- Dungeon preview ----------
 
@@ -1102,6 +1343,7 @@ export function TileAssetManager() {
           <TabsTrigger value="slice">Slice Sheet</TabsTrigger>
           <TabsTrigger value="library">Library</TabsTrigger>
           <TabsTrigger value="preview">Preview</TabsTrigger>
+          <TabsTrigger value="guide">Roles Guide</TabsTrigger>
         </TabsList>
         <TabsContent value="upload" className="mt-3">
           <BulkUploader onDone={refetch} />
@@ -1114,6 +1356,9 @@ export function TileAssetManager() {
         </TabsContent>
         <TabsContent value="preview" className="mt-3">
           <DungeonPreview />
+        </TabsContent>
+        <TabsContent value="guide" className="mt-3">
+          <RolesGuide />
         </TabsContent>
       </Tabs>
     </div>

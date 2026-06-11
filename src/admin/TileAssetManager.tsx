@@ -1271,9 +1271,13 @@ function TileLibrary({ onOpenSheet }: TileLibraryProps) {
   };
 
   const markAsSheet = async (row: TileRow) => {
-    const next: TileAssetMeta = { ...row.meta, kind: row.meta.kind === 'sheet' ? 'tile' : 'sheet' };
+    const becomingSheet = row.meta.kind !== 'sheet';
+    const next: TileAssetMeta = becomingSheet
+      ? { ...row.meta, kind: 'sheet', role: 'unassigned', autotile: undefined }
+      : { ...row.meta, kind: 'tile' };
+    if (next.autotile === undefined) delete next.autotile;
     await updateMeta(row, next);
-    toast.success(next.kind === 'sheet' ? 'Marked as sheet' : 'Marked as tile');
+    toast.success(becomingSheet ? 'Marked as sheet (role cleared)' : 'Marked as tile');
   };
 
   const removeOne = async (row: TileRow) => {
@@ -1295,6 +1299,113 @@ function TileLibrary({ onOpenSheet }: TileLibraryProps) {
     toast.success(`Removed sheet ${sheet}`);
     refetch();
   };
+
+  // ---- Bulk actions over `selectedRows` ----
+  const bulkDelete = async () => {
+    if (selectedRows.length === 0) return;
+    if (!confirm(`Delete ${selectedRows.length} selected asset(s)?`)) return;
+    const paths = selectedRows.map((r) => r.meta.path);
+    const ids = selectedRows.map((r) => r.id);
+    await supabase.storage.from(BUCKET).remove(paths).catch(() => undefined);
+    await supabase.from('game_data_overrides').delete().in('id', ids);
+    toast.success(`Deleted ${selectedRows.length}`);
+    clearSelection();
+    refetch();
+  };
+  const bulkSetKind = async (kind: 'tile' | 'sheet' | 'sliced') => {
+    for (const row of selectedRows) {
+      const next: TileAssetMeta = kind === 'sheet'
+        ? { ...row.meta, kind, role: 'unassigned', autotile: undefined }
+        : { ...row.meta, kind };
+      if (next.autotile === undefined) delete next.autotile;
+      await supabase.from('game_data_overrides')
+        .update({ data_value: next as unknown as Record<string, unknown> })
+        .eq('id', row.id);
+    }
+    toast.success(`Set kind=${kind} on ${selectedRows.length}`);
+    clearSelection();
+    refetch();
+  };
+  const bulkSetRole = async (role: TileRole) => {
+    for (const row of selectedRows) {
+      await supabase.from('game_data_overrides')
+        .update({ data_value: { ...row.meta, role } as unknown as Record<string, unknown> })
+        .eq('id', row.id);
+    }
+    toast.success(`Set role=${role} on ${selectedRows.length}`);
+    clearSelection();
+    refetch();
+  };
+  const bulkAddTileset = async (tileset: string) => {
+    for (const row of selectedRows) {
+      const cur = row.meta.tilesets || [];
+      const ts = cur.includes(tileset) ? cur : [...cur, tileset];
+      await supabase.from('game_data_overrides')
+        .update({ data_value: { ...row.meta, tilesets: ts } as unknown as Record<string, unknown> })
+        .eq('id', row.id);
+    }
+    toast.success(`Tagged ${selectedRows.length} with "${tileset}"`);
+    clearSelection();
+    refetch();
+  };
+  const bulkClearAutotile = async () => {
+    for (const row of selectedRows) {
+      const next = { ...row.meta };
+      delete next.autotile;
+      await supabase.from('game_data_overrides')
+        .update({ data_value: next as unknown as Record<string, unknown> })
+        .eq('id', row.id);
+    }
+    toast.success(`Cleared autotile on ${selectedRows.length}`);
+    clearSelection();
+    refetch();
+  };
+
+  // Rename a single asset to the standardized convention:
+  //   {tileset}__{role}__{family-or-sheet}__{maskLabel-or-rowCol}.{ext}
+  const renameOne = async (row: TileRow) => {
+    const ts = (row.meta.tilesets && row.meta.tilesets[0]) || 'global';
+    const role = row.meta.role || 'unassigned';
+    const family = row.meta.autotile?.family || row.meta.sheet || (row.meta.sourcePsd?.replace(/\.psd$/i, '') ?? 'misc');
+    const variant = row.meta.autotile
+      ? maskLabel(row.meta.autotile.mask).replace(/\s+/g, '-') || `mask${row.meta.autotile.mask}`
+      : (typeof row.meta.row === 'number' && typeof row.meta.col === 'number'
+          ? `${row.meta.row}_${row.meta.col}${row.meta.spanCols && row.meta.spanCols > 1 ? `_${row.meta.spanCols}x${row.meta.spanRows}` : ''}`
+          : (row.key.split('/').pop()?.replace(/\.[^.]+$/, '') || 'tile'));
+    const ext = (row.key.match(/\.[a-z0-9]+$/i)?.[0] || '.png');
+    const dir = row.key.includes('/') ? row.key.slice(0, row.key.lastIndexOf('/')) : 'tiles/raw';
+    const fname = safeName(`${ts}__${role}__${family}__${variant}`).slice(0, 120) + ext;
+    const newPath = `${dir}/${fname}`;
+    if (newPath === row.key) { toast.info('Already at convention.'); return; }
+    // Copy in storage (download + re-upload) then delete old.
+    try {
+      const { data: blob, error: dlErr } = await supabase.storage.from(BUCKET).download(row.meta.path);
+      if (dlErr) throw dlErr;
+      const { error: upErr } = await supabase.storage.from(BUCKET)
+        .upload(newPath, blob, { upsert: true, contentType: row.meta.contentType || 'image/png' });
+      if (upErr) throw upErr;
+      const newUrl = publicUrl(newPath);
+      // Insert new override row, delete old.
+      const nextMeta: TileAssetMeta = { ...row.meta, url: newUrl, path: newPath };
+      await supabase.from('game_data_overrides').insert({
+        data_type: 'tile_asset', data_key: newPath, data_value: nextMeta as unknown as Record<string, unknown>,
+      });
+      await supabase.from('game_data_overrides').delete().eq('id', row.id);
+      await supabase.storage.from(BUCKET).remove([row.meta.path]).catch(() => undefined);
+      toast.success(`Renamed → ${fname}`);
+    } catch (err) {
+      toast.error(`Rename failed: ${(err as Error).message}`);
+    }
+  };
+  const bulkRename = async () => {
+    if (selectedRows.length === 0) return;
+    if (!confirm(`Rename ${selectedRows.length} asset(s) to the standard convention?`)) return;
+    for (const row of selectedRows) await renameOne(row);
+    clearSelection();
+    refetch();
+  };
+
+
 
   return (
     <Card className="p-4 space-y-3">

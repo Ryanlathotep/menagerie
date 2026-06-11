@@ -735,45 +735,66 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
         to it.
       </p>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label className="text-xs">Sheet name</Label>
           <Input value={sheetName} onChange={(e) => setSheetName(e.target.value)} placeholder="dungeon_walls" />
         </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Tile W</Label>
-          <Input type="number" value={tileW} onChange={(e) => setTileW(parseInt(e.target.value) || 0)} />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Tile H</Label>
-          <Input type="number" value={tileH} onChange={(e) => setTileH(parseInt(e.target.value) || 0)} />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Default role</Label>
-          <Select value={defaultRole} onValueChange={(v) => setDefaultRole(v as TileRole)}>
-            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {TILE_ROLES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Margin X</Label>
-          <Input type="number" value={marginX} onChange={(e) => setMarginX(parseInt(e.target.value) || 0)} />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Margin Y</Label>
-          <Input type="number" value={marginY} onChange={(e) => setMarginY(parseInt(e.target.value) || 0)} />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Spacing X</Label>
-          <Input type="number" value={spacingX} onChange={(e) => setSpacingX(parseInt(e.target.value) || 0)} />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Spacing Y</Label>
-          <Input type="number" value={spacingY} onChange={(e) => setSpacingY(parseInt(e.target.value) || 0)} />
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs">Default role</Label>
+            <Select value={defaultRole} onValueChange={(v) => setDefaultRole(v as TileRole)}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {TILE_ROLES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Tileset</Label>
+            <Select value={defaultTileset} onValueChange={setDefaultTileset}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {SUGGESTED_TILESETS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
+
+      {/* Slider controls — live preview updates as you drag. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 border-t pt-3">
+        {([
+          ['Tile W',    tileW,    setTileW,    4, 256],
+          ['Tile H',    tileH,    setTileH,    4, 256],
+          ['Margin X',  marginX,  setMarginX,  0, 64],
+          ['Margin Y',  marginY,  setMarginY,  0, 64],
+          ['Spacing X', spacingX, setSpacingX, 0, 64],
+          ['Spacing Y', spacingY, setSpacingY, 0, 64],
+        ] as Array<[string, number, (n: number) => void, number, number]>).map(([label, val, set, min, max]) => (
+          <div key={label} className="space-y-1">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">{label}</Label>
+              <Input
+                type="number"
+                value={val}
+                min={min}
+                max={max}
+                onChange={(e) => set(Math.max(min, Math.min(max, parseInt(e.target.value) || 0)))}
+                className="h-7 w-20 text-xs"
+              />
+            </div>
+            <Slider
+              min={min}
+              max={max}
+              step={1}
+              value={[val]}
+              onValueChange={([n]) => set(n)}
+            />
+          </div>
+        ))}
+      </div>
+
 
       <div className="flex items-center gap-2 flex-wrap">
         <input

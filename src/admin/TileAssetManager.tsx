@@ -439,6 +439,61 @@ interface SliceRegion {
   r0: number; c0: number; r1: number; c1: number;
   role: TileRole;
   name?: string;
+  tags?: string[];
+}
+
+// Common connectivity hints — let the autotiler infer how tiles meet later.
+const QUICK_TAGS = [
+  'floor', 'wall', 'water', 'lava', 'pit', 'door',
+  'edge_n', 'edge_e', 'edge_s', 'edge_w',
+  'corner_nw', 'corner_ne', 'corner_sw', 'corner_se',
+  'connects_floor', 'connects_wall', 'connects_water',
+];
+
+// Multi-candidate grid detection. Returns several plausible (tileW,tileH)
+// pairings ranked by how evenly they tile the sheet. Far more useful than the
+// single-result pixel scan when sheets have no transparent gutters.
+function detectGridCandidates(w: number, h: number): Array<{
+  tileW: number; tileH: number; marginX: number; marginY: number;
+  spacingX: number; spacingY: number; score: number; label: string;
+}> {
+  if (!w || !h) return [];
+  const sizes = [8, 12, 16, 20, 24, 28, 32, 40, 48, 56, 64, 72, 80, 96, 128];
+  const margins = [0, 1, 2, 4, 8];
+  const out: Array<{
+    tileW: number; tileH: number; marginX: number; marginY: number;
+    spacingX: number; spacingY: number; score: number; label: string;
+  }> = [];
+  for (const sx of sizes) {
+    for (const sy of sizes) {
+      for (const m of margins) {
+        const cw = (w - 2 * m) % sx;
+        const ch = (h - 2 * m) % sy;
+        if (cw !== 0 || ch !== 0) continue;
+        const cols = (w - 2 * m) / sx;
+        const rows = (h - 2 * m) / sy;
+        if (cols < 2 && rows < 2) continue; // skip degenerate "one big tile"
+        if (cols > 64 || rows > 64) continue;
+        // Prefer square tiles, more cells, smaller margin.
+        const square = sx === sy ? 0 : 4;
+        const score = -(cols * rows) + square + m * 0.5;
+        out.push({
+          tileW: sx, tileH: sy, marginX: m, marginY: m,
+          spacingX: 0, spacingY: 0, score,
+          label: `${sx}×${sy} · ${cols}×${rows} cells${m ? ` · margin ${m}` : ''}`,
+        });
+      }
+    }
+  }
+  out.sort((a, b) => a.score - b.score);
+  // De-duplicate by tile dims.
+  const seen = new Set<string>();
+  return out.filter((c) => {
+    const k = `${c.tileW}x${c.tileH}x${c.marginX}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  }).slice(0, 8);
 }
 
 interface SheetSlicerProps {

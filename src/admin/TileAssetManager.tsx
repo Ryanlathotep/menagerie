@@ -1903,7 +1903,9 @@ const PREVIEW_ROOMS: Record<string, string[]> = {
 const CHAR_TO_ROLE: Record<string, TileRole> = {
   W: 'wall', '.': 'floor', D: 'door', U: 'stairs_up', X: 'stairs_down',
   C: 'chest', T: 'trap', S: 'switch', '~': 'water', L: 'lava', '*': 'decoration',
+  d: 'decal', p: 'multi_tile_prop',
 };
+
 
 function DungeonPreview({ onDone }: { onDone: () => void }) {
   const { overrides, loading } = useGameDataOverrides('tile_asset');

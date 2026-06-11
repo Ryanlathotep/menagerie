@@ -1048,6 +1048,47 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
                 </div>
               );
             })()}
+            {/* Draggable corner vertices on top of the overlay. */}
+            {dims.w > 0 && (() => {
+              const scale = zoom;
+              const ox = marginX * scale;
+              const oy = marginY * scale;
+              const sx = (marginX + tileW) * scale;
+              const sy = (marginY + tileH) * scale;
+              const handleStyle = (left: number, top: number): React.CSSProperties => ({
+                left: left - 8, top: top - 8, width: 16, height: 16,
+              });
+              return (
+                <>
+                  <div
+                    title="Drag to move the whole grid (margin X/Y). Hold Shift to step."
+                    className="absolute rounded-full bg-primary border-2 border-background shadow cursor-grab active:cursor-grabbing"
+                    style={handleStyle(ox, oy)}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setHandleDrag({
+                        kind: 'origin', startX: e.clientX, startY: e.clientY,
+                        baseMX: marginX, baseMY: marginY, baseTW: tileW, baseTH: tileH,
+                        lockAspect: false,
+                      });
+                    }}
+                  />
+                  <div
+                    title="Drag to resize the tile cell (Shift = square)."
+                    className="absolute rounded-sm bg-amber-400 border-2 border-background shadow cursor-nwse-resize"
+                    style={handleStyle(sx, sy)}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setHandleDrag({
+                        kind: 'size', startX: e.clientX, startY: e.clientY,
+                        baseMX: marginX, baseMY: marginY, baseTW: tileW, baseTH: tileH,
+                        lockAspect: e.shiftKey,
+                      });
+                    }}
+                  />
+                </>
+              );
+            })()}
           </div>
         </div>
       )}

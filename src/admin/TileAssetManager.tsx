@@ -20,10 +20,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Slider } from '@/components/ui/slider';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import {
   Upload, Trash2, Search, Image as ImageIcon, Scissors, FolderUp, Loader2,
-  LayoutGrid, Layers, MousePointerSquareDashed, FileImage,
+  LayoutGrid, Layers, MousePointerSquareDashed, FileImage, Pencil, X,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useGameDataOverrides } from '@/hooks/useGameDataOverrides';
@@ -31,6 +33,18 @@ import { readPsd } from 'ag-psd';
 import {
   BLOB47_MASKS, reduceMask, isValidBlob47, maskLabel, NEIGHBOR_BITS,
 } from '@/game/blob47';
+
+const BUCKET = 'game-assets';
+const DEFAULT_TILESET_KEY = 'tileAssetMgr.defaultTileset';
+const ANIMATE_PREVIEWS_KEY = 'tileAssetMgr.animatePreviews';
+
+function loadDefaultTileset(): string {
+  try { return localStorage.getItem(DEFAULT_TILESET_KEY) || 'Global'; } catch { return 'Global'; }
+}
+function saveDefaultTileset(v: string): void {
+  try { localStorage.setItem(DEFAULT_TILESET_KEY, v); } catch { /* ignore */ }
+}
+
 
 const BUCKET = 'game-assets';
 

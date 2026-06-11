@@ -527,6 +527,12 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
   // Track the storage key of the loaded sheet so we can flag it as kind:'sheet'.
   const [loadedSheetKey, setLoadedSheetKey] = useState<string | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  // Auto-detect candidate list (multiple options for non-gutter sheets).
+  const [candidates, setCandidates] = useState<ReturnType<typeof detectGridCandidates>>([]);
+  // Pointer-drag state for the corner handles on the grid overlay.
+  const [handleDrag, setHandleDrag] = useState<
+    null | { kind: 'origin' | 'size'; startX: number; startY: number; baseMX: number; baseMY: number; baseTW: number; baseTH: number; lockAspect: boolean }
+  >(null);
 
   const rawSheets = useMemo(() => {
     return uploaded

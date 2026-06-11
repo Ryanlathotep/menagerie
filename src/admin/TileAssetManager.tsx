@@ -439,6 +439,61 @@ interface SliceRegion {
   r0: number; c0: number; r1: number; c1: number;
   role: TileRole;
   name?: string;
+  tags?: string[];
+}
+
+// Common connectivity hints — let the autotiler infer how tiles meet later.
+const QUICK_TAGS = [
+  'floor', 'wall', 'water', 'lava', 'pit', 'door',
+  'edge_n', 'edge_e', 'edge_s', 'edge_w',
+  'corner_nw', 'corner_ne', 'corner_sw', 'corner_se',
+  'connects_floor', 'connects_wall', 'connects_water',
+];
+
+// Multi-candidate grid detection. Returns several plausible (tileW,tileH)
+// pairings ranked by how evenly they tile the sheet. Far more useful than the
+// single-result pixel scan when sheets have no transparent gutters.
+function detectGridCandidates(w: number, h: number): Array<{
+  tileW: number; tileH: number; marginX: number; marginY: number;
+  spacingX: number; spacingY: number; score: number; label: string;
+}> {
+  if (!w || !h) return [];
+  const sizes = [8, 12, 16, 20, 24, 28, 32, 40, 48, 56, 64, 72, 80, 96, 128];
+  const margins = [0, 1, 2, 4, 8];
+  const out: Array<{
+    tileW: number; tileH: number; marginX: number; marginY: number;
+    spacingX: number; spacingY: number; score: number; label: string;
+  }> = [];
+  for (const sx of sizes) {
+    for (const sy of sizes) {
+      for (const m of margins) {
+        const cw = (w - 2 * m) % sx;
+        const ch = (h - 2 * m) % sy;
+        if (cw !== 0 || ch !== 0) continue;
+        const cols = (w - 2 * m) / sx;
+        const rows = (h - 2 * m) / sy;
+        if (cols < 2 && rows < 2) continue; // skip degenerate "one big tile"
+        if (cols > 64 || rows > 64) continue;
+        // Prefer square tiles, more cells, smaller margin.
+        const square = sx === sy ? 0 : 4;
+        const score = -(cols * rows) + square + m * 0.5;
+        out.push({
+          tileW: sx, tileH: sy, marginX: m, marginY: m,
+          spacingX: 0, spacingY: 0, score,
+          label: `${sx}×${sy} · ${cols}×${rows} cells${m ? ` · margin ${m}` : ''}`,
+        });
+      }
+    }
+  }
+  out.sort((a, b) => a.score - b.score);
+  // De-duplicate by tile dims.
+  const seen = new Set<string>();
+  return out.filter((c) => {
+    const k = `${c.tileW}x${c.tileH}x${c.marginX}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  }).slice(0, 8);
 }
 
 interface SheetSlicerProps {
@@ -446,6 +501,81 @@ interface SheetSlicerProps {
   pendingSheet: { key: string; url: string } | null;
   clearPendingSheet: () => void;
 }
+
+interface SliceJobPreview {
+  sx: number; sy: number; sw: number; sh: number;
+  name: string; role: TileRole; tags?: string[];
+  spanRows: number; spanCols: number;
+}
+
+// Renders each upcoming slice as its own clipped thumbnail. Lets the admin
+// confirm the grid (or region selection) before kicking off the upload.
+function SlicedPreviewPanel({
+  imgUrl, jobs, totalJobs,
+}: { imgUrl: string; jobs: SliceJobPreview[]; totalJobs: number }) {
+  const [imgEl, setImgEl] = useState<HTMLImageElement | null>(null);
+  useEffect(() => {
+    const im = new Image();
+    im.onload = () => setImgEl(im);
+    im.src = imgUrl;
+  }, [imgUrl]);
+  const [thumbSize, setThumbSize] = useState(48);
+  const refs = useRef<Array<HTMLCanvasElement | null>>([]);
+
+  useEffect(() => {
+    if (!imgEl) return;
+    jobs.forEach((job, i) => {
+      const c = refs.current[i];
+      if (!c) return;
+      const aspect = job.sw / Math.max(1, job.sh);
+      const w = aspect >= 1 ? thumbSize : Math.round(thumbSize * aspect);
+      const h = aspect >= 1 ? Math.round(thumbSize / aspect) : thumbSize;
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      if (!ctx) return;
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, w, h);
+      try {
+        ctx.drawImage(imgEl, job.sx, job.sy, job.sw, job.sh, 0, 0, w, h);
+      } catch { /* out of bounds — leave blank */ }
+    });
+  }, [imgEl, jobs, thumbSize]);
+
+  return (
+    <div className="border rounded p-2 bg-muted/10 space-y-2">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <Label className="text-xs">
+          Sliced preview — {jobs.length}{totalJobs > jobs.length ? ` of ${totalJobs}` : ''} piece{jobs.length === 1 ? '' : 's'}
+          {totalJobs > jobs.length && <span className="text-[10px] text-muted-foreground"> (showing first {jobs.length})</span>}
+        </Label>
+        <div className="flex items-center gap-2">
+          <Label className="text-[10px] text-muted-foreground">Thumb</Label>
+          <input type="range" min={24} max={128} step={8}
+            value={thumbSize} onChange={(e) => setThumbSize(parseInt(e.target.value))}
+            className="w-32" />
+          <span className="text-[10px] text-muted-foreground w-10 text-right">{thumbSize}px</span>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 max-h-72 overflow-y-auto">
+        {jobs.map((job, i) => (
+          <div key={i} className="flex flex-col items-center gap-0.5 p-1 border rounded bg-background/40"
+            style={{ width: thumbSize + 12 }}
+            title={`${job.name} · ${job.sw}×${job.sh}px · ${job.role}${job.tags?.length ? ` · ${job.tags.join(',')}` : ''}`}>
+            <canvas
+              ref={(el) => { refs.current[i] = el; }}
+              style={{ imageRendering: 'pixelated', maxWidth: thumbSize, maxHeight: thumbSize }}
+            />
+            <span className="text-[9px] truncate w-full text-center text-muted-foreground">
+              {job.spanCols > 1 || job.spanRows > 1 ? `${job.spanCols}×${job.spanRows}` : job.name}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
 
 function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerProps) {
   const { overrides: uploaded } = useGameDataOverrides('tile_asset');
@@ -472,6 +602,12 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
   // Track the storage key of the loaded sheet so we can flag it as kind:'sheet'.
   const [loadedSheetKey, setLoadedSheetKey] = useState<string | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  // Auto-detect candidate list (multiple options for non-gutter sheets).
+  const [candidates, setCandidates] = useState<ReturnType<typeof detectGridCandidates>>([]);
+  // Pointer-drag state for the corner handles on the grid overlay.
+  const [handleDrag, setHandleDrag] = useState<
+    null | { kind: 'origin' | 'size'; startX: number; startY: number; baseMX: number; baseMY: number; baseTW: number; baseTH: number; lockAspect: boolean }
+  >(null);
 
   const rawSheets = useMemo(() => {
     return uploaded
@@ -533,37 +669,37 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
     return { cols, rows };
   }, [dims, tileW, tileH, marginX, marginY, spacingX, spacingY]);
 
+  const applyCandidate = (c: { tileW: number; tileH: number; marginX: number; marginY: number; spacingX: number; spacingY: number }) => {
+    setTileW(c.tileW); setTileH(c.tileH);
+    setMarginX(c.marginX); setMarginY(c.marginY);
+    setSpacingX(c.spacingX); setSpacingY(c.spacingY);
+  };
+
   const autoDetect = async () => {
     if (!dims.w || !dims.h) { toast.error('Pick a sheet first'); return; }
+    // Always compute the candidate list from raw dimensions so the user can
+    // pick a different grid if the first guess is wrong (e.g. "one big tile").
+    const cands = detectGridCandidates(dims.w, dims.h);
+    setCandidates(cands);
+    // Try pixel-scan first for sheets that DO have gutters.
     if (file) {
       const pix = await detectGridFromImage(file);
-      if (pix && pix.tileW >= 4 && pix.tileH >= 4) {
-        setTileW(pix.tileW); setTileH(pix.tileH);
-        setMarginX(pix.marginX); setMarginY(pix.marginY);
-        setSpacingX(pix.spacingX); setSpacingY(pix.spacingY);
+      if (pix && pix.tileW >= 4 && pix.tileH >= 4
+        && pix.tileW < dims.w && pix.tileH < dims.h
+      ) {
+        applyCandidate(pix);
         toast.success(
           `Pixel-scan: ${pix.tileW}×${pix.tileH}, margin ${pix.marginX}/${pix.marginY}, gap ${pix.spacingX}/${pix.spacingY}`,
         );
         return;
       }
     }
-    const candidates = [64, 48, 32, 24, 16, 8];
-    const margins = [0, 1, 2, 4, 8];
-    let best: { size: number; margin: number } | null = null;
-    for (const size of candidates) {
-      for (const m of margins) {
-        if ((dims.w - 2 * m) % size === 0 && (dims.h - 2 * m) % size === 0) {
-          best = { size, margin: m };
-          break;
-        }
-      }
-      if (best) break;
+    if (cands.length === 0) {
+      toast.warning('No clean grid found — adjust sliders manually');
+      return;
     }
-    if (!best) { toast.warning('No clean grid found — adjust manually'); return; }
-    setTileW(best.size); setTileH(best.size);
-    setMarginX(best.margin); setMarginY(best.margin);
-    setSpacingX(0); setSpacingY(0);
-    toast.success(`Detected ${best.size}×${best.size} cells, margin ${best.margin}`);
+    applyCandidate(cands[0]);
+    toast.success(`Best guess: ${cands[0].label}. ${cands.length - 1} alternates listed below.`);
   };
 
   const cellFromEvent = useCallback((e: React.MouseEvent): { r: number; c: number } | null => {
@@ -602,11 +738,50 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
     setDrag(null);
   };
 
+  // Window-level pointer drag for the corner handles on the grid overlay.
+  // 'origin' shifts marginX/marginY together; 'size' resizes tileW/tileH.
+  useEffect(() => {
+    if (!handleDrag) return;
+    const onMove = (e: PointerEvent) => {
+      const dx = Math.round((e.clientX - handleDrag.startX) / zoom);
+      const dy = Math.round((e.clientY - handleDrag.startY) / zoom);
+      if (handleDrag.kind === 'origin') {
+        setMarginX(Math.max(0, Math.min(64, handleDrag.baseMX + dx)));
+        setMarginY(Math.max(0, Math.min(64, handleDrag.baseMY + dy)));
+      } else {
+        let nw = Math.max(4, Math.min(256, handleDrag.baseTW + dx));
+        let nh = Math.max(4, Math.min(256, handleDrag.baseTH + dy));
+        if (handleDrag.lockAspect || e.shiftKey) {
+          // Lock to square based on the larger delta.
+          const v = Math.abs(dx) > Math.abs(dy) ? nw : nh;
+          nw = v; nh = v;
+        }
+        setTileW(nw); setTileH(nh);
+      }
+    };
+    const onUp = () => setHandleDrag(null);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [handleDrag, zoom]);
+
+
+
   const removeRegion = (id: string) => setRegions((p) => p.filter((r) => r.id !== id));
   const setRegionRole = (id: string, role: TileRole) =>
     setRegions((p) => p.map((r) => (r.id === id ? { ...r, role } : r)));
   const setRegionName = (id: string, name: string) =>
     setRegions((p) => p.map((r) => (r.id === id ? { ...r, name } : r)));
+  const toggleRegionTag = (id: string, tag: string) =>
+    setRegions((p) => p.map((r) => {
+      if (r.id !== id) return r;
+      const cur = new Set(r.tags || []);
+      if (cur.has(tag)) cur.delete(tag); else cur.add(tag);
+      return { ...r, tags: Array.from(cur) };
+    }));
   const clearRegions = () => setRegions([]);
 
   const sliceJobs = useMemo(() => {
@@ -618,13 +793,14 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
         sh: (reg.r1 - reg.r0 + 1) * tileH + (reg.r1 - reg.r0) * spacingY,
         name: reg.name || `${reg.r0}_${reg.c0}_${reg.r1 - reg.r0 + 1}x${reg.c1 - reg.c0 + 1}`,
         role: reg.role,
+        tags: reg.tags,
         row: reg.r0, col: reg.c0,
         spanRows: reg.r1 - reg.r0 + 1, spanCols: reg.c1 - reg.c0 + 1,
       }));
     }
     const jobs: Array<{
       sx: number; sy: number; sw: number; sh: number; name: string;
-      role: TileRole; row: number; col: number; spanRows: number; spanCols: number;
+      role: TileRole; tags?: string[]; row: number; col: number; spanRows: number; spanCols: number;
     }> = [];
     for (let r = 0; r < grid.rows; r++) {
       for (let c = 0; c < grid.cols; c++) {
@@ -682,6 +858,7 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
           kind: 'sliced',
           ...(loadedSheetKey ? { parentSheet: loadedSheetKey } : {}),
           ...(defaultTileset && defaultTileset !== 'Global' ? { tilesets: [defaultTileset] } : {}),
+          ...(job.tags && job.tags.length ? { tags: job.tags } : {}),
         };
 
         await supabase.from('game_data_overrides').upsert(
@@ -852,6 +1029,33 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
         )}
       </div>
 
+      {candidates.length > 1 && (
+        <div className="border rounded p-2 space-y-1 bg-muted/20">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs">Grid candidates ({candidates.length})</Label>
+            <Button size="sm" variant="ghost" className="h-6 text-[10px]"
+              onClick={() => setCandidates([])}>Hide</Button>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {candidates.map((c, i) => {
+              const active = c.tileW === tileW && c.tileH === tileH
+                && c.marginX === marginX && c.marginY === marginY;
+              return (
+                <Button key={i} size="sm" variant={active ? 'default' : 'outline'}
+                  className="h-7 text-[11px]"
+                  onClick={() => applyCandidate(c)}
+                  title="Apply this grid">
+                  {c.label}
+                </Button>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Sheets without transparent gutters can fit many grids. Pick the one whose lines land on every tile edge in the preview.
+          </p>
+        </div>
+      )}
+
       <div className="flex items-center gap-3">
         <Label className="text-xs whitespace-nowrap">Zoom {zoom}x</Label>
         <input
@@ -919,6 +1123,47 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
                 </div>
               );
             })()}
+            {/* Draggable corner vertices on top of the overlay. */}
+            {dims.w > 0 && (() => {
+              const scale = zoom;
+              const ox = marginX * scale;
+              const oy = marginY * scale;
+              const sx = (marginX + tileW) * scale;
+              const sy = (marginY + tileH) * scale;
+              const handleStyle = (left: number, top: number): React.CSSProperties => ({
+                left: left - 8, top: top - 8, width: 16, height: 16,
+              });
+              return (
+                <>
+                  <div
+                    title="Drag to move the whole grid (margin X/Y). Hold Shift to step."
+                    className="absolute rounded-full bg-primary border-2 border-background shadow cursor-grab active:cursor-grabbing"
+                    style={handleStyle(ox, oy)}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setHandleDrag({
+                        kind: 'origin', startX: e.clientX, startY: e.clientY,
+                        baseMX: marginX, baseMY: marginY, baseTW: tileW, baseTH: tileH,
+                        lockAspect: false,
+                      });
+                    }}
+                  />
+                  <div
+                    title="Drag to resize the tile cell (Shift = square)."
+                    className="absolute rounded-sm bg-amber-400 border-2 border-background shadow cursor-nwse-resize"
+                    style={handleStyle(sx, sy)}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setHandleDrag({
+                        kind: 'size', startX: e.clientX, startY: e.clientY,
+                        baseMX: marginX, baseMY: marginY, baseTW: tileW, baseTH: tileH,
+                        lockAspect: e.shiftKey,
+                      });
+                    }}
+                  />
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -931,32 +1176,61 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
           </div>
           <div className="border rounded divide-y max-h-40 overflow-y-auto">
             {regions.map((reg) => (
-              <div key={reg.id} className="flex items-center gap-2 p-2 text-xs">
-                <span className="font-mono w-28 shrink-0">
-                  r{reg.r0}-{reg.r1} c{reg.c0}-{reg.c1}
-                </span>
-                <span className="text-muted-foreground w-16 shrink-0">
-                  {reg.c1 - reg.c0 + 1}×{reg.r1 - reg.r0 + 1}
-                </span>
-                <Input
-                  className="h-7 text-xs"
-                  placeholder="name (optional)"
-                  value={reg.name || ''}
-                  onChange={(e) => setRegionName(reg.id, e.target.value)}
-                />
-                <Select value={reg.role} onValueChange={(v) => setRegionRole(reg.id, v as TileRole)}>
-                  <SelectTrigger className="h-7 w-40 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {TILE_ROLES.map((r) => <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => removeRegion(reg.id)}>
-                  <Trash2 className="w-3 h-3" />
-                </Button>
+              <div key={reg.id} className="p-2 text-xs space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono w-28 shrink-0">
+                    r{reg.r0}-{reg.r1} c{reg.c0}-{reg.c1}
+                  </span>
+                  <span className="text-muted-foreground w-16 shrink-0">
+                    {reg.c1 - reg.c0 + 1}×{reg.r1 - reg.r0 + 1}
+                  </span>
+                  <Input
+                    className="h-7 text-xs"
+                    placeholder="name (optional)"
+                    value={reg.name || ''}
+                    onChange={(e) => setRegionName(reg.id, e.target.value)}
+                  />
+                  <Select value={reg.role} onValueChange={(v) => setRegionRole(reg.id, v as TileRole)}>
+                    <SelectTrigger className="h-7 w-40 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {TILE_ROLES.map((r) => <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => removeRegion(reg.id)}>
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-1 pl-28">
+                  {QUICK_TAGS.map((t) => {
+                    const on = reg.tags?.includes(t);
+                    return (
+                      <button
+                        key={t} type="button"
+                        onClick={() => toggleRegionTag(reg.id, t)}
+                        className={`px-1.5 py-0.5 rounded text-[10px] border ${
+                          on
+                            ? 'bg-emerald-500/30 border-emerald-500 text-emerald-200'
+                            : 'border-border text-muted-foreground hover:bg-muted'
+                        }`}
+                        title="Mark how this tile connects to neighbours"
+                      >{t}</button>
+                    );
+                  })}
+                </div>
               </div>
             ))}
           </div>
         </div>
+      )}
+
+      {/* Sliced preview — clip each upcoming job from the source so the admin
+          can verify the grid before uploading. */}
+      {imgUrl && dims.w > 0 && sliceJobs.length > 0 && (
+        <SlicedPreviewPanel
+          imgUrl={imgUrl}
+          jobs={sliceJobs.slice(0, 96)}
+          totalJobs={sliceJobs.length}
+        />
       )}
 
       <div className="flex items-center gap-2">

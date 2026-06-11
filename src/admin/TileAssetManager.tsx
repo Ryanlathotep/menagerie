@@ -460,6 +460,8 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
   const [spacingY, setSpacingY] = useState(0);
   const [sheetName, setSheetName] = useState('');
   const [defaultRole, setDefaultRole] = useState<TileRole>('multi_tile_prop');
+  const [defaultTileset, setDefaultTileset] = useState<string>(loadDefaultTileset());
+
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
   const [regions, setRegions] = useState<SliceRegion[]>([]);

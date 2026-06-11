@@ -46,7 +46,6 @@ function saveDefaultTileset(v: string): void {
 }
 
 
-const BUCKET = 'game-assets';
 
 const TILE_ROLES = [
   'unassigned',

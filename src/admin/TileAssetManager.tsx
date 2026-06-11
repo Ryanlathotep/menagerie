@@ -791,6 +791,290 @@ function TileLibrary() {
   );
 }
 
+// ---------- Dungeon preview ----------
+
+// Small sample room layout. Letters map to tile roles so the preview can
+// substitute whatever asset the admin picked for each role.
+//   W = wall, . = floor, D = door, U = stairs_up, X = stairs_down,
+//   C = chest, T = trap, S = switch, ~ = water, L = lava, * = decoration
+const PREVIEW_ROOMS: Record<string, string[]> = {
+  'Small room': [
+    'WWWWWWWWWW',
+    'W........W',
+    'W..*..C..W',
+    'W........W',
+    'W...T....W',
+    'W........W',
+    'W..S..*..W',
+    'W........W',
+    'WWWWDWWWWW',
+  ],
+  'Corridor + stairs': [
+    'WWWWWWWWWWWW',
+    'W..........W',
+    'W.U......X.W',
+    'W..........W',
+    'WWWWWWDWWWWW',
+    '......W.....',
+    '......W.....',
+    'WWWWWWWWWWWW',
+  ],
+  'Hazard chamber': [
+    'WWWWWWWWWW',
+    'W~~....LLW',
+    'W~~.TT.LLW',
+    'W...TT...W',
+    'W..*..C..W',
+    'W........W',
+    'WWWWDWWWWW',
+  ],
+};
+
+// Friendly description of what each role is used for.
+const ROLE_HINTS: Partial<Record<TileRole, string>> = {
+  floor: 'Walkable ground. Tiled across every open cell.',
+  wall: 'Solid, blocks movement and vision. Used for room borders.',
+  wall_autotile: 'Wall that auto-connects to neighbors (N/E/S/W). Pick a single piece — game rotates as needed.',
+  door: 'Walkable when open; visually breaks a wall. Often placed in the middle of a wall span.',
+  stairs_up: 'Goes to the previous floor. One per floor.',
+  stairs_down: 'Goes deeper into the dungeon. One per floor.',
+  chest: 'Holds loot. Sits on a floor tile; player walks onto it to open.',
+  trap: 'Hidden hazard. Drawn on a floor tile and triggered when stepped on.',
+  switch: 'Interactive prop. Pressing toggles doors / spawns / hazards.',
+  water: 'Slows movement. Element-tagged terrain.',
+  lava: 'Damaging terrain. Element-tagged.',
+  decoration: 'Non-blocking, non-interactive prop drawn over a floor.',
+  decal: 'Floor overlay (cracks, blood, footprints). Drawn under monsters.',
+  multi_tile_prop: 'Multi-cell scenery (statue, altar). Spans several cells; placement code handles its footprint.',
+  animation_frame: 'A single frame of a sprite animation. Group with siblings by sheet + index.',
+  creature: 'Used for spawned enemies or NPCs.',
+  equipment: 'Inventory / paper-doll art.',
+  spell_fx: 'Visual for attacks/abilities. Drawn over the action.',
+  ui: 'HUD or menu chrome.',
+};
+
+const CHAR_TO_ROLE: Record<string, TileRole> = {
+  W: 'wall', '.': 'floor', D: 'door', U: 'stairs_up', X: 'stairs_down',
+  C: 'chest', T: 'trap', S: 'switch', '~': 'water', L: 'lava', '*': 'decoration',
+};
+
+function DungeonPreview() {
+  const { overrides, loading } = useGameDataOverrides('tile_asset');
+  const [roomName, setRoomName] = useState<string>('Small room');
+  const [tileSize, setTileSize] = useState(48);
+  // role -> selected asset key
+  const [picks, setPicks] = useState<Partial<Record<TileRole, string>>>({});
+  const [highlightRole, setHighlightRole] = useState<TileRole | null>(null);
+
+  const byRole = useMemo(() => {
+    const map = new Map<TileRole, TileRow[]>();
+    overrides.forEach((o) => {
+      const meta = o.data_value as unknown as TileAssetMeta;
+      const role = meta.role || 'unassigned';
+      const arr = map.get(role) || [];
+      arr.push({ id: o.id, key: o.data_key, meta });
+      map.set(role, arr);
+    });
+    return map;
+  }, [overrides]);
+
+  const room = PREVIEW_ROOMS[roomName];
+  const rolesUsed = useMemo(() => {
+    const set = new Set<TileRole>();
+    room.forEach((line) => {
+      for (const ch of line) {
+        const r = CHAR_TO_ROLE[ch];
+        if (r) set.add(r);
+      }
+    });
+    return Array.from(set);
+  }, [room]);
+
+  // Auto-pick the first asset for each used role if nothing chosen yet.
+  const effectivePicks = useMemo(() => {
+    const out: Partial<Record<TileRole, string>> = { ...picks };
+    rolesUsed.forEach((r) => {
+      if (!out[r]) {
+        const first = byRole.get(r)?.[0];
+        if (first) out[r] = first.key;
+      }
+    });
+    return out;
+  }, [picks, rolesUsed, byRole]);
+
+  const urlForRole = useCallback((role: TileRole): string | null => {
+    const key = effectivePicks[role];
+    if (!key) return null;
+    const found = byRole.get(role)?.find((r) => r.key === key);
+    return found?.meta.url || null;
+  }, [effectivePicks, byRole]);
+
+  const rows = room.length;
+  const cols = Math.max(...room.map((r) => r.length));
+
+  return (
+    <Card className="p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Eye className="w-4 h-4" />
+        <h4 className="font-semibold">Dungeon Preview</h4>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Pick a sample room, then choose which tile asset to use for each role.
+        Click a role chip on the right to highlight every cell where it appears
+        in the room — handy for spotting holes (no asset = hatched cell) and
+        understanding how each role gets used.
+      </p>
+
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="space-y-1">
+          <Label className="text-xs">Sample room</Label>
+          <Select value={roomName} onValueChange={setRoomName}>
+            <SelectTrigger className="h-9 w-48"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {Object.keys(PREVIEW_ROOMS).map((k) => (
+                <SelectItem key={k} value={k}>{k}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Tile size {tileSize}px</Label>
+          <input
+            type="range" min={16} max={96} step={4}
+            value={tileSize}
+            onChange={(e) => setTileSize(parseInt(e.target.value))}
+            className="w-40 block"
+          />
+        </div>
+        {loading && <span className="text-xs text-muted-foreground">Loading library…</span>}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3">
+        {/* Room render */}
+        <div className="border rounded p-3 bg-muted/20 overflow-auto">
+          <div
+            className="relative mx-auto"
+            style={{
+              width: cols * tileSize,
+              height: rows * tileSize,
+              imageRendering: 'pixelated',
+            }}
+          >
+            {room.map((line, r) => (
+              line.split('').map((ch, c) => {
+                const role = CHAR_TO_ROLE[ch];
+                const floorUrl = urlForRole('floor');
+                const url = role ? urlForRole(role) : null;
+                const isHighlighted = highlightRole && role === highlightRole;
+                const missing = role && !url;
+                // Draw floor under non-wall content cells so props/decals don't float.
+                const showFloorBase = role && role !== 'wall' && role !== 'wall_autotile' && floorUrl;
+                return (
+                  <div
+                    key={`${r}-${c}`}
+                    className="absolute"
+                    style={{
+                      left: c * tileSize,
+                      top: r * tileSize,
+                      width: tileSize,
+                      height: tileSize,
+                    }}
+                    title={role || ch}
+                  >
+                    {showFloorBase && (
+                      <img src={floorUrl} alt="" draggable={false}
+                        className="absolute inset-0 w-full h-full"
+                        style={{ imageRendering: 'pixelated' }} />
+                    )}
+                    {url ? (
+                      <img src={url} alt={role || ''} draggable={false}
+                        className="absolute inset-0 w-full h-full"
+                        style={{ imageRendering: 'pixelated' }} />
+                    ) : missing ? (
+                      <div
+                        className="absolute inset-0 flex items-center justify-center text-[10px] text-destructive font-mono"
+                        style={{
+                          backgroundImage:
+                            'repeating-linear-gradient(45deg, hsl(var(--destructive) / 0.15) 0 4px, transparent 4px 8px)',
+                          border: '1px dashed hsl(var(--destructive) / 0.5)',
+                        }}
+                      >
+                        {ch}
+                      </div>
+                    ) : (
+                      // Unmapped char (e.g. space) — leave transparent
+                      null
+                    )}
+                    {isHighlighted && (
+                      <div className="absolute inset-0 ring-2 ring-amber-400 ring-inset bg-amber-300/20 pointer-events-none" />
+                    )}
+                  </div>
+                );
+              })
+            ))}
+          </div>
+        </div>
+
+        {/* Role pickers */}
+        <div className="space-y-2">
+          <Label className="text-xs">Roles in this room</Label>
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+            {rolesUsed.map((role) => {
+              const options = byRole.get(role) || [];
+              const sel = effectivePicks[role] || '';
+              const isHl = highlightRole === role;
+              return (
+                <div
+                  key={role}
+                  className={`border rounded p-2 space-y-1 transition-colors ${isHl ? 'border-amber-400 bg-amber-400/10' : ''}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setHighlightRole(isHl ? null : role)}
+                      className="text-xs font-semibold underline-offset-2 hover:underline text-left"
+                    >
+                      {role} {isHl ? '(highlighted)' : ''}
+                    </button>
+                    <span className="text-[10px] text-muted-foreground">{options.length} asset{options.length === 1 ? '' : 's'}</span>
+                  </div>
+                  {ROLE_HINTS[role] && (
+                    <p className="text-[10px] text-muted-foreground leading-snug">{ROLE_HINTS[role]}</p>
+                  )}
+                  {options.length === 0 ? (
+                    <div className="text-[10px] text-destructive">
+                      No assets tagged "{role}". Tag some in the Library tab.
+                    </div>
+                  ) : (
+                    <Select
+                      value={sel}
+                      onValueChange={(v) => setPicks((p) => ({ ...p, [role]: v }))}
+                    >
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {options.map((o) => (
+                          <SelectItem key={o.id} value={o.key} className="text-xs">
+                            {o.meta.sheet ? `${o.meta.sheet} ${o.meta.row},${o.meta.col}` : o.key.split('/').pop()}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {highlightRole && (
+            <Button size="sm" variant="ghost" onClick={() => setHighlightRole(null)}>
+              Clear highlight
+            </Button>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 // ---------- Main panel ----------
 
 export function TileAssetManager() {
@@ -817,6 +1101,7 @@ export function TileAssetManager() {
           <TabsTrigger value="upload">Bulk Upload</TabsTrigger>
           <TabsTrigger value="slice">Slice Sheet</TabsTrigger>
           <TabsTrigger value="library">Library</TabsTrigger>
+          <TabsTrigger value="preview">Preview</TabsTrigger>
         </TabsList>
         <TabsContent value="upload" className="mt-3">
           <BulkUploader onDone={refetch} />
@@ -826,6 +1111,9 @@ export function TileAssetManager() {
         </TabsContent>
         <TabsContent value="library" className="mt-3">
           <TileLibrary />
+        </TabsContent>
+        <TabsContent value="preview" className="mt-3">
+          <DungeonPreview />
         </TabsContent>
       </Tabs>
     </div>

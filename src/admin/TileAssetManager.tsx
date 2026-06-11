@@ -1101,32 +1101,61 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
           </div>
           <div className="border rounded divide-y max-h-40 overflow-y-auto">
             {regions.map((reg) => (
-              <div key={reg.id} className="flex items-center gap-2 p-2 text-xs">
-                <span className="font-mono w-28 shrink-0">
-                  r{reg.r0}-{reg.r1} c{reg.c0}-{reg.c1}
-                </span>
-                <span className="text-muted-foreground w-16 shrink-0">
-                  {reg.c1 - reg.c0 + 1}×{reg.r1 - reg.r0 + 1}
-                </span>
-                <Input
-                  className="h-7 text-xs"
-                  placeholder="name (optional)"
-                  value={reg.name || ''}
-                  onChange={(e) => setRegionName(reg.id, e.target.value)}
-                />
-                <Select value={reg.role} onValueChange={(v) => setRegionRole(reg.id, v as TileRole)}>
-                  <SelectTrigger className="h-7 w-40 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {TILE_ROLES.map((r) => <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => removeRegion(reg.id)}>
-                  <Trash2 className="w-3 h-3" />
-                </Button>
+              <div key={reg.id} className="p-2 text-xs space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono w-28 shrink-0">
+                    r{reg.r0}-{reg.r1} c{reg.c0}-{reg.c1}
+                  </span>
+                  <span className="text-muted-foreground w-16 shrink-0">
+                    {reg.c1 - reg.c0 + 1}×{reg.r1 - reg.r0 + 1}
+                  </span>
+                  <Input
+                    className="h-7 text-xs"
+                    placeholder="name (optional)"
+                    value={reg.name || ''}
+                    onChange={(e) => setRegionName(reg.id, e.target.value)}
+                  />
+                  <Select value={reg.role} onValueChange={(v) => setRegionRole(reg.id, v as TileRole)}>
+                    <SelectTrigger className="h-7 w-40 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {TILE_ROLES.map((r) => <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => removeRegion(reg.id)}>
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-1 pl-28">
+                  {QUICK_TAGS.map((t) => {
+                    const on = reg.tags?.includes(t);
+                    return (
+                      <button
+                        key={t} type="button"
+                        onClick={() => toggleRegionTag(reg.id, t)}
+                        className={`px-1.5 py-0.5 rounded text-[10px] border ${
+                          on
+                            ? 'bg-emerald-500/30 border-emerald-500 text-emerald-200'
+                            : 'border-border text-muted-foreground hover:bg-muted'
+                        }`}
+                        title="Mark how this tile connects to neighbours"
+                      >{t}</button>
+                    );
+                  })}
+                </div>
               </div>
             ))}
           </div>
         </div>
+      )}
+
+      {/* Sliced preview — clip each upcoming job from the source so the admin
+          can verify the grid before uploading. */}
+      {imgUrl && dims.w > 0 && sliceJobs.length > 0 && (
+        <SlicedPreviewPanel
+          imgUrl={imgUrl}
+          jobs={sliceJobs.slice(0, 96)}
+          totalJobs={sliceJobs.length}
+        />
       )}
 
       <div className="flex items-center gap-2">

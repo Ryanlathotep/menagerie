@@ -961,6 +961,29 @@ function TileThumb({ src, alt, className }: { src: string; alt: string; classNam
   );
 }
 
+// Animated thumbnail that cycles meta.frames at meta.fps when animation is enabled.
+// Falls back to a single frame (the primary url) otherwise.
+function TileAnim({ meta, className, animate = true }: {
+  meta: Pick<TileAssetMeta, 'url' | 'frames' | 'fps'>;
+  className?: string;
+  animate?: boolean;
+}) {
+  const frames = useMemo(() => {
+    const list = [meta.url, ...((meta.frames || []).map((p) => p.startsWith('http') ? p : publicUrl(p)))];
+    return list.filter(Boolean);
+  }, [meta.url, meta.frames]);
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (!animate || frames.length < 2) return;
+    const fps = Math.max(1, Math.min(30, meta.fps ?? 6));
+    const t = window.setInterval(() => setI((v) => (v + 1) % frames.length), Math.round(1000 / fps));
+    return () => window.clearInterval(t);
+  }, [animate, frames, meta.fps]);
+  return <TileThumb src={frames[i] ?? meta.url} alt="" className={className} />;
+}
+
+
+
 // Inline editor for Blob-47 autotile masks. 3x3 grid; center = self.
 function AutotileEditor({ row, onChange }: { row: TileRow; onChange: (next: TileAssetMeta) => void }) {
   const current = row.meta.autotile;

@@ -681,7 +681,9 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
           contentType: 'image/png',
           kind: 'sliced',
           ...(loadedSheetKey ? { parentSheet: loadedSheetKey } : {}),
+          ...(defaultTileset && defaultTileset !== 'Global' ? { tilesets: [defaultTileset] } : {}),
         };
+
         await supabase.from('game_data_overrides').upsert(
           { data_type: 'tile_asset', data_key: path, data_value: meta },
           { onConflict: 'data_type,data_key' }

@@ -1192,12 +1192,27 @@ function TileLibrary({ onOpenSheet }: TileLibraryProps) {
     return Array.from(set).sort();
   }, [rows]);
 
+  const knownTilesets = useMemo(() => {
+    const set = new Set<string>(SUGGESTED_TILESETS);
+    rows.forEach((r) => (r.meta.tilesets || []).forEach((t) => set.add(t)));
+    return Array.from(set).sort();
+  }, [rows]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
       if (!showSliced && r.meta.kind === 'sliced') return false;
+      if (kindFilter === 'tile' && (r.meta.kind ?? 'tile') !== 'tile') return false;
+      if (kindFilter === 'sheet' && r.meta.kind !== 'sheet') return false;
+      if (kindFilter === 'sliced' && r.meta.kind !== 'sliced') return false;
+      if (kindFilter === 'unassigned' && r.meta.role !== 'unassigned') return false;
       if (roleFilter !== 'all' && r.meta.role !== roleFilter) return false;
       if (sheetFilter !== 'all' && r.meta.sheet !== sheetFilter) return false;
+      if (tilesetFilter !== 'all') {
+        const ts = r.meta.tilesets || [];
+        if (tilesetFilter === 'Global') { if (ts.length > 0) return false; }
+        else if (!ts.includes(tilesetFilter)) return false;
+      }
       if (!q) return true;
       return r.key.toLowerCase().includes(q)
         || (r.meta.sheet || '').toLowerCase().includes(q)
@@ -1205,12 +1220,23 @@ function TileLibrary({ onOpenSheet }: TileLibraryProps) {
         || (r.meta.tags || []).join(' ').toLowerCase().includes(q)
         || (r.meta.tilesets || []).join(' ').toLowerCase().includes(q);
     });
-  }, [rows, search, roleFilter, sheetFilter, showSliced]);
+  }, [rows, search, roleFilter, sheetFilter, showSliced, kindFilter, tilesetFilter]);
 
   const slicedCount = useMemo(
     () => rows.filter((r) => r.meta.kind === 'sliced').length,
     [rows],
   );
+
+  const toggleSelect = (key: string) => setSelected((prev) => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+  const selectAllFiltered = () => setSelected(new Set(filtered.map((r) => r.key)));
+  const clearSelection = () => setSelected(new Set());
+  const selectedRows = useMemo(() => filtered.filter((r) => selected.has(r.key)), [filtered, selected]);
+
+
 
   const updateMeta = async (row: TileRow, next: TileAssetMeta) => {
     const { error } = await supabase

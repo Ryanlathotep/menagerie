@@ -286,7 +286,11 @@ function BulkUploader({ onDone }: { onDone: () => void }) {
     { done: 0, total: 0, label: '' },
   );
   const [defaultRole, setDefaultRole] = useState<TileRole>('unassigned');
+  const [defaultTileset, setDefaultTileset] = useState<string>(loadDefaultTileset());
+  const [defaultKind, setDefaultKind] = useState<'tile' | 'sheet'>('tile');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { saveDefaultTileset(defaultTileset); }, [defaultTileset]);
 
   const handleFiles = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -297,7 +301,6 @@ function BulkUploader({ onDone }: { onDone: () => void }) {
     }
     setBusy(true);
 
-    // Expand PSDs to per-layer PNGs up front so the progress bar is accurate.
     type Job = { file: File; sourcePsd?: string };
     const jobs: Job[] = [];
     for (const f of list) {
@@ -305,9 +308,7 @@ function BulkUploader({ onDone }: { onDone: () => void }) {
         try {
           setProgress({ done: 0, total: list.length, label: `Parsing PSD ${f.name}…` });
           const layers = await psdToLayerFiles(f);
-          if (layers.length === 0) {
-            toast.warning(`${f.name}: no visible layers`);
-          }
+          if (layers.length === 0) toast.warning(`${f.name}: no visible layers`);
           for (const lf of layers) jobs.push({ file: lf, sourcePsd: f.name });
         } catch (err) {
           console.error('PSD parse failed', f.name, err);
@@ -333,15 +334,19 @@ function BulkUploader({ onDone }: { onDone: () => void }) {
         if (error) throw error;
         const url = publicUrl(path);
         const dims = await readImageSize(file);
-        const inferred = defaultRole === 'unassigned' ? roleFromName(file.name) : defaultRole;
+        // Sheets: don't try to guess a tile role.
+        const inferred = defaultKind === 'sheet'
+          ? 'unassigned'
+          : (defaultRole === 'unassigned' ? roleFromName(file.name) : defaultRole);
         const meta: TileAssetMeta = {
           url, path,
           role: inferred,
           width: dims.w,
           height: dims.h,
           contentType: file.type || 'image/png',
-          kind: 'tile',
+          kind: defaultKind,
           ...(job.sourcePsd ? { sourcePsd: job.sourcePsd } : {}),
+          ...(defaultTileset && defaultTileset !== 'Global' ? { tilesets: [defaultTileset] } : {}),
         };
         const { error: dbErr } = await supabase
           .from('game_data_overrides')
@@ -357,7 +362,7 @@ function BulkUploader({ onDone }: { onDone: () => void }) {
     setBusy(false);
     toast.success(`Uploaded ${okCount}/${jobs.length} tile assets`);
     onDone();
-  }, [defaultRole, onDone]);
+  }, [defaultRole, defaultKind, defaultTileset, onDone]);
 
   return (
     <Card className="p-4 space-y-3">
@@ -366,25 +371,41 @@ function BulkUploader({ onDone }: { onDone: () => void }) {
         <h4 className="font-semibold">Bulk Upload</h4>
       </div>
       <p className="text-xs text-muted-foreground">
-        Drop or pick PNG / JPG / WebP / SVG / <b>PSD</b> files. PSDs are
-        expanded so each visible layer becomes its own tile asset (named after
-        the layer). Use the Slicer tab for a packed tilesheet.
+        PNG / JPG / WebP / SVG / <b>PSD</b>. PSDs are expanded so each visible
+        layer becomes its own asset. Everything uploaded here inherits the
+        tileset, kind, and role below — switch <b>Kind</b> to <i>Sheet</i> if
+        you're dropping in tilesheets to slice later.
       </p>
       <div className="flex items-end gap-2 flex-wrap">
         <div className="space-y-1">
+          <Label className="text-xs">Default tileset</Label>
+          <Select value={defaultTileset} onValueChange={setDefaultTileset}>
+            <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {SUGGESTED_TILESETS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Kind</Label>
+          <Select value={defaultKind} onValueChange={(v) => setDefaultKind(v as 'tile' | 'sheet')}>
+            <SelectTrigger className="w-28 h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="tile">Tile</SelectItem>
+              <SelectItem value="sheet">Sheet</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
           <Label className="text-xs">Default role</Label>
-          <Select value={defaultRole} onValueChange={(v) => setDefaultRole(v as TileRole)}>
+          <Select value={defaultRole} onValueChange={(v) => setDefaultRole(v as TileRole)} disabled={defaultKind === 'sheet'}>
             <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               {TILE_ROLES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
-        <Button
-          onClick={() => inputRef.current?.click()}
-          disabled={busy}
-          className="gap-2"
-        >
+        <Button onClick={() => inputRef.current?.click()} disabled={busy} className="gap-2">
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
           {busy
             ? (progress.label || `Uploading ${progress.done}/${progress.total}…`)
@@ -409,6 +430,7 @@ function BulkUploader({ onDone }: { onDone: () => void }) {
     </Card>
   );
 }
+
 
 // ---------- Sheet slicer ----------
 

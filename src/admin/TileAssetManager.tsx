@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import {
-  Upload, Trash2, Search, Image as ImageIcon, Scissors, FolderUp, Loader2,
+  Upload, Trash2, Search, Image as ImageIcon, Scissors, FolderUp, Loader2, Eye,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useGameDataOverrides } from '@/hooks/useGameDataOverrides';

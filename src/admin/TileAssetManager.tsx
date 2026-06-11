@@ -663,6 +663,38 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
     setDrag(null);
   };
 
+  // Window-level pointer drag for the corner handles on the grid overlay.
+  // 'origin' shifts marginX/marginY together; 'size' resizes tileW/tileH.
+  useEffect(() => {
+    if (!handleDrag) return;
+    const onMove = (e: PointerEvent) => {
+      const dx = Math.round((e.clientX - handleDrag.startX) / zoom);
+      const dy = Math.round((e.clientY - handleDrag.startY) / zoom);
+      if (handleDrag.kind === 'origin') {
+        setMarginX(Math.max(0, Math.min(64, handleDrag.baseMX + dx)));
+        setMarginY(Math.max(0, Math.min(64, handleDrag.baseMY + dy)));
+      } else {
+        let nw = Math.max(4, Math.min(256, handleDrag.baseTW + dx));
+        let nh = Math.max(4, Math.min(256, handleDrag.baseTH + dy));
+        if (handleDrag.lockAspect || e.shiftKey) {
+          // Lock to square based on the larger delta.
+          const v = Math.abs(dx) > Math.abs(dy) ? nw : nh;
+          nw = v; nh = v;
+        }
+        setTileW(nw); setTileH(nh);
+      }
+    };
+    const onUp = () => setHandleDrag(null);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [handleDrag, zoom]);
+
+
+
   const removeRegion = (id: string) => setRegions((p) => p.filter((r) => r.id !== id));
   const setRegionRole = (id: string, role: TileRole) =>
     setRegions((p) => p.map((r) => (r.id === id ? { ...r, role } : r)));

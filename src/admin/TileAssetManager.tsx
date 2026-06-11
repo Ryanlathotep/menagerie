@@ -1435,11 +1435,26 @@ function TileLibrary({ onOpenSheet }: TileLibraryProps) {
             {sheets.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
           </SelectContent>
         </Select>
-        {sheetFilter !== 'all' && (
-          <Button size="sm" variant="destructive" onClick={() => removeSheet(sheetFilter)}>
-            <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete sheet
-          </Button>
-        )}
+        <Select value={kindFilter} onValueChange={(v) => setKindFilter(v as typeof kindFilter)}>
+          <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All kinds</SelectItem>
+            <SelectItem value="tile">Tiles only</SelectItem>
+            <SelectItem value="sheet">Sheets only</SelectItem>
+            <SelectItem value="sliced">Sliced only</SelectItem>
+            <SelectItem value="unassigned">Unassigned role</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={tilesetFilter} onValueChange={setTilesetFilter}>
+          <SelectTrigger className="h-8 w-40"><SelectValue placeholder="Tileset…" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All tilesets</SelectItem>
+            <SelectItem value="Global">(untagged / Global)</SelectItem>
+            {knownTilesets.filter((t) => t !== 'Global').map((t) => (
+              <SelectItem key={t} value={t}>{t}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap border-t pt-2">
@@ -1467,6 +1482,54 @@ function TileLibrary({ onOpenSheet }: TileLibraryProps) {
           Show sliced children ({slicedCount})
         </Label>
       </div>
+
+      {/* Bulk-action sticky bar (only when there's a selection). */}
+      {selected.size > 0 && (
+        <div className="sticky top-0 z-10 flex items-center gap-2 flex-wrap border rounded p-2 bg-amber-100/40 dark:bg-amber-900/30">
+          <span className="text-xs font-semibold">{selected.size} selected</span>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={selectAllFiltered}>
+            Select all ({filtered.length})
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={clearSelection}>
+            <X className="w-3 h-3" /> Clear
+          </Button>
+          <div className="h-5 w-px bg-border" />
+          <Button size="sm" variant="destructive" className="h-7 text-xs gap-1" onClick={bulkDelete}>
+            <Trash2 className="w-3 h-3" /> Delete
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => bulkSetKind('sheet')}>
+            → Sheet
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => bulkSetKind('tile')}>
+            → Tile
+          </Button>
+          <Select value={bulkRole} onValueChange={(v) => setBulkRole(v as TileRole)}>
+            <SelectTrigger className="h-7 w-32 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {TILE_ROLES.map((r) => <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => bulkSetRole(bulkRole)}>
+            Set role
+          </Button>
+          <Select value={bulkTileset} onValueChange={setBulkTileset}>
+            <SelectTrigger className="h-7 w-36 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {knownTilesets.map((t) => <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => bulkAddTileset(bulkTileset)}>
+            + Tileset
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={bulkClearAutotile}>
+            Clear autotile
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={bulkRename}>
+            <Pencil className="w-3 h-3" /> Rename
+          </Button>
+        </div>
+      )}
+
 
       {loading && <div className="text-xs text-muted-foreground">Loading…</div>}
 

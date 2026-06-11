@@ -1167,9 +1167,15 @@ function TileLibrary({ onOpenSheet }: TileLibraryProps) {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<TileRole | 'all'>('all');
   const [sheetFilter, setSheetFilter] = useState<string>('all');
+  const [tilesetFilter, setTilesetFilter] = useState<string>('all');
+  const [kindFilter, setKindFilter] = useState<'all' | 'tile' | 'sheet' | 'sliced' | 'unassigned'>('all');
   const [showSliced, setShowSliced] = useState(true);
   const [paintRole, setPaintRole] = useState<TileRole>('floor');
   const [paintMode, setPaintMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkRole, setBulkRole] = useState<TileRole>('floor');
+  const [bulkTileset, setBulkTileset] = useState<string>('Global');
+
 
   const rows: TileRow[] = useMemo(
     () => overrides.map((o) => ({

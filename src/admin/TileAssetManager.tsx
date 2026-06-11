@@ -594,37 +594,37 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
     return { cols, rows };
   }, [dims, tileW, tileH, marginX, marginY, spacingX, spacingY]);
 
+  const applyCandidate = (c: { tileW: number; tileH: number; marginX: number; marginY: number; spacingX: number; spacingY: number }) => {
+    setTileW(c.tileW); setTileH(c.tileH);
+    setMarginX(c.marginX); setMarginY(c.marginY);
+    setSpacingX(c.spacingX); setSpacingY(c.spacingY);
+  };
+
   const autoDetect = async () => {
     if (!dims.w || !dims.h) { toast.error('Pick a sheet first'); return; }
+    // Always compute the candidate list from raw dimensions so the user can
+    // pick a different grid if the first guess is wrong (e.g. "one big tile").
+    const cands = detectGridCandidates(dims.w, dims.h);
+    setCandidates(cands);
+    // Try pixel-scan first for sheets that DO have gutters.
     if (file) {
       const pix = await detectGridFromImage(file);
-      if (pix && pix.tileW >= 4 && pix.tileH >= 4) {
-        setTileW(pix.tileW); setTileH(pix.tileH);
-        setMarginX(pix.marginX); setMarginY(pix.marginY);
-        setSpacingX(pix.spacingX); setSpacingY(pix.spacingY);
+      if (pix && pix.tileW >= 4 && pix.tileH >= 4
+        && pix.tileW < dims.w && pix.tileH < dims.h
+      ) {
+        applyCandidate(pix);
         toast.success(
           `Pixel-scan: ${pix.tileW}×${pix.tileH}, margin ${pix.marginX}/${pix.marginY}, gap ${pix.spacingX}/${pix.spacingY}`,
         );
         return;
       }
     }
-    const candidates = [64, 48, 32, 24, 16, 8];
-    const margins = [0, 1, 2, 4, 8];
-    let best: { size: number; margin: number } | null = null;
-    for (const size of candidates) {
-      for (const m of margins) {
-        if ((dims.w - 2 * m) % size === 0 && (dims.h - 2 * m) % size === 0) {
-          best = { size, margin: m };
-          break;
-        }
-      }
-      if (best) break;
+    if (cands.length === 0) {
+      toast.warning('No clean grid found — adjust sliders manually');
+      return;
     }
-    if (!best) { toast.warning('No clean grid found — adjust manually'); return; }
-    setTileW(best.size); setTileH(best.size);
-    setMarginX(best.margin); setMarginY(best.margin);
-    setSpacingX(0); setSpacingY(0);
-    toast.success(`Detected ${best.size}×${best.size} cells, margin ${best.margin}`);
+    applyCandidate(cands[0]);
+    toast.success(`Best guess: ${cands[0].label}. ${cands.length - 1} alternates listed below.`);
   };
 
   const cellFromEvent = useCallback((e: React.MouseEvent): { r: number; c: number } | null => {

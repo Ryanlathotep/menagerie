@@ -755,8 +755,8 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
     const r1 = Math.max(drag.r0, drag.r1);
     const c0 = Math.min(drag.c0, drag.c1);
     const c1 = Math.max(drag.c0, drag.c1);
+    const isClick = r0 === r1 && c0 === c1;
     if (selectCells) {
-      const isClick = r0 === r1 && c0 === c1;
       setSelectedCells((prev) => {
         const next = new Set(prev);
         if (isClick) {
@@ -765,9 +765,7 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
           else next.add(key);
         } else {
           for (let r = r0; r <= r1; r++) {
-            for (let c = c0; c <= c1; c++) {
-              next.add(`${r},${c}`);
-            }
+            for (let c = c0; c <= c1; c++) next.add(`${r},${c}`);
           }
         }
         return next;
@@ -775,11 +773,33 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
       setDrag(null);
       return;
     }
+    // Non-select mode: ignore stray clicks. Only create a region if the
+    // user actually dragged across more than one cell — accidental single
+    // clicks used to leave a stuck green square with no obvious removal.
+    if (isClick) { setDrag(null); return; }
     setRegions((prev) => [
       ...prev,
       { id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, r0, c0, r1, c1, role: defaultRole },
     ]);
     setDrag(null);
+  };
+
+  // Right-click removes any green overlay under the cursor (region OR
+  // selected cell). Avoids hunting through the regions list to delete things
+  // you painted by accident.
+  const onOverlayContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const cell = cellFromEvent(e);
+    if (!cell) return;
+    const hit = regions.find((reg) =>
+      cell.r >= Math.min(reg.r0, reg.r1) && cell.r <= Math.max(reg.r0, reg.r1) &&
+      cell.c >= Math.min(reg.c0, reg.c1) && cell.c <= Math.max(reg.c0, reg.c1),
+    );
+    if (hit) { setRegions((p) => p.filter((r) => r.id !== hit.id)); return; }
+    const key = `${cell.r},${cell.c}`;
+    if (selectedCells.has(key)) {
+      setSelectedCells((prev) => { const n = new Set(prev); n.delete(key); return n; });
+    }
   };
 
 

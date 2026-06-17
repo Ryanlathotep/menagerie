@@ -755,12 +755,33 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
     const r1 = Math.max(drag.r0, drag.r1);
     const c0 = Math.min(drag.c0, drag.c1);
     const c1 = Math.max(drag.c0, drag.c1);
+    if (selectCells) {
+      const isClick = r0 === r1 && c0 === c1;
+      setSelectedCells((prev) => {
+        const next = new Set(prev);
+        if (isClick) {
+          const key = `${r0},${c0}`;
+          if (next.has(key)) next.delete(key);
+          else next.add(key);
+        } else {
+          for (let r = r0; r <= r1; r++) {
+            for (let c = c0; c <= c1; c++) {
+              next.add(`${r},${c}`);
+            }
+          }
+        }
+        return next;
+      });
+      setDrag(null);
+      return;
+    }
     setRegions((prev) => [
       ...prev,
       { id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, r0, c0, r1, c1, role: defaultRole },
     ]);
     setDrag(null);
   };
+
 
   // Window-level pointer drag for the corner handles on the grid overlay.
   // 'origin' shifts marginX/marginY together; 'size' resizes tileW/tileH.

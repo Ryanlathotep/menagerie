@@ -1,10 +1,9 @@
-import { GameProvider, useGame, buildProgressSnapshot } from '@/game/state';
+import { GameProvider, useGame } from '@/game/state';
 import { DebugBridgeMount } from '@/dev/DebugBridgeMount';
-import { useEffect, useCallback, useState, useRef } from 'react';
-import { toast } from 'sonner';
+import { useCallback, useState } from 'react';
 import { SettingsProvider } from '@/game/Settings';
 import { OverworldView } from '@/game/OverworldView';
-import { LogMessage, createLogMessage, parseLogMessage } from '@/game/GameLog';
+import { LogMessage, createLogMessage } from '@/game/GameLog';
 
 import { MainMenu } from './MainMenu';
 import { CharacterSelect } from './CharacterSelect';
@@ -21,51 +20,11 @@ function Game() {
     setGameLog(prev => [...prev.slice(-199), createLogMessage(text, type)]);
   }, []);
 
-  // Route Sonner toasts: during gameplay (dungeon/battle/overworld/defeat/summary)
-  // push to the in-game log ONLY (no popup). Outside gameplay (menus, auth) show normally.
-  const phaseRef = useRef(state.phase);
-  phaseRef.current = state.phase;
-  useEffect(() => {
-    const originalSuccess = toast.success;
-    const originalError = toast.error;
-    const originalInfo = (toast as any).info;
-
-    const inGame = () => {
-      const p = phaseRef.current;
-      return p === 'dungeon' || p === 'battle' || p === 'overworld' || p === 'defeat' || p === 'run_summary';
-    };
-
-    toast.success = ((message: any, options?: any) => {
-      const parsed = parseLogMessage(String(message));
-      addLog(parsed.text, parsed.type);
-      if (!inGame()) return originalSuccess(message, options);
-      return '' as any;
-    }) as any;
-
-    toast.error = ((message: any, options?: any) => {
-      const parsed = parseLogMessage(String(message));
-      addLog(parsed.text, parsed.type);
-      if (!inGame()) return originalError(message, options);
-      return '' as any;
-    }) as any;
-
-    if (typeof originalInfo === 'function') {
-      (toast as any).info = (message: any, options?: any) => {
-        const parsed = parseLogMessage(String(message));
-        addLog(parsed.text, parsed.type);
-        if (!inGame()) return originalInfo(message, options);
-        return '' as any;
-      };
-    }
-
-    return () => {
-      toast.success = originalSuccess;
-      toast.error = originalError;
-      if (typeof originalInfo === 'function') {
-        (toast as any).info = originalInfo;
-      }
-    };
-  }, [addLog]);
+  // NOTE: The previous Sonner monkey-patch (overwriting toast.success/error/info
+  // on mount) was removed while we hunt down the preview-refresh bug. Toasts
+  // will appear as normal popups everywhere for now; in-game log routing will
+  // be reintroduced via a passive subscription once the refresh source is
+  // confirmed.
 
   switch (state.phase) {
     case 'main_menu':

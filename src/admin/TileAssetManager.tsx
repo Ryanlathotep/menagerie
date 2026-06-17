@@ -1247,6 +1247,9 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
         <Button size="sm" variant="outline" onClick={autoDetect} disabled={!dims.w}>
           Auto-detect grid
         </Button>
+        <Button size="sm" variant="outline" onClick={applySampleSheetGuide} disabled={!file || !dims.w}>
+          Use sample-sheet guide
+        </Button>
         {dims.w > 0 && (
           <span className="text-xs text-muted-foreground">
             {dims.w}×{dims.h}px → {grid.cols}×{grid.rows} cells
@@ -1270,7 +1273,7 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
           })}
         </div>
         <p className="text-[10px] text-muted-foreground">
-          Know your asset source? Pick its preset — it sets tile size, margin and spacing in one shot.
+          Know your asset source? Pick its preset, or use the sample-sheet guide to auto-lasso separated sprites on a flat background.
         </p>
       </div>
 

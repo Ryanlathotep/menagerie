@@ -163,7 +163,18 @@ export function AdminPanel() {
             <ParticlesEditor />
           </TabsContent>
           <TabsContent value="tiles" className="p-4 m-0">
-            <TileAssetManager />
+            <Tabs defaultValue="library">
+              <TabsList>
+                <TabsTrigger value="library">Asset Manager</TabsTrigger>
+                <TabsTrigger value="patterns">Tile Patterns (Painter)</TabsTrigger>
+              </TabsList>
+              <TabsContent value="library" className="mt-4">
+                <TileAssetManager />
+              </TabsContent>
+              <TabsContent value="patterns" className="mt-4">
+                <TilePatternPainter />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
           <TabsContent value="worldgen" className="p-4 m-0">
             <WorldGenEditor />

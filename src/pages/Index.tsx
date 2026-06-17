@@ -3,7 +3,6 @@ import { DebugBridgeMount } from '@/dev/DebugBridgeMount';
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { SettingsProvider } from '@/game/Settings';
-import { useCloudAutosave } from '@/hooks/useCloudAutosave';
 import { OverworldView } from '@/game/OverworldView';
 import { LogMessage, createLogMessage, parseLogMessage } from '@/game/GameLog';
 
@@ -15,9 +14,6 @@ import { BattleView } from './BattleView';
 
 function Game() {
   const { state } = useGame();
-
-  // Periodic + debounced cloud autosave (silent, only when signed in).
-  useCloudAutosave(buildProgressSnapshot(state.saveData, state.run, state.saveData.overworldState));
 
   // Unified run log (dungeon + battle + notable UI events)
   const [gameLog, setGameLog] = useState<LogMessage[]>([]);

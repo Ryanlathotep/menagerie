@@ -206,7 +206,12 @@ export function TilePatternPainter() {
     <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] gap-4">
       {/* LEFT: tile palette */}
       <Card className="p-3 space-y-2">
-        <Label className="text-xs uppercase tracking-wide text-muted-foreground">Tiles</Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Tiles ({slicedTiles.length})</Label>
+          <Button size="icon" variant="ghost" onClick={() => { tileOv.refetch(); patternOv.refetch(); toast.success('Refreshed tiles'); }} title="Reload tiles from the Asset Manager">
+            <RefreshCw className="w-3 h-3" />
+          </Button>
+        </div>
         <Input placeholder="Search tiles…" value={tileSearch} onChange={(e) => setTileSearch(e.target.value)} />
         <div className="flex gap-2">
           <Button

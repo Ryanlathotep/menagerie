@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Trash2, Eraser, Save, Sparkles, Plus } from 'lucide-react';
+import { Trash2, Eraser, Save, Sparkles, Plus, RefreshCw } from 'lucide-react';
 import { useGameDataOverrides } from '@/hooks/useGameDataOverrides';
 import {
   EMPTY, type TilePattern, learnFamily, pickTile,

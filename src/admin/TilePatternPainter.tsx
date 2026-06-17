@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Trash2, Eraser, Save, Sparkles, Plus } from 'lucide-react';
+import { Trash2, Eraser, Save, Sparkles, Plus, RefreshCw } from 'lucide-react';
 import { useGameDataOverrides } from '@/hooks/useGameDataOverrides';
 import {
   EMPTY, type TilePattern, learnFamily, pickTile,
@@ -55,6 +55,19 @@ function cellsToGrid(cells: TilePattern['cells'], w: number, h: number): string[
 export function TilePatternPainter() {
   const tileOv = useGameDataOverrides('tile_asset');
   const patternOv = useGameDataOverrides('tile_pattern');
+
+  // Re-pull tiles/patterns whenever the painter regains focus, so newly
+  // assigned tiles from the Asset Manager tab show up without a page reload.
+  useEffect(() => {
+    const refresh = () => { tileOv.refetch(); patternOv.refetch(); };
+    const onVis = () => { if (document.visibilityState === 'visible') refresh(); };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [tileOv.refetch, patternOv.refetch]);
 
   const slicedTiles = useMemo<SlicedTileRow[]>(() => {
     return tileOv.overrides
@@ -193,7 +206,12 @@ export function TilePatternPainter() {
     <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] gap-4">
       {/* LEFT: tile palette */}
       <Card className="p-3 space-y-2">
-        <Label className="text-xs uppercase tracking-wide text-muted-foreground">Tiles</Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Tiles ({slicedTiles.length})</Label>
+          <Button size="icon" variant="ghost" onClick={() => { tileOv.refetch(); patternOv.refetch(); toast.success('Refreshed tiles'); }} title="Reload tiles from the Asset Manager">
+            <RefreshCw className="w-3 h-3" />
+          </Button>
+        </div>
         <Input placeholder="Search tiles…" value={tileSearch} onChange={(e) => setTileSearch(e.target.value)} />
         <div className="flex gap-2">
           <Button

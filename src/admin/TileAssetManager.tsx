@@ -37,6 +37,8 @@ import {
 const BUCKET = 'game-assets';
 const DEFAULT_TILESET_KEY = 'tileAssetMgr.defaultTileset';
 const ANIMATE_PREVIEWS_KEY = 'tileAssetMgr.animatePreviews';
+const ASSET_MANAGER_TAB_KEY = 'tileAssetMgr.activeTab';
+const SLICER_DRAFT_KEY = 'tileAssetMgr.slicerDraft';
 
 function loadDefaultTileset(): string {
   try { return localStorage.getItem(DEFAULT_TILESET_KEY) || 'Global'; } catch { return 'Global'; }
@@ -440,6 +442,99 @@ interface SliceRegion {
   role: TileRole;
   name?: string;
   tags?: string[];
+}
+
+async function detectSeparatedSpriteRegions(
+  file: File,
+  opts: {
+    tileW: number; tileH: number; marginX: number; marginY: number;
+    spacingX: number; spacingY: number; rows: number; cols: number;
+    defaultRole: TileRole;
+  },
+): Promise<SliceRegion[]> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error('Could not read sheet image'));
+      i.src = url;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return [];
+    ctx.drawImage(img, 0, 0);
+    const { width: w, height: h } = canvas;
+    const data = ctx.getImageData(0, 0, w, h).data;
+    const sample = (x: number, y: number) => {
+      const idx = (y * w + x) * 4;
+      return [data[idx], data[idx + 1], data[idx + 2]] as const;
+    };
+    const corners = [sample(0, 0), sample(w - 1, 0), sample(0, h - 1), sample(w - 1, h - 1)];
+    const bg = corners.reduce((acc, c) => [acc[0] + c[0], acc[1] + c[1], acc[2] + c[2]], [0, 0, 0]).map((v) => v / corners.length);
+    const mask = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const idx = (y * w + x) * 4;
+        const dr = data[idx] - bg[0];
+        const dg = data[idx + 1] - bg[1];
+        const db = data[idx + 2] - bg[2];
+        const distance = Math.sqrt(dr * dr + dg * dg + db * db);
+        if (data[idx + 3] > 8 && distance > 26) mask[y * w + x] = 1;
+      }
+    }
+
+    const regions: SliceRegion[] = [];
+    const queue: number[] = [];
+    const keySet = new Set<string>();
+    for (let start = 0; start < mask.length; start++) {
+      if (mask[start] !== 1) continue;
+      mask[start] = 2;
+      queue.length = 0;
+      queue.push(start);
+      let count = 0;
+      let minX = w, maxX = 0, minY = h, maxY = 0;
+      for (let qi = 0; qi < queue.length; qi++) {
+        const p = queue[qi];
+        const x = p % w;
+        const y = Math.floor(p / w);
+        count++;
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+        const neighbors = [p - 1, p + 1, p - w, p + w];
+        for (const n of neighbors) {
+          if (n < 0 || n >= mask.length || mask[n] !== 1) continue;
+          const nx = n % w;
+          if ((n === p - 1 && nx !== x - 1) || (n === p + 1 && nx !== x + 1)) continue;
+          mask[n] = 2;
+          queue.push(n);
+        }
+      }
+      if (count < 48 || maxX - minX < 5 || maxY - minY < 5) continue;
+      const stepX = opts.tileW + opts.spacingX;
+      const stepY = opts.tileH + opts.spacingY;
+      const c0 = Math.max(0, Math.min(opts.cols - 1, Math.floor((minX - opts.marginX) / stepX)));
+      const c1 = Math.max(0, Math.min(opts.cols - 1, Math.floor((maxX - opts.marginX) / stepX)));
+      const r0 = Math.max(0, Math.min(opts.rows - 1, Math.floor((minY - opts.marginY) / stepY)));
+      const r1 = Math.max(0, Math.min(opts.rows - 1, Math.floor((maxY - opts.marginY) / stepY)));
+      const regionKey = `${r0},${c0},${r1},${c1}`;
+      if (keySet.has(regionKey)) continue;
+      keySet.add(regionKey);
+      regions.push({
+        id: `guide_${Date.now()}_${regions.length}`,
+        r0, c0, r1, c1,
+        role: opts.defaultRole,
+        name: `sprite_${regions.length + 1}_${c1 - c0 + 1}x${r1 - r0 + 1}`,
+      });
+    }
+    return regions.sort((a, b) => (a.r0 - b.r0) || (a.c0 - b.c0));
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 // Common connectivity hints — let the autotiler infer how tiles meet later.

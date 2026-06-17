@@ -1048,6 +1048,24 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
         )}
       </div>
 
+      <div className="border rounded p-2 bg-muted/10 space-y-1">
+        <Label className="text-xs">Source preset (one-click setup)</Label>
+        <div className="flex flex-wrap gap-1">
+          {SOURCE_PRESETS.map((p) => {
+            const active = p.tileW === tileW && p.tileH === tileH
+              && p.margin === marginX && p.spacing === spacingX;
+            return (
+              <Button key={p.label} size="sm" variant={active ? 'default' : 'outline'}
+                className="h-7 text-[11px]" onClick={() => applyPreset(p)} title={p.hint}>
+                {p.label}
+              </Button>
+            );
+          })}
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Know your asset source? Pick its preset — it sets tile size, margin and spacing in one shot.
+        </p>
+
       {candidates.length > 1 && (
         <div className="border rounded p-2 space-y-1 bg-muted/20">
           <div className="flex items-center justify-between">

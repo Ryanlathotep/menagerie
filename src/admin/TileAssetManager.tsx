@@ -829,6 +829,7 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
 
   // One-click presets for popular asset publishers. Saves tons of slider-fiddling.
   const SOURCE_PRESETS: Array<{ label: string; tileW: number; tileH: number; margin: number; spacing: number; hint: string }> = [
+    { label: 'Separated sheet 32px', tileW: 32, tileH: 32, margin: 0, spacing: 0, hint: 'For object sheets like the sample: irregular sprites on a flat background' },
     { label: 'Craft Pix 32px', tileW: 32, tileH: 32, margin: 0, spacing: 0, hint: 'Most Craft Pix RPG/top-down packs' },
     { label: 'Craft Pix 16px', tileW: 16, tileH: 16, margin: 0, spacing: 0, hint: 'Craft Pix pixel-art packs' },
     { label: 'Craft Pix 64px', tileW: 64, tileH: 64, margin: 0, spacing: 0, hint: 'Craft Pix props/characters' },
@@ -842,6 +843,27 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
     setMarginX(p.margin); setMarginY(p.margin);
     setSpacingX(p.spacing); setSpacingY(p.spacing);
     toast.success(`${p.label} applied`);
+  };
+
+  const applySampleSheetGuide = async () => {
+    if (!file || !dims.w || !dims.h) { toast.error('Pick a sheet first'); return; }
+    if (grid.cols === 0 || grid.rows === 0) { toast.error('Set a base cell size first'); return; }
+    try {
+      const next = await detectSeparatedSpriteRegions(file, {
+        tileW, tileH, marginX, marginY, spacingX, spacingY,
+        rows: grid.rows, cols: grid.cols, defaultRole,
+      });
+      if (next.length === 0) {
+        toast.warning('No separated sprites detected. Try adjusting tile size or margin first.');
+        return;
+      }
+      setRegions(next);
+      setSelectCells(false);
+      toast.success(`Created ${next.length} lasso regions from separated sprites`);
+    } catch (err) {
+      console.error(err);
+      toast.error(`Guide failed: ${(err as Error).message}`);
+    }
   };
 
   const cellFromEvent = useCallback((e: React.MouseEvent): { r: number; c: number } | null => {

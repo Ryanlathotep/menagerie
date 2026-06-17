@@ -12,7 +12,19 @@ export default function AdminTiles() {
 
   if (authLoading || adminLoading) return <div className="p-6">Loading…</div>;
   if (!user) return <Navigate to="/auth" replace />;
-  if (!isAdmin) return <Navigate to="/" replace />;
+  if (!isAdmin) {
+    return (
+      <main className="min-h-screen bg-background text-foreground p-4 md:p-8">
+        <div className="max-w-2xl mx-auto space-y-3">
+          <h1 className="text-2xl font-bold">Tile Asset Manager</h1>
+          <p className="text-sm text-muted-foreground">
+            Admin access is still being verified or is unavailable for this account.
+          </p>
+          <Link to="/" className="text-sm underline">← Back to game</Link>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-background text-foreground p-4 md:p-8">

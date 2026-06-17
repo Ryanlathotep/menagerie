@@ -28,6 +28,22 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
+function normalizeHashRouteFromPath() {
+  if (typeof window === 'undefined') return;
+  if (window.location.hash || window.location.pathname === '/') return;
+
+  const base = import.meta.env.BASE_URL || '/';
+  const basePath = base.replace(/\/$/, '');
+  const routePath = basePath && window.location.pathname.startsWith(basePath)
+    ? window.location.pathname.slice(basePath.length) || '/'
+    : window.location.pathname;
+
+  if (routePath === '/') return;
+  window.history.replaceState(null, '', `${base}${window.location.search}#${routePath}`);
+}
+
+normalizeHashRouteFromPath();
+
 const AppRoutes = () => {
   // Tap anywhere to dismiss lingering hover-cards / tooltips (esp. on mobile).
   useDismissTooltipsOnTap();

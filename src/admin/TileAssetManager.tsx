@@ -140,7 +140,7 @@ const ROLE_KEYWORDS: Array<[RegExp, TileRole]> = [
   [/\b(ui|hud|icon|cursor)\b/i, 'ui'],
   [/\b(decor|deco|ornament|flower|leaf)\b/i, 'decoration'],
 ];
-export function roleFromName(name: string): TileRole {
+function roleFromName(name: string): TileRole {
   const base = name.toLowerCase().replace(/\.[^.]+$/, '');
   for (const [re, role] of ROLE_KEYWORDS) {
     if (re.test(base)) return role;

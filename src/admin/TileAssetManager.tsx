@@ -2894,13 +2894,20 @@ function DungeonPreview({ onDone }: { onDone: () => void }) {
 
 export function TileAssetManager() {
   const { refetch } = useGameDataOverrides('tile_asset');
-  const [tab, setTab] = useState('upload');
+  const [tab, setTab] = useState(() => {
+    try { return localStorage.getItem(ASSET_MANAGER_TAB_KEY) || 'upload'; } catch { return 'upload'; }
+  });
   const [pendingSheet, setPendingSheet] = useState<{ key: string; url: string } | null>(null);
+
+  const setPersistentTab = useCallback((next: string) => {
+    setTab(next);
+    try { localStorage.setItem(ASSET_MANAGER_TAB_KEY, next); } catch { /* ignore */ }
+  }, []);
 
   const openSheetInSlicer = useCallback((row: TileRow) => {
     setPendingSheet({ key: row.key, url: row.meta.url });
-    setTab('slice');
-  }, []);
+    setPersistentTab('slice');
+  }, [setPersistentTab]);
 
   return (
     <div className="space-y-3">
@@ -2916,7 +2923,7 @@ export function TileAssetManager() {
         </p>
       </div>
 
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs value={tab} onValueChange={setPersistentTab}>
         <TabsList>
           <TabsTrigger value="upload" className="gap-1">
             <FileImage className="w-3 h-3" />Bulk Upload

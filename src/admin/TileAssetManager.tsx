@@ -608,6 +608,10 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
   const [handleDrag, setHandleDrag] = useState<
     null | { kind: 'origin' | 'size'; startX: number; startY: number; baseMX: number; baseMY: number; baseTW: number; baseTH: number; lockAspect: boolean }
   >(null);
+  // Cell toggle mode: click individual grid cells to include/exclude them from slicing.
+  const [selectCells, setSelectCells] = useState(false);
+  const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
+
 
   const rawSheets = useMemo(() => {
     return uploaded
@@ -629,6 +633,7 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
     setDims(d);
     setSheetName((prev) => prev || safeName(f.name.replace(/\.[^.]+$/, '')));
     setRegions([]);
+    setSelectedCells(new Set());
     setLoadedSheetKey(knownKey ?? null);
   }, []);
 
@@ -750,12 +755,33 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
     const r1 = Math.max(drag.r0, drag.r1);
     const c0 = Math.min(drag.c0, drag.c1);
     const c1 = Math.max(drag.c0, drag.c1);
+    if (selectCells) {
+      const isClick = r0 === r1 && c0 === c1;
+      setSelectedCells((prev) => {
+        const next = new Set(prev);
+        if (isClick) {
+          const key = `${r0},${c0}`;
+          if (next.has(key)) next.delete(key);
+          else next.add(key);
+        } else {
+          for (let r = r0; r <= r1; r++) {
+            for (let c = c0; c <= c1; c++) {
+              next.add(`${r},${c}`);
+            }
+          }
+        }
+        return next;
+      });
+      setDrag(null);
+      return;
+    }
     setRegions((prev) => [
       ...prev,
       { id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, r0, c0, r1, c1, role: defaultRole },
     ]);
     setDrag(null);
   };
+
 
   // Window-level pointer drag for the corner handles on the grid overlay.
   // 'origin' shifts marginX/marginY together; 'size' resizes tileW/tileH.
@@ -821,8 +847,10 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
       sx: number; sy: number; sw: number; sh: number; name: string;
       role: TileRole; tags?: string[]; row: number; col: number; spanRows: number; spanCols: number;
     }> = [];
+    const activeCells = selectedCells.size > 0 ? selectedCells : null;
     for (let r = 0; r < grid.rows; r++) {
       for (let c = 0; c < grid.cols; c++) {
+        if (activeCells && !activeCells.has(`${r},${c}`)) continue;
         jobs.push({
           sx: marginX + c * (tileW + spacingX),
           sy: marginY + r * (tileH + spacingY),
@@ -833,7 +861,8 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
       }
     }
     return jobs;
-  }, [regions, grid, marginX, marginY, tileW, tileH, spacingX, spacingY, defaultRole]);
+  }, [regions, grid, marginX, marginY, tileW, tileH, spacingX, spacingY, defaultRole, selectedCells]);
+
 
   const doSlice = async () => {
     if (!file || !imgUrl) return;
@@ -1095,7 +1124,24 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
         </div>
       )}
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant={selectCells ? 'default' : 'outline'}
+            className="h-7 text-[11px]"
+            onClick={() => setSelectCells((v) => !v)}
+            title={selectCells ? 'Click cells to toggle selection. Drag to add a range.' : 'Toggle cell-select mode'}
+          >
+            {selectCells ? 'Cell Select: ON' : 'Cell Select: OFF'}
+          </Button>
+          {selectCells && (
+            <Button size="sm" variant="ghost" className="h-7 text-[11px]"
+              onClick={() => setSelectedCells(new Set())}>
+              Clear {selectedCells.size} cells
+            </Button>
+          )}
+        </div>
         <Label className="text-xs whitespace-nowrap">Zoom {zoom}x</Label>
         <input
           type="range"
@@ -1107,6 +1153,7 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
           className="w-48"
         />
       </div>
+
 
       {imgUrl && (
         <div className="border rounded p-2 bg-muted/20 overflow-auto max-h-[60vh]">
@@ -1159,6 +1206,21 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
                       }}
                     />
                   )}
+                  {selectCells && Array.from(selectedCells).map((key) => {
+                    const [r, c] = key.split(',').map(Number);
+                    return (
+                      <div key={`sel-${r}-${c}`}
+                        className="absolute bg-emerald-400/35 border-2 border-emerald-400"
+                        style={{
+                          left: px(marginX + c * (tileW + spacingX)),
+                          top: px(marginY + r * (tileH + spacingY)),
+                          width: px(tileW),
+                          height: px(tileH),
+                        }}
+                      />
+                    );
+                  })}
+
                 </div>
               );
             })()}
@@ -1279,13 +1341,18 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
             ? `Slicing ${progress.done}/${progress.total}…`
             : regions.length > 0
               ? `Upload ${regions.length} region${regions.length === 1 ? '' : 's'}`
-              : `Slice all ${grid.cols * grid.rows} cells`}
+              : selectedCells.size > 0
+                ? `Slice ${selectedCells.size} selected cell${selectedCells.size === 1 ? '' : 's'}`
+                : `Slice all ${grid.cols * grid.rows} cells`}
         </Button>
         <span className="text-xs text-muted-foreground">
           {regions.length > 0
             ? 'Region mode — only the lassoed sprites will be uploaded.'
-            : 'Uniform mode — every cell becomes one tile.'}
+            : selectedCells.size > 0
+              ? 'Cell mode — only the highlighted cells will be uploaded.'
+              : 'Uniform mode — every cell becomes one tile.'}
         </span>
+
       </div>
     </Card>
   );

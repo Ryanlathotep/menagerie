@@ -684,22 +684,41 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
     // Try pixel-scan first for sheets that DO have gutters.
     if (file) {
       const pix = await detectGridFromImage(file);
-      if (pix && pix.tileW >= 4 && pix.tileH >= 4
-        && pix.tileW < dims.w && pix.tileH < dims.h
-      ) {
+      // Require ≥2 cells in BOTH dimensions — pixel-scan often returns "one big tile"
+      // for sheets with no transparent gutters, which is never what we want.
+      const cols = pix ? Math.floor((dims.w - 2 * pix.marginX) / (pix.tileW + pix.spacingX)) : 0;
+      const rows = pix ? Math.floor((dims.h - 2 * pix.marginY) / (pix.tileH + pix.spacingY)) : 0;
+      if (pix && pix.tileW >= 4 && pix.tileH >= 4 && cols >= 2 && rows >= 2) {
         applyCandidate(pix);
         toast.success(
-          `Pixel-scan: ${pix.tileW}×${pix.tileH}, margin ${pix.marginX}/${pix.marginY}, gap ${pix.spacingX}/${pix.spacingY}`,
+          `Pixel-scan: ${pix.tileW}×${pix.tileH} · ${cols}×${rows} cells`,
         );
         return;
       }
     }
     if (cands.length === 0) {
-      toast.warning('No clean grid found — adjust sliders manually');
+      toast.warning('No clean grid found — try a Source preset or adjust sliders');
       return;
     }
     applyCandidate(cands[0]);
     toast.success(`Best guess: ${cands[0].label}. ${cands.length - 1} alternates listed below.`);
+  };
+
+  // One-click presets for popular asset publishers. Saves tons of slider-fiddling.
+  const SOURCE_PRESETS: Array<{ label: string; tileW: number; tileH: number; margin: number; spacing: number; hint: string }> = [
+    { label: 'Craft Pix 32px', tileW: 32, tileH: 32, margin: 0, spacing: 0, hint: 'Most Craft Pix RPG/top-down packs' },
+    { label: 'Craft Pix 16px', tileW: 16, tileH: 16, margin: 0, spacing: 0, hint: 'Craft Pix pixel-art packs' },
+    { label: 'Craft Pix 64px', tileW: 64, tileH: 64, margin: 0, spacing: 0, hint: 'Craft Pix props/characters' },
+    { label: 'Kenney 16px', tileW: 16, tileH: 16, margin: 0, spacing: 0, hint: 'Kenney 1-bit / micro packs' },
+    { label: 'Kenney 64px (1px gap)', tileW: 64, tileH: 64, margin: 0, spacing: 1, hint: 'Kenney roguelike/RPG' },
+    { label: 'Oryx 24px', tileW: 24, tileH: 24, margin: 0, spacing: 0, hint: 'Oryx Design Lab' },
+    { label: 'RPG Maker 48px', tileW: 48, tileH: 48, margin: 0, spacing: 0, hint: 'RPG Maker MV/MZ A-tile' },
+  ];
+  const applyPreset = (p: typeof SOURCE_PRESETS[number]) => {
+    setTileW(p.tileW); setTileH(p.tileH);
+    setMarginX(p.margin); setMarginY(p.margin);
+    setSpacingX(p.spacing); setSpacingY(p.spacing);
+    toast.success(`${p.label} applied`);
   };
 
   const cellFromEvent = useCallback((e: React.MouseEvent): { r: number; c: number } | null => {
@@ -1028,6 +1047,26 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
           </span>
         )}
       </div>
+
+      <div className="border rounded p-2 bg-muted/10 space-y-1">
+        <Label className="text-xs">Source preset (one-click setup)</Label>
+        <div className="flex flex-wrap gap-1">
+          {SOURCE_PRESETS.map((p) => {
+            const active = p.tileW === tileW && p.tileH === tileH
+              && p.margin === marginX && p.spacing === spacingX;
+            return (
+              <Button key={p.label} size="sm" variant={active ? 'default' : 'outline'}
+                className="h-7 text-[11px]" onClick={() => applyPreset(p)} title={p.hint}>
+                {p.label}
+              </Button>
+            );
+          })}
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Know your asset source? Pick its preset — it sets tile size, margin and spacing in one shot.
+        </p>
+      </div>
+
 
       {candidates.length > 1 && (
         <div className="border rounded p-2 space-y-1 bg-muted/20">

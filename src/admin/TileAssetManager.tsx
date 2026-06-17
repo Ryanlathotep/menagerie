@@ -1341,13 +1341,18 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
             ? `Slicing ${progress.done}/${progress.total}…`
             : regions.length > 0
               ? `Upload ${regions.length} region${regions.length === 1 ? '' : 's'}`
-              : `Slice all ${grid.cols * grid.rows} cells`}
+              : selectedCells.size > 0
+                ? `Slice ${selectedCells.size} selected cell${selectedCells.size === 1 ? '' : 's'}`
+                : `Slice all ${grid.cols * grid.rows} cells`}
         </Button>
         <span className="text-xs text-muted-foreground">
           {regions.length > 0
             ? 'Region mode — only the lassoed sprites will be uploaded.'
-            : 'Uniform mode — every cell becomes one tile.'}
+            : selectedCells.size > 0
+              ? 'Cell mode — only the highlighted cells will be uploaded.'
+              : 'Uniform mode — every cell becomes one tile.'}
         </span>
+
       </div>
     </Card>
   );

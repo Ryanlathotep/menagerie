@@ -56,6 +56,19 @@ export function TilePatternPainter() {
   const tileOv = useGameDataOverrides('tile_asset');
   const patternOv = useGameDataOverrides('tile_pattern');
 
+  // Re-pull tiles/patterns whenever the painter regains focus, so newly
+  // assigned tiles from the Asset Manager tab show up without a page reload.
+  useEffect(() => {
+    const refresh = () => { tileOv.refetch(); patternOv.refetch(); };
+    const onVis = () => { if (document.visibilityState === 'visible') refresh(); };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [tileOv.refetch, patternOv.refetch]);
+
   const slicedTiles = useMemo<SlicedTileRow[]>(() => {
     return tileOv.overrides
       .map((o) => {

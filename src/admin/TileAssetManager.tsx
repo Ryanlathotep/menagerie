@@ -1188,6 +1188,21 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
                       }}
                     />
                   )}
+                  {selectCells && Array.from(selectedCells).map((key) => {
+                    const [r, c] = key.split(',').map(Number);
+                    return (
+                      <div key={`sel-${r}-${c}`}
+                        className="absolute bg-emerald-400/35 border-2 border-emerald-400"
+                        style={{
+                          left: px(marginX + c * (tileW + spacingX)),
+                          top: px(marginY + r * (tileH + spacingY)),
+                          width: px(tileW),
+                          height: px(tileH),
+                        }}
+                      />
+                    );
+                  })}
+
                 </div>
               );
             })()}

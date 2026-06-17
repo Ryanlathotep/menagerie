@@ -2,6 +2,8 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { TileAssetManager } from '@/admin/TileAssetManager';
+import { TilePatternPainter } from '@/admin/TilePatternPainter';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link } from 'react-router-dom';
 
 export default function AdminTiles() {
@@ -19,7 +21,7 @@ export default function AdminTiles() {
           <div>
             <h1 className="text-2xl font-bold">Tile Asset Manager</h1>
             <p className="text-sm text-muted-foreground">
-              Bulk upload, slice sheets, and tag tile assets for dungeons and the overworld.
+              Bulk upload, slice sheets, tag tiles, and paint example dungeon patterns.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -27,7 +29,18 @@ export default function AdminTiles() {
             <Link to="/" className="text-sm underline">← Back to game</Link>
           </div>
         </header>
-        <TileAssetManager />
+        <Tabs defaultValue="assets">
+          <TabsList>
+            <TabsTrigger value="assets">Asset Manager</TabsTrigger>
+            <TabsTrigger value="patterns">Tile Patterns (Painter)</TabsTrigger>
+          </TabsList>
+          <TabsContent value="assets" className="mt-4">
+            <TileAssetManager />
+          </TabsContent>
+          <TabsContent value="patterns" className="mt-4">
+            <TilePatternPainter />
+          </TabsContent>
+        </Tabs>
       </div>
     </main>
   );

@@ -633,6 +633,7 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
     setDims(d);
     setSheetName((prev) => prev || safeName(f.name.replace(/\.[^.]+$/, '')));
     setRegions([]);
+    setSelectedCells(new Set());
     setLoadedSheetKey(knownKey ?? null);
   }, []);
 

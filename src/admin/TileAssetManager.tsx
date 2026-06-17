@@ -1159,9 +1159,6 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
         <div className="border rounded p-2 bg-muted/20 overflow-auto max-h-[60vh]">
           <div
             className={`relative inline-block select-none ${selectCells ? 'cursor-pointer' : 'cursor-crosshair'}`}
-            onMouseDown={onOverlayMouseDown}
-            onMouseMove={onOverlayMouseMove}
-            onMouseUp={onOverlayMouseUp}
             onMouseLeave={() => setDrag(null)}
           >
             <img

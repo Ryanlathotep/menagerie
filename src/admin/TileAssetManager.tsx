@@ -444,6 +444,20 @@ interface SliceRegion {
   tags?: string[];
 }
 
+interface SlicerDraft {
+  tileW?: number; tileH?: number; marginX?: number; marginY?: number; spacingX?: number; spacingY?: number;
+  sheetName?: string; defaultRole?: TileRole; defaultTileset?: string; zoom?: number; selectCells?: boolean;
+  regions?: SliceRegion[]; selectedCells?: string[]; loadedSheetKey?: string | null; selectedRemote?: string;
+}
+
+function loadSlicerDraft(): SlicerDraft {
+  try { return JSON.parse(localStorage.getItem(SLICER_DRAFT_KEY) || '{}') as SlicerDraft; } catch { return {}; }
+}
+
+function saveSlicerDraft(draft: SlicerDraft): void {
+  try { localStorage.setItem(SLICER_DRAFT_KEY, JSON.stringify(draft)); } catch { /* ignore */ }
+}
+
 async function detectSeparatedSpriteRegions(
   file: File,
   opts: {

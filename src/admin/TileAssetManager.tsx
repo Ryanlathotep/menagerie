@@ -1518,15 +1518,25 @@ function AutotileEditor({ row, onChange }: { row: TileRow; onChange: (next: Tile
                 type="button"
                 onClick={() => c.bit !== null && toggleBit(c.bit)}
                 title={isCenter ? 'This tile (locked)' : `Toggle ${c.label} neighbor`}
-                className={`h-9 text-[10px] rounded border ${
+                className={`relative h-12 text-[10px] rounded border overflow-hidden ${
                   isCenter
-                    ? 'bg-primary/30 border-primary cursor-default font-bold'
+                    ? 'bg-primary/20 border-primary cursor-default font-bold'
                     : active
                       ? 'bg-emerald-500/40 border-emerald-500'
                       : 'bg-muted/30 hover:bg-muted'
                 }`}
               >
-                {c.label}
+                {isCenter && row.meta.url && (
+                  <img
+                    src={row.meta.url}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+                    style={{ imageRendering: 'pixelated' }}
+                  />
+                )}
+                <span className={`relative ${isCenter ? 'drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] text-white' : ''}`}>
+                  {c.label}
+                </span>
               </button>
             );
           })}

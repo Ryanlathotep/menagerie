@@ -1124,7 +1124,24 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
         </div>
       )}
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant={selectCells ? 'default' : 'outline'}
+            className="h-7 text-[11px]"
+            onClick={() => setSelectCells((v) => !v)}
+            title={selectCells ? 'Click cells to toggle selection. Drag to add a range.' : 'Toggle cell-select mode'}
+          >
+            {selectCells ? 'Cell Select: ON' : 'Cell Select: OFF'}
+          </Button>
+          {selectCells && (
+            <Button size="sm" variant="ghost" className="h-7 text-[11px]"
+              onClick={() => setSelectedCells(new Set())}>
+              Clear {selectedCells.size} cells
+            </Button>
+          )}
+        </div>
         <Label className="text-xs whitespace-nowrap">Zoom {zoom}x</Label>
         <input
           type="range"
@@ -1136,6 +1153,7 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
           className="w-48"
         />
       </div>
+
 
       {imgUrl && (
         <div className="border rounded p-2 bg-muted/20 overflow-auto max-h-[60vh]">

@@ -608,6 +608,10 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
   const [handleDrag, setHandleDrag] = useState<
     null | { kind: 'origin' | 'size'; startX: number; startY: number; baseMX: number; baseMY: number; baseTW: number; baseTH: number; lockAspect: boolean }
   >(null);
+  // Cell toggle mode: click individual grid cells to include/exclude them from slicing.
+  const [selectCells, setSelectCells] = useState(false);
+  const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
+
 
   const rawSheets = useMemo(() => {
     return uploaded

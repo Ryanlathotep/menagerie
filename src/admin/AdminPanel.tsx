@@ -35,6 +35,8 @@ import { AssetLibrary } from './AssetLibrary';
 import { ParticlesEditor } from './ParticlesEditor';
 import { WorldGenEditor } from './WorldGenEditor';
 import { TileAssetManager } from './TileAssetManager';
+import { TilePatternPainter } from './TilePatternPainter';
+import { Tabs as SubTabs, TabsContent as SubTabsContent, TabsList as SubTabsList, TabsTrigger as SubTabsTrigger } from '@/components/ui/tabs';
 import { Shield, Swords, Package, Ghost, UserCog, Bug, Crosshair, Image as ImageIcon, Palette, Sparkles, Globe2, Lightbulb, Grid3x3 } from 'lucide-react';
 
 

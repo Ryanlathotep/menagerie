@@ -712,6 +712,7 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
   // Track the storage key of the loaded sheet so we can flag it as kind:'sheet'.
   const [loadedSheetKey, setLoadedSheetKey] = useState<string | null>(draft.loadedSheetKey ?? null);
   const imgRef = useRef<HTMLImageElement>(null);
+  const restoredRemoteRef = useRef(false);
   // Auto-detect candidate list (multiple options for non-gutter sheets).
   const [candidates, setCandidates] = useState<ReturnType<typeof detectGridCandidates>>([]);
   // Pointer-drag state for the corner handles on the grid overlay.
@@ -776,6 +777,13 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
       setLoadingRemote(false);
     }
   }, [rawSheets, onPick]);
+
+  useEffect(() => {
+    if (restoredRemoteRef.current || file || !selectedRemote) return;
+    if (!rawSheets.some((r) => r.key === selectedRemote)) return;
+    restoredRemoteRef.current = true;
+    loadFromLibrary(selectedRemote);
+  }, [file, loadFromLibrary, rawSheets, selectedRemote]);
 
   // When the Library asks us to open a specific sheet, load it once.
   useEffect(() => {

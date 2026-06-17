@@ -847,8 +847,10 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
       sx: number; sy: number; sw: number; sh: number; name: string;
       role: TileRole; tags?: string[]; row: number; col: number; spanRows: number; spanCols: number;
     }> = [];
+    const activeCells = selectedCells.size > 0 ? selectedCells : null;
     for (let r = 0; r < grid.rows; r++) {
       for (let c = 0; c < grid.cols; c++) {
+        if (activeCells && !activeCells.has(`${r},${c}`)) continue;
         jobs.push({
           sx: marginX + c * (tileW + spacingX),
           sy: marginY + r * (tileH + spacingY),
@@ -859,7 +861,8 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
       }
     }
     return jobs;
-  }, [regions, grid, marginX, marginY, tileW, tileH, spacingX, spacingY, defaultRole]);
+  }, [regions, grid, marginX, marginY, tileW, tileH, spacingX, spacingY, defaultRole, selectedCells]);
+
 
   const doSlice = async () => {
     if (!file || !imgUrl) return;

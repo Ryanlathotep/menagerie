@@ -1208,30 +1208,27 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
                   )}
                   {selectCells && Array.from(selectedCells).map((key) => {
                     const [r, c] = key.split(',').map(Number);
-                    const toggleThis = () => {
-                      setSelectedCells((prev) => {
-                        const next = new Set(prev);
-                        const k = `${r},${c}`;
-                        if (next.has(k)) next.delete(k);
-                        else next.add(k);
-                        return next;
-                      });
-                    };
                     return (
                       <div key={`sel-${r}-${c}`}
-                        className="absolute bg-emerald-400/35 border-2 border-emerald-400 pointer-events-auto cursor-pointer"
+                        className="absolute bg-emerald-400/35 border-2 border-emerald-400"
                         style={{
                           left: px(marginX + c * (tileW + spacingX)),
                           top: px(marginY + r * (tileH + spacingY)),
                           width: px(tileW),
                           height: px(tileH),
                         }}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onMouseUp={(e) => { e.stopPropagation(); toggleThis(); }}
-                        title={`Cell ${r},${c} — click to toggle`}
                       />
                     );
                   })}
+                  {/* Transparent hit layer guarantees every click/drag is captured
+                      even when grid lines or selected-cell overlays are rendered. */}
+                  <div
+                    className="absolute inset-0 pointer-events-auto"
+                    onMouseDown={onOverlayMouseDown}
+                    onMouseMove={onOverlayMouseMove}
+                    onMouseUp={onOverlayMouseUp}
+                  />
+
 
 
                 </div>

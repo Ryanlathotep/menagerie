@@ -1431,7 +1431,7 @@ function AutotileEditor({ row, onChange }: { row: TileRow; onChange: (next: Tile
     { bit: NEIGHBOR_BITS.N,  label: 'N' },
     { bit: NEIGHBOR_BITS.NE, label: 'NE' },
     { bit: NEIGHBOR_BITS.W,  label: 'W' },
-    { bit: null,             label: '◼︎' },
+    { bit: null,             label: 'THIS' },
     { bit: NEIGHBOR_BITS.E,  label: 'E' },
     { bit: NEIGHBOR_BITS.SW, label: 'SW' },
     { bit: NEIGHBOR_BITS.S,  label: 'S' },
@@ -1441,18 +1441,28 @@ function AutotileEditor({ row, onChange }: { row: TileRow; onChange: (next: Tile
   const valid = isValidBlob47(mask);
 
   return (
-    <div className="space-y-2 w-60">
+    <div className="space-y-2 w-72">
+      <div className="text-[10px] text-muted-foreground leading-snug bg-muted/30 rounded p-2">
+        <b>Only fill this in for autotiled families</b> (e.g. walls that
+        seamlessly connect). For a standalone tile, skip this — just set a
+        role. The center cell <b>is this tile</b>. Toggle the 8 sides to mark
+        which neighbors of the <i>same family</i> this artwork is drawn for.
+        Each family needs up to 47 variants (one per neighbor combo).
+      </div>
       <div className="space-y-1">
-        <Label className="text-xs">Family</Label>
+        <Label className="text-xs">Family (what counts as a neighbor)</Label>
         <Input
           className="h-7 text-xs"
           placeholder="stone_wall"
           value={family}
           onChange={(e) => setFamily(e.target.value)}
         />
+        <div className="text-[10px] text-muted-foreground">
+          Any tile sharing this family name will connect to this one.
+        </div>
       </div>
       <div>
-        <Label className="text-xs">Neighbors (click to toggle)</Label>
+        <Label className="text-xs">Same-family neighbors for THIS variant</Label>
         <div className="grid grid-cols-3 gap-0.5 mt-1">
           {cells.map((c, i) => {
             const active = c.bit !== null && (mask & c.bit) !== 0;
@@ -1462,9 +1472,10 @@ function AutotileEditor({ row, onChange }: { row: TileRow; onChange: (next: Tile
                 key={i}
                 type="button"
                 onClick={() => c.bit !== null && toggleBit(c.bit)}
-                className={`h-8 text-[10px] rounded border ${
+                title={isCenter ? 'This tile (locked)' : `Toggle ${c.label} neighbor`}
+                className={`h-9 text-[10px] rounded border ${
                   isCenter
-                    ? 'bg-primary/20 border-primary cursor-default'
+                    ? 'bg-primary/30 border-primary cursor-default font-bold'
                     : active
                       ? 'bg-emerald-500/40 border-emerald-500'
                       : 'bg-muted/30 hover:bg-muted'
@@ -1477,8 +1488,9 @@ function AutotileEditor({ row, onChange }: { row: TileRow; onChange: (next: Tile
         </div>
       </div>
       <div className="text-[10px] text-muted-foreground">
-        mask {mask} ({maskLabel(mask)}) {valid ? '' : '· auto-reduced'}
+        mask {mask} ({maskLabel(mask) || 'isolated'}) {valid ? '' : '· auto-reduced'}
       </div>
+
       <div className="flex gap-2">
         <Button size="sm" className="h-7 text-xs" onClick={() => {
           if (!family.trim()) { toast.error('Family required'); return; }

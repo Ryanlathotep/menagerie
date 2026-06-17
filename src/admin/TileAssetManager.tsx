@@ -1262,6 +1262,7 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
                     onMouseDown={onOverlayMouseDown}
                     onMouseMove={onOverlayMouseMove}
                     onMouseUp={onOverlayMouseUp}
+                    onContextMenu={onOverlayContextMenu}
                   />
 
 
@@ -1272,39 +1273,45 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
             {/* Draggable corner vertices on top of the overlay. */}
             {dims.w > 0 && (() => {
               const scale = zoom;
+              const cols = Math.max(1, grid.cols);
+              const rows = Math.max(1, grid.rows);
               const ox = marginX * scale;
               const oy = marginY * scale;
               const sx = (marginX + tileW) * scale;
               const sy = (marginY + tileH) * scale;
+              const ex = (marginX + cols * (tileW + spacingX) - spacingX) * scale;
+              const ey = (marginY + rows * (tileH + spacingY) - spacingY) * scale;
               const handleStyle = (left: number, top: number): React.CSSProperties => ({
                 left: left - 8, top: top - 8, width: 16, height: 16,
               });
+              const baseDrag = { baseMX: marginX, baseMY: marginY, baseTW: tileW, baseTH: tileH, baseCols: cols, baseRows: rows };
               return (
                 <>
                   <div
-                    title="Drag to move the whole grid (margin X/Y). Hold Shift to step."
+                    title="Drag to move the whole grid (margin X/Y). Right-click overlay to remove a green region."
                     className="absolute rounded-full bg-primary border-2 border-background shadow cursor-grab active:cursor-grabbing"
                     style={handleStyle(ox, oy)}
                     onMouseDown={(e) => {
                       e.stopPropagation();
-                      setHandleDrag({
-                        kind: 'origin', startX: e.clientX, startY: e.clientY,
-                        baseMX: marginX, baseMY: marginY, baseTW: tileW, baseTH: tileH,
-                        lockAspect: false,
-                      });
+                      setHandleDrag({ kind: 'origin', startX: e.clientX, startY: e.clientY, ...baseDrag, lockAspect: false });
                     }}
                   />
                   <div
-                    title="Drag to resize the tile cell (Shift = square)."
+                    title="Drag to resize a single tile cell (Shift = square)."
                     className="absolute rounded-sm bg-amber-400 border-2 border-background shadow cursor-nwse-resize"
                     style={handleStyle(sx, sy)}
                     onMouseDown={(e) => {
                       e.stopPropagation();
-                      setHandleDrag({
-                        kind: 'size', startX: e.clientX, startY: e.clientY,
-                        baseMX: marginX, baseMY: marginY, baseTW: tileW, baseTH: tileH,
-                        lockAspect: e.shiftKey,
-                      });
+                      setHandleDrag({ kind: 'size', startX: e.clientX, startY: e.clientY, ...baseDrag, lockAspect: e.shiftKey });
+                    }}
+                  />
+                  <div
+                    title="Drag the bottom-right corner of the whole grid to size it across the entire sheet (Shift = square)."
+                    className="absolute rounded-sm bg-sky-400 border-2 border-background shadow cursor-nwse-resize"
+                    style={handleStyle(ex, ey)}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setHandleDrag({ kind: 'extent', startX: e.clientX, startY: e.clientY, ...baseDrag, lockAspect: e.shiftKey });
                     }}
                   />
                 </>

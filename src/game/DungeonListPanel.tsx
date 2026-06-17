@@ -96,10 +96,18 @@ function DungeonRow({ d, onLaunch, onQuickStart, quickStartPartySize, highestMon
           : 'w-full rounded-md border-border bg-card'
       }`}
     >
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => onLaunch(d)}
-        className="w-full text-left hover:opacity-90"
+        onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return;
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onLaunch(d);
+          }
+        }}
+        className="w-full text-left hover:opacity-90 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
@@ -169,7 +177,7 @@ function DungeonRow({ d, onLaunch, onQuickStart, quickStartPartySize, highestMon
             )}
           </div>
         </div>
-      </button>
+      </div>
 
       {/* Per-row "Start at floor" picker — only meaningful when quick-start
           is active AND the player has earned enough levels to skip floors. */}

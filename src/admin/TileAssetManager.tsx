@@ -810,14 +810,32 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
     const onMove = (e: PointerEvent) => {
       const dx = Math.round((e.clientX - handleDrag.startX) / zoom);
       const dy = Math.round((e.clientY - handleDrag.startY) / zoom);
+      const maxX = Math.max(64, dims.w || 4096);
+      const maxY = Math.max(64, dims.h || 4096);
+      const maxTile = Math.max(256, dims.w || 4096, dims.h || 4096);
       if (handleDrag.kind === 'origin') {
-        setMarginX(Math.max(0, Math.min(64, handleDrag.baseMX + dx)));
-        setMarginY(Math.max(0, Math.min(64, handleDrag.baseMY + dy)));
-      } else {
-        let nw = Math.max(4, Math.min(256, handleDrag.baseTW + dx));
-        let nh = Math.max(4, Math.min(256, handleDrag.baseTH + dy));
+        setMarginX(Math.max(0, Math.min(maxX, handleDrag.baseMX + dx)));
+        setMarginY(Math.max(0, Math.min(maxY, handleDrag.baseMY + dy)));
+      } else if (handleDrag.kind === 'size') {
+        let nw = Math.max(1, Math.min(maxTile, handleDrag.baseTW + dx));
+        let nh = Math.max(1, Math.min(maxTile, handleDrag.baseTH + dy));
         if (handleDrag.lockAspect || e.shiftKey) {
-          // Lock to square based on the larger delta.
+          const v = Math.abs(dx) > Math.abs(dy) ? nw : nh;
+          nw = v; nh = v;
+        }
+        setTileW(nw); setTileH(nh);
+      } else {
+        // 'extent': stretch the bottom-right of the LAST cell. Resizes
+        // tileW/tileH so the grid spans corner-to-corner across the sheet.
+        const cols = Math.max(1, handleDrag.baseCols);
+        const rows = Math.max(1, handleDrag.baseRows);
+        const baseExtX = handleDrag.baseMX + cols * (handleDrag.baseTW + spacingX) - spacingX;
+        const baseExtY = handleDrag.baseMY + rows * (handleDrag.baseTH + spacingY) - spacingY;
+        const newExtX = Math.max(handleDrag.baseMX + cols, Math.min(maxX, baseExtX + dx));
+        const newExtY = Math.max(handleDrag.baseMY + rows, Math.min(maxY, baseExtY + dy));
+        let nw = Math.max(1, Math.round((newExtX - handleDrag.baseMX + spacingX) / cols - spacingX));
+        let nh = Math.max(1, Math.round((newExtY - handleDrag.baseMY + spacingY) / rows - spacingY));
+        if (handleDrag.lockAspect || e.shiftKey) {
           const v = Math.abs(dx) > Math.abs(dy) ? nw : nh;
           nw = v; nh = v;
         }

@@ -688,28 +688,29 @@ function SlicedPreviewPanel({
 
 function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerProps) {
   const { overrides: uploaded } = useGameDataOverrides('tile_asset');
+  const draft = useMemo(loadSlicerDraft, []);
   const [file, setFile] = useState<File | null>(null);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [dims, setDims] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
-  const [tileW, setTileW] = useState(32);
-  const [tileH, setTileH] = useState(32);
-  const [marginX, setMarginX] = useState(0);
-  const [marginY, setMarginY] = useState(0);
-  const [spacingX, setSpacingX] = useState(0);
-  const [spacingY, setSpacingY] = useState(0);
-  const [sheetName, setSheetName] = useState('');
-  const [defaultRole, setDefaultRole] = useState<TileRole>('multi_tile_prop');
-  const [defaultTileset, setDefaultTileset] = useState<string>(loadDefaultTileset());
+  const [tileW, setTileW] = useState(draft.tileW ?? 32);
+  const [tileH, setTileH] = useState(draft.tileH ?? 32);
+  const [marginX, setMarginX] = useState(draft.marginX ?? 0);
+  const [marginY, setMarginY] = useState(draft.marginY ?? 0);
+  const [spacingX, setSpacingX] = useState(draft.spacingX ?? 0);
+  const [spacingY, setSpacingY] = useState(draft.spacingY ?? 0);
+  const [sheetName, setSheetName] = useState(draft.sheetName ?? '');
+  const [defaultRole, setDefaultRole] = useState<TileRole>(draft.defaultRole ?? 'multi_tile_prop');
+  const [defaultTileset, setDefaultTileset] = useState<string>(draft.defaultTileset ?? loadDefaultTileset());
 
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
-  const [regions, setRegions] = useState<SliceRegion[]>([]);
+  const [regions, setRegions] = useState<SliceRegion[]>(draft.regions ?? []);
   const [drag, setDrag] = useState<{ r0: number; c0: number; r1: number; c1: number } | null>(null);
   const [loadingRemote, setLoadingRemote] = useState(false);
-  const [selectedRemote, setSelectedRemote] = useState<string>('');
-  const [zoom, setZoom] = useState(3);
+  const [selectedRemote, setSelectedRemote] = useState<string>(draft.selectedRemote ?? '');
+  const [zoom, setZoom] = useState(draft.zoom ?? 3);
   // Track the storage key of the loaded sheet so we can flag it as kind:'sheet'.
-  const [loadedSheetKey, setLoadedSheetKey] = useState<string | null>(null);
+  const [loadedSheetKey, setLoadedSheetKey] = useState<string | null>(draft.loadedSheetKey ?? null);
   const imgRef = useRef<HTMLImageElement>(null);
   // Auto-detect candidate list (multiple options for non-gutter sheets).
   const [candidates, setCandidates] = useState<ReturnType<typeof detectGridCandidates>>([]);
@@ -718,8 +719,16 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
     null | { kind: 'origin' | 'size' | 'extent'; startX: number; startY: number; baseMX: number; baseMY: number; baseTW: number; baseTH: number; baseCols: number; baseRows: number; lockAspect: boolean }
   >(null);
   // Cell toggle mode: click individual grid cells to include/exclude them from slicing.
-  const [selectCells, setSelectCells] = useState(false);
-  const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
+  const [selectCells, setSelectCells] = useState(draft.selectCells ?? false);
+  const [selectedCells, setSelectedCells] = useState<Set<string>>(() => new Set(draft.selectedCells ?? []));
+
+  useEffect(() => {
+    saveSlicerDraft({
+      tileW, tileH, marginX, marginY, spacingX, spacingY,
+      sheetName, defaultRole, defaultTileset, zoom, selectCells,
+      regions, selectedCells: Array.from(selectedCells), loadedSheetKey, selectedRemote,
+    });
+  }, [tileW, tileH, marginX, marginY, spacingX, spacingY, sheetName, defaultRole, defaultTileset, zoom, selectCells, regions, selectedCells, loadedSheetKey, selectedRemote]);
 
 
   const rawSheets = useMemo(() => {

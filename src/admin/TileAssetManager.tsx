@@ -606,7 +606,7 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
   const [candidates, setCandidates] = useState<ReturnType<typeof detectGridCandidates>>([]);
   // Pointer-drag state for the corner handles on the grid overlay.
   const [handleDrag, setHandleDrag] = useState<
-    null | { kind: 'origin' | 'size'; startX: number; startY: number; baseMX: number; baseMY: number; baseTW: number; baseTH: number; lockAspect: boolean }
+    null | { kind: 'origin' | 'size' | 'extent'; startX: number; startY: number; baseMX: number; baseMY: number; baseTW: number; baseTH: number; baseCols: number; baseRows: number; lockAspect: boolean }
   >(null);
   // Cell toggle mode: click individual grid cells to include/exclude them from slicing.
   const [selectCells, setSelectCells] = useState(false);

@@ -606,7 +606,7 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
   const [candidates, setCandidates] = useState<ReturnType<typeof detectGridCandidates>>([]);
   // Pointer-drag state for the corner handles on the grid overlay.
   const [handleDrag, setHandleDrag] = useState<
-    null | { kind: 'origin' | 'size'; startX: number; startY: number; baseMX: number; baseMY: number; baseTW: number; baseTH: number; lockAspect: boolean }
+    null | { kind: 'origin' | 'size' | 'extent'; startX: number; startY: number; baseMX: number; baseMY: number; baseTW: number; baseTH: number; baseCols: number; baseRows: number; lockAspect: boolean }
   >(null);
   // Cell toggle mode: click individual grid cells to include/exclude them from slicing.
   const [selectCells, setSelectCells] = useState(false);
@@ -755,8 +755,8 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
     const r1 = Math.max(drag.r0, drag.r1);
     const c0 = Math.min(drag.c0, drag.c1);
     const c1 = Math.max(drag.c0, drag.c1);
+    const isClick = r0 === r1 && c0 === c1;
     if (selectCells) {
-      const isClick = r0 === r1 && c0 === c1;
       setSelectedCells((prev) => {
         const next = new Set(prev);
         if (isClick) {
@@ -765,9 +765,7 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
           else next.add(key);
         } else {
           for (let r = r0; r <= r1; r++) {
-            for (let c = c0; c <= c1; c++) {
-              next.add(`${r},${c}`);
-            }
+            for (let c = c0; c <= c1; c++) next.add(`${r},${c}`);
           }
         }
         return next;
@@ -775,11 +773,33 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
       setDrag(null);
       return;
     }
+    // Non-select mode: ignore stray clicks. Only create a region if the
+    // user actually dragged across more than one cell — accidental single
+    // clicks used to leave a stuck green square with no obvious removal.
+    if (isClick) { setDrag(null); return; }
     setRegions((prev) => [
       ...prev,
       { id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, r0, c0, r1, c1, role: defaultRole },
     ]);
     setDrag(null);
+  };
+
+  // Right-click removes any green overlay under the cursor (region OR
+  // selected cell). Avoids hunting through the regions list to delete things
+  // you painted by accident.
+  const onOverlayContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const cell = cellFromEvent(e);
+    if (!cell) return;
+    const hit = regions.find((reg) =>
+      cell.r >= Math.min(reg.r0, reg.r1) && cell.r <= Math.max(reg.r0, reg.r1) &&
+      cell.c >= Math.min(reg.c0, reg.c1) && cell.c <= Math.max(reg.c0, reg.c1),
+    );
+    if (hit) { setRegions((p) => p.filter((r) => r.id !== hit.id)); return; }
+    const key = `${cell.r},${cell.c}`;
+    if (selectedCells.has(key)) {
+      setSelectedCells((prev) => { const n = new Set(prev); n.delete(key); return n; });
+    }
   };
 
 
@@ -790,14 +810,32 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
     const onMove = (e: PointerEvent) => {
       const dx = Math.round((e.clientX - handleDrag.startX) / zoom);
       const dy = Math.round((e.clientY - handleDrag.startY) / zoom);
+      const maxX = Math.max(64, dims.w || 4096);
+      const maxY = Math.max(64, dims.h || 4096);
+      const maxTile = Math.max(256, dims.w || 4096, dims.h || 4096);
       if (handleDrag.kind === 'origin') {
-        setMarginX(Math.max(0, Math.min(64, handleDrag.baseMX + dx)));
-        setMarginY(Math.max(0, Math.min(64, handleDrag.baseMY + dy)));
-      } else {
-        let nw = Math.max(4, Math.min(256, handleDrag.baseTW + dx));
-        let nh = Math.max(4, Math.min(256, handleDrag.baseTH + dy));
+        setMarginX(Math.max(0, Math.min(maxX, handleDrag.baseMX + dx)));
+        setMarginY(Math.max(0, Math.min(maxY, handleDrag.baseMY + dy)));
+      } else if (handleDrag.kind === 'size') {
+        let nw = Math.max(1, Math.min(maxTile, handleDrag.baseTW + dx));
+        let nh = Math.max(1, Math.min(maxTile, handleDrag.baseTH + dy));
         if (handleDrag.lockAspect || e.shiftKey) {
-          // Lock to square based on the larger delta.
+          const v = Math.abs(dx) > Math.abs(dy) ? nw : nh;
+          nw = v; nh = v;
+        }
+        setTileW(nw); setTileH(nh);
+      } else {
+        // 'extent': stretch the bottom-right of the LAST cell. Resizes
+        // tileW/tileH so the grid spans corner-to-corner across the sheet.
+        const cols = Math.max(1, handleDrag.baseCols);
+        const rows = Math.max(1, handleDrag.baseRows);
+        const baseExtX = handleDrag.baseMX + cols * (handleDrag.baseTW + spacingX) - spacingX;
+        const baseExtY = handleDrag.baseMY + rows * (handleDrag.baseTH + spacingY) - spacingY;
+        const newExtX = Math.max(handleDrag.baseMX + cols, Math.min(maxX, baseExtX + dx));
+        const newExtY = Math.max(handleDrag.baseMY + rows, Math.min(maxY, baseExtY + dy));
+        let nw = Math.max(1, Math.round((newExtX - handleDrag.baseMX + spacingX) / cols - spacingX));
+        let nh = Math.max(1, Math.round((newExtY - handleDrag.baseMY + spacingY) / rows - spacingY));
+        if (handleDrag.lockAspect || e.shiftKey) {
           const v = Math.abs(dx) > Math.abs(dy) ? nw : nh;
           nw = v; nh = v;
         }
@@ -1224,6 +1262,7 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
                     onMouseDown={onOverlayMouseDown}
                     onMouseMove={onOverlayMouseMove}
                     onMouseUp={onOverlayMouseUp}
+                    onContextMenu={onOverlayContextMenu}
                   />
 
 
@@ -1234,39 +1273,45 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
             {/* Draggable corner vertices on top of the overlay. */}
             {dims.w > 0 && (() => {
               const scale = zoom;
+              const cols = Math.max(1, grid.cols);
+              const rows = Math.max(1, grid.rows);
               const ox = marginX * scale;
               const oy = marginY * scale;
               const sx = (marginX + tileW) * scale;
               const sy = (marginY + tileH) * scale;
+              const ex = (marginX + cols * (tileW + spacingX) - spacingX) * scale;
+              const ey = (marginY + rows * (tileH + spacingY) - spacingY) * scale;
               const handleStyle = (left: number, top: number): React.CSSProperties => ({
                 left: left - 8, top: top - 8, width: 16, height: 16,
               });
+              const baseDrag = { baseMX: marginX, baseMY: marginY, baseTW: tileW, baseTH: tileH, baseCols: cols, baseRows: rows };
               return (
                 <>
                   <div
-                    title="Drag to move the whole grid (margin X/Y). Hold Shift to step."
+                    title="Drag to move the whole grid (margin X/Y). Right-click overlay to remove a green region."
                     className="absolute rounded-full bg-primary border-2 border-background shadow cursor-grab active:cursor-grabbing"
                     style={handleStyle(ox, oy)}
                     onMouseDown={(e) => {
                       e.stopPropagation();
-                      setHandleDrag({
-                        kind: 'origin', startX: e.clientX, startY: e.clientY,
-                        baseMX: marginX, baseMY: marginY, baseTW: tileW, baseTH: tileH,
-                        lockAspect: false,
-                      });
+                      setHandleDrag({ kind: 'origin', startX: e.clientX, startY: e.clientY, ...baseDrag, lockAspect: false });
                     }}
                   />
                   <div
-                    title="Drag to resize the tile cell (Shift = square)."
+                    title="Drag to resize a single tile cell (Shift = square)."
                     className="absolute rounded-sm bg-amber-400 border-2 border-background shadow cursor-nwse-resize"
                     style={handleStyle(sx, sy)}
                     onMouseDown={(e) => {
                       e.stopPropagation();
-                      setHandleDrag({
-                        kind: 'size', startX: e.clientX, startY: e.clientY,
-                        baseMX: marginX, baseMY: marginY, baseTW: tileW, baseTH: tileH,
-                        lockAspect: e.shiftKey,
-                      });
+                      setHandleDrag({ kind: 'size', startX: e.clientX, startY: e.clientY, ...baseDrag, lockAspect: e.shiftKey });
+                    }}
+                  />
+                  <div
+                    title="Drag the bottom-right corner of the whole grid to size it across the entire sheet (Shift = square)."
+                    className="absolute rounded-sm bg-sky-400 border-2 border-background shadow cursor-nwse-resize"
+                    style={handleStyle(ex, ey)}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setHandleDrag({ kind: 'extent', startX: e.clientX, startY: e.clientY, ...baseDrag, lockAspect: e.shiftKey });
                     }}
                   />
                 </>

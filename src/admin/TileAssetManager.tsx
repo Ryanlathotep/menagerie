@@ -37,6 +37,8 @@ import {
 const BUCKET = 'game-assets';
 const DEFAULT_TILESET_KEY = 'tileAssetMgr.defaultTileset';
 const ANIMATE_PREVIEWS_KEY = 'tileAssetMgr.animatePreviews';
+const ASSET_MANAGER_TAB_KEY = 'tileAssetMgr.activeTab';
+const SLICER_DRAFT_KEY = 'tileAssetMgr.slicerDraft';
 
 function loadDefaultTileset(): string {
   try { return localStorage.getItem(DEFAULT_TILESET_KEY) || 'Global'; } catch { return 'Global'; }
@@ -442,6 +444,113 @@ interface SliceRegion {
   tags?: string[];
 }
 
+interface SlicerDraft {
+  tileW?: number; tileH?: number; marginX?: number; marginY?: number; spacingX?: number; spacingY?: number;
+  sheetName?: string; defaultRole?: TileRole; defaultTileset?: string; zoom?: number; selectCells?: boolean;
+  regions?: SliceRegion[]; selectedCells?: string[]; loadedSheetKey?: string | null; selectedRemote?: string;
+}
+
+function loadSlicerDraft(): SlicerDraft {
+  try { return JSON.parse(localStorage.getItem(SLICER_DRAFT_KEY) || '{}') as SlicerDraft; } catch { return {}; }
+}
+
+function saveSlicerDraft(draft: SlicerDraft): void {
+  try { localStorage.setItem(SLICER_DRAFT_KEY, JSON.stringify(draft)); } catch { /* ignore */ }
+}
+
+async function detectSeparatedSpriteRegions(
+  file: File,
+  opts: {
+    tileW: number; tileH: number; marginX: number; marginY: number;
+    spacingX: number; spacingY: number; rows: number; cols: number;
+    defaultRole: TileRole;
+  },
+): Promise<SliceRegion[]> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error('Could not read sheet image'));
+      i.src = url;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return [];
+    ctx.drawImage(img, 0, 0);
+    const { width: w, height: h } = canvas;
+    const data = ctx.getImageData(0, 0, w, h).data;
+    const sample = (x: number, y: number) => {
+      const idx = (y * w + x) * 4;
+      return [data[idx], data[idx + 1], data[idx + 2]] as const;
+    };
+    const corners = [sample(0, 0), sample(w - 1, 0), sample(0, h - 1), sample(w - 1, h - 1)];
+    const bg = corners.reduce((acc, c) => [acc[0] + c[0], acc[1] + c[1], acc[2] + c[2]], [0, 0, 0]).map((v) => v / corners.length);
+    const mask = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const idx = (y * w + x) * 4;
+        const dr = data[idx] - bg[0];
+        const dg = data[idx + 1] - bg[1];
+        const db = data[idx + 2] - bg[2];
+        const distance = Math.sqrt(dr * dr + dg * dg + db * db);
+        if (data[idx + 3] > 8 && distance > 26) mask[y * w + x] = 1;
+      }
+    }
+
+    const regions: SliceRegion[] = [];
+    const queue: number[] = [];
+    const keySet = new Set<string>();
+    for (let start = 0; start < mask.length; start++) {
+      if (mask[start] !== 1) continue;
+      mask[start] = 2;
+      queue.length = 0;
+      queue.push(start);
+      let count = 0;
+      let minX = w, maxX = 0, minY = h, maxY = 0;
+      for (let qi = 0; qi < queue.length; qi++) {
+        const p = queue[qi];
+        const x = p % w;
+        const y = Math.floor(p / w);
+        count++;
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+        const neighbors = [p - 1, p + 1, p - w, p + w];
+        for (const n of neighbors) {
+          if (n < 0 || n >= mask.length || mask[n] !== 1) continue;
+          const nx = n % w;
+          if ((n === p - 1 && nx !== x - 1) || (n === p + 1 && nx !== x + 1)) continue;
+          mask[n] = 2;
+          queue.push(n);
+        }
+      }
+      if (count < 48 || maxX - minX < 5 || maxY - minY < 5) continue;
+      const stepX = opts.tileW + opts.spacingX;
+      const stepY = opts.tileH + opts.spacingY;
+      const c0 = Math.max(0, Math.min(opts.cols - 1, Math.floor((minX - opts.marginX) / stepX)));
+      const c1 = Math.max(0, Math.min(opts.cols - 1, Math.floor((maxX - opts.marginX) / stepX)));
+      const r0 = Math.max(0, Math.min(opts.rows - 1, Math.floor((minY - opts.marginY) / stepY)));
+      const r1 = Math.max(0, Math.min(opts.rows - 1, Math.floor((maxY - opts.marginY) / stepY)));
+      const regionKey = `${r0},${c0},${r1},${c1}`;
+      if (keySet.has(regionKey)) continue;
+      keySet.add(regionKey);
+      regions.push({
+        id: `guide_${Date.now()}_${regions.length}`,
+        r0, c0, r1, c1,
+        role: opts.defaultRole,
+        name: `sprite_${regions.length + 1}_${c1 - c0 + 1}x${r1 - r0 + 1}`,
+      });
+    }
+    return regions.sort((a, b) => (a.r0 - b.r0) || (a.c0 - b.c0));
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 // Common connectivity hints — let the autotiler infer how tiles meet later.
 const QUICK_TAGS = [
   'floor', 'wall', 'water', 'lava', 'pit', 'door',
@@ -579,29 +688,31 @@ function SlicedPreviewPanel({
 
 function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerProps) {
   const { overrides: uploaded } = useGameDataOverrides('tile_asset');
+  const draft = useMemo(loadSlicerDraft, []);
   const [file, setFile] = useState<File | null>(null);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [dims, setDims] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
-  const [tileW, setTileW] = useState(32);
-  const [tileH, setTileH] = useState(32);
-  const [marginX, setMarginX] = useState(0);
-  const [marginY, setMarginY] = useState(0);
-  const [spacingX, setSpacingX] = useState(0);
-  const [spacingY, setSpacingY] = useState(0);
-  const [sheetName, setSheetName] = useState('');
-  const [defaultRole, setDefaultRole] = useState<TileRole>('multi_tile_prop');
-  const [defaultTileset, setDefaultTileset] = useState<string>(loadDefaultTileset());
+  const [tileW, setTileW] = useState(draft.tileW ?? 32);
+  const [tileH, setTileH] = useState(draft.tileH ?? 32);
+  const [marginX, setMarginX] = useState(draft.marginX ?? 0);
+  const [marginY, setMarginY] = useState(draft.marginY ?? 0);
+  const [spacingX, setSpacingX] = useState(draft.spacingX ?? 0);
+  const [spacingY, setSpacingY] = useState(draft.spacingY ?? 0);
+  const [sheetName, setSheetName] = useState(draft.sheetName ?? '');
+  const [defaultRole, setDefaultRole] = useState<TileRole>(draft.defaultRole ?? 'multi_tile_prop');
+  const [defaultTileset, setDefaultTileset] = useState<string>(draft.defaultTileset ?? loadDefaultTileset());
 
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
-  const [regions, setRegions] = useState<SliceRegion[]>([]);
+  const [regions, setRegions] = useState<SliceRegion[]>(draft.regions ?? []);
   const [drag, setDrag] = useState<{ r0: number; c0: number; r1: number; c1: number } | null>(null);
   const [loadingRemote, setLoadingRemote] = useState(false);
-  const [selectedRemote, setSelectedRemote] = useState<string>('');
-  const [zoom, setZoom] = useState(3);
+  const [selectedRemote, setSelectedRemote] = useState<string>(draft.selectedRemote ?? '');
+  const [zoom, setZoom] = useState(draft.zoom ?? 3);
   // Track the storage key of the loaded sheet so we can flag it as kind:'sheet'.
-  const [loadedSheetKey, setLoadedSheetKey] = useState<string | null>(null);
+  const [loadedSheetKey, setLoadedSheetKey] = useState<string | null>(draft.loadedSheetKey ?? null);
   const imgRef = useRef<HTMLImageElement>(null);
+  const restoredRemoteRef = useRef(false);
   // Auto-detect candidate list (multiple options for non-gutter sheets).
   const [candidates, setCandidates] = useState<ReturnType<typeof detectGridCandidates>>([]);
   // Pointer-drag state for the corner handles on the grid overlay.
@@ -609,8 +720,16 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
     null | { kind: 'origin' | 'size' | 'extent'; startX: number; startY: number; baseMX: number; baseMY: number; baseTW: number; baseTH: number; baseCols: number; baseRows: number; lockAspect: boolean }
   >(null);
   // Cell toggle mode: click individual grid cells to include/exclude them from slicing.
-  const [selectCells, setSelectCells] = useState(false);
-  const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
+  const [selectCells, setSelectCells] = useState(draft.selectCells ?? false);
+  const [selectedCells, setSelectedCells] = useState<Set<string>>(() => new Set(draft.selectedCells ?? []));
+
+  useEffect(() => {
+    saveSlicerDraft({
+      tileW, tileH, marginX, marginY, spacingX, spacingY,
+      sheetName, defaultRole, defaultTileset, zoom, selectCells,
+      regions, selectedCells: Array.from(selectedCells), loadedSheetKey, selectedRemote,
+    });
+  }, [tileW, tileH, marginX, marginY, spacingX, spacingY, sheetName, defaultRole, defaultTileset, zoom, selectCells, regions, selectedCells, loadedSheetKey, selectedRemote]);
 
 
   const rawSheets = useMemo(() => {
@@ -658,6 +777,13 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
       setLoadingRemote(false);
     }
   }, [rawSheets, onPick]);
+
+  useEffect(() => {
+    if (restoredRemoteRef.current || file || !selectedRemote) return;
+    if (!rawSheets.some((r) => r.key === selectedRemote)) return;
+    restoredRemoteRef.current = true;
+    loadFromLibrary(selectedRemote);
+  }, [file, loadFromLibrary, rawSheets, selectedRemote]);
 
   // When the Library asks us to open a specific sheet, load it once.
   useEffect(() => {
@@ -711,6 +837,7 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
 
   // One-click presets for popular asset publishers. Saves tons of slider-fiddling.
   const SOURCE_PRESETS: Array<{ label: string; tileW: number; tileH: number; margin: number; spacing: number; hint: string }> = [
+    { label: 'Separated sheet 32px', tileW: 32, tileH: 32, margin: 0, spacing: 0, hint: 'For object sheets like the sample: irregular sprites on a flat background' },
     { label: 'Craft Pix 32px', tileW: 32, tileH: 32, margin: 0, spacing: 0, hint: 'Most Craft Pix RPG/top-down packs' },
     { label: 'Craft Pix 16px', tileW: 16, tileH: 16, margin: 0, spacing: 0, hint: 'Craft Pix pixel-art packs' },
     { label: 'Craft Pix 64px', tileW: 64, tileH: 64, margin: 0, spacing: 0, hint: 'Craft Pix props/characters' },
@@ -724,6 +851,27 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
     setMarginX(p.margin); setMarginY(p.margin);
     setSpacingX(p.spacing); setSpacingY(p.spacing);
     toast.success(`${p.label} applied`);
+  };
+
+  const applySampleSheetGuide = async () => {
+    if (!file || !dims.w || !dims.h) { toast.error('Pick a sheet first'); return; }
+    if (grid.cols === 0 || grid.rows === 0) { toast.error('Set a base cell size first'); return; }
+    try {
+      const next = await detectSeparatedSpriteRegions(file, {
+        tileW, tileH, marginX, marginY, spacingX, spacingY,
+        rows: grid.rows, cols: grid.cols, defaultRole,
+      });
+      if (next.length === 0) {
+        toast.warning('No separated sprites detected. Try adjusting tile size or margin first.');
+        return;
+      }
+      setRegions(next);
+      setSelectCells(false);
+      toast.success(`Created ${next.length} lasso regions from separated sprites`);
+    } catch (err) {
+      console.error(err);
+      toast.error(`Guide failed: ${(err as Error).message}`);
+    }
   };
 
   const cellFromEvent = useCallback((e: React.MouseEvent): { r: number; c: number } | null => {
@@ -1107,6 +1255,9 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
         <Button size="sm" variant="outline" onClick={autoDetect} disabled={!dims.w}>
           Auto-detect grid
         </Button>
+        <Button size="sm" variant="outline" onClick={applySampleSheetGuide} disabled={!file || !dims.w}>
+          Use sample-sheet guide
+        </Button>
         {dims.w > 0 && (
           <span className="text-xs text-muted-foreground">
             {dims.w}×{dims.h}px → {grid.cols}×{grid.rows} cells
@@ -1130,7 +1281,7 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
           })}
         </div>
         <p className="text-[10px] text-muted-foreground">
-          Know your asset source? Pick its preset — it sets tile size, margin and spacing in one shot.
+          Know your asset source? Pick its preset, or use the sample-sheet guide to auto-lasso separated sprites on a flat background.
         </p>
       </div>
 
@@ -2751,13 +2902,20 @@ function DungeonPreview({ onDone }: { onDone: () => void }) {
 
 export function TileAssetManager() {
   const { refetch } = useGameDataOverrides('tile_asset');
-  const [tab, setTab] = useState('upload');
+  const [tab, setTab] = useState(() => {
+    try { return localStorage.getItem(ASSET_MANAGER_TAB_KEY) || 'upload'; } catch { return 'upload'; }
+  });
   const [pendingSheet, setPendingSheet] = useState<{ key: string; url: string } | null>(null);
+
+  const setPersistentTab = useCallback((next: string) => {
+    setTab(next);
+    try { localStorage.setItem(ASSET_MANAGER_TAB_KEY, next); } catch { /* ignore */ }
+  }, []);
 
   const openSheetInSlicer = useCallback((row: TileRow) => {
     setPendingSheet({ key: row.key, url: row.meta.url });
-    setTab('slice');
-  }, []);
+    setPersistentTab('slice');
+  }, [setPersistentTab]);
 
   return (
     <div className="space-y-3">
@@ -2773,7 +2931,7 @@ export function TileAssetManager() {
         </p>
       </div>
 
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs value={tab} onValueChange={setPersistentTab}>
         <TabsList>
           <TabsTrigger value="upload" className="gap-1">
             <FileImage className="w-3 h-3" />Bulk Upload

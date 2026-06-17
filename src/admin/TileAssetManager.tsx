@@ -1158,10 +1158,7 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
       {imgUrl && (
         <div className="border rounded p-2 bg-muted/20 overflow-auto max-h-[60vh]">
           <div
-            className="relative inline-block select-none"
-            onMouseDown={onOverlayMouseDown}
-            onMouseMove={onOverlayMouseMove}
-            onMouseUp={onOverlayMouseUp}
+            className={`relative inline-block select-none ${selectCells ? 'cursor-pointer' : 'cursor-crosshair'}`}
             onMouseLeave={() => setDrag(null)}
           >
             <img
@@ -1220,6 +1217,16 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
                       />
                     );
                   })}
+                  {/* Transparent hit layer guarantees every click/drag is captured
+                      even when grid lines or selected-cell overlays are rendered. */}
+                  <div
+                    className="absolute inset-0 pointer-events-auto"
+                    onMouseDown={onOverlayMouseDown}
+                    onMouseMove={onOverlayMouseMove}
+                    onMouseUp={onOverlayMouseUp}
+                  />
+
+
 
                 </div>
               );

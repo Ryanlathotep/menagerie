@@ -1065,6 +1065,8 @@ function SheetSlicer({ onDone, pendingSheet, clearPendingSheet }: SheetSlicerPro
         <p className="text-[10px] text-muted-foreground">
           Know your asset source? Pick its preset — it sets tile size, margin and spacing in one shot.
         </p>
+      </div>
+
 
       {candidates.length > 1 && (
         <div className="border rounded p-2 space-y-1 bg-muted/20">

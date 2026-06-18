@@ -1,24 +1,25 @@
 ---
-generated_at: 2026-06-18T00:00:00Z
+generated_at: 2026-06-18T00:30:00Z
 sources:
-  bugs_considered: 10
+  bugs_considered: 9
   features_considered: 0
   planned_considered: 1
 top_ids:
-  - bug:b4c013f2 — invisible-enemies-movement-locked
   - bug:a712c559 — one-hit-ko-ended-run
   - bug:ffcffd41 — tower-infinite-tooltip-empty
+  - bug:03cd6bec — pathing-edge-cases
 ---
 
-## Playability Priorities — 2026-06-18 (re-run)
-Sources: 10 open bugs · 0 open feature requests · 1 planned doc · prev list: yes (2026-06-10)
 
-### ✅ Completed since last run (all of previous top 3)
-- `5cfcdab5` — Keyboard shortcuts fire while typing → **resolved**. `isTypingTarget(e.target)` guard is now on every player-facing keydown handler in `OverworldView.tsx`, `DungeonView.tsx`, and `BattleView.tsx`. The only un-guarded listeners left are the keybind-capture in `UnifiedMovePanel.tsx` (intentional — it's literally recording a key) and the Esc-only handler in `DungeonView.tsx` (Esc is safe in text inputs).
-- `ccef9d63` — Crafting components not visible in inventory → **resolved**. Materials render in `GameSidebar.tsx` under "Crafting Materials (kept on flee)" with rarity-colored tooltip, `Used in N recipes`, and affinity callout.
-- `77efe74a` + `1099eb75` — Dockable Unstuck / Bug / Feature buttons → **resolved**. All three now share `FloatingActionButton` with drag-to-reposition + localStorage persistence.
+## Playability Priorities — 2026-06-18 (post-fix re-run)
+Sources: 9 open bugs · 0 open feature requests · 1 planned doc · prev list: yes (2026-06-18 00:00Z) · completed log: `.lovable/playability-completed.md`
 
-**Do not re-propose any of these in the next run.** They have shipped, the DB rows are `resolved`, and the implementations are in tree.
+### ✅ Completed since last run
+- `b4c013f2` — Invisible enemies + movement locked → **resolved** (see completed log for root cause + 3-site fix).
+
+> Full history of shipped items now lives in `.lovable/playability-completed.md` — re-runs should diff against that file before proposing work.
+
+
 
 ### 🎯 Top 3 — ship these next
 

@@ -112,14 +112,16 @@ export function ItemWorldTowerPicker({ open, towerType, onCancel, onConfirmed }:
           <DialogTitle className="flex items-center gap-2">
             <Icon className="w-5 h-5" /> {meta.title}
           </DialogTitle>
-          <DialogDescription className="space-y-1">
-            <div>{meta.subtitle}</div>
-            <div className="text-xs text-muted-foreground/80">{meta.reward}</div>
-            {existing && (
-              <div className="text-xs text-amber-600">
-                ⚠ Slotting a new asset resets this tower's layout. Current: <b>{existing.baseAssetName}</b>
-              </div>
-            )}
+          <DialogDescription asChild>
+            <div className="space-y-1">
+              <div>{meta.subtitle}</div>
+              <div className="text-xs text-muted-foreground/80">{meta.reward}</div>
+              {existing && (
+                <div className="text-xs text-amber-600">
+                  ⚠ Slotting a new asset resets this tower's layout. Current: <b>{existing.baseAssetName}</b>
+                </div>
+              )}
+            </div>
           </DialogDescription>
         </DialogHeader>
 

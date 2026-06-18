@@ -66,6 +66,42 @@ function getThemeLabel(d: DungeonEntrance): string | null {
   return null;
 }
 
+/** Detailed dungeon info shown in the row's ⓘ popover.
+ *  Identical content on desktop hover/tap and mobile tap — per the
+ *  Cross-Platform Menu Parity rule, the only difference between platforms
+ *  should be the trigger gesture, not the menu body. */
+function getDungeonTooltip(d: DungeonEntrance): {
+  title: string;
+  theme: string;
+  startingLevel: number;
+  deepestFloor: number;
+  location: string;
+  seed: number;
+  notes: string[];
+} {
+  const startingLevel = Math.max(1, d.difficulty || 1);
+  const notes: string[] = ['Infinite floors — climb as deep as you can.'];
+  if (d.isHome) {
+    notes.push('No Town Portal Scroll required to flee.');
+  } else {
+    notes.push('Town Portal Scroll required to flee.');
+  }
+  if (d.category === 'item_world') {
+    notes.push('Reach floor 50 above your previous best to unlock the recipe.');
+  }
+  return {
+    title: d.name || `Dungeon at (${d.worldX}, ${d.worldY})`,
+    theme: getThemeLabel(d) || 'Mixed encounters',
+    startingLevel,
+    deepestFloor: d.deepestFloor || 0,
+    location: `(${d.worldX}, ${d.worldY})`,
+    seed: d.seed,
+    notes,
+  };
+}
+
+
+
 function DungeonRow({ d, onLaunch, onQuickStart, quickStartPartySize, highestMonsterLevel }: {
   d: DungeonEntrance;
   onLaunch: (e: DungeonEntrance) => void;

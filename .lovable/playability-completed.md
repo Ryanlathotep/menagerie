@@ -13,6 +13,18 @@ Format:
 
 ---
 
+## 2026-06-18 — One-hit KO ended run with no revive prompt
+- **Source**: bug `a712c559` — one-hit-ko-ended-run
+- **Root cause**: The dungeon-map path (`handleActiveMonsterDownOnMap`) was already offering the revive prompt, but two other END_RUN call sites still went straight to game over even when the player was carrying a Revive Herb / Phoenix Flower:
+  1. `BattleView.tsx` `handleActiveMonsterDefeated` — dispatched `END_RUN` the moment the last party member fell in turn-based combat, never checking inventory.
+  2. `OverworldView.tsx` overworld-enemy damage block — when the active monster's HP hit 0 from an overworld attack it skipped the alive-party-member swap AND the revive prompt, jumping straight to `END_RUN` + `SET_PHASE run_summary`.
+- **Fix**:
+  - `src/pages/BattleView.tsx` (`handleActiveMonsterDefeated`): before END_RUN, scan `run.inventory` for an item with `effect === 'revive' || 'revive_full'`; if found, set `pendingReviveItem` + `showReviveModal` (the existing modal wiring already handles the rest).
+  - `src/game/OverworldView.tsx` (overworld combat damage block): when active monster falls, (1) try to switch to the next conscious party member via `SWITCH_ACTIVE_MONSTER`; (2) else look for a revive item and open the existing `ReviveTargetModal`; (3) only then END_RUN.
+- **Verified by**: clean build, preview healthy. Symmetric with the dungeon-map path so all three combat surfaces (dungeon-map, battle-window, overworld) now offer the prompt before silent run-loss.
+
+
+
 ## 2026-06-18 — Attacks passing through dungeon walls (player + enemy)
 - **Source**: user chat report (no bug-DB row filed yet)
 - **Root cause**: Multiple wall-blocking failures in the dungeon combat pipeline:

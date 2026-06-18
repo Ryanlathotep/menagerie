@@ -608,7 +608,15 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
           const isAffected = affectedTiles?.some(t => t.x === worldX && t.y === worldY);
           const isHovered = hoveredTile?.x === worldX && hoveredTile?.y === worldY;
           
-          const enemy = tile.type === 'enemy' && tile.enemyId ? getEnemy(tile.enemyId) : null;
+          const rawEnemy = tile.type === 'enemy' && tile.enemyId ? getEnemy(tile.enemyId) : null;
+          // Orphan enemy tile (enemyId no longer resolves to a live monster):
+          // present it as grass so the player can walk onto it. movePlayer
+          // self-heals the tile to grass on entry; without this the renderer
+          // would draw an invisible-but-blocking sprite.
+          const isOrphanEnemy = tile.type === 'enemy' && tile.enemyId && !rawEnemy;
+          const effectiveTile = isOrphanEnemy ? { ...tile, type: 'grass' as const, enemyId: undefined } : tile;
+          const enemy = isOrphanEnemy ? null : rawEnemy;
+
           
           // Look up dungeon depth if this is a dungeon entrance
           const dungeonDepth = tile.type === 'dungeon_entrance' && tile.dungeonId

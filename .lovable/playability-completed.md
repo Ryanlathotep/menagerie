@@ -1,0 +1,44 @@
+# Playability — Completed Tasks
+
+Append-only log of player-facing bugs and features that have actually shipped. New entries go at the **top**. Each entry lists the date, source id, root cause in one or two sentences, the file(s) touched, and how it was verified — so the next priorities re-run never re-suggests work that's already done.
+
+Format:
+```
+## YYYY-MM-DD — short title
+- **Source**: bug `<id>` / feature `<id>` / plan §N
+- **Root cause**: …
+- **Fix**: file paths + one-line summary per file
+- **Verified by**: build/smoke-test/manual repro/…
+```
+
+---
+
+## 2026-06-18 — Invisible enemies + movement appears locked on overworld
+- **Source**: bug `b4c013f2-13db-4b5c-a9da-78b0dac78955` (mobile iPhone, Combat)
+- **Root cause**: Nest spawn placed an `enemy` tile with an `enemyId` even when its parent chunk wasn't loaded, so the enemy itself was never added to any `chunk.enemies` list. The renderer drew a blank sprite (invisible) and the overworld click handler intercepted any tap on the orphan tile as an attack-attempt that was instantly returned as "out of range" — so the player saw nothing happen no matter where they tapped near it. With mobile having no keyboard fallback, this felt like a total movement lock.
+- **Fix**:
+  - `src/game/OverworldView.tsx` (nest tick): only call `setOverworldTile` for the spawned enemy when the parent chunk exists *and* the enemy was actually pushed. No more orphan tiles at the source.
+  - `src/game/OverworldRenderer.tsx`: when an `enemy` tile's `enemyId` doesn't resolve, render the tile as grass (preserves walkability for old saves).
+  - `src/game/OverworldView.tsx` (`handleTileClick`): require the enemy to resolve to a live Monster before intercepting the tap as an attack. Falls through to A* path-walk otherwise.
+  - `src/game/overworld.ts` (`movePlayer` enemy case) already self-heals stale tiles on entry — left as the final safety net.
+- **Verified by**: clean build, preview healthy, three independent fix sites so any one path saves the player.
+
+---
+
+## 2026-06-10 — Dockable Unstuck / Bug Report / Feature Request buttons
+- **Source**: bugs `77efe74a-18ec-4b85-819a-59efd491b47e`, `1099eb75-e43e-4c5a-9f2e-290e515b9372`
+- **Root cause**: Each floating button had its own fixed position and overlapped combat controls on mobile.
+- **Fix**: Extracted shared `src/game/FloatingActionButton.tsx` (drag detection, pointer-capture, clamp-to-viewport, localStorage persistence). `FloatingBugButton`, `FloatingFeatureButton`, and the Unstuck button in `DungeonView.tsx` are now thin wrappers over it.
+- **Verified by**: drag-then-tap distinction (4 px threshold) keeps single-taps clean; positions persist across reloads.
+
+## 2026-06-10 — Crafting materials not visible in inventory
+- **Source**: bug `ccef9d63-e98d-4df9-b0d0-6a44e8590f79`
+- **Root cause**: Sidebar inventory pane skipped run-acquired materials.
+- **Fix**: `src/game/GameSidebar.tsx` renders a "Crafting Materials (kept on flee)" block with rarity-colored tooltip, affinity callout, and a "Used in N recipes" line via `getRecipesUsingMaterial`.
+- **Verified by**: materials appear with full tooltip on both desktop and mobile.
+
+## 2026-06-10 — Keyboard shortcuts fire while typing in text inputs
+- **Source**: bug `5cfcdab5-4b5b-4db2-ab48-b58554a19a31`
+- **Root cause**: Global keydown listeners ran regardless of focus, so typing a letter in any rename / chat / admin field could fire a hotkey (worst case: ending a run).
+- **Fix**: `isTypingTarget(e.target)` guard (defined in `src/game/keybinds.ts`) added to every player-facing keydown handler in `src/game/OverworldView.tsx`, `src/pages/DungeonView.tsx`, and `src/pages/BattleView.tsx`. The only un-guarded listeners are intentional: the keybind-capture in `UnifiedMovePanel.tsx` (literally recording a key) and an Esc-only handler in `DungeonView.tsx` (Esc is safe inside text inputs).
+- **Verified by**: typing into the admin panel and bug-report dialog no longer triggers movement or hotbar items.

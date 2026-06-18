@@ -337,7 +337,17 @@ export function BattleView({
         }
       });
     } else {
-      // All party members defeated - end run
+      // All party members defeated. Before END_RUN, offer a revive prompt if
+      // the player is carrying a Revive Herb / Phoenix Flower (bug a712c559).
+      const reviveItem = (state.run?.inventory ?? []).find(
+        (it) => it.effect === 'revive' || it.effect === 'revive_full'
+      );
+      if (reviveItem) {
+        toast.warning(`Last monster fell — use a ${reviveItem.name} to keep going!`);
+        setPendingReviveItem(reviveItem);
+        setShowReviveModal(true);
+        return;
+      }
       dispatch({ type: 'END_BATTLE', victory: false });
       dispatch({ type: 'END_RUN', victory: false });
     }

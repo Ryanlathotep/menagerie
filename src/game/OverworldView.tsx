@@ -538,17 +538,24 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
               const cx = Math.floor(spawnPos.x / 16);
               const cy = Math.floor(spawnPos.y / 16);
               const chunkKey = `${cx},${cy}`;
+              // CRITICAL: only place the enemy tile if its parent chunk exists
+              // and the enemy actually got pushed. Otherwise we orphan the tile
+              // — the renderer sees an `enemy` tile whose enemyId resolves to
+              // null and draws a blank sprite, and any tap on it is consumed
+              // by the attack handler instead of falling through to movement,
+              // which is exactly the "invisible enemy + movement locked" bug.
               if (newState.chunks[chunkKey]) {
                 newState.chunks[chunkKey].enemies.push(spawned);
-              }
-              setOverworldTile(newState, spawnPos.x, spawnPos.y, {
-                type: 'enemy', explored: true, visible: false, enemyId: spawned.id,
-              });
-              if (getOverworldTile(newState, spawnPos.x, spawnPos.y)?.visible) {
-                addLog(`🪺 A ${spawned.name} emerges from a nearby nest!`, 'damage');
+                setOverworldTile(newState, spawnPos.x, spawnPos.y, {
+                  type: 'enemy', explored: true, visible: false, enemyId: spawned.id,
+                });
+                if (getOverworldTile(newState, spawnPos.x, spawnPos.y)?.visible) {
+                  addLog(`🪺 A ${spawned.name} emerges from a nearby nest!`, 'damage');
+                }
               }
             }
           }
+
         }
         setTimeout(() => processEnemyTurns(newState), 100);
       }
@@ -1173,9 +1180,16 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       return;
     }
     
-    // Click on enemy or nest → auto-select first attack move
+    // Click on enemy or nest → auto-select first attack move.
+    // IMPORTANT: only intercept the click as an attack when the enemy actually
+    // resolves to a live Monster. Orphan enemy tiles (enemyId pointing at an
+    // enemy that no longer exists in any chunk) used to swallow the tap and
+    // leave the player feeling "movement locked" near an invisible enemy.
     const tile = getOverworldTile(overworld, worldX, worldY);
-    if ((tile?.type === 'enemy' && tile.enemyId || tile?.type === 'nest' && tile.nestId) && monster) {
+    const resolvedEnemy = tile?.type === 'enemy' && tile.enemyId
+      ? getOverworldEnemy(overworld, tile.enemyId)
+      : null;
+    if (((tile?.type === 'enemy' && resolvedEnemy) || (tile?.type === 'nest' && tile.nestId)) && monster) {
       const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
       const attackMove = moves.find(m => m.type === 'melee' || m.type === 'ranged');
       if (attackMove) {
@@ -1195,6 +1209,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         }
       }
     }
+
     
     // Click on player building (scout tower / farm) to open assign modal
     if (tile?.type === 'player_building' && tile.playerBuildingId) {

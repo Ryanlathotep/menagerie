@@ -638,7 +638,8 @@ export const OverworldRenderer = forwardRef<OverworldRendererHandle, OverworldRe
               key={`${worldX},${worldY}`}
               worldX={worldX}
               worldY={worldY}
-              tile={tile}
+              tile={effectiveTile}
+
               relX={relX}
               relY={relY}
               tileSize={tileSize}

@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Slider } from '@/components/ui/slider';
-import { Trophy, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Trophy, ChevronDown, ChevronUp, SlidersHorizontal, Info } from 'lucide-react';
 import { DungeonEntrance } from './types';
 import { TowerLeaderboard } from './TowerLeaderboard';
 

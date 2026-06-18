@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Slider } from '@/components/ui/slider';
-import { Trophy, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Trophy, ChevronDown, ChevronUp, SlidersHorizontal, Info } from 'lucide-react';
 import { DungeonEntrance } from './types';
 import { TowerLeaderboard } from './TowerLeaderboard';
 
@@ -65,6 +66,42 @@ function getThemeLabel(d: DungeonEntrance): string | null {
   return null;
 }
 
+/** Detailed dungeon info shown in the row's ⓘ popover.
+ *  Identical content on desktop hover/tap and mobile tap — per the
+ *  Cross-Platform Menu Parity rule, the only difference between platforms
+ *  should be the trigger gesture, not the menu body. */
+function getDungeonTooltip(d: DungeonEntrance): {
+  title: string;
+  theme: string;
+  startingLevel: number;
+  deepestFloor: number;
+  location: string;
+  seed: number;
+  notes: string[];
+} {
+  const startingLevel = Math.max(1, d.difficulty || 1);
+  const notes: string[] = ['Infinite floors — climb as deep as you can.'];
+  if (d.isHome) {
+    notes.push('No Town Portal Scroll required to flee.');
+  } else {
+    notes.push('Town Portal Scroll required to flee.');
+  }
+  if (d.category === 'item_world') {
+    notes.push('Reach floor 50 above your previous best to unlock the recipe.');
+  }
+  return {
+    title: d.name || `Dungeon at (${d.worldX}, ${d.worldY})`,
+    theme: getThemeLabel(d) || 'Mixed encounters',
+    startingLevel,
+    deepestFloor: d.deepestFloor || 0,
+    location: `(${d.worldX}, ${d.worldY})`,
+    seed: d.seed,
+    notes,
+  };
+}
+
+
+
 function DungeonRow({ d, onLaunch, onQuickStart, quickStartPartySize, highestMonsterLevel }: {
   d: DungeonEntrance;
   onLaunch: (e: DungeonEntrance) => void;
@@ -116,6 +153,59 @@ function DungeonRow({ d, onLaunch, onQuickStart, quickStartPartySize, highestMon
               <span className="font-semibold text-sm truncate">
                 {d.name || `Dungeon at (${d.worldX}, ${d.worldY})`}
               </span>
+              {/* Info popover — same payload on hover and tap so mobile
+                  long-press never lands on an empty browser context menu.
+                  Cross-Platform Menu Parity: identical body everywhere. */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={`About ${d.name || 'this dungeon'}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="ml-auto shrink-0 inline-flex items-center justify-center rounded-full w-5 h-5 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                  >
+                    <Info className="w-3.5 h-3.5" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  side="left"
+                  align="start"
+                  className="w-64 text-xs space-y-1.5"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {(() => {
+                    const t = getDungeonTooltip(d);
+                    return (
+                      <>
+                        <div className="font-semibold text-sm flex items-center gap-1.5">
+                          <span>{icon}</span>
+                          <span className="truncate">{t.title}</span>
+                        </div>
+                        <div className="text-muted-foreground capitalize">{t.theme}</div>
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-1 pt-1 border-t border-border">
+                          <span className="text-muted-foreground">Start floor</span>
+                          <span className="text-right font-medium">{t.startingLevel}</span>
+                          <span className="text-muted-foreground">Total floors</span>
+                          <span className="text-right font-medium">∞</span>
+                          <span className="text-muted-foreground">Best floor</span>
+                          <span className="text-right font-medium">{t.deepestFloor > 0 ? t.deepestFloor : '—'}</span>
+                          <span className="text-muted-foreground">Location</span>
+                          <span className="text-right font-mono text-[10px]">{t.location}</span>
+                          <span className="text-muted-foreground">Seed</span>
+                          <span className="text-right font-mono text-[10px]">{t.seed}</span>
+                        </div>
+                        {t.notes.length > 0 && (
+                          <ul className="pt-1 border-t border-border space-y-0.5 text-muted-foreground/90">
+                            {t.notes.map((n, i) => (
+                              <li key={i}>• {n}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </>
+                    );
+                  })()}
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
               <span>Start Lv. <span className="text-foreground font-medium">{startingLevel}</span></span>

@@ -404,6 +404,29 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       });
       
       if (newHp <= 0) {
+        // Active monster fell on the overworld. Try to switch to the next
+        // conscious party member before ending the run. If none alive,
+        // offer a revive prompt when the player is carrying one (bug a712c559).
+        const party = state.run.party;
+        const activeIndex = state.run.activePartyIndex;
+        const nextAliveIndex = party.findIndex((mem, i) => i !== activeIndex && mem.stats.currentHp > 0);
+        if (nextAliveIndex >= 0) {
+          dispatch({ type: 'SWITCH_ACTIVE_MONSTER', index: nextAliveIndex });
+          const next = party[nextAliveIndex];
+          addLog(`💀 ${m.name} fell! ${next.name} steps up!`, 'damage');
+          toast.success(`Go, ${next.species}!`);
+          return;
+        }
+        const reviveItem = (state.run.inventory ?? []).find(
+          (it) => it.effect === 'revive' || it.effect === 'revive_full'
+        );
+        if (reviveItem) {
+          addLog(`💀 ${m.name} fell! Use a ${reviveItem.name} to keep going.`, 'damage');
+          toast.warning(`${m.name} fainted — pick a member to revive.`);
+          setPendingReviveItem(reviveItem);
+          setShowReviveModal(true);
+          return;
+        }
         dispatch({ type: 'END_RUN', victory: false });
         dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
       }

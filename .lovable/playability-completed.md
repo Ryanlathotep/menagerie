@@ -13,6 +13,17 @@ Format:
 
 ---
 
+## 2026-06-18 — Tower of the Infinite tooltip empty on mobile long-press
+- **Source**: bug `ffcffd41` — tower-infinite-tooltip-empty
+- **Root cause**: `DungeonListPanel.tsx` rendered the row info as inline text but had **no** tooltip/popover at all. On desktop a hover did nothing; on mobile a long-press fell through to the browser's native context menu, which appeared empty (iOS Safari shows only image-related actions, and the row has no image). The previous priority note referenced a `getDungeonTooltip()` payload that did not exist in the codebase.
+- **Fix**:
+  - `src/game/DungeonListPanel.tsx`: added `getDungeonTooltip(d)` helper returning a structured payload (title, theme, start floor, deepest floor, location, seed, notes incl. Town Portal Scroll requirement + Item World 50-floor recipe rule).
+  - Added a small `ⓘ` Popover trigger inside each row's title block. Same shadcn `Popover` body fires identically on desktop click and mobile tap — Cross-Platform Menu Parity preserved (only the trigger gesture differs, the menu body is identical everywhere).
+  - `stopPropagation` on the trigger so opening the info popover never accidentally launches the dungeon.
+- **Verified by**: clean build, preview healthy. Popover content draws from a single source-of-truth helper so the Tower of the Infinite row now shows the full payload on every platform.
+
+
+
 ## 2026-06-18 — One-hit KO ended run with no revive prompt
 - **Source**: bug `a712c559` — one-hit-ko-ended-run
 - **Root cause**: The dungeon-map path (`handleActiveMonsterDownOnMap`) was already offering the revive prompt, but two other END_RUN call sites still went straight to game over even when the player was carrying a Revive Herb / Phoenix Flower:

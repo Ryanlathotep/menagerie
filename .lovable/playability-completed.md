@@ -13,6 +13,25 @@ Format:
 
 ---
 
+## 2026-06-18 — Attacks passing through dungeon walls (player + enemy)
+- **Source**: user chat report (no bug-DB row filed yet)
+- **Root cause**: Multiple wall-blocking failures in the dungeon combat pipeline:
+  1. `DungeonView.tsx` called `getAffectedTiles(...)` without the `tiles` argument at damage-commit time *and* in the hover preview. Every branch inside `getAffectedTiles` guards its wall check with `if (tiles && !config.wallPenetrate)` — so omitting `tiles` silently turned every attack into `wallPenetrate: true`.
+  2. `hasLineOfSight` and the `cross` arm-stop in `dungeonCombat.ts` only blocked on tile type `'wall'`, never on `'mineable_wall'`. Cavestone/deepstone walls were transparent to ranged attacks until physically mined.
+  3. `canSeePlayer` used a simplified axial walk instead of Bresenham — diagonal walls could be missed and enemies could "see" through cover, then keep attacking with no LOS re-verification at fire time.
+  4. `calculateDungeonEnemyAction` only gated ranged attacks on Manhattan distance; once aggroed, an enemy would fire through any wall within range 4.
+- **Fix**:
+  - `src/pages/DungeonView.tsx`: pass `dungeon.tiles` to `getAffectedTiles` in both the targeting commit (line ~2014) and the hover preview (line ~1855). One-line each; turns on the wall checks that already existed.
+  - `src/game/dungeonCombat.ts` `hasLineOfSight`: block on both `'wall'` and `'mineable_wall'`.
+  - `src/game/dungeonCombat.ts` `cross` pattern arm-stop: same — both wall types stop the cross arm.
+  - `src/game/dungeonCombat.ts` `calculateDungeonEnemyAction`: re-verify `hasLineOfSight` before committing a ranged attack; if blocked, move toward the player instead. `wallPenetrate` moves and melee (range 1) skip the gate.
+  - `src/game/dungeonCombat.ts` `canSeePlayer`: replaced the simplified walk with a delegation to `hasLineOfSight`, so aggro respects diagonal walls and mineable walls.
+- **Verified by**: clean build, preview healthy. `wallPenetrate: true` moves (haunt, soul_drain, shadow_bolt, void_collapse, etc.) still bypass walls as designed. Overworld unaffected (its `overworldHasLineOfSight` was already correct).
+
+---
+
+
+
 ## 2026-06-18 — Invisible enemies + movement appears locked on overworld
 - **Source**: bug `b4c013f2-13db-4b5c-a9da-78b0dac78955` (mobile iPhone, Combat)
 - **Root cause**: Nest spawn placed an `enemy` tile with an `enemyId` even when its parent chunk wasn't loaded, so the enemy itself was never added to any `chunk.enemies` list. The renderer drew a blank sprite (invisible) and the overworld click handler intercepted any tap on the orphan tile as an attack-attempt that was instantly returned as "out of range" — so the player saw nothing happen no matter where they tapped near it. With mobile having no keyboard fallback, this felt like a total movement lock.

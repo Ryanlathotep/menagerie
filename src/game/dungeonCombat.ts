@@ -84,11 +84,15 @@ export function hasLineOfSight(
   let err = dx - dy;
   
   while (true) {
-    // Check if current position is a wall (but not the starting or ending position)
+    // Check if current position is a wall (but not the starting or ending position).
+    // Both solid walls AND mineable_walls block line of sight — they're still
+    // physical stone until the player breaks them down.
     if ((x0 !== from.x || y0 !== from.y) && (x0 !== to.x || y0 !== to.y)) {
       if (x0 < 0 || x0 >= width || y0 < 0 || y0 >= height) return false;
-      if (tiles[y0][x0].type === 'wall') return false;
+      const t = tiles[y0][x0]?.type;
+      if (t === 'wall' || t === 'mineable_wall') return false;
     }
+
     
     if (x0 === x1 && y0 === y1) break;
     
@@ -444,7 +448,13 @@ export function getAffectedTiles(
           const y = target.y + dir.dy * i;
           if (x < 0 || x >= dungeonWidth || y < 0 || y >= dungeonHeight) break;
           // Stop the arm of the cross at the first wall (unless wallPenetrate)
-          if (tiles && !config.wallPenetrate && tiles[y][x].type === 'wall') break;
+          // Stop the arm of the cross at the first wall (unless wallPenetrate).
+          // mineable_wall counts as a wall until it's mined down.
+          if (tiles && !config.wallPenetrate) {
+            const tt = tiles[y][x]?.type;
+            if (tt === 'wall' || tt === 'mineable_wall') break;
+          }
+
           affectedTiles.push({ x, y });
         }
       }
@@ -733,8 +743,21 @@ export function calculateEnemyAction(
   }
 
   if (distance <= attackRange) {
-    return { type: 'attack', target: playerPos, move: chosen };
+    // For ranged attacks, re-verify line of sight at fire time. Without
+    // this, a ranged enemy that aggroed through a doorway can keep shooting
+    // through the wall after the player ducks behind cover. Melee (range 1)
+    // can't have a wall between attacker and adjacent target, so skip the
+    // check there to save cycles. wallPenetrate moves bypass the gate.
+    const canFire = attackRange === 1
+      || (chosen && (chosen as any).wallPenetrate)
+      || hasLineOfSight(enemyPos, playerPos, tiles, width, height, false);
+    if (canFire) {
+      return { type: 'attack', target: playerPos, move: chosen };
+    }
+    // Has line of fire blocked — close the gap instead.
+    return getMovementTowards(enemyPos, playerPos, tiles, width, height);
   }
+
 
   // Out of range → archetype-driven movement
   if (hint.prefer === 'retreat' && distance < hint.idealRange) {
@@ -891,7 +914,10 @@ export function getEnemyPosition(dungeon: DungeonState, enemyId: string): Positi
   return null;
 }
 
-// Check if player is visible to an enemy (for aggro)
+// Check if player is visible to an enemy (for aggro).
+// Uses the same Bresenham LOS as targeting, so a wall (or mineable_wall)
+// between enemy and player blocks aggro — previously a simplified axial walk
+// could miss diagonal walls and let enemies "see" through cover.
 export function canSeePlayer(
   enemyPos: Position,
   playerPos: Position,
@@ -900,24 +926,17 @@ export function canSeePlayer(
 ): boolean {
   const distance = Math.abs(playerPos.x - enemyPos.x) + Math.abs(playerPos.y - enemyPos.y);
   if (distance > sightRange) return false;
-  
-  // Simple line-of-sight check
-  const dx = Math.sign(playerPos.x - enemyPos.x);
-  const dy = Math.sign(playerPos.y - enemyPos.y);
-  
-  let x = enemyPos.x;
-  let y = enemyPos.y;
-  
-  while (x !== playerPos.x || y !== playerPos.y) {
-    if (x !== playerPos.x) x += dx;
-    if (y !== playerPos.y) y += dy;
-    
-    // Hit a wall before reaching player
-    if (tiles[y]?.[x]?.type === 'wall') return false;
-  }
-  
-  return true;
+  if (!tiles.length) return true;
+  return hasLineOfSight(
+    enemyPos,
+    playerPos,
+    tiles,
+    tiles[0].length,
+    tiles.length,
+    false,
+  );
 }
+
 
 // ============= ENEMY STAMINA =============
 // Cost an enemy pays each time it attacks. If the enemy is below this

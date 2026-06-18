@@ -1858,8 +1858,10 @@ export function DungeonView({
       { x, y }, 
       config, 
       dungeon.width, 
-      dungeon.height
+      dungeon.height,
+      dungeon.tiles, // ← pass tiles so wall-blocking branches actually fire
     );
+
     
     setHoveredTile({ x, y });
     setAffectedTiles(tiles);
@@ -2011,7 +2013,11 @@ export function DungeonView({
       aoePendingConfirmRef.current = null;
     }
 
-    const affected = getAffectedTiles(dungeon.playerPosition, { x, y }, config, dungeon.width, dungeon.height);
+    // CRITICAL: pass dungeon.tiles so getAffectedTiles can apply LOS/wall
+    // checks. Without it every pattern fires as if wallPenetrate=true and
+    // attacks shoot straight through dungeon walls.
+    const affected = getAffectedTiles(dungeon.playerPosition, { x, y }, config, dungeon.width, dungeon.height, dungeon.tiles);
+
 
     // Fire visual particle effect for this move (caster → target/affected).
     try {

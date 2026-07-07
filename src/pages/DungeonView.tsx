@@ -1003,8 +1003,8 @@ export function DungeonView({
         cancelAutoHarvest();
         return;
       }
-      if (hasVisibleEnemy(liveDungeon.tiles)) {
-        cancelAutoHarvest('⚠️ Auto-Harvest stopped — enemy spotted!');
+      if (anyEnemyThreatensPlayer(liveDungeon)) {
+        cancelAutoHarvest('⚠️ Auto-Harvest stopped — enemy in attack range!');
         return;
       }
       const liveTile = liveDungeon.tiles[target.y]?.[target.x];

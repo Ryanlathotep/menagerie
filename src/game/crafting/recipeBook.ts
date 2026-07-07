@@ -45,8 +45,15 @@ export function getLocalRecipeBook(): DiscoveredRecipe[] {
   return readLocal();
 }
 
-/** Insert or upgrade a local entry. Cloud sync is fire-and-forget. */
-export function recordDiscovery(rec: Omit<DiscoveredRecipe, 'local'>) {
+/**
+ * Insert or upgrade a local entry. Cloud sync is fire-and-forget.
+ * Pass `opts.skipCloud` when recording synthetic/legacy discoveries so the
+ * cloud leaderboard doesn't credit the live player as the inventor.
+ */
+export function recordDiscovery(
+  rec: Omit<DiscoveredRecipe, 'local'>,
+  opts: { skipCloud?: boolean } = {},
+) {
   const list = readLocal();
   const existing = list.findIndex((r) => r.hash === rec.hash);
   if (existing >= 0) {
@@ -55,7 +62,9 @@ export function recordDiscovery(rec: Omit<DiscoveredRecipe, 'local'>) {
     list.unshift({ ...rec, local: true });
   }
   writeLocal(list);
-  void syncDiscoveryToCloud(rec).catch(() => { /* offline OK */ });
+  if (!opts.skipCloud) {
+    void syncDiscoveryToCloud(rec).catch(() => { /* offline OK */ });
+  }
 }
 
 async function syncDiscoveryToCloud(rec: Omit<DiscoveredRecipe, 'local'>) {

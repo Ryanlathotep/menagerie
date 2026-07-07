@@ -94,14 +94,32 @@ const isDamageMove = (m: Move) => m.type === 'melee' || m.type === 'ranged';
 function scoreMove(move: Move, _enemy: Monster, ctx: TacticContext): number {
   let s = 0;
 
+  // Effective reach folds in AoE radius so cones/auras/piercing lines aren't
+  // undervalued. Imported lazily to avoid a hard dependency cycle with
+  // dungeonCombat (which itself imports enemyAI).
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const reach = (() => {
+    try {
+      const { estimateMoveReach } = require('./dungeonCombat') as typeof import('./dungeonCombat');
+      return estimateMoveReach(move);
+    } catch {
+      return move.type === 'ranged' ? 5 : 1;
+    }
+  })();
+
   if (isDamageMove(move)) {
     const elementMult = move.element ? getElementMultiplier(move.element, ctx.playerElement) : 1;
     s += move.power * elementMult * (move.accuracy / 100);
 
-    // Range fit — heavily prefer correct range, but high-IQ enemies don't waste melee turns at distance
+    // Big bonus when the player is actually in this move's reach right now —
+    // that's the single most important tactical factor.
+    if (ctx.distance <= reach) s += 25;
+    else s -= 6 * (ctx.distance - reach); // grows the further out-of-range we are
+
+    // Legacy range fit — nudge ranged use at distance, penalise pointless melee.
     const isRanged = move.type === 'ranged';
-    if (isRanged && ctx.distance > 1) s += 10;
-    if (!isRanged && ctx.distance > 1) s -= 18;
+    if (isRanged && ctx.distance > 1 && ctx.distance <= reach) s += 8;
+    if (!isRanged && ctx.distance > 1 && ctx.distance > reach) s -= 12;
 
     // Finisher: low player HP → favor high-damage closers
     if (ctx.playerHpRatio < 0.3 && move.power >= 40) s += 18;

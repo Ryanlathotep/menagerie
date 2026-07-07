@@ -1006,9 +1006,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           const x = px + dx, y = py + dy;
           const t = getOverworldTile(ow, x, y);
           if (!t || !t.explored) continue;
-          // Skip walls & other unpassable tile types quickly.
-          if (t.type === 'wall' || t.type === 'building' || t.type === 'tree' ||
-              t.type === 'rock' || t.type === 'water' || t.type === 'cliff') continue;
+          // Skip unpassable tile types quickly.
+          if (t.type === 'building' || t.type === 'player_building' || t.type === 'tree' ||
+              t.type === 'rock' || t.type === 'water' || t.type === 'cliff' || t.type === 'waterfall') continue;
           // Frontier check: any neighbor missing / unexplored.
           let frontier = false;
           for (const [ox, oy] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {

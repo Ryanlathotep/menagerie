@@ -42,7 +42,8 @@ export type BlueprintCategory =
   | 'armor_heavy'    // metal-based
   | 'accessory'      // ring/amulet
   | 'consumable'     // potion
-  | 'scroll';        // scroll
+  | 'scroll'         // scroll
+  | 'building';      // craftable building kits (Town Hall only)
 
 export interface ItemBlueprint {
   id: string;

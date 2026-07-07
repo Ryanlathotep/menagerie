@@ -806,6 +806,7 @@ function RebuildOverworldSection() {
 // Admin Panel Trigger Button - only visible to admins (just the button, no dialog)
 function AdminPanelTrigger({ onOpenAdmin }: { onOpenAdmin: () => void }) {
   const { isAdmin, loading } = useAdminRole();
+  const { state, dispatch } = useGame();
   const [creative, setCreative] = useState(() => {
     if (typeof window === 'undefined') return false;
     return sessionStorage.getItem('menagerie_creative_mode') === '1';
@@ -817,11 +818,37 @@ function AdminPanelTrigger({ onOpenAdmin }: { onOpenAdmin: () => void }) {
 
   if (loading || !isAdmin) return null;
 
+  const refillResources = () => {
+    // Bump gold + every crafting material to 999 so creative-mode builds/crafts
+    // never hit an empty stockpile. Wood/stone live in overworldState — patch
+    // that persisted blob directly since there's no dedicated reducer action.
+    const goldMissing = Math.max(0, 999999 - (state.saveData.gold || 0));
+    if (goldMissing > 0) dispatch({ type: 'ADD_GOLD', amount: goldMissing });
+    void Promise.all([
+      import('./equipment').then(({ CRAFTING_MATERIALS }) => {
+        const have = state.saveData.materials || {};
+        for (const m of CRAFTING_MATERIALS) {
+          const need = Math.max(0, 999 - (have[m.id] || 0));
+          if (need > 0) dispatch({ type: 'ADD_MATERIAL', materialId: m.id, quantity: need });
+        }
+      }),
+    ]);
+    const ow = state.saveData.overworldState;
+    if (ow) {
+      dispatch({ type: 'UPDATE_OVERWORLD', overworld: {
+        ...ow,
+        woodCollected: Math.max(ow.woodCollected || 0, 9999),
+        stoneCollected: Math.max(ow.stoneCollected || 0, 9999),
+      } });
+    }
+
+    sonnerToast.success('🛠️ Refilled: 999,999 gold · 9,999 wood/stone · 999 of every material');
+  };
+
   const toggleCreative = (next: boolean) => {
     setCreative(next);
-    // Lazy import to avoid pulling creativeMode into Settings' module graph
-    // before admin check passes.
     import('./creativeMode').then(({ setCreativeMode }) => setCreativeMode(next));
+    if (next) refillResources();
   };
 
   const toggleCompass = (next: boolean) => {
@@ -840,11 +867,18 @@ function AdminPanelTrigger({ onOpenAdmin }: { onOpenAdmin: () => void }) {
         <div className="flex-1">
           <Label className="text-sm font-semibold">🛠️ Creative Mode</Label>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Skip resource & material costs for building, roads, and crafting. Resets when the tab closes.
+            Skips resource & material costs and refills your stockpile to 999+ of everything on toggle. Resets when the tab closes.
           </p>
         </div>
         <Switch checked={creative} onCheckedChange={toggleCreative} />
       </div>
+
+      {creative && (
+        <Button variant="outline" size="sm" className="w-full" onClick={refillResources}>
+          🔄 Refill Resources Now
+        </Button>
+      )}
+
 
       <div className="flex items-center justify-between rounded-md border border-border p-3">
         <div className="flex-1">

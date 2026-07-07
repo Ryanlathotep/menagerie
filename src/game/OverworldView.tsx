@@ -3063,7 +3063,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         subtitle = 'Impassable';
         info.push({ label: 'Wood', value: `${overworld.woodCollected} / ${COST_WOOD}` });
         info.push({ label: 'Stone', value: `${overworld.stoneCollected} / ${COST_STONE}` });
-        const canFill = overworld.woodCollected >= COST_WOOD && overworld.stoneCollected >= COST_STONE;
+        const canFill = isCreativeMode() || (overworld.woodCollected >= COST_WOOD && overworld.stoneCollected >= COST_STONE);
         actions.push({
           id: 'fill-water', label: `Fill with grass (🪵${COST_WOOD} 🪨${COST_STONE})`,
           icon: Droplet, variant: 'default',
@@ -3075,9 +3075,13 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
               const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
               const t = getOverworldTile(newOw, x, y);
               if (!t || t.type !== 'water') { toast.error('Tile is no longer water.'); return prev; }
-              if (newOw.woodCollected < COST_WOOD || newOw.stoneCollected < COST_STONE) { toast.error('Not enough resources!'); return prev; }
-              newOw.woodCollected -= COST_WOOD;
-              newOw.stoneCollected -= COST_STONE;
+              const creative = isCreativeMode();
+              if (!creative && (newOw.woodCollected < COST_WOOD || newOw.stoneCollected < COST_STONE)) { toast.error('Not enough resources!'); return prev; }
+              if (!creative) {
+                newOw.woodCollected -= COST_WOOD;
+                newOw.stoneCollected -= COST_STONE;
+              }
+
               setOverworldTile(newOw, x, y, { type: 'grass', explored: true, visible: true, harvested: true });
               addLog(`🌱 Filled water at (${x},${y}) with grass. (-${COST_WOOD}🪵 -${COST_STONE}🪨)`, 'system');
               toast.success('Water filled in!');

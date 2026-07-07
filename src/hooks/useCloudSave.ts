@@ -76,7 +76,7 @@ export function useCloudSave() {
 
   const saveToCloud = useCallback(async (
     saveData: SaveData,
-    options: { skipPreflight?: boolean } = {},
+    options: { skipPreflight?: boolean; snapshotKind?: 'auto' | 'manual'; snapshotLabel?: string } = {},
   ) => {
     if (!isAuthenticated || !user) {
       return { success: false, error: 'Not authenticated' };

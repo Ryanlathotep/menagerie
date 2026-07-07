@@ -23,6 +23,7 @@ import { PracticeDuel } from './PracticeDuel';
 import { STRATEGY_PRESETS } from './strategyPresets';
 import { ArenaChampionsLeaderboard } from './ArenaChampionsLeaderboard';
 import { loadPartyMenuComboIds, loadSavedPartySlots, validateArenaTeam } from './teamValidation';
+import { TeamDetailModal } from './TeamDetailModal';
 import { useGame } from "@/game/state";
 
 interface ArenaHubProps {
@@ -418,6 +419,7 @@ function BetsTab({
   arena, setArena, playerGold, onSpend,
 }: { arena: ArenaState; setArena: React.Dispatch<React.SetStateAction<ArenaState>>; playerGold: number; onSpend: (amt: number) => void }) {
   const [wager, setWager] = useState<Record<string, number>>({});
+  const [inspectTeam, setInspectTeam] = useState<ArenaTeam | null>(null);
 
   const open: Array<{ cadence: Cadence; t: ArenaTournament }> = [];
   for (const c of ['daily', 'weekly', 'monthly'] as Cadence[]) {
@@ -462,9 +464,23 @@ function BetsTab({
                 <div key={m.id} className="border rounded p-2 text-xs space-y-1">
                   <div className="flex items-center justify-between">
                     <div>
-                      <b className="text-blue-500">{teamA.name}</b>
+                      <button
+                        type="button"
+                        className="font-bold text-blue-500 hover:underline"
+                        title="Inspect team roster, stats, equipment, and moves"
+                        onClick={() => setInspectTeam(teamA)}
+                      >
+                        {teamA.name}
+                      </button>
                       <span className="mx-1 text-muted-foreground">vs</span>
-                      <b className="text-red-500">{teamB.name}</b>
+                      <button
+                        type="button"
+                        className="font-bold text-red-500 hover:underline"
+                        title="Inspect team roster, stats, equipment, and moves"
+                        onClick={() => setInspectTeam(teamB)}
+                      >
+                        {teamB.name}
+                      </button>
                     </div>
                     <div className="text-muted-foreground">Pool {pool.totalPool}gp · A {pool.perTeam[teamA.id] ?? 0} / B {pool.perTeam[teamB.id] ?? 0}</div>
                   </div>
@@ -481,6 +497,7 @@ function BetsTab({
           </Card>
         );
       })}
+      {inspectTeam && <TeamDetailModal team={inspectTeam} onClose={() => setInspectTeam(null)} />}
     </div>
   );
 }

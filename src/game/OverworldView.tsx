@@ -852,6 +852,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       autoHuntTimerRef.current = null;
       if (reason) addLog(reason, 'info');
     }
+    automationRunningRef.current = false;
   }, [addLog]);
 
   const cancelAutoSearch = useCallback((reason?: string) => {
@@ -861,6 +862,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       autoSearchKindRef.current = null;
       if (reason) addLog(reason, 'info');
     }
+    automationRunningRef.current = false;
   }, [addLog]);
 
   // Pick the "attack" move to auto-fire on hunt arrival: first melee, else

@@ -597,7 +597,14 @@ function Tile({
       case 'stairs':
         return <StairsTile size={tileSize} seed={tileSeed} />;
       case 'stairs_up':
-        return <StairsUpTile size={tileSize} seed={tileSeed} />;
+        return tile.portal
+          ? <PortalStairsTile
+              size={tileSize}
+              seed={tileSeed}
+              blocked={tile.portal.validated === false}
+              destKind={tile.portal.destKind}
+            />
+          : <StairsUpTile size={tileSize} seed={tileSeed} />;
       case 'shop':
         return <ShopTile size={tileSize} seed={tileSeed} />;
       case 'elevator':

@@ -1290,6 +1290,86 @@ export function DungeonView({
       addLog("❌ Can't reach that tile!", 'info');
     }
  }, [dungeon, isPathWalking, isAutoRunning, setIsPathWalking, setIsAutoRunning]);
+
+  // ─── Auto-Hunt planner ─────────────────────────────────────────────────────
+  // Finds the next hunt goal: nearest visible enemy, or (if none) nearest
+  // fog-of-war tile that borders explored floor so the path-walker spirals
+  // outward and streams new dungeon strips into view.
+  const findHuntTarget = useCallback((d: DungeonState): Position | null => {
+    const px = d.playerPosition.x, py = d.playerPosition.y;
+    let bestEnemy: { x: number; y: number; d: number } | null = null;
+    let bestFog: { x: number; y: number; d: number } | null = null;
+    const rows = d.tiles.length;
+    for (let y = 0; y < rows; y++) {
+      const row = d.tiles[y];
+      for (let x = 0; x < row.length; x++) {
+        const t = row[x];
+        if (!t) continue;
+        if (t.visible && t.type === 'enemy') {
+          const dist = Math.abs(x - px) + Math.abs(y - py);
+          if (!bestEnemy || dist < bestEnemy.d) bestEnemy = { x, y, d: dist };
+          continue;
+        }
+        if (!t.explored) {
+          // Only consider fog that borders explored walkable ground so we have
+          // any chance of pathing there.
+          let borders = false;
+          for (const [ox, oy] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
+            const nt = d.tiles[y + oy]?.[x + ox];
+            if (!nt || !nt.explored) continue;
+            if (nt.type === 'floor' || nt.type === 'player' || nt.type === 'terrain' ||
+                nt.type === 'stairs' || nt.type === 'stairs_up' || nt.type === 'shop' ||
+                nt.type === 'elevator' || nt.type === 'treasure' ||
+                (nt.type === 'trap' && nt.triggered)) {
+              borders = true;
+              break;
+            }
+          }
+          if (!borders) continue;
+          const dist = Math.abs(x - px) + Math.abs(y - py);
+          if (!bestFog || dist < bestFog.d) bestFog = { x, y, d: dist };
+        }
+      }
+    }
+    if (bestEnemy) return { x: bestEnemy.x, y: bestEnemy.y };
+    return bestFog ? { x: bestFog.x, y: bestFog.y } : null;
+  }, []);
+
+  const planNextHuntStep = useCallback(() => {
+    if (!huntingModeRef.current) return;
+    const d = dungeonRef.current;
+    if (!d) { huntingModeRef.current = false; return; }
+    const target = findHuntTarget(d);
+    if (!target) {
+      huntingModeRef.current = false;
+      addLog('🔎 Auto-Hunt: no enemies visible and no unexplored ground nearby.', 'info');
+      return;
+    }
+    const px = d.playerPosition.x, py = d.playerPosition.y;
+    const t = d.tiles[target.y]?.[target.x];
+    // Adjacent enemy → arrived. Stop hunting so the player picks their move.
+    if (t?.type === 'enemy' && Math.abs(target.x - px) + Math.abs(target.y - py) <= 1) {
+      huntingModeRef.current = false;
+      addLog('🏹 Auto-Hunt: enemy in range — pick a move to attack.', 'info');
+      return;
+    }
+    const path = findPath(d, d.playerPosition, target, { allowMineable: !!settings.autoMine });
+    if (!path || path.length === 0) {
+      huntingModeRef.current = false;
+      addLog('🔎 Auto-Hunt: no path to next target.', 'info');
+      return;
+    }
+    setTargetPath(path);
+    pathWalkRef.current = path;
+    pathGoalRef.current = target;
+    setIsPathWalking(true);
+  }, [findHuntTarget, addLog, settings.autoMine]);
+
+  // Keep a ref so the path-walk effect can invoke the latest planner without
+  // adding it as a dependency (which would re-create the animation loop).
+  const planNextHuntStepRef = useRef(planNextHuntStep);
+  useEffect(() => { planNextHuntStepRef.current = planNextHuntStep; }, [planNextHuntStep]);
+
   
   // Path walking effect — position-driven so it stays in sync with React state
   // updates even on slower mobile devices. Each tick:

@@ -77,7 +77,7 @@ const TooltipTrigger = React.forwardRef<
     }
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
+  const handleTouchStart: React.TouchEventHandler<HTMLButtonElement> = (e) => {
     onTouchStart?.(e);
     if (!ctx?.isTouch) return;
     openedRef.current = false;
@@ -87,23 +87,20 @@ const TooltipTrigger = React.forwardRef<
       ctx.setOpen(true);
     }, LONG_PRESS_MS);
   };
-  const handleTouchEnd = (e: React.TouchEvent) => {
+  const handleTouchEnd: React.TouchEventHandler<HTMLButtonElement> = (e) => {
     onTouchEnd?.(e);
     clearTimer();
-    // If long-press fired, swallow the following synthetic click so the
-    // underlying button doesn't also activate (e.g. launching a dungeon).
     if (openedRef.current) e.preventDefault();
   };
-  const handleTouchMove = (e: React.TouchEvent) => {
+  const handleTouchMove: React.TouchEventHandler<HTMLButtonElement> = (e) => {
     onTouchMove?.(e);
     clearTimer();
   };
-  const handleTouchCancel = (e: React.TouchEvent) => {
+  const handleTouchCancel: React.TouchEventHandler<HTMLButtonElement> = (e) => {
     onTouchCancel?.(e);
     clearTimer();
   };
-  const handleContextMenu = (e: React.MouseEvent) => {
-    // Suppress the native long-press context menu on mobile so our tooltip wins.
+  const handleContextMenu: React.MouseEventHandler<HTMLButtonElement> = (e) => {
     if (ctx?.isTouch) e.preventDefault();
     onContextMenu?.(e);
   };

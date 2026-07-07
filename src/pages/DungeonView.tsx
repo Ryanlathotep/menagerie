@@ -3662,7 +3662,7 @@ export function DungeonView({
                         item: {
                           id: `portal_stairs_kit_${Date.now()}`,
                           name: 'Portal Stairs Kit',
-                          type: 'utility',
+                          type: 'potion',
                           quantity: 1,
                           value: 0,
                           effect: 'place_portal_stairs',

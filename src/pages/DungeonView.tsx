@@ -91,6 +91,7 @@ import {
   ENEMY_REST_STAMINA_REGEN,
   enemyHasStaminaToAttack,
   getPathTiles,
+  anyEnemyThreatensPlayer,
 } from '@/game/dungeonCombat';
 import { playParticleEffectForMove } from '@/game/particles/api';
 import { MoveInfoPanel } from '@/game/AttackTargeting';
@@ -1003,8 +1004,8 @@ export function DungeonView({
         cancelAutoHarvest();
         return;
       }
-      if (hasVisibleEnemy(liveDungeon.tiles)) {
-        cancelAutoHarvest('⚠️ Auto-Harvest stopped — enemy spotted!');
+      if (anyEnemyThreatensPlayer(liveDungeon)) {
+        cancelAutoHarvest('⚠️ Auto-Harvest stopped — enemy in attack range!');
         return;
       }
       const liveTile = liveDungeon.tiles[target.y]?.[target.x];
@@ -1084,7 +1085,14 @@ export function DungeonView({
           
           // Stop CONTINUED running when any enemy is visible (spotted!) — but
           // always allow the first step so the player is never frozen in place.
+          // Also break out immediately (even on step 0) if a visible enemy is
+          // already close enough to hit us with one of its moves.
           if (stepsTaken > 0 && hasVisibleEnemy(currentDungeon.tiles)) {
+            setIsAutoRunning(false);
+            autoRunDirection.current = null;
+            return;
+          }
+          if (anyEnemyThreatensPlayer(currentDungeon)) {
             setIsAutoRunning(false);
             autoRunDirection.current = null;
             return;
@@ -1483,6 +1491,25 @@ export function DungeonView({
       if (currentPath.length === 0 || !currentDungeon) {
         setIsPathWalking(false);
         setTargetPath([]);
+        return;
+      }
+
+      // Bail out of any path-walk (auto-hunt, auto-search, click-to-move) the
+      // moment a visible enemy is within move range of the player. This is the
+      // universal "enemy in attack range" halt that ties every automation
+      // loop together — see anyEnemyThreatensPlayer in dungeonCombat.ts.
+      if (anyEnemyThreatensPlayer(currentDungeon)) {
+        pathWalkRef.current = [];
+        setIsPathWalking(false);
+        setTargetPath([]);
+        pathGoalRef.current = null;
+        if (huntingModeRef.current) {
+          huntingModeRef.current = false;
+          addLog('⚠️ Auto-Hunt halted — enemy in attack range!', 'info');
+        } else {
+          addLog('⚠️ Auto-walk halted — enemy in attack range!', 'info');
+        }
+        autoSearchStairsKindRef.current = null;
         return;
       }
 

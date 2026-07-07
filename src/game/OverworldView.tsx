@@ -59,6 +59,7 @@ import {
   calculateOverworldEnemyAction,
   moveOverworldEnemy,
   removeOverworldEnemyFromMap,
+  anyOverworldEnemyThreatensPlayer,
 } from './overworldCombat';
 import { RecruitmentModal, calculateRecruitChance } from './RecruitmentModal';
 import { LevelUpScreen } from './LevelUpScreen';
@@ -690,6 +691,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         cancelAutoWalk();
         return;
       }
+      // Universal halt: any visible enemy whose moveset can hit the player now.
+      if (anyOverworldEnemyThreatensPlayer(ow)) {
+        cancelAutoWalk();
+        addLog('⚠️ Auto-walk stopped — enemy in attack range!', 'info');
+        return;
+      }
       // Only treat enemies as danger when a visible enemy is within 2 tiles of
       // the player OR sits next to the queued step. Previously we halted
       // whenever ANY enemy was visible on screen, which locked the player out
@@ -806,10 +813,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       const job = autoMineTargetRef.current;
       const ow = overworldRef.current;
       if (!job || !ow) { cancelAutoMine(); return; }
-      // Halt on any visible enemy within 6 tiles — same rule as auto-walk.
-      const enemiesNearby = getVisibleOverworldEnemies(ow, 6);
-      if (enemiesNearby.length > 0) {
-        cancelAutoMine('⚠️ Auto-Harvest stopped — enemy spotted!');
+      // Halt on any enemy in attack range (uses full moveset reach).
+      if (anyOverworldEnemyThreatensPlayer(ow)) {
+        cancelAutoMine('⚠️ Auto-Harvest stopped — enemy in attack range!');
         return;
       }
       // Find the nearest remaining same-type tile in the cluster.
@@ -944,6 +950,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       const ow = overworldRef.current;
       if (!ow) { cancelAutoHunt(); return; }
       const px = ow.playerPosition.x, py = ow.playerPosition.y;
+      // If any visible enemy already has us in attack range, stop advancing
+      // and let the player pick their move.
+      if (anyOverworldEnemyThreatensPlayer(ow)) {
+        cancelAutoHunt('🏹 Auto-Hunt: enemy in attack range — pick a move!');
+        return;
+      }
       const enemies = getVisibleOverworldEnemies(ow, 30);
 
       // ── Enemy in sight: pursue the nearest one ──
@@ -1098,13 +1110,10 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     autoSearchTimerRef.current = window.setInterval(() => {
       const ow = overworldRef.current;
       if (!ow) { cancelAutoSearch(); return; }
-      // Halt on visible enemy unless enemies are the target.
-      if (kind !== 'enemy') {
-        const enemies = getVisibleOverworldEnemies(ow, 6);
-        if (enemies.length > 0) {
-          cancelAutoSearch('⚠️ Auto-Search stopped — enemy spotted!');
-          return;
-        }
+      // Halt on any enemy already in attack range (uses full moveset reach).
+      if (anyOverworldEnemyThreatensPlayer(ow)) {
+        cancelAutoSearch('⚠️ Auto-Search stopped — enemy in attack range!');
+        return;
       }
       const target = findNearestExplored(ow, kind);
       if (!target) {

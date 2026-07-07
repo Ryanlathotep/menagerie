@@ -506,6 +506,16 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           }
           break;
         }
+        case 'plant_harvest': {
+          const variantIcon = result.variant === 'mushroom' ? '🍄' : result.variant === 'flower' ? '🌸' : result.variant === 'root' ? '🥕' : '🌿';
+          const tierLabel = result.tier === 3 ? 'Rare' : result.tier === 2 ? 'Uncommon' : 'Common';
+          for (const drop of result.drops) {
+            queueMicrotask(() => dispatch({ type: 'ADD_MATERIAL', materialId: drop.materialId, quantity: drop.quantity }));
+            addLog(`${variantIcon} Gathered ${drop.quantity}× ${drop.name}!`, 'loot');
+          }
+          toast.success(`${variantIcon} ${tierLabel} ${result.variant} harvested`);
+          break;
+        }
         case 'enemy':
           toast.warning(`An enemy ${result.enemy.name} blocks the way! Select a move to attack.`);
           return prev;
@@ -735,7 +745,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     const ow0 = overworldRef.current;
     const startTile = ow0 ? getOverworldTile(ow0, targetX, targetY) : null;
     if (!startTile) return;
-    if (startTile.type !== 'rock' && startTile.type !== 'tree') return;
+    if (startTile.type !== 'rock' && startTile.type !== 'tree' && startTile.type !== 'plant') return;
     autoMineTargetRef.current = {
       seed: { x: targetX, y: targetY },
       tileType: startTile.type,
@@ -936,7 +946,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     }, stepDelay);
   }, [addLog, cancelAutoHunt, cancelAutoMine, cancelAutoSearch, cancelAutoWalk, pickHuntAttackMove, settings.autoRunSpeed]);
 
-  type SearchKind = 'dungeon_entrance' | 'enemy' | 'nest' | 'tree' | 'rock' | 'building';
+  type SearchKind = 'dungeon_entrance' | 'enemy' | 'nest' | 'tree' | 'rock' | 'plant' | 'building';
   const SEARCH_RADIUS = 40;
 
   const findNearestExplored = useCallback((ow: OverworldState, kind: SearchKind): Position | null => {
@@ -1549,7 +1559,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     // target tile is a harvestable resource.
     if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) {
       cancelAutoWalk();
-      if (settings.autoMine && (tile?.type === 'rock' || tile?.type === 'tree')) {
+      if (settings.autoMine && (tile?.type === 'rock' || tile?.type === 'tree' || tile?.type === 'plant')) {
         startAutoMine(worldX, worldY);
         return;
       }
@@ -1559,7 +1569,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     // Far-tap on a harvestable while auto-mine is on → hand it straight to
     // the cluster-harvest job. It walks the player over AND chops everything
     // in the cluster, no separate arrival hook needed.
-    if (settings.autoMine && (tile?.type === 'rock' || tile?.type === 'tree')) {
+    if (settings.autoMine && (tile?.type === 'rock' || tile?.type === 'tree' || tile?.type === 'plant')) {
       startAutoMine(worldX, worldY);
       return;
     }
@@ -1572,7 +1582,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       // dungeon (non-walkable goal types), try pathing to its closest adjacent
       // walkable tile so the player can step up and interact.
       const interactable = tile && (
-        tile.type === 'tree' || tile.type === 'rock' || tile.type === 'enemy' ||
+        tile.type === 'tree' || tile.type === 'rock' || tile.type === 'plant' || tile.type === 'enemy' ||
         tile.type === 'nest' || tile.type === 'building' || tile.type === 'dungeon_entrance' ||
         tile.type === 'water'
       );
@@ -2255,8 +2265,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
               { k: 'nest',             label: '🥚 Nest' },
               { k: 'tree',             label: '🌳 Tree' },
               { k: 'rock',             label: '⛰ Rock' },
+              { k: 'plant',            label: '🌿 Herb' },
               { k: 'building',         label: '🏠 Building' },
-            ] as Array<{ k: 'dungeon_entrance' | 'enemy' | 'nest' | 'tree' | 'rock' | 'building'; label: string }>).map(({ k, label }) => (
+            ] as Array<{ k: SearchKind; label: string }>).map(({ k, label }) => (
               <button
                 key={k}
                 className="px-2 py-1.5 rounded border border-[hsl(30,40%,40%)] bg-[hsl(40,30%,85%)] hover:bg-[hsl(40,40%,80%)] text-sm text-[hsl(30,40%,20%)]"
@@ -2969,25 +2980,36 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             close();
           },
         });
-      } else if (tile.type === 'tree' || tile.type === 'rock') {
+      } else if (tile.type === 'tree' || tile.type === 'rock' || tile.type === 'plant') {
         const isTree = tile.type === 'tree';
-        title = isTree ? '🌳 Tree' : '🪨 Rock';
-        subtitle = isTree ? 'Step onto it to chop for wood' : 'Step onto it to mine for stone';
+        const isRock = tile.type === 'rock';
+        const isPlant = tile.type === 'plant';
+        const variantLabel = isPlant
+          ? (tile.plantVariant === 'mushroom' ? 'Mushroom' : tile.plantVariant === 'flower' ? 'Flower' : tile.plantVariant === 'root' ? 'Root' : 'Herb')
+          : '';
+        title = isTree ? '🌳 Tree' : isRock ? '🪨 Rock' : `🌿 ${variantLabel}`;
+        subtitle = isTree ? 'Step onto it to chop for wood'
+          : isRock ? 'Step onto it to mine for stone'
+          : 'Step onto it to gather herbs';
         if (isTree) {
           const tier = (tile as any).treeTier as TreeTier | undefined;
           if (tier && TREE_TIER_DATA[tier]) info.push({ label: 'Tier', value: TREE_TIER_DATA[tier].name });
-        } else {
+        } else if (isRock) {
           const tier = (tile as any).stoneTier as StoneTier | undefined;
           if (tier && STONE_TIER_DATA[tier]) info.push({ label: 'Tier', value: STONE_TIER_DATA[tier].name });
+        } else if (isPlant) {
+          const t = tile.plantTier || 1;
+          info.push({ label: 'Rarity', value: t === 3 ? 'Rare' : t === 2 ? 'Uncommon' : 'Common' });
         }
 
         const autoOn = !!settings.autoMine;
         const tx = unifiedMenu.x, ty = unifiedMenu.y;
+        const verbLabel = isTree ? 'Chop' : isRock ? 'Mine' : 'Gather';
         const label = autoOn
-          ? (isTree ? 'Auto-Chop until done/attacked' : 'Auto-Mine until done/attacked')
+          ? `Auto-${verbLabel} until done/attacked`
           : (isAdjacent
-              ? (isTree ? 'Chop tree (one swing)' : 'Mine rock (one swing)')
-              : (isTree ? 'Walk here & chop' : 'Walk here & mine'));
+              ? `${verbLabel} (one action)`
+              : `Walk here & ${verbLabel.toLowerCase()}`);
 
         // Walk-then-swing helper: finds the nearest walkable neighbour of the
         // target tile, auto-walks there, then either kicks off Auto-Mine (when
@@ -3000,12 +3022,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           for (const [ox, oy] of offsets) {
             const ax = tx + ox, ay = ty + oy;
             if (ax === ow.playerPosition.x && ay === ow.playerPosition.y) {
-              // Already adjacent — no walk needed.
               if (autoOn) startAutoMine(tx, ty);
               else handleMove(tx - ow.playerPosition.x, ty - ow.playerPosition.y);
               return;
             }
-            const p = findOverworldPath(ow, ow.playerPosition, { x: ax, y: ay });
+            const p = findOverworldPath(ow, ow.playerPosition, { x: ax, y: ay }, 8000, { avoidStructures: true });
             if (p && p.length > 0 && (!best || p.length < best.length)) best = p;
           }
           if (!best) {
@@ -3021,9 +3042,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         };
 
         actions.push({
-          id: isTree ? 'chop' : 'mine',
+          id: isTree ? 'chop' : isRock ? 'mine' : 'gather',
           label,
-          icon: isTree ? TreePine : Pickaxe,
+          icon: isTree ? TreePine : isRock ? Pickaxe : Sparkles,
           variant: 'default',
           hint: autoOn
             ? 'Halts on enemy spotted, exhaustion, or Space'
@@ -3041,7 +3062,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         actions.push({
           id: 'toggle-auto-harvest',
           label: autoOn ? 'Disable Auto-Harvest' : 'Enable Auto-Harvest',
-          icon: isTree ? TreePine : Pickaxe,
+          icon: isTree ? TreePine : isRock ? Pickaxe : Sparkles,
           variant: 'outline',
           hint: 'Applies to all harvestables; persisted in Settings',
           onClick: () => {

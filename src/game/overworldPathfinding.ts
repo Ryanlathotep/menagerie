@@ -59,6 +59,7 @@ function isTraversable(
     case 'water':
     case 'tree':
     case 'rock':
+    case 'plant':
     case 'enemy':
     case 'nest':
     case 'cliff':
@@ -100,6 +101,7 @@ export function findOverworldPath(
   const goalIsInteractable =
     goalTile.type === 'tree' ||
     goalTile.type === 'rock' ||
+    goalTile.type === 'plant' ||
     goalTile.type === 'enemy' ||
     goalTile.type === 'nest' ||
     goalTile.type === 'dungeon_entrance' ||

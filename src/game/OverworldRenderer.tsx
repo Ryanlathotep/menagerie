@@ -5,7 +5,7 @@ import { OverworldState, OverworldTile, getOverworldTile } from './overworld';
 import { Position, Monster, UnlockedMonster } from './types';
 import { MonsterSprite } from './sprites';
 import {
-  OverworldGrassTile, OverworldHarvestedTile, OverworldTreeTile,
+  OverworldGrassTile, OverworldHarvestedTile, OverworldTreeTile, OverworldPlantTile,
   OverworldRockTile, OverworldWaterTile, OverworldBuildingTile,
   OverworldDungeonTile, OverworldFogTile, OverworldNestTile,
   OverworldDirtRoadTile, OverworldStoneRoadTile,
@@ -143,6 +143,9 @@ function renderTileGraphic(
         isRock(worldX - 1, worldY),
       );
       return <OverworldRockTile size={tileSize} seed={seed} tier={tile.stoneTier} fit={fit} />;
+    }
+    case 'plant': {
+      return <OverworldPlantTile size={tileSize} seed={seed} variant={tile.plantVariant} tier={tile.plantTier} />;
     }
     case 'water': {
       const isWater = (x: number, y: number) => {

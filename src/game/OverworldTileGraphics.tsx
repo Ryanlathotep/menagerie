@@ -205,6 +205,72 @@ export function OverworldRockTile({ size, seed = 0, tier = 'stone', fit }: TileG
   );
 }
 
+// ─── Plant (herbs, flowers, mushrooms, roots) ───
+// Drawn atop a grass base so harvested plots blend into the biome. Variant
+// picks silhouette; tier tweaks accent color/size.
+export function OverworldPlantTile({
+  size, seed = 0, variant = 'herb', tier = 1,
+}: TileGraphicProps & { variant?: 'herb' | 'flower' | 'mushroom' | 'root'; tier?: 1 | 2 | 3 }) {
+  const r1 = seededRandom(seed);
+  const r2 = seededRandom(seed + 5);
+  const jitter = (n: number, amt: number) => n + (r1 - 0.5) * amt;
+  const scale = size / 24;
+  const stemColor = tier === 3 ? 'hsl(140 50% 30%)' : 'hsl(120 30% 35%)';
+  const accent = tier === 3 ? 'hsl(50 90% 55%)' : tier === 2 ? 'hsl(280 55% 55%)' : 'hsl(345 60% 55%)';
+  const leafColor = 'hsl(115 40% 45%)';
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ imageRendering: 'auto' }}>
+      {/* grass base */}
+      <rect width="24" height="24" fill="hsl(90 30% 65%)" />
+      <path d={`M2 ${jitter(20, 2)} Q6 ${jitter(18, 2)} 10 ${jitter(20, 2)} T22 ${jitter(20, 2)}`}
+            fill="none" stroke="hsl(90 25% 45%)" strokeWidth={0.4 * scale} opacity={0.6} />
+      {variant === 'herb' && (
+        <g>
+          <path d={`M12 20 Q${jitter(10, 2)} 14 12 8`} stroke={stemColor} strokeWidth={0.8} fill="none" />
+          <ellipse cx={9 + r1 * 2} cy={13} rx={2.5} ry={1.4} fill={leafColor} transform={`rotate(-30 9 13)`} />
+          <ellipse cx={15 - r2 * 2} cy={11} rx={2.5} ry={1.4} fill={leafColor} transform={`rotate(30 15 11)`} />
+          <circle cx={12} cy={7.5} r={1.4 + tier * 0.3} fill={accent} stroke={INK.dark} strokeWidth={0.3} />
+        </g>
+      )}
+      {variant === 'flower' && (
+        <g>
+          <path d={`M12 20 L12 12`} stroke={stemColor} strokeWidth={0.7} />
+          <ellipse cx={10} cy={16} rx={2} ry={1} fill={leafColor} />
+          {[0, 72, 144, 216, 288].map(a => (
+            <ellipse key={a} cx={12} cy={9} rx={1.8} ry={2.8} fill={accent} transform={`rotate(${a} 12 11)`} opacity={0.85} />
+          ))}
+          <circle cx={12} cy={11} r={1} fill={tier === 3 ? 'hsl(50 90% 70%)' : 'hsl(30 60% 40%)'} />
+        </g>
+      )}
+      {variant === 'mushroom' && (
+        <g>
+          <ellipse cx={9} cy={17} rx={2.2} ry={3.4} fill="hsl(40 30% 85%)" stroke={INK.medium} strokeWidth={0.3} />
+          <path d={`M4 13 Q9 6 14 13 Z`} fill={accent} stroke={INK.dark} strokeWidth={0.4} />
+          <circle cx={7} cy={11} r={0.7} fill="hsl(0 0% 98%)" />
+          <circle cx={11} cy={12} r={0.5} fill="hsl(0 0% 98%)" />
+          {tier >= 2 && (
+            <g transform="translate(13 15)">
+              <ellipse cx={0} cy={2} rx={1.5} ry={2.4} fill="hsl(40 30% 85%)" stroke={INK.medium} strokeWidth={0.3} />
+              <path d={`M-3 -1 Q0 -5 3 -1 Z`} fill={accent} stroke={INK.dark} strokeWidth={0.3} />
+            </g>
+          )}
+        </g>
+      )}
+      {variant === 'root' && (
+        <g>
+          <path d={`M8 6 Q10 4 12 5 Q14 4 16 6 L15 10 Q12 9 9 10 Z`} fill={leafColor} stroke={INK.medium} strokeWidth={0.3} />
+          <path d={`M11 10 Q10 15 12 20 Q14 15 13 10 Z`} fill={accent} stroke={INK.dark} strokeWidth={0.4} />
+          <path d={`M12 18 L10 22 M12 18 L14 22`} stroke={INK.dark} strokeWidth={0.3} fill="none" />
+        </g>
+      )}
+      {tier === 3 && (
+        <circle cx={12} cy={12} r={11} fill="none" stroke="hsl(50 90% 60%)" strokeWidth={0.3} strokeDasharray="1 1" opacity={0.7} />
+      )}
+    </svg>
+  );
+}
+
+
 // ─── Water ───
 // Optional auto-tile shape: when supplied, draws a sandy shoreline on the
 // "closed" sides so adjacent water cells flow into each other and isolated

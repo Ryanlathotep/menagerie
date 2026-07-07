@@ -21,7 +21,11 @@ const ALL_SPECIES = Object.keys(SPECIES_DATA) as SpeciesType[];
 
 // ============= TYPES =============
 
-export type OverworldTileType = 'grass' | 'tree' | 'rock' | 'water' | 'building' | 'enemy' | 'player' | 'dungeon_entrance' | 'player_building' | 'nest' | 'dirt_road' | 'stone_road' | 'cliff' | 'waterfall';
+export type OverworldTileType = 'grass' | 'tree' | 'rock' | 'plant' | 'water' | 'building' | 'enemy' | 'player' | 'dungeon_entrance' | 'player_building' | 'nest' | 'dirt_road' | 'stone_road' | 'cliff' | 'waterfall';
+
+// Wild-plant variant → drop pool. Rarity tuned so cheap herbs dominate wild
+// spawns; farming will give access to the rarer picks.
+export type PlantVariant = 'herb' | 'flower' | 'mushroom' | 'root';
 
 export type BuildingType = 'campfire' | 'log_cabin' | 'town_hall';
 
@@ -33,12 +37,14 @@ export interface OverworldTile {
   buildingType?: BuildingType;
   resourceAmount?: number; // For trees/rocks - how much resource is left
   harvested?: boolean;
-  lastHarvestType?: 'tree' | 'rock'; // What was harvested here — used by regrowth pass
+  lastHarvestType?: 'tree' | 'rock' | 'plant'; // What was harvested here — used by regrowth pass
   dungeonId?: string; // For dungeon_entrance tiles - links to DungeonEntrance
   playerBuildingId?: string; // For player_building tiles
   nestId?: string; // For nest tiles
   treeTier?: TreeTier;   // Resource hierarchy tier for trees
   stoneTier?: StoneTier; // Resource hierarchy tier for rocks
+  plantVariant?: PlantVariant; // For plant tiles — drives drop table
+  plantTier?: 1 | 2 | 3;       // Rarity tier (1 = common, 3 = rare)
   // ─── Elevation system ───
   elevation?: number;             // 0-5; undefined treated as 0 (legacy saves)
   cliffDrops?: { n: boolean; e: boolean; s: boolean; w: boolean }; // sides that drop down
@@ -151,6 +157,63 @@ export const BUILDING_UPGRADES: Record<BuildingType, {
     features: ['Rest point', 'Shop', 'Crafting', 'Party Management', 'Storage'],
   },
 };
+
+// ============= PLANT DROP TABLES =============
+// Wild-plant drop tables reuse existing herb materials from equipment.ts.
+// Tier 1: 1 common; Tier 2: 1 uncommon; Tier 3: 2 items (uncommon+rare).
+// Variant biases which herb pool we roll from so mushrooms feel different
+// from flowers in the log, even when tier is the same.
+const PLANT_DROP_POOL: Record<PlantVariant, { t1: string[]; t2: string[]; t3: string[] }> = {
+  herb: {
+    t1: ['healing_herb', 'antidote_leaf'],
+    t2: ['ice_mint', 'revive_moss'],
+    t3: ['golden_ginseng', 'panacea_petal'],
+  },
+  flower: {
+    t1: ['healing_herb'],
+    t2: ['mana_blossom'],
+    t3: ['phoenix_flower', 'panacea_petal'],
+  },
+  mushroom: {
+    t1: ['stamina_root', 'antidote_leaf'],
+    t2: ['revive_moss'],
+    t3: ['miracle_lotus'],
+  },
+  root: {
+    t1: ['stamina_root'],
+    t2: ['fire_pepper'],
+    t3: ['golden_ginseng'],
+  },
+};
+
+const MATERIAL_NAME_LOOKUP: Record<string, string> = {
+  healing_herb: 'Healing Herb', stamina_root: 'Stamina Root', antidote_leaf: 'Antidote Leaf',
+  mana_blossom: 'Mana Blossom', fire_pepper: 'Fire Pepper', ice_mint: 'Ice Mint',
+  revive_moss: 'Revive Moss', golden_ginseng: 'Golden Ginseng', phoenix_flower: 'Phoenix Flower',
+  panacea_petal: 'Panacea Petal', miracle_lotus: 'Miracle Lotus',
+};
+
+function rollPlantDrops(
+  variant: PlantVariant,
+  tier: 1 | 2 | 3,
+  totalSteps: number,
+  x: number,
+  y: number,
+): Array<{ materialId: string; name: string; quantity: number }> {
+  const pool = PLANT_DROP_POOL[variant];
+  const drops: Array<{ materialId: string; name: string; quantity: number }> = [];
+  const rollSeed = totalSteps * 31 + x * 91 + y * 13;
+  const pick = (list: string[], salt: number): string => list[Math.floor(seededRandom(rollSeed + salt) * list.length)];
+  // Primary drop: tier-matched.
+  const primary = tier === 3 ? pick(pool.t3, 1) : tier === 2 ? pick(pool.t2, 3) : pick(pool.t1, 5);
+  drops.push({ materialId: primary, name: MATERIAL_NAME_LOOKUP[primary] || primary, quantity: 1 });
+  // Tier 3: bonus lower-tier herb.
+  if (tier === 3) {
+    const bonus = pick(pool.t2, 7);
+    drops.push({ materialId: bonus, name: MATERIAL_NAME_LOOKUP[bonus] || bonus, quantity: 1 });
+  }
+  return drops;
+}
 
 // ============= BIOME / NOISE SYSTEM (Phase 2) =============
 
@@ -427,8 +490,13 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
         Math.max(0, gen.enemies.baseChance + (difficulty - 1) * gen.enemies.perDifficulty),
       );
 
+      // Plants: sparse in open grass, denser near forests and water. Rolled
+      // AFTER trees/enemies so they only occupy leftover grass slots.
+      const plantBase = 0.035; // 3.5% base chance on open grass
+      const plantForestBoost = forestNoise > gen.trees.forestThreshold ? (forestNoise - gen.trees.forestThreshold) * 0.25 : 0;
+      const plantChance = plantBase + plantForestBoost;
       // Decide tile type. Order matters:
-      //   water (lake or river)  >  stone  >  tree  >  enemy  >  grass
+      //   water (lake or river)  >  stone  >  tree  >  enemy  >  plant  >  grass
       if (isLake || isRiver) {
         type = 'water';
       } else if (isStone) {
@@ -437,6 +505,8 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
         type = 'tree';
       } else if (r < treeChance + enemyChance) {
         type = 'enemy';
+      } else if (r < treeChance + enemyChance + plantChance) {
+        type = 'plant';
       }
 
 
@@ -472,6 +542,29 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
           }
         }
       }
+
+      if (type === 'plant') {
+        // Variant chosen by a second hash so trees/plants don't share the same
+        // biome roll. Mushrooms prefer forest tiles, roots prefer high-noise
+        // clusters, flowers prefer open grass.
+        const variantRoll = seededRandom(tileSeed + 4747);
+        let variant: PlantVariant;
+        if (forestNoise > gen.trees.forestThreshold + 0.1) {
+          variant = variantRoll < 0.6 ? 'mushroom' : variantRoll < 0.85 ? 'herb' : 'root';
+        } else if (isRiver || Math.abs(worldX) + Math.abs(worldY) < 12) {
+          variant = variantRoll < 0.5 ? 'flower' : variantRoll < 0.85 ? 'herb' : 'root';
+        } else {
+          variant = variantRoll < 0.55 ? 'herb' : variantRoll < 0.85 ? 'flower' : variantRoll < 0.95 ? 'root' : 'mushroom';
+        }
+        // Tier: mostly 1, some 2, rare 3. Difficulty pushes tier up.
+        const tierRoll = seededRandom(tileSeed + 7853) + Math.min(0.15, difficulty * 0.01);
+        const tier: 1 | 2 | 3 = tierRoll > 0.9 ? 3 : tierRoll > 0.65 ? 2 : 1;
+        tile.plantVariant = variant;
+        tile.plantTier = tier;
+        tile.resourceAmount = 1; // one harvest per plant, regrows
+      }
+
+
       
       if (type === 'enemy') {
         const level = Math.max(1, Math.floor(difficulty));
@@ -747,8 +840,24 @@ function spreadResources(state: OverworldState, centerX: number, centerY: number
       const roll = seededRandom(seedBase + wx * 197 + wy * 311 + 5);
       if (roll > REGROW_CHANCE) continue;
 
-      // Decide tree vs rock based on what type was harvested last (stored in
+      // Decide regrowth type based on what was harvested last (stored in
       // tile.lastHarvestType if present), else weighted toward trees on grass.
+      if (tile.lastHarvestType === 'plant') {
+        // Plants regrow as new plants — variant/tier re-rolled from position.
+        const vr = seededRandom(seedBase + wx * 917 + wy * 233);
+        const variant: PlantVariant = vr < 0.55 ? 'herb' : vr < 0.85 ? 'flower' : vr < 0.95 ? 'root' : 'mushroom';
+        const tr = seededRandom(seedBase + wx * 331 + wy * 137);
+        const newTier: 1 | 2 | 3 = tr > 0.9 ? 3 : tr > 0.65 ? 2 : 1;
+        setOverworldTile(state, wx, wy, {
+          ...tile,
+          type: 'plant',
+          plantVariant: variant,
+          plantTier: newTier,
+          resourceAmount: 1,
+          harvested: false,
+        });
+        continue;
+      }
       const wantsRock = tile.lastHarvestType === 'rock'
         || (!tile.lastHarvestType && seededRandom(seedBase + wx * 41 + wy * 67) < 0.25);
 
@@ -924,6 +1033,7 @@ export type MoveResult =
   | { type: 'blocked'; reason: string }
   | { type: 'enemy'; enemy: Monster }
   | { type: 'resource'; resourceType: 'wood' | 'stone'; amount: number; tierName?: string; materialDrop?: { materialId: string; name: string } }
+  | { type: 'plant_harvest'; variant: PlantVariant; tier: 1 | 2 | 3; drops: Array<{ materialId: string; name: string; quantity: number }> }
   | { type: 'building'; buildingType: BuildingType }
   | { type: 'dungeon_entrance'; dungeonId?: string }
   | { type: 'player_building'; building: PlayerBuilding }
@@ -1049,7 +1159,24 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
       }
       return { type: 'resource', resourceType: 'stone', amount, tierName: tierData.name, materialDrop };
     }
-    
+
+    case 'plant': {
+      const variant = tile.plantVariant || 'herb';
+      const tier = tile.plantTier || 1;
+      // Roll drop pool from the shared herb table in equipment.ts. Higher tier
+      // biases toward rarer picks; tier 3 can drop 2 items in one harvest.
+      const drops = rollPlantDrops(variant, tier, state.totalSteps, newX, newY);
+      // Deplete the tile — grass with harvested flag, regrows via the same
+      // resource-regrow pass that handles trees/rocks.
+      tile.type = 'grass';
+      tile.harvested = true;
+      tile.lastHarvestType = 'plant';
+      tile.plantVariant = undefined;
+      tile.plantTier = undefined;
+      tile.resourceAmount = undefined;
+      return { type: 'plant_harvest', variant, tier, drops };
+    }
+
     case 'enemy': {
       if (tile.enemyId) {
         const enemy = getOverworldEnemy(state, tile.enemyId);

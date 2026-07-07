@@ -39,6 +39,21 @@ export function loadPartyMenuComboIds(): string[] {
   }
 }
 
+/** Named party presets saved from the pre-run Character Select screen. */
+export interface SavedPartySlot { name: string; ids: string[] }
+export function loadSavedPartySlots(): SavedPartySlot[] {
+  try {
+    const raw = localStorage.getItem('menagerie_saved_parties');
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((p: any) => p && typeof p.name === 'string' && Array.isArray(p.ids));
+  } catch {
+    return [];
+  }
+}
+
+
 /**
  * Verify an arena team is fully legitimate given the player's save.
  * Called before entering a tournament, and displayed on saved-team cards.

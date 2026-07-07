@@ -2203,6 +2203,47 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       itemName={pendingReviveItem?.name || 'Revive'}
       onRevive={handleReviveTarget}
     />
+
+    {/* Auto-Search target picker */}
+    {autoSearchPickerOpen && (
+      <div
+        className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4"
+        onClick={() => setAutoSearchPickerOpen(false)}
+      >
+        <div
+          className="bg-[hsl(40,30%,92%)] border-2 border-[hsl(30,40%,30%)] rounded-lg p-4 max-w-xs w-full shadow-xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="font-bold text-[hsl(30,40%,20%)] mb-2">🧭 Auto-Search Target</div>
+          <div className="text-xs text-[hsl(30,30%,30%)] mb-3">Walks to the nearest known one. Halts on enemy (unless enemies are the target). Space to cancel.</div>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              { k: 'dungeon_entrance', label: '🗝 Dungeon' },
+              { k: 'enemy',            label: '👹 Enemy' },
+              { k: 'nest',             label: '🥚 Nest' },
+              { k: 'tree',             label: '🌳 Tree' },
+              { k: 'rock',             label: '⛰ Rock' },
+              { k: 'building',         label: '🏠 Building' },
+            ] as Array<{ k: 'dungeon_entrance' | 'enemy' | 'nest' | 'tree' | 'rock' | 'building'; label: string }>).map(({ k, label }) => (
+              <button
+                key={k}
+                className="px-2 py-1.5 rounded border border-[hsl(30,40%,40%)] bg-[hsl(40,30%,85%)] hover:bg-[hsl(40,40%,80%)] text-sm text-[hsl(30,40%,20%)]"
+                onClick={() => { setAutoSearchPickerOpen(false); startAutoSearch(k); }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <button
+            className="mt-3 w-full px-2 py-1 text-xs rounded bg-[hsl(30,30%,80%)] hover:bg-[hsl(30,30%,75%)] text-[hsl(30,40%,20%)]"
+            onClick={() => setAutoSearchPickerOpen(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    )}
+
     
     {/* Level Up Screen */}
     {levelUpQueue.length > 0 && levelUpQueue[0] && (

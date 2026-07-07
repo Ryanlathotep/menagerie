@@ -92,17 +92,21 @@ export function addReplay(s: ArenaState, replay: ArenaReplay): ArenaState {
   return { ...s, replays: [...s.replays, replay].slice(-REPLAY_CAP) };
 }
 
-/** Populate empty tournament slots with NPC teams + rotated fillers. */
+/** Populate empty tournament slots with NPC teams + rotated fillers.
+ *  Player-owned teams are pinned to slot 0 so they always appear in R1 match 0. */
 export function fillTournamentWithNpcs(t: ArenaTournament): ArenaTournament {
-  if (t.teams.length >= 8) return t;
+  if (t.teams.length >= 8) {
+    // Still re-sort so player team leads.
+    const sorted = [...t.teams].sort((a, b) => (a.ownerId === 'player' ? -1 : b.ownerId === 'player' ? 1 : 0));
+    return { ...t, teams: sorted };
+  }
   const npcs = getNpcTeams();
-  const filled = [...t.teams];
+  const filled = [...t.teams].sort((a, b) => (a.ownerId === 'player' ? -1 : b.ownerId === 'player' ? 1 : 0));
   let i = 0;
   while (filled.length < 8) {
     const source = npcs[i % npcs.length];
     filled.push({
       ...source,
-      // dedupe id when repeating an NPC
       id: filled.some(x => x.id === source.id) ? `${source.id}_dup${i}` : source.id,
       name: filled.some(x => x.name === source.name) ? `${source.name} #${Math.floor(i / npcs.length) + 2}` : source.name,
     });

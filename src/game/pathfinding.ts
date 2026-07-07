@@ -28,8 +28,15 @@ function heuristic(a: Position, b: Position): number {
 }
 
 export interface FindPathOptions {
-  /** When true, mineable walls are treated as walkable (auto-mine flow). */
+  /** When true, mineable walls are treated as walkable anywhere along the path
+   *  (auto-mine flow). The walker will stall on the wall while movePlayer's
+   *  mineable-bump logic chips it, then advance once the wall breaks. */
   allowMineable?: boolean;
+  /** Optional custom walkability predicate. When provided, this replaces the
+   *  default `isWalkable(tile, allowMineable)` check for both the goal tile
+   *  and every mid-path step. Use this for enemy pathing where other enemies,
+   *  the player, treasures, etc. also block movement. */
+  isWalkableTile?: (tile: DungeonTile, x: number, y: number, isGoal: boolean) => boolean;
 }
 
 // Find path from start to goal using A*
@@ -41,13 +48,18 @@ export function findPath(
 ): Position[] | null {
   const { tiles, width, height } = dungeon;
   const allowMineable = !!options.allowMineable;
+  const walkableFn = options.isWalkableTile;
 
-  // Check if goal is walkable (except for unexplored tiles).
-  // Mineable walls at the goal are only reachable when the caller opted in.
+  // Check if goal is walkable.
   const goalTile = tiles[goal.y]?.[goal.x];
   if (!goalTile) return null;
-  if (goalTile.type === 'wall') return null;
-  if (goalTile.type === 'mineable_wall' && !allowMineable) return null;
+  if (walkableFn) {
+    if (!walkableFn(goalTile, goal.x, goal.y, true)) return null;
+  } else {
+    if (goalTile.type === 'wall') return null;
+    if (goalTile.type === 'mineable_wall' && !allowMineable) return null;
+  }
+
   
   // Open and closed sets
   const openSet: PathNode[] = [];

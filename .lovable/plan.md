@@ -1,97 +1,83 @@
-# Arena System Plan
 
-Huge scope — shipping in one plan, split into clear modules. Nothing here touches shipped map combat balance; the new 6x6 combat is a parallel system reused later for scripted dungeons.
+## Goal
 
-## 1. Arena Building (Overworld)
+Make the crafting system feel like one thing. Legacy fixed recipes become grid blueprints, players can invent variants at their station, dismantling teaches a recipe, and finished recipes are tradeable Recipe Scroll items.
 
-- New player-buildable: `arena` (in `src/game/buildings.ts`), placeable under normal building rules, 3x3 footprint, needs Log Cabin+ tier.
-- Right-click / enter → opens **Arena Hub** modal (new `src/game/arena/ArenaHub.tsx`).
-- Hub tabs: **Tournaments**, **My Teams**, **Betting Ledger**, **Replays**, **Shop**.
+## 1. Convert legacy `CRAFTING_RECIPES` into grid blueprints
 
-## 2. Tournaments
+- Add a one-time converter in `src/game/crafting/patterns.ts` that walks the existing `CRAFTING_RECIPES` list and, for each entry:
+  - Picks a grid size from the material count (≤9 cells → 3×3, ≤16 → 4×4, else 5×5).
+  - Assigns each required material to a `PatternSlot` with a `role` inferred from its `MaterialType` (metal → `blade`/`guard`, wood → `handle`, cloth/leather → `binder`, essence/gem → `catalyst`, herb → `base`, paper/wax → `seal`).
+  - Uses the recipe's `resultSlot` + `resultRarity` to synthesize `baseStats` (reuse the existing equipment stat tables).
+- Register the converted blueprints in the `ITEM_BLUEPRINTS` registry so the grid resolver can produce them.
+- Keep `CRAFTING_RECIPES` around as a data source for the converter and for the admin editor, but route all actual crafting through the grid system.
 
-- Three fixed cadences: **Daily** (24h), **Weekly** (7d), **Monthly** (30d). Anchored to UTC epoch so every client shows the same countdown; no server needed for MVP.
-- State stored in `saveData.arena` (new field): `{ entries, bets, replays, currency, teams, npcTeams }`.
-- Each tournament: 8-team single-elimination bracket. Player may enter **one team per cadence**. Missing player slots filled from the 5 seeded NPC teams + procedurally-generated filler so bracket always fills.
-- On countdown reaching 0: `resolveTournament(cadence, seed=cadenceEpoch)` runs all matches through the autobattle-style 6x6 engine (below), stores full logs as `ArenaReplay[]`, pays out bets, awards arena currency.
-- Countdown surfaced on Arena building tooltip + Hub header.
+## 2. Fictitious inventors for legacy recipes
 
-## 3. Betting Pool
+- Add `src/game/crafting/legacyInventors.ts` — a short list of flavor names ("Old Gwen the Smith", "Brother Ilias", "Meadowfoot the Herbalist", …), one per material category.
+- When the converter emits a blueprint, seed a corresponding row in `crafting_recipes_discovered` (via a migration/insert) with `discovered_by_username` set to the flavor name and a stable synthetic hash — so their station snapshot (empty) exists and the "Invented by" line on tooltips is populated for these baseline items too.
 
-- Each match opens with **seeded NPC bets**: pools of **1,000 / 10,000 / 100,000 gp** distributed randomly (seeded) across the 6 teams.
-- Player bets any amount of gp on either side until countdown hits 0.
-- Payout: `bet * (totalPool / winningSidePool)` minus 5% house cut going to arena currency for participants.
-- Bets recorded in ledger with match id for replay linking.
+## 3. Player-owned recipe book & Recipe Scroll item
 
-## 4. Arena Currency + Shop
+- Extend the local recipe book (`recipeBook.ts`) with an `owned: boolean` flag. Discovering a recipe = owned. Buying/using a Recipe Scroll = owned. Others still show in the cloud list but are locked.
+- Add a new equipment/consumable type `recipe_scroll` in `equipment.ts`:
+  - Carries the recipe `hash` it teaches.
+  - "Use" action: marks that recipe `owned` in the local book, consumes the scroll.
+- Add a "Sell as Recipe Scroll" button in the recipe-book UI (Crafting Workshop, next to each owned recipe). Cost = fixed gold + one blank scroll material; produces a `recipe_scroll` item in inventory that can be sold in the shop or dropped.
+- Shop stock rotation: occasionally offer Recipe Scrolls the player doesn't own (uses existing `crafting_recipes_discovered` pool).
 
-- New resource `arenaTokens` (never dropped elsewhere).
-- Earned by: entering a team (+5), winning a match (+10), your team winning bracket (+50), placing any bet (+1).
-- Shop sells **Arena-exclusive equipment** (added to `equipment.ts` as a new `arena` set):
-  - Gladiator's Edge (weapon, +crit chance)
-  - Duelist's Cloak (armor, +dodge)
-  - Phantom Sash (accessory, +evasion)
-  - Venomtongue Ring / Emberheart Ring / Frostbite Ring (accessories, +DoT damage of matching element)
-- Icons use existing equipment icon system; sprites reused.
+## 4. In-game Recipe Designer (light)
 
-## 5. New 6x6 Alternating Combat Engine (`src/game/arenaCombat/`)
+No new UI screen — reuse `CraftingGrid.tsx`. When the player crafts at a station and the resulting grid is *not* a match for any existing blueprint but *is* a superset of one (extra fillers on top of a known pattern), the resolver already produces a distinct hash. That new hash gets auto-saved to their local book as a personal variant, credited to the player. This is effectively "designing a recipe" and matches the user's spec ("add materials to the grid and craft the item → adds it to their recipes").
 
-Parallel to existing map/autobattle. Reused later for solo-piloted dungeons and duo/trio rules.
+Admin-only base-recipe creation stays in `RecipesEditor` (as today).
 
-- **Grid**: 24x24 tile grid, teams start on opposite edges.
-- **Team size**: 1–6 per side (`teamMode: 'solo'|'duo'|'trio'|'full'`).
-- **Turn order**: Sort all alive fighters by Speed desc. Then walk that list but **alternate teams** — pick fastest of team A, then fastest still-waiting of team B, then next fastest of A, etc. If one team runs out, remaining team acts consecutively.
-- **AI hook**: `TeamStrategy` interface — default = `autoStrategy` (reuses `chooseEnemyMove` scoring + naive move-toward-nearest-enemy pathing). Slot exists so players can later script their own.
-- **Reuses** `combat.ts` `executeCombat` + status effects; adds only positioning + turn scheduling.
-- Produces `ArenaMatchLog` — every action tagged with actor id/species/class/element, target, move id, damage, crit, dodged, DoT ticks, distance, turn index, tile before/after.
+## 5. Live stat propagation from admin material-effect edits
 
-## 6. NPC Teams
+Already true structurally: crafted items store `usedMaterials` and re-resolve stats via `getEffectiveMaterialEffect` on read. Confirm by:
+- Making `EquipmentIcon` tooltip call `resolveGrid` (or a cached equivalent) instead of the frozen stat snapshot when the item has a `hash` + `grid` in metadata.
+- Adding the missing `grid` payload on new crafts so re-resolution is possible (a couple of fields on the equipment record).
 
-- 5 hand-authored teams in `src/game/arena/npcTeams.ts` (Fire Bruisers, Void Mages, Balanced All-Rounders, Water Tanks, Assassin Swarm) — level scales to player's roster average.
-- Additional procedural filler if bracket has open slots.
+Result: when an admin bumps "Iron Ingot: +2 damage → +3 damage" in `material_effects` overrides, every player's iron sword recalculates on next tooltip open.
 
-## 7. Replay Viewer
+## 6. Fix dismantle → recipe
 
-- `ArenaReplayPlayer.tsx` — steps through `ArenaMatchLog` on a rendered 6x6 board (SVG, sepia parchment style). Play/pause/step/speed. Rich sidebar: per-monster HP/stamina/status timeline + full action log with filter (element, class, species, crit only, etc.).
+In `CraftingWorkshop.tsx` dismantle path, if the item carries a `hash` + `grid` (grid-crafted or legacy-converted), call `recordDiscovery(...)` for that hash before returning materials. If the item is pre-conversion legacy with no grid, look up its blueprint id, resolve a canonical grid from the pattern, and record that.
 
-## 8. Spectator Crowd + Arena Renderer
+## 7. Icon glyph picker
 
-- `ArenaBoard.tsx` renders the 24x24 combat grid inside an oval arena (SVG ellipse, sand-colored floor, stone rim).
-- Outside the rim: ring of **non-combat monster sprites** pulled from existing species assets, positioned around the ellipse.
-- Idle animation: gentle CSS `wiggle` keyframe (already have similar); on crit event → burst `cheer` animation (jump + scale) triggered by replay player.
-- Admin **Arena Room Builder** tab (new `src/admin/ArenaRoomEditor.tsx`): edit floor shape (oval default), rim color, crowd density, crowd species mix; saves JSON to `game_data_overrides` under `arena_rooms`. MVP ships with just the plain oval preset; the editor is the framework.
+- New tiny component `src/game/crafting/GlyphPicker.tsx` — grid of emoji/glyphs grouped by category (weapon, armor, potion, scroll, ring, tool). Filterable.
+- Shown once when a player first crafts a new hash. Selected glyph stored on the local book entry and displayed everywhere the item icon renders.
+- No AI image gen — cheaper, matches parchment aesthetic, per your pick.
 
-## 9. Balance Analytics
+## Technical notes
 
-- Every resolved match appends compact rows to `saveData.arena.analytics` (capped at ~5k rows, ring-buffer).
-- Admin QA panel gains an **Arena Analytics** card:
-  - Win rate by element, class, species
-  - Damage dealt/received per element/class
-  - Move usage frequency + avg damage + crit rate per move
-  - Equipment win-rate correlation
-- Simple ranker suggests: "Fire is over-performing (+12% win rate vs mean) — consider nerfing X move" using z-score thresholds. Pure heuristic, non-authoritative.
+- **DB migration**: add `owned_by_seller boolean` and `taught_recipe_hash text` columns to `crafting_recipes_discovered`? No — cleaner to put the "scroll teaches hash X" data on the equipment item itself. Only migration needed is seeding fictitious-inventor rows (optional; can also live entirely client-side).
+- **Types**: extend `DiscoveredRecipe` with `owned?: boolean` and `iconGlyph?: string`. Extend `EquipmentItem` union with `kind: 'recipe_scroll'`.
+- **Files touched**:
+  - `src/game/crafting/patterns.ts` (converter + registration)
+  - `src/game/crafting/legacyInventors.ts` (new)
+  - `src/game/crafting/recipeBook.ts` (owned flag, glyph)
+  - `src/game/crafting/types.ts` (2 field additions)
+  - `src/game/equipment.ts` (recipe_scroll item kind)
+  - `src/game/CraftingWorkshop.tsx` (dismantle → recordDiscovery, sell-as-scroll button, glyph picker hook-in)
+  - `src/game/CraftingGrid.tsx` (surface "new personal variant saved" toast)
+  - `src/game/EquipmentIcon.tsx` (live stat re-resolve when grid present)
+  - `src/game/ShopView.tsx` (rotate in Recipe Scroll stock)
+  - New: `src/game/crafting/GlyphPicker.tsx`
 
-## 10. Files (create)
+## Out of scope (explicit)
 
-- `src/game/arena/{types,tournament,betting,npcTeams,currency,shop,analytics}.ts`
-- `src/game/arena/ArenaHub.tsx`, `ArenaBoard.tsx`, `ArenaReplayPlayer.tsx`, `CrowdRing.tsx`
-- `src/game/arenaCombat/{engine,turnOrder,pathing,strategy,types}.ts`
-- `src/admin/ArenaRoomEditor.tsx`, `src/admin/ArenaAnalyticsPanel.tsx`
-- `src/game/arena/arenaRooms.ts` (default oval preset)
+- Removing `CRAFTING_RECIPES` entirely — it stays as the seed data source and admin editing surface.
+- AI-generated icons — deferred; glyph picker is the shipped path.
+- Cross-player recipe trading over the network — Recipe Scrolls travel through the existing shop, not player-to-player.
 
-## Files (edit)
+## Rollout order
 
-- `src/game/types.ts` — add `arena` slice to `SaveData`, `ArenaReplay`, `ArenaMatch*`.
-- `src/game/state.ts` — reducer actions: `ARENA_ENTER_TEAM`, `ARENA_PLACE_BET`, `ARENA_RESOLVE_TICK`, `ARENA_CLAIM_REWARDS`, `ARENA_BUY_ITEM`.
-- `src/game/buildings.ts` + `OverworldBuildingTileGraphics.tsx` — arena building + sprite.
-- `src/game/equipment.ts` — new arena set items.
-- `src/admin/AdminPanel.tsx` — new **Arena** tab (Room Editor + Analytics).
-- `src/pages/AdminQA.tsx` — quick "simulate next tournament now" button for testing.
+1. Types + converter + registration (nothing user-visible yet).
+2. Dismantle → recordDiscovery + fictitious inventors seeded client-side.
+3. Live stat re-resolution in tooltips.
+4. Glyph picker.
+5. Recipe Scroll item + shop rotation + sell-as-scroll UI.
 
-## Out of scope (called out to user)
-
-- Real cross-server sync of bets/tournaments. Everything is local per save; hooks stubbed so we can move to Cloud tables later without ripping up UI.
-- Player-scripted AI DSL — just the `TeamStrategy` interface for now.
-- Solo/duo/trio dungeon integration — engine supports it, dungeon wiring is a follow-up.
-
-Sound good? I'll build straight through once you approve.
+Each step is independently shippable so we can stop early if you don't like where it's going.

@@ -631,7 +631,7 @@ export function calculateEquipmentBonuses(equipment: MonsterEquipment): Equipmen
 export type MaterialType = 
   | 'ore' | 'hide' | 'essence' | 'gem' | 'bone' | 'fabric' | 'herb'
   | 'wood' | 'metal' | 'mote' | 'monster' | 'species' | 'class' | 'element'
-  | 'rune' | 'soil';
+  | 'rune' | 'soil' | 'seed';
 
 export interface CraftingMaterial {
   id: string;

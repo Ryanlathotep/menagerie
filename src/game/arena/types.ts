@@ -16,6 +16,8 @@ export interface ArenaTeam {
   memberCombos: string[];     // comboIds; hydrated from unlockedMonsters at match time
   level: number;              // suggested team level (for NPC scaling)
   banner?: string;            // emoji or short label
+  /** Optional strategy preset id (see arena/strategyPresets.ts). Defaults to 'balanced'. */
+  strategyId?: string;
 }
 
 export interface ArenaBet {

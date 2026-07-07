@@ -13,6 +13,8 @@ import { computePool, payoutFor, seedNpcBets } from './betting';
 import { runArenaCombat } from '@/game/arenaCombat';
 import { getRoom, getAllRooms } from './arenaRooms';
 import { createMonster } from '@/game/utils';
+import { resolveStrategy } from './strategyPresets';
+import { submitArenaChampion } from './ArenaChampionsLeaderboard';
 
 function buildBracket(teams: ArenaTeam[], seed: number): ArenaBracketMatch[] {
   const matches: ArenaBracketMatch[] = [];
@@ -100,9 +102,11 @@ export function resolveTournament(
       const membersA = isNpcTeam(aTeam.id.replace(/_dup\d+$/, '')) ? hydrateNpcTeam({ ...aTeam, id: aTeam.id.replace(/_dup\d+$/, '') }, targetLevel) : hydratePlayerTeam(aTeam, unlocked);
       const membersB = isNpcTeam(bTeam.id.replace(/_dup\d+$/, '')) ? hydrateNpcTeam({ ...bTeam, id: bTeam.id.replace(/_dup\d+$/, '') }, targetLevel) : hydratePlayerTeam(bTeam, unlocked);
 
+      const stratA = resolveStrategy(aTeam.strategyId as any);
+      const stratB = resolveStrategy(bTeam.strategyId as any);
       const result = runArenaCombat(
-        { id: aTeam.id, name: aTeam.name, members: membersA },
-        { id: bTeam.id, name: bTeam.name, members: membersB },
+        { id: aTeam.id, name: aTeam.name, members: membersA, strategy: stratA },
+        { id: bTeam.id, name: bTeam.name, members: membersB, strategy: stratB },
         { seed: (t.seed ^ hashId(match.id)) >>> 0, gridWidth: 6, gridHeight: 6 },
       );
       const winnerTeam = result.winner === 'A' ? aTeam : result.winner === 'B' ? bTeam : aTeam; // draw → default to A
@@ -174,7 +178,16 @@ export function resolveTournament(
 
     if (roundWinners.length === 1) {
       bracketWinnerId = roundWinners[0].id;
-      if (roundWinners[0].ownerId === 'player') currencyGained += 50;
+      if (roundWinners[0].ownerId === 'player') {
+        currencyGained += 50;
+        // Fire-and-forget: publish to cross-server leaderboard.
+        void submitArenaChampion({
+          cadence,
+          teamName: roundWinners[0].name,
+          teamSnapshot: { members: roundWinners[0].memberCombos, level: roundWinners[0].level, strategyId: roundWinners[0].strategyId ?? 'balanced' },
+          worldSeed: null,
+        });
+      }
       break;
     }
     // Build next round

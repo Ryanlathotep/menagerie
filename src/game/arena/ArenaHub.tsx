@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { X, Trophy, Coins, Users, ClipboardList, Store, Ticket } from 'lucide-react';
+import { X, Trophy, Coins, Users, ClipboardList, Store, Ticket, Swords } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
   loadArenaState, saveArenaState, ensureFutureTournament, fillTournamentWithNpcs,
@@ -19,6 +19,9 @@ import { resolveTournament } from './tournament';
 import { computePool, seedNpcBets } from './betting';
 import { ArenaReplayPlayer } from './ArenaReplayPlayer';
 import { ARENA_SHOP } from './shop';
+import { PracticeDuel } from './PracticeDuel';
+import { STRATEGY_PRESETS } from './strategyPresets';
+import { ArenaChampionsLeaderboard } from './ArenaChampionsLeaderboard';
 import { useGame } from "@/game/state";
 
 interface ArenaHubProps {
@@ -86,6 +89,7 @@ export function ArenaHub({ onClose }: ArenaHubProps) {
             <TabsTrigger value="teams"><Users className="h-4 w-4 mr-1"/>My Teams</TabsTrigger>
             <TabsTrigger value="bets"><ClipboardList className="h-4 w-4 mr-1"/>Bets</TabsTrigger>
             <TabsTrigger value="replays">🎞️ Replays</TabsTrigger>
+            <TabsTrigger value="practice"><Swords className="h-4 w-4 mr-1"/>Practice</TabsTrigger>
             <TabsTrigger value="shop"><Store className="h-4 w-4 mr-1"/>Shop</TabsTrigger>
           </TabsList>
 
@@ -138,6 +142,10 @@ export function ArenaHub({ onClose }: ArenaHubProps) {
                   ))}
                 </ul>
               )}
+            </TabsContent>
+
+            <TabsContent value="practice" className="p-3">
+              <PracticeDuel arena={arena} unlocked={state.saveData.unlockedMonsters ?? []} />
             </TabsContent>
 
             <TabsContent value="shop" className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -240,6 +248,7 @@ function TournamentCard({
       <div className="text-xs text-muted-foreground">
         {canEnter ? '✅ You can enter — bracket fills with NPCs on resolve.' : playerHasEntry ? '🏳️ Your team is queued.' : '⚠️ Save a team on the "My Teams" tab first.'}
       </div>
+      <ArenaChampionsLeaderboard cadence={cadence} />
     </Card>
   );
 }
@@ -263,6 +272,7 @@ function TeamsTab({ arena, setArena }: { arena: ArenaState; setArena: React.Disp
   const { state } = useGame();
   const [name, setName] = useState('My Team');
   const [selected, setSelected] = useState<string[]>([]);
+  const [strategyId, setStrategyId] = useState<string>('balanced');
   const unlocked = state.saveData.unlockedMonsters ?? [];
 
   return (
@@ -284,6 +294,15 @@ function TeamsTab({ arena, setArena }: { arena: ArenaState; setArena: React.Disp
             );
           })}
         </div>
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-muted-foreground">AI:</span>
+          <select className="border rounded px-2 py-1 bg-background flex-1"
+            value={strategyId} onChange={e => setStrategyId(e.target.value)}>
+            {STRATEGY_PRESETS.map(p => (
+              <option key={p.id} value={p.id}>{p.label} — {p.description}</option>
+            ))}
+          </select>
+        </div>
         <Button size="sm" disabled={selected.length === 0}
           onClick={() => {
             const avgLevel = selected.reduce((sum, id) => {
@@ -293,6 +312,7 @@ function TeamsTab({ arena, setArena }: { arena: ArenaState; setArena: React.Disp
             const team: ArenaTeam = {
               id: `player_${Date.now()}`, name: name || 'My Team', ownerId: 'player',
               memberCombos: selected, level: Math.round(avgLevel), banner: '⭐',
+              strategyId,
             };
             setArena(s => ({ ...s, playerTeams: [...s.playerTeams, team] }));
             setSelected([]); setName('My Team');
@@ -306,10 +326,21 @@ function TeamsTab({ arena, setArena }: { arena: ArenaState; setArena: React.Disp
         <div className="text-sm font-semibold">Saved teams</div>
         {arena.playerTeams.length === 0 && <p className="text-xs text-muted-foreground">No teams yet.</p>}
         {arena.playerTeams.map(t => (
-          <Card key={t.id} className="p-2 flex items-center justify-between">
-            <div>
+          <Card key={t.id} className="p-2 flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
               <div className="text-sm font-medium">{t.banner} {t.name} <span className="text-xs text-muted-foreground">(avg L{t.level})</span></div>
-              <div className="text-[11px] text-muted-foreground">{t.memberCombos.join(', ')}</div>
+              <div className="text-[11px] text-muted-foreground truncate">{t.memberCombos.join(', ')}</div>
+              <div className="text-[11px] mt-0.5">
+                AI:{' '}
+                <select className="border rounded px-1 py-0.5 bg-background text-[11px]"
+                  value={t.strategyId ?? 'balanced'}
+                  onChange={e => {
+                    const newId = e.target.value;
+                    setArena(s => ({ ...s, playerTeams: s.playerTeams.map(x => x.id === t.id ? { ...x, strategyId: newId } : x) }));
+                  }}>
+                  {STRATEGY_PRESETS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                </select>
+              </div>
             </div>
             <Button size="sm" variant="destructive" onClick={() => setArena(s => ({ ...s, playerTeams: s.playerTeams.filter(x => x.id !== t.id) }))}>Delete</Button>
           </Card>

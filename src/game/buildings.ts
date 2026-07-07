@@ -203,6 +203,15 @@ export const BUILDING_DEFINITIONS: Record<PlayerBuildingType, BuildingDefinition
     maxHp: 70,
     category: 'utility',
   },
+  arena: {
+    type: 'arena',
+    name: 'Arena',
+    emoji: '🏟️',
+    description: 'Host daily, weekly, and monthly autobattle tournaments. Right-click to enter teams, place bets, watch replays, and shop for arena-only gear.',
+    cost: { wood: 30, stone: 60 },
+    maxHp: 200,
+    category: 'utility',
+  },
 };
 
 // ============= FARM OUTPUT =============

@@ -840,8 +840,24 @@ function spreadResources(state: OverworldState, centerX: number, centerY: number
       const roll = seededRandom(seedBase + wx * 197 + wy * 311 + 5);
       if (roll > REGROW_CHANCE) continue;
 
-      // Decide tree vs rock based on what type was harvested last (stored in
+      // Decide regrowth type based on what was harvested last (stored in
       // tile.lastHarvestType if present), else weighted toward trees on grass.
+      if (tile.lastHarvestType === 'plant') {
+        // Plants regrow as new plants — variant/tier re-rolled from position.
+        const vr = seededRandom(seedBase + wx * 917 + wy * 233);
+        const variant: PlantVariant = vr < 0.55 ? 'herb' : vr < 0.85 ? 'flower' : vr < 0.95 ? 'root' : 'mushroom';
+        const tr = seededRandom(seedBase + wx * 331 + wy * 137);
+        const newTier: 1 | 2 | 3 = tr > 0.9 ? 3 : tr > 0.65 ? 2 : 1;
+        setOverworldTile(state, wx, wy, {
+          ...tile,
+          type: 'plant',
+          plantVariant: variant,
+          plantTier: newTier,
+          resourceAmount: 1,
+          harvested: false,
+        });
+        continue;
+      }
       const wantsRock = tile.lastHarvestType === 'rock'
         || (!tile.lastHarvestType && seededRandom(seedBase + wx * 41 + wy * 67) < 0.25);
 

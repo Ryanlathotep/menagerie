@@ -3264,6 +3264,75 @@ export function DungeonView({
         );
       })()}
 
+      {/* Auto-Search stair-chase continuation prompt. Fires after each floor
+          transition triggered by Auto-Search. Wording spells out the direction
+          ("deeper into the tower" / "shallower toward the exit") so it stays
+          readable if we later support dungeons that branch both ways. */}
+      {stairSearchPrompt && dungeon && (() => {
+        const p = stairSearchPrompt;
+        const arrowIcon = p.direction === 'deeper' ? '⬇️' : '⬆️';
+        const arrivalVerb = p.direction === 'deeper' ? 'Descended' : 'Ascended';
+        const nextKind: 'stairs' | 'stairs_up' = p.kind;
+        const nextArrow = nextKind === 'stairs' ? '⬇️' : '⬆️';
+        const nextLabel = nextKind === 'stairs' ? 'Stairs down (deeper)' : 'Stairs up (shallower)';
+        const oppositeKind: 'stairs' | 'stairs_up' = nextKind === 'stairs' ? 'stairs_up' : 'stairs';
+        const oppositeArrow = oppositeKind === 'stairs' ? '⬇️' : '⬆️';
+        const oppositeLabel = oppositeKind === 'stairs' ? 'Stairs down (deeper)' : 'Stairs up (shallower)';
+        return (
+          <div
+            className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-4"
+            onClick={() => { setStairSearchPrompt(null); autoSearchStairsKindRef.current = null; }}
+          >
+            <Card className="w-full max-w-sm p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
+              <div className="space-y-1">
+                <h2 className="text-lg font-bold">
+                  {arrowIcon} {arrivalVerb} to Floor {p.toFloor}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Floor {p.fromFloor} → Floor {p.toFloor} ({p.direction === 'deeper' ? 'deeper into the tower' : 'shallower toward the exit'}).
+                  Keep Auto-Searching on this floor?
+                </p>
+              </div>
+              <div className="grid gap-1.5">
+                <Button
+                  variant="default"
+                  className="justify-start"
+                  onClick={() => {
+                    setStairSearchPrompt(null);
+                    runDungeonAutoSearchRef.current(nextKind, nextLabel);
+                  }}
+                >
+                  <span className="mr-2">{nextArrow}</span>Continue searching for {nextLabel.toLowerCase()}
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="justify-start"
+                  onClick={() => {
+                    setStairSearchPrompt(null);
+                    runDungeonAutoSearchRef.current(oppositeKind, oppositeLabel);
+                  }}
+                >
+                  <span className="mr-2">{oppositeArrow}</span>Switch to {oppositeLabel.toLowerCase()}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setStairSearchPrompt(null);
+                    autoSearchStairsKindRef.current = null;
+                    addLog(`🛑 Auto-Search stopped on Floor ${p.toFloor}.`, 'info');
+                  }}
+                >
+                  Stay on Floor {p.toFloor}
+                </Button>
+              </div>
+            </Card>
+          </div>
+        );
+      })()}
+
+
+
+
 
 
       

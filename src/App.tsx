@@ -92,9 +92,11 @@ const App = () => (
         <Toaster />
         <Sonner />
         <HashRouter>
-          <AppRoutes />
-          <FloatingBugButton />
-          <FloatingFeatureButton />
+          <FloatingDockProvider>
+            <AppRoutes />
+            <FloatingBugButton />
+            <FloatingFeatureButton />
+          </FloatingDockProvider>
         </HashRouter>
       </TooltipProvider>
     </QueryClientProvider>

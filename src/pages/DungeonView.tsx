@@ -3654,11 +3654,9 @@ export function DungeonView({
                     disabledReason: 'Removing this would leave the floor with no way out',
                     onClick: () => {
                       close();
-                      dispatch({
-                        type: 'UPDATE_DUNGEON_TILE',
-                        x, y,
-                        tile: { type: 'floor', portal: undefined, stairsBeneath: undefined },
-                      } as any);
+                      const nextTiles = dungeon.tiles.map(row => row.map(t => ({ ...t })));
+                      nextTiles[y][x] = { ...nextTiles[y][x], type: 'floor', portal: undefined, stairsBeneath: undefined };
+                      dispatch({ type: 'UPDATE_DUNGEON', dungeon: { tiles: nextTiles } });
                       dispatch({
                         type: 'ADD_ITEM',
                         item: {
@@ -3667,9 +3665,9 @@ export function DungeonView({
                           type: 'utility',
                           quantity: 1,
                           effect: 'place_portal_stairs',
-                          description: 'Places a coordinate-linked portal staircase.',
-                        },
-                      } as any);
+                          description: 'Places a coordinate-linked portal staircase on your current tile.',
+                        } as InventoryItem,
+                      });
                       addLog('🌀 Portal staircase dismantled — kit returned to inventory.', 'system');
                     },
                   });

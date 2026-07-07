@@ -832,14 +832,16 @@ function AdminPanelTrigger({ onOpenAdmin }: { onOpenAdmin: () => void }) {
           if (need > 0) dispatch({ type: 'ADD_MATERIAL', materialId: m.id, quantity: need });
         }
       }),
-      import('./overworld').then(({ loadOverworld, saveOverworld }) => {
-        const ow = loadOverworld();
-        if (!ow) return;
-        ow.woodCollected = Math.max(ow.woodCollected || 0, 9999);
-        ow.stoneCollected = Math.max(ow.stoneCollected || 0, 9999);
-        saveOverworld(ow);
-      }),
     ]);
+    const ow = state.saveData.overworldState;
+    if (ow) {
+      dispatch({ type: 'UPDATE_OVERWORLD', overworld: {
+        ...ow,
+        woodCollected: Math.max(ow.woodCollected || 0, 9999),
+        stoneCollected: Math.max(ow.stoneCollected || 0, 9999),
+      } });
+    }
+
     sonnerToast.success('🛠️ Refilled: 999,999 gold · 9,999 wood/stone · 999 of every material');
   };
 

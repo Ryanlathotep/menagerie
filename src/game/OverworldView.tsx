@@ -611,11 +611,13 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       autoWalkTimerRef.current = null;
     }
     autoWalkPathRef.current = null;
+    automationRunningRef.current = false;
   }, []);
 
   const startAutoWalk = useCallback((path: Position[], onArrive?: () => void) => {
     cancelAutoWalk();
     autoWalkPathRef.current = [...path];
+    automationRunningRef.current = true;
     const stepDelay = Math.max(80, settings.autoRunSpeed || 100);
     // The player must NEVER be fully locked out of moving: nearby enemies only
     // cancel *multi-step* auto-walking. The first step of any deliberate move

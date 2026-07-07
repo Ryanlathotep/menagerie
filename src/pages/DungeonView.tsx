@@ -1333,7 +1333,7 @@ export function DungeonView({
         }
 
         // Check if we should stop (enemy, trap, etc.)
-        const shouldStop = shouldStopAutoRun(currentDungeon.tiles, nextPos.x, nextPos.y, currentDungeon.width, currentDungeon.height);
+        const shouldStop = shouldStopAutoRun(currentDungeon.tiles, nextPos.x, nextPos.y, currentDungeon.width, currentDungeon.height, { allowMineable: !!settings.autoMine });
 
         isMovingRef.current = true;
         handleMoveRef.current(direction);

@@ -379,12 +379,20 @@ export function CraftingGridPanel({
 // ---------------- subcomponents ----------------
 
 function GridSlot({
-  cell, selected, onClick,
-}: { cell: CraftCell | null; selected: boolean; onClick: () => void }) {
+  cell, selected, onClick, onDragOver, onDrop,
+}: {
+  cell: CraftCell | null;
+  selected: boolean;
+  onClick: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
+}) {
   const mat = cell ? CRAFTING_MATERIALS.find((m) => m.id === cell.materialId) : null;
   return (
     <button
       onClick={onClick}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
       className={`aspect-square rounded border-2 flex items-center justify-center transition-colors text-2xl
         ${selected ? 'border-primary bg-primary/15' : 'border-muted-foreground/25 bg-background/60 hover:border-primary/50'}`}
       title={mat ? mat.name : 'Empty'}

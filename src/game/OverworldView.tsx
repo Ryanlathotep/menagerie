@@ -2979,25 +2979,36 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             close();
           },
         });
-      } else if (tile.type === 'tree' || tile.type === 'rock') {
+      } else if (tile.type === 'tree' || tile.type === 'rock' || tile.type === 'plant') {
         const isTree = tile.type === 'tree';
-        title = isTree ? '🌳 Tree' : '🪨 Rock';
-        subtitle = isTree ? 'Step onto it to chop for wood' : 'Step onto it to mine for stone';
+        const isRock = tile.type === 'rock';
+        const isPlant = tile.type === 'plant';
+        const variantLabel = isPlant
+          ? (tile.plantVariant === 'mushroom' ? 'Mushroom' : tile.plantVariant === 'flower' ? 'Flower' : tile.plantVariant === 'root' ? 'Root' : 'Herb')
+          : '';
+        title = isTree ? '🌳 Tree' : isRock ? '🪨 Rock' : `🌿 ${variantLabel}`;
+        subtitle = isTree ? 'Step onto it to chop for wood'
+          : isRock ? 'Step onto it to mine for stone'
+          : 'Step onto it to gather herbs';
         if (isTree) {
           const tier = (tile as any).treeTier as TreeTier | undefined;
           if (tier && TREE_TIER_DATA[tier]) info.push({ label: 'Tier', value: TREE_TIER_DATA[tier].name });
-        } else {
+        } else if (isRock) {
           const tier = (tile as any).stoneTier as StoneTier | undefined;
           if (tier && STONE_TIER_DATA[tier]) info.push({ label: 'Tier', value: STONE_TIER_DATA[tier].name });
+        } else if (isPlant) {
+          const t = tile.plantTier || 1;
+          info.push({ label: 'Rarity', value: t === 3 ? 'Rare' : t === 2 ? 'Uncommon' : 'Common' });
         }
 
         const autoOn = !!settings.autoMine;
         const tx = unifiedMenu.x, ty = unifiedMenu.y;
+        const verbLabel = isTree ? 'Chop' : isRock ? 'Mine' : 'Gather';
         const label = autoOn
-          ? (isTree ? 'Auto-Chop until done/attacked' : 'Auto-Mine until done/attacked')
+          ? `Auto-${verbLabel} until done/attacked`
           : (isAdjacent
-              ? (isTree ? 'Chop tree (one swing)' : 'Mine rock (one swing)')
-              : (isTree ? 'Walk here & chop' : 'Walk here & mine'));
+              ? `${verbLabel} (one action)`
+              : `Walk here & ${verbLabel.toLowerCase()}`);
 
         // Walk-then-swing helper: finds the nearest walkable neighbour of the
         // target tile, auto-walks there, then either kicks off Auto-Mine (when
@@ -3010,12 +3021,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           for (const [ox, oy] of offsets) {
             const ax = tx + ox, ay = ty + oy;
             if (ax === ow.playerPosition.x && ay === ow.playerPosition.y) {
-              // Already adjacent — no walk needed.
               if (autoOn) startAutoMine(tx, ty);
               else handleMove(tx - ow.playerPosition.x, ty - ow.playerPosition.y);
               return;
             }
-            const p = findOverworldPath(ow, ow.playerPosition, { x: ax, y: ay });
+            const p = findOverworldPath(ow, ow.playerPosition, { x: ax, y: ay }, 8000, { avoidStructures: true });
             if (p && p.length > 0 && (!best || p.length < best.length)) best = p;
           }
           if (!best) {
@@ -3031,9 +3041,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         };
 
         actions.push({
-          id: isTree ? 'chop' : 'mine',
+          id: isTree ? 'chop' : isRock ? 'mine' : 'gather',
           label,
-          icon: isTree ? TreePine : Pickaxe,
+          icon: isTree ? TreePine : isRock ? Pickaxe : Sparkles,
           variant: 'default',
           hint: autoOn
             ? 'Halts on enemy spotted, exhaustion, or Space'
@@ -3051,7 +3061,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         actions.push({
           id: 'toggle-auto-harvest',
           label: autoOn ? 'Disable Auto-Harvest' : 'Enable Auto-Harvest',
-          icon: isTree ? TreePine : Pickaxe,
+          icon: isTree ? TreePine : isRock ? Pickaxe : Sparkles,
           variant: 'outline',
           hint: 'Applies to all harvestables; persisted in Settings',
           onClick: () => {

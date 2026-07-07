@@ -85,6 +85,8 @@ export function CraftingWorkshop({
   worldSeed,
   station,
   username,
+  gridFilterCategory,
+  gridHeading,
   onClose,
 }: CraftingWorkshopProps) {
   const [selectedRecipe, setSelectedRecipe] = useState<CraftingRecipe | null>(null);

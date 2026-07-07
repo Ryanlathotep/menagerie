@@ -158,7 +158,7 @@ export function MoveSortFilter({
             </span>
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-44 p-1" align="start">
+        <PopoverContent className="w-44 p-1 z-[70]" align="start">
           {sortOptions.map(option => (
             <Button
               key={option.value}

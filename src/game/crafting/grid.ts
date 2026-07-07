@@ -3,7 +3,7 @@
 import { CRAFTING_MATERIALS, RARITY_MULTIPLIERS, type EquipmentStats, type Rarity } from '../equipment';
 import { DEFAULT_BLUEPRINTS, getBlueprint } from './patterns';
 import type { CraftGrid, GridSize, ItemBlueprint, PatternSlot, ResolvedCraft, StationContext } from './types';
-import { getEffectiveMaterialEffect } from './materialEffects';
+import { getEffectiveMaterialEffect, getPerUnitForBlueprint } from './materialEffects';
 import { resolveStationModifierStats, mergeStats } from './stationEffects';
 
 // ---- Grid helpers ----

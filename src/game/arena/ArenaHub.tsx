@@ -22,6 +22,7 @@ import { ARENA_SHOP } from './shop';
 import { PracticeDuel } from './PracticeDuel';
 import { STRATEGY_PRESETS } from './strategyPresets';
 import { ArenaChampionsLeaderboard } from './ArenaChampionsLeaderboard';
+import { loadPartyMenuComboIds, validateArenaTeam } from './teamValidation';
 import { useGame } from "@/game/state";
 
 interface ArenaHubProps {

@@ -144,6 +144,9 @@ function renderTileGraphic(
       );
       return <OverworldRockTile size={tileSize} seed={seed} tier={tile.stoneTier} fit={fit} />;
     }
+    case 'plant': {
+      return <OverworldPlantTile size={tileSize} seed={seed} variant={tile.plantVariant} tier={tile.plantTier} />;
+    }
     case 'water': {
       const isWater = (x: number, y: number) => {
         const t = neighborCache ? getCachedTile(neighborCache, x, y) : getOverworldTile(state, x, y);

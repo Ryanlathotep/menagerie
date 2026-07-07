@@ -210,9 +210,12 @@ export function useCloudSave() {
     saveToCloud,
     loadFromCloud,
     syncSave,
+    listSnapshots,
+    restoreSnapshot,
     syncing,
     lastSyncTime,
     isAuthenticated,
     scoreSave: cloudScore.scoreSave,
   };
+
 }

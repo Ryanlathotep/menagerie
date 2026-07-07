@@ -218,6 +218,25 @@ export function getVisibleOverworldEnemies(
   return result;
 }
 
+// Manhattan-reach threat check for the overworld. Mirrors
+// anyEnemyThreatensPlayer from dungeonCombat.ts: any visible enemy whose
+// affordable moveset can reach the player's tile (including AoE/aura radius)
+// counts as a threat. Consumed by every overworld auto-action so mining,
+// hunting, searching, and walking all halt the moment we're in real danger.
+export function anyOverworldEnemyThreatensPlayer(overworld: OverworldState): boolean {
+  const visible = getVisibleOverworldEnemies(overworld, 12);
+  if (visible.length === 0) return false;
+  const { x: px, y: py } = overworld.playerPosition;
+  for (const { enemy, pos } of visible) {
+    if ((enemy.stats.currentHp ?? 0) <= 0) continue;
+    const reach = getEnemyThreatReach(enemy);
+    const dist = Math.abs(pos.x - px) + Math.abs(pos.y - py);
+    if (dist <= reach) return true;
+  }
+  return false;
+}
+
+
 // Enemy AI for overworld - enemies move toward or away from player.
 // Now archetype + IQ aware via src/game/enemyAI.ts.
 export interface OverworldEnemyAction {

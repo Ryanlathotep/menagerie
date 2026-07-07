@@ -2575,6 +2575,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
               </Button>
               <Button variant="outline" size="sm" className="flex-1" onClick={() => { setShowBuildingMenu(false); setShowBuildPanel(true); }}>
                 🏗️ Build
+              </Button>
             </div>
           )}
           {overworld.homeBase.buildingType === 'town_hall' && (

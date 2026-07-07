@@ -91,6 +91,7 @@ import {
   ENEMY_REST_STAMINA_REGEN,
   enemyHasStaminaToAttack,
   getPathTiles,
+  anyEnemyThreatensPlayer,
 } from '@/game/dungeonCombat';
 import { playParticleEffectForMove } from '@/game/particles/api';
 import { MoveInfoPanel } from '@/game/AttackTargeting';

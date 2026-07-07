@@ -995,44 +995,74 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
 
       // ── No enemy in sight (or unreachable): spiral outward through fog ──
-      // Find the nearest explored, walkable tile that borders an unexplored
-      // (or ungenerated) neighbor — that's a frontier tile — and walk toward
-      // it. This keeps the map streaming until an enemy appears.
-      const SCAN = 30;
-      let bestFrontier: { x: number; y: number; d: number } | null = null;
+      // Collect every explored, walkable tile that borders an unexplored (or
+      // ungenerated) neighbor — those are frontier tiles. Sort by distance and
+      // try each one until we find a reachable path so single dead-end
+      // frontiers can't stall the hunt.
+      const SCAN = 40;
+      const frontiers: Array<{ x: number; y: number; d: number }> = [];
       for (let dy = -SCAN; dy <= SCAN; dy++) {
         const rem = SCAN - Math.abs(dy);
         for (let dx = -rem; dx <= rem; dx++) {
+          if (dx === 0 && dy === 0) continue; // skip player's own tile
           const x = px + dx, y = py + dy;
           const t = getOverworldTile(ow, x, y);
           if (!t || !t.explored) continue;
-          // Skip unpassable tile types quickly.
           if (t.type === 'building' || t.type === 'player_building' || t.type === 'tree' ||
               t.type === 'rock' || t.type === 'water' || t.type === 'cliff' || t.type === 'waterfall') continue;
-          // Frontier check: any neighbor missing / unexplored.
           let frontier = false;
           for (const [ox, oy] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
             const nt = getOverworldTile(ow, x + ox, y + oy);
             if (!nt || !nt.explored) { frontier = true; break; }
           }
           if (!frontier) continue;
-          const d = Math.abs(dx) + Math.abs(dy);
-          if (!bestFrontier || d < bestFrontier.d) bestFrontier = { x, y, d };
+          frontiers.push({ x, y, d: Math.abs(dx) + Math.abs(dy) });
         }
       }
-      if (!bestFrontier) {
-        cancelAutoHunt('🔎 Auto-Hunt stopped — no enemies visible and no fog to explore.');
+      frontiers.sort((a, b) => a.d - b.d);
+
+      // Try nearest frontiers first, with avoidStructures on then off so trees
+      // and rocks can't wall off exploration entirely.
+      let stepDx = 0, stepDy = 0, gotStep = false;
+      outer: for (const passStructures of [true, false]) {
+        for (let i = 0; i < Math.min(frontiers.length, 24); i++) {
+          const f = frontiers[i];
+          const path = findOverworldPath(ow, ow.playerPosition, { x: f.x, y: f.y }, 8000, { avoidStructures: passStructures });
+          if (!path || path.length === 0) continue;
+          const step = path[0];
+          const ddx = step.x - px, ddy = step.y - py;
+          if (Math.abs(ddx) + Math.abs(ddy) !== 1) continue;
+          stepDx = ddx; stepDy = ddy; gotStep = true;
+          break outer;
+        }
+      }
+
+      if (!gotStep) {
+        // Last-ditch: walk one step in the cardinal direction of the farthest
+        // frontier so we at least keep moving outward.
+        const far = frontiers[frontiers.length - 1];
+        if (far) {
+          const ddx = Math.sign(far.x - px);
+          const ddy = Math.sign(far.y - py);
+          const options: Array<[number, number]> = [];
+          if (ddx !== 0) options.push([ddx, 0]);
+          if (ddy !== 0) options.push([0, ddy]);
+          for (const [ox, oy] of options) {
+            const nt = getOverworldTile(ow, px + ox, py + oy);
+            if (nt && nt.type !== 'water' && nt.type !== 'cliff' && nt.type !== 'tree' &&
+                nt.type !== 'rock' && nt.type !== 'building' && nt.type !== 'player_building' &&
+                nt.type !== 'waterfall') {
+              stepDx = ox; stepDy = oy; gotStep = true; break;
+            }
+          }
+        }
+      }
+
+      if (!gotStep) {
+        cancelAutoHunt('🔎 Auto-Hunt stopped — no enemies visible and can\'t find a way outward.');
         return;
       }
-      const path = findOverworldPath(ow, ow.playerPosition, { x: bestFrontier.x, y: bestFrontier.y }, 8000, { avoidStructures: true });
-      if (!path || path.length === 0) {
-        cancelAutoHunt('⚠️ Auto-Hunt stopped — no path outward.');
-        return;
-      }
-      const step = path[0];
-      const dx = step.x - px, dy = step.y - py;
-      if (Math.abs(dx) + Math.abs(dy) !== 1) { cancelAutoHunt(); return; }
-      handleMoveRef.current(dx, dy);
+      handleMoveRef.current(stepDx, stepDy);
     }, stepDelay);
   }, [addLog, cancelAutoHunt, cancelAutoMine, cancelAutoSearch, cancelAutoWalk, pickHuntAttackMove, settings.autoRunSpeed]);
 

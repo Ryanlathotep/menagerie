@@ -24,12 +24,18 @@ import {
   CRAFTING_MATERIALS,
   CONSUMABLE_RECIPES,
   ConsumableRecipe,
+  getRecipeFromEquipment,
 } from './equipment';
 import { isCreativeMode, onCreativeModeChange } from './creativeMode';
 import { PICKAXE_TIERS, PICKAXE_TIER_ORDER, nextPickaxeTier, SHOVEL_TIERS, SHOVEL_TIER_ORDER, nextShovelTier, WORKSTATION, type PickaxeTier, type ShovelTier, type PlayerTools } from './tools';
 import { useEffect } from 'react';
 import { CraftingGridPanel } from './CraftingGrid';
 import type { InventoryItem } from './types';
+import { legacyRecipeToGrid } from './crafting/legacyConverter';
+import { hashGrid } from './crafting/grid';
+import { recordDiscovery } from './crafting/recipeBook';
+import { getLegacyInventor } from './crafting/legacyInventors';
+import { toast } from 'sonner';
 
 interface MaterialInventory {
   [materialId: string]: number;
@@ -151,9 +157,43 @@ export function CraftingWorkshop({
   
   const handleDismantle = () => {
     if (!selectedDismantle) return;
-    
+
     const result = dismantleEquipment(selectedDismantle);
     onDismantle(selectedDismantle.id, result.materials);
+
+    // Try to teach the recipe book about this item.
+    // 1) Grid-crafted items carry provenance with usedMaterials — future work
+    //    will store the actual grid; for now legacy pathway is what mattered.
+    // 2) Legacy items match one of the CRAFTING_RECIPES entries.
+    try {
+      const legacy = getRecipeFromEquipment(selectedDismantle);
+      if (legacy) {
+        const { grid, size } = legacyRecipeToGrid(legacy);
+        const inventor = getLegacyInventor(legacy.resultSlot);
+        recordDiscovery(
+          {
+            hash: hashGrid(grid),
+            blueprintId: legacy.id,
+            itemName: legacy.name,
+            grid,
+            gridSize: size,
+            discoveredBy: inventor.username,
+            discoveredAt: new Date().toISOString(),
+            worldSeed: null,
+            inventorStationKind: null,
+            inventorStationTier: 1,
+            inventorStationStats: {},
+          },
+          { skipCloud: true },
+        );
+        toast.success(`Recipe learned: ${legacy.name}`, {
+          description: `Invented by ${inventor.username}. Check your Grid tab.`,
+        });
+      }
+    } catch {
+      /* non-fatal — dismantle still succeeds */
+    }
+
     setSelectedDismantle(null);
   };
   

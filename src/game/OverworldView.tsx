@@ -2759,7 +2759,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             </p>
             <div className="grid grid-cols-2 gap-2">
               {(Object.values(BUILDING_DEFINITIONS) as typeof BUILDING_DEFINITIONS[PlayerBuildingType][]).map(def => {
-                const canAfford = overworld.woodCollected >= def.cost.wood && overworld.stoneCollected >= def.cost.stone;
+                const canAfford = isCreativeMode() || (overworld.woodCollected >= def.cost.wood && overworld.stoneCollected >= def.cost.stone);
                 const isSelected = buildMode && selectedBuildType === def.type;
                 return (
                   <button

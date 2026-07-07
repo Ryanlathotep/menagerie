@@ -65,6 +65,27 @@ export function MainMenu() {
     toast.success(`Brewed ${recipe.name}!`);
   };
 
+  const handleGridCraft = (
+    item: EquipmentItem | null,
+    used: { materialId: string; quantity: number }[],
+    consumable?: { name: string; icon: string; effectId: string; rarity: import('@/game/equipment').Rarity },
+  ) => {
+    if (!isCreativeMode()) dispatch({ type: 'USE_MATERIALS', materials: used });
+    if (item) {
+      dispatch({ type: 'STORE_EQUIPMENT', item });
+    } else if (consumable) {
+      const invItem: InventoryItem = {
+        id: `craft_${Date.now()}`,
+        name: consumable.name,
+        type: 'potion',
+        value: 0,
+        effect: consumable.effectId,
+        quantity: 1,
+      };
+      dispatch({ type: 'STORE_ITEM', item: invItem });
+    }
+  };
+
   const handleDismantle = (itemId: string, materialsGained: { materialId: string; quantity: number }[]) => {
     dispatch({ type: 'DISMANTLE_EQUIPMENT', itemId });
     const materialNames = materialsGained
@@ -383,6 +404,7 @@ export function MainMenu() {
             dispatch({ type: 'SET_WORKSTATION_OWNED' });
             toast.success('🛠️ Portable Workstation ready! Use it from the dungeon HUD.');
           }}
+          onGridCraft={handleGridCraft}
           onClose={() => setShowCrafting(false)}
         />
       )}

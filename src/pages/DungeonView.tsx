@@ -2962,6 +2962,14 @@ export function DungeonView({
             dispatch({ type: 'SET_WORKSTATION_OWNED' });
             toast.success('🛠️ Portable Workstation ready!');
           }}
+          onGridCraft={(item, used, consumable) => {
+            if (!isCreativeMode()) dispatch({ type: 'USE_MATERIALS', materials: used });
+            if (item) dispatch({ type: 'STORE_EQUIPMENT', item });
+            else if (consumable) dispatch({ type: 'ADD_ITEM', item: {
+              id: `craft_${Date.now()}`, name: consumable.name, type: 'potion', value: 0,
+              effect: consumable.effectId, quantity: 1,
+            }});
+          }}
           onClose={() => setShowWorkshop(false)}
         />
       )}

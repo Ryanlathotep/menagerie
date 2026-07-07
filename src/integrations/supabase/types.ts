@@ -56,6 +56,42 @@ export type Database = {
         }
         Relationships: []
       }
+      crafting_recipes_discovered: {
+        Row: {
+          blueprint_id: string
+          discovered_at: string
+          discovered_by: string | null
+          discovered_by_username: string | null
+          grid_json: Json
+          grid_size: number
+          hash: string
+          item_name: string
+          world_seed: string | null
+        }
+        Insert: {
+          blueprint_id: string
+          discovered_at?: string
+          discovered_by?: string | null
+          discovered_by_username?: string | null
+          grid_json: Json
+          grid_size?: number
+          hash: string
+          item_name: string
+          world_seed?: string | null
+        }
+        Update: {
+          blueprint_id?: string
+          discovered_at?: string
+          discovered_by?: string | null
+          discovered_by_username?: string | null
+          grid_json?: Json
+          grid_size?: number
+          hash?: string
+          item_name?: string
+          world_seed?: string | null
+        }
+        Relationships: []
+      }
       custom_sprites: {
         Row: {
           created_at: string

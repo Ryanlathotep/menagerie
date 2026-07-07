@@ -28,6 +28,8 @@ import {
 import { isCreativeMode, onCreativeModeChange } from './creativeMode';
 import { PICKAXE_TIERS, PICKAXE_TIER_ORDER, nextPickaxeTier, SHOVEL_TIERS, SHOVEL_TIER_ORDER, nextShovelTier, WORKSTATION, type PickaxeTier, type ShovelTier, type PlayerTools } from './tools';
 import { useEffect } from 'react';
+import { CraftingGridPanel } from './CraftingGrid';
+import type { InventoryItem } from './types';
 
 interface MaterialInventory {
   [materialId: string]: number;
@@ -45,6 +47,12 @@ interface CraftingWorkshopProps {
   onUpgradePickaxe?: (tier: PickaxeTier, materials: { materialId: string; quantity: number }[]) => void;
   onUpgradeShovel?: (tier: ShovelTier, materials: { materialId: string; quantity: number }[]) => void;
   onCraftWorkstation?: (materials: { materialId: string; quantity: number }[]) => void;
+  onGridCraft?: (
+    item: EquipmentItem | null,
+    used: { materialId: string; quantity: number }[],
+    consumable?: { name: string; icon: string; effectId: string; rarity: import('./equipment').Rarity },
+  ) => void;
+  worldSeed?: string | null;
   onClose: () => void;
 }
 
@@ -60,13 +68,15 @@ export function CraftingWorkshop({
   onUpgradePickaxe,
   onUpgradeShovel,
   onCraftWorkstation,
+  onGridCraft,
+  worldSeed,
   onClose,
 }: CraftingWorkshopProps) {
   const [selectedRecipe, setSelectedRecipe] = useState<CraftingRecipe | null>(null);
   const [selectedConsumable, setSelectedConsumable] = useState<ConsumableRecipe | null>(null);
   const [craftedItem, setCraftedItem] = useState<EquipmentItem | null>(null);
   const [craftedConsumable, setCraftedConsumable] = useState<ConsumableRecipe | null>(null);
-  const [activeTab, setActiveTab] = useState<'craft' | 'consumables' | 'dismantle' | 'tools'>('craft');
+  const [activeTab, setActiveTab] = useState<'craft' | 'grid' | 'consumables' | 'dismantle' | 'tools'>('craft');
   const [selectedDismantle, setSelectedDismantle] = useState<EquipmentItem | null>(null);
   
   // Creative mode flag — re-renders when toggled so disabled buttons & "missing
@@ -148,6 +158,14 @@ export function CraftingWorkshop({
               ⚒️ Equip
             </Button>
             <Button
+              variant={activeTab === 'grid' ? 'default' : 'ghost'}
+              size="sm"
+              className="text-xs h-7 px-2"
+              onClick={() => setActiveTab('grid')}
+            >
+              🧩 Grid
+            </Button>
+            <Button
               variant={activeTab === 'consumables' ? 'default' : 'ghost'}
               size="sm"
               className="text-xs h-7 px-2"
@@ -194,6 +212,16 @@ export function CraftingWorkshop({
             canCraft={canCraft}
             isUnlocked={isUnlocked}
             handleCraft={handleCraft}
+          />
+        ) : activeTab === 'grid' ? (
+          <CraftingGridPanel
+            materials={materials}
+            playerLevel={playerLevel}
+            gridSize={3}
+            worldSeed={worldSeed}
+            onCraft={(item, used, consumable) => {
+              onGridCraft?.(item, used, consumable);
+            }}
           />
         ) : activeTab === 'consumables' ? (
           <ConsumablesTab

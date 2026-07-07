@@ -18,6 +18,7 @@ function SwitchAccountButton() {
     </Button>
   );
 }
+import { CraftGridEditor } from './CraftGridEditor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -101,6 +102,10 @@ export function AdminPanel() {
               <Package className="w-4 h-4" />
               Recipes
             </TabsTrigger>
+            <TabsTrigger value="craftgrid" className="gap-2 shrink-0">
+              <Package className="w-4 h-4" />
+              Craft Grid
+            </TabsTrigger>
             <TabsTrigger value="monsters" className="gap-2 shrink-0">
               <Ghost className="w-4 h-4" />
               Monsters
@@ -152,6 +157,9 @@ export function AdminPanel() {
           </TabsContent>
           <TabsContent value="recipes" className="p-4 m-0">
             <RecipesEditor />
+          </TabsContent>
+          <TabsContent value="craftgrid" className="p-4 m-0">
+            <CraftGridEditor />
           </TabsContent>
           <TabsContent value="monsters" className="p-4 m-0">
             <MonstersEditor />

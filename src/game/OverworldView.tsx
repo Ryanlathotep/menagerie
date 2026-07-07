@@ -2252,6 +2252,14 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           if (!isCreativeMode()) dispatch({ type: 'USE_MATERIALS', materials: mats });
           dispatch({ type: 'SET_WORKSTATION_OWNED' });
         }}
+        onGridCraft={(item, used, consumable) => {
+          if (!isCreativeMode()) dispatch({ type: 'USE_MATERIALS', materials: used });
+          if (item) dispatch({ type: 'STORE_EQUIPMENT', item });
+          else if (consumable) dispatch({ type: 'ADD_ITEM', item: {
+            id: `craft_${Date.now()}`, name: consumable.name, type: 'potion', value: 0,
+            effect: consumable.effectId, quantity: 1,
+          }});
+        }}
         onClose={() => setShowWorkshop(false)}
       />
     )}

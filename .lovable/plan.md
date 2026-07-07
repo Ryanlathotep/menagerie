@@ -1,79 +1,69 @@
-# Herbs + Crafting Overhaul
+# Grid-Based Crafting Overhaul
 
-Two features shipped in one pass, in the order they unblock each other.
+Transform crafting from fixed recipes into a Minecraft-style grid where a small **required pattern** determines the item type, and **filler materials** in remaining slots grant additional stats. The same grid always yields the same item; first-time crafting or dismantling adds the recipe to your book and credits the discoverer server-wide.
 
----
+## Player-Facing Behavior
 
-## Phase 1 — Wild & Farmed Herbs
+- **Grid crafting UI** at each station. Grid size scales with station tier:
+  - Portable / T1 station: 3x3
+  - T2 (Workbench, Forge, etc.): 4x4
+  - T3 (upgraded stations, future): 5x5
+- **Required pattern**: each item type (dagger, sword, potion, scroll, armor piece…) defines a minimum shape of specific materials (e.g. Dagger = 1 blade material stacked on 1 handle material). Placing this pattern anywhere valid in the grid produces the base item.
+- **Fillers**: every extra material in unfilled slots applies its per-slot-category effect (e.g. extra Iron on a bladed weapon → +min damage, Gold Ore → +starting level, Ember Herb on a potion → +fire duration). Effects stack.
+- **Deterministic naming**: item name is generated from the dominant blade + handle + top filler (e.g. "Iron Dagger of Gilded Embers"). Same grid = same name + stats every time (hash-keyed).
+- **Recipe book**: first successful craft OR dismantle records the grid layout under the resulting item; later you can one-click re-craft or convert to a **Recipe Scroll** item to trade/gift.
+- **Discovery credit**: the first player on the server to produce a given recipe hash is stored as its `discovered_by` (username). Displayed on the recipe card and scrolls: *"Invented by <username>"*.
+- **Pixel preview**: the grid renders a small pixel-art silhouette of the resulting item, assembled from per-material sprites layered by slot role (blade, handle, guard, gem, etc.), similar to Minecraft's crafting preview.
 
-### 1a. New tile type `plant`
-- Add `'plant'` to `OverworldTile.type` union with fields `plantVariant: 'herb'|'flower'|'mushroom'|'root'`, `regrowSteps`, `harvested: boolean`.
-- Reuse the exact `rock`/`tree` plumbing:
-  - Chunk generation (`overworld.ts`): scatter plants in grass/forest biomes via noise, denser near water and forest clusters.
-  - `movePlayer` → `case 'resource'`: on step, drop 1-3 herb materials + rare seeds; toggle `harvested=true`; regrow after N steps like current resource regen.
-  - Auto-Harvest: `findClusterTargets` already keys on `tileType`, so `plant` clusters harvest via the same job — no new loop needed.
-  - Unified menu: add plant branch (Harvest / Walk & Harvest / Auto-Harvest / Disable Auto).
-  - Tile graphics: new `OverworldTileGraphics` case with 4 hand-drawn SVG variants.
-  - Tooltip: plant name, variant, drop preview.
+## Data Model
 
-### 1b. Herb materials + seeds
-- Extend `materials.ts` with herb category: `mint_leaf`, `moon_flower`, `red_cap_mushroom`, `bitterroot`, `starweed`, `emberpetal`, `frost_lily`, plus their `_seed` counterparts.
-- Seeds have `plantable: true` metadata for Phase 1c.
+### New: `src/game/crafting/`
+- `types.ts` — `CraftGrid`, `RecipePattern`, `MaterialEffect`, `ItemBlueprint`, `DiscoveredRecipe`.
+- `patterns.ts` — required patterns per item blueprint (dagger, sword, axe, bow, staff, helm, chest, potion, scroll, ring, …). Each pattern: `{ slots: Array<{ dx, dy, role: 'blade'|'handle'|'guard'|'base'|'catalyst'|'binder', tag: MaterialTag }> }`.
+- `materialEffects.ts` — per-material, per-item-category effect map:
+  `{ materialId, appliesTo: ItemCategory[], perUnit: StatDelta }`. Editable via admin.
+- `grid.ts` — pure functions: `hashGrid(grid)`, `matchPattern(grid)`, `resolveItem(grid) -> { blueprintId, stats, name, previewLayers }`.
+- `recipeBook.ts` — local + cloud persistence of discovered recipes (keyed by hash).
 
-### 1c. Farm plot integration
-- Existing farm building already accepts `assignedMonsterId` and outputs materials — extend it:
-  - Add "Plant seed" dialog when interacting with a farm: pick any seed from inventory.
-  - `harvestOutput` picks recipe based on planted seed (higher yield + tier bonus vs wild).
-  - Growth speed scales with assigned monster's Earth/Bio affinity.
+### DB migrations (Lovable Cloud)
+- `crafting_recipes_discovered` — `hash text PK, blueprint_id text, grid_json jsonb, item_name text, discovered_by uuid references profiles, discovered_at timestamptz, world_seed text`.
+  - RLS: anyone authenticated can SELECT; INSERT only if hash not present (unique constraint handles race).
+  - GRANTs: `SELECT, INSERT` to `authenticated`; `SELECT` to `anon` (leaderboard-style read); `ALL` to `service_role`.
+- Extend `game_data_overrides` `data_type` union with `'craft_pattern'` and `'material_effect'`.
 
----
+## Admin Editors
 
-## Phase 2 — Crafting Overhaul (Stations / Recipes / Tiers)
+Two new tabs in `AdminPanel.tsx`:
+1. **Craft Patterns** — pick an item blueprint, edit its required-slot grid (drag material tags onto cells, mark role). Persists as `craft_pattern` override.
+2. **Material Effects** — matrix editor: rows = materials, columns = item categories, cell = stat delta per extra unit (min damage, max damage, starting level, durability, elemental damage, cast speed, potion duration, etc.). Persists as `material_effect` override.
 
-### 2a. Station buildings
-Add four new `player_building` sub-types:
-| Station | Recipes | Requires |
-|--------|---------|----------|
-| **Forge** | Metal gear, weapons, ore refinement | 20 stone, 10 wood |
-| **Workbench** | Wood/leather gear, traps, utility items | 10 wood |
-| **Brewing Stand** | Potions, elixirs, infusions | 5 stone, 5 wood, 3 herb |
-| **Enchanting Altar** | Rune scrolls, monster-catch enhancers | 15 stone, 3 mithril, 5 essence |
+Both reuse `useGameDataOverrides` + `CopyFromPicker` patterns already in `src/admin/`.
 
-Existing `CraftingWorkshop` becomes a **portable "any-station"** granted by the Portable Workstation item (unchanged), so single-player crafting still works anywhere.
+## UI
 
-### 2b. Recipe & tier restructure
-- New `recipes.ts` module. Each recipe carries: `station`, `tier` (Common/Uncommon/Rare/Epic/Legendary), `inputs`, `output`, `unlockCondition`.
-- Tier gating: T3+ recipes require the station to be **upgraded** (spend materials to upgrade Forge Mk1 → Mk2 → Mk3, etc.). Upgrade unlocks that station's higher-tier recipes.
-- Discovery still uses existing "escape dungeon to unlock blueprints" flow (already memory-locked).
+- Replace `CraftingWorkshop.tsx` main flow with `<CraftingGrid>` (drag-materials-from-inventory-onto-cells) + live-updating right panel showing:
+  - Resolved item name, stats, pixel preview.
+  - "Discovered by" line if hash already known.
+  - Craft button (disabled until required pattern satisfied).
+- `RecipeBookPanel` — searchable list of discovered recipes, click to auto-fill grid; button to burn materials into a `Recipe Scroll`.
 
-### 2c. Potions & Infusions
-- Potions are Brewing Stand outputs: heal, cure status, buff stats, elemental resist, XP boost.
-- **Infusion**: at any station, you can consume a potion during crafting to add its effect as a passive to the item (e.g. brew Fire Resist → infuse into armor → armor grants +10% fire resist). Infusions consume the potion and cost 1 essence.
+## Migration & Compatibility
 
-### 2d. UI
-- Rework `CraftingWorkshop.tsx` into tabbed view: **Forge | Workbench | Brewing | Enchanting**, plus **Dismantle** (kept) and **Infuse** (new).
-- Non-portable use: each tab is grayed out unless the player stands adjacent to the matching station OR holds the Portable Workstation.
-- Recipe list per tab with tier badges, station-Mk requirement chip, material-cost preview.
+- Legacy `CRAFTING_RECIPES` in `equipment.ts` become **seed patterns** for the new system (auto-generated blueprints so nothing breaks); existing `RecipesEditor` remains for old-style recipes but a banner points to the new Patterns editor.
+- Existing blueprints in save data untouched.
 
----
+## Rollout (implementation order)
 
-## Technical notes
+1. Types, pattern/grid pure logic + unit tests.
+2. Material effects registry with sensible defaults for current materials.
+3. `CraftingGrid` UI + pixel preview renderer.
+4. Recipe book (local first, then cloud sync + discoverer credit table).
+5. Admin editors (Patterns, Material Effects).
+6. Station-tier grid sizing + wire into portable/station gating.
+7. Smoke test invariants + typecheck.
 
-- No database schema changes needed. Herbs, seeds, potions, and stations all live in existing `saveData.storedItems`, `run.inventory`, `overworld.playerBuildings`.
-- Existing constraints respected: recipes still unlock via dungeon escape, materials remain global, station buildings follow the 10-tile Manhattan build-radius rule.
-- `Full overhaul` scope is ~7 file additions and ~5 substantial edits. Estimate: several turns; will land it in this order:
-  1. `plant` tile + chunk gen + graphics + auto-harvest (playable herbs).
-  2. Herb/seed materials + drop table.
-  3. Farm seed-planting dialog.
-  4. Station buildings + upgrade tiers.
-  5. Recipes module + tier gating.
-  6. Brewing + Infusion.
-  7. Workshop UI rebuild with tabs and station gating.
+## Open Questions
 
----
-
-## What stays the same
-
-- Every existing recipe keeps its inputs — only its **station assignment** and **tier** are added.
-- Dismantling, blueprint discovery, materials list, and Portable Workstation flow are untouched.
-- Sprite Editor stays forbidden (memory rule).
+1. Should Recipe Scrolls be single-use teach-a-recipe items, or infinite-use one-click crafters?
+2. For pixel previews, do you want me to author placeholder sprite layers per material role now, or ship with emoji stand-ins and let you upload real sprites via the Admin Asset Library later (mirroring the building placeholder flow)?
+3. Discovery credit: server-wide (all players share one leaderboard) or per-world-seed (each seed has its own inventors)?

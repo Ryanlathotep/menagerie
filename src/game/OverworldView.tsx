@@ -204,6 +204,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [stationConfigBuilding, setStationConfigBuilding] = useState<PlayerBuilding | null>(null);
   // When set, the workshop is opened with this building's station context.
   const [workshopStationBuilding, setWorkshopStationBuilding] = useState<PlayerBuilding | null>(null);
+  const [arenaHubOpen, setArenaHubOpen] = useState(false);
   // Unified right-click / long-press menu (one menu for every tile type).
   const [unifiedMenu, setUnifiedMenu] = useState<{ x: number; y: number } | null>(null);
   // Attack picker is opened FROM the unified menu when the tile has an enemy/nest

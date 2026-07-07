@@ -115,9 +115,12 @@ export function findPath(
         continue;
       }
       
-      // Check walkability
+      // Check walkability. Only the *goal* tile is allowed to be a mineable
+      // wall (and only when the caller opted in) — never a mid-path step, or
+      // the walker would try to phase through solid rock without mining it.
       const tile = tiles[neighbor.y][neighbor.x];
-      if (!isWalkable(tile)) {
+      const isGoal = neighbor.x === goal.x && neighbor.y === goal.y;
+      if (!isWalkable(tile, allowMineable && isGoal)) {
         continue;
       }
       

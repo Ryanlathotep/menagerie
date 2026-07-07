@@ -1499,16 +1499,18 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           toast.error('Can only build on open ground!');
           return prev;
         }
-        // Reject elevation features up front with helpful messages.
-        if (tile.type === 'cliff') {
-          toast.error('Cannot build on a cliff face');
+        // Reject elevation features up front with helpful messages. Cliffs
+        // are allowed for stair/ladder placement — that's the whole point of
+        // the cliff connector building.
+        const isStairLike = selectedBuildType === 'stone_staircase' || selectedBuildType === 'ladder';
+        if (tile.type === 'cliff' && !isStairLike) {
+          toast.error('Only Cliff Stairs / Ladders can be built on a cliff face');
           return prev;
         }
         if (tile.type === 'waterfall') {
           toast.error('Cannot build on a waterfall');
           return prev;
         }
-        const isStairLike = selectedBuildType === 'stone_staircase' || selectedBuildType === 'ladder';
         if (tile.isRamp) {
           toast.error('Ramps already provide a passable climb');
           return prev;

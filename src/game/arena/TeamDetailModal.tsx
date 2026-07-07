@@ -168,7 +168,7 @@ function MemberRow({ monster }: { monster: Monster }) {
               <div className="min-w-0">
                 <div className="truncate font-medium">{mv.name}</div>
                 <div className="text-[10px] text-muted-foreground truncate">
-                  {mv.element} · {mv.class ?? '—'}
+                  {mv.element ?? '—'}{mv.classBonus ? ` · ${mv.classBonus}` : ''}
                   {mv.type ? ` · ${mv.type}` : ''}
                 </div>
               </div>

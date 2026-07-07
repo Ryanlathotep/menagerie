@@ -209,11 +209,80 @@ function AdminQAInner() {
           )}
         </Card>
 
+        <Card className="p-4 space-y-3">
+          <div>
+            <h2 className="font-semibold">Auto-battle sandbox</h2>
+            <p className="text-xs text-muted-foreground">
+              Headless team-vs-team simulation using the max-level fixture. Same engine the future Arena will run against, deterministic per seed.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="text-sm flex items-center gap-2">
+              Seed
+              <input
+                type="number"
+                className="w-24 border rounded px-2 py-1 text-sm bg-background"
+                value={abSeed}
+                onChange={(e) => setAbSeed(Number(e.target.value) || 0)}
+              />
+            </label>
+            <label className="text-sm flex items-center gap-2">
+              <input type="checkbox" checked={abVerbose} onChange={(e) => setAbVerbose(e.target.checked)} />
+              Verbose log
+            </label>
+            <Button
+              size="sm"
+              onClick={() => {
+                setAbRunning(true);
+                try {
+                  const { teamA, teamB } = buildTwoMaxLevelTeams(state.saveData);
+                  const res = runAutobattle(
+                    { id: 'A', name: 'Team A', members: teamA },
+                    { id: 'B', name: 'Team B', members: teamB },
+                    { seed: abSeed, verbose: abVerbose },
+                  );
+                  setAbResult(res);
+                } finally {
+                  setAbRunning(false);
+                }
+              }}
+              disabled={abRunning}
+            >
+              {abRunning ? 'Simulating…' : 'Simulate'}
+            </Button>
+            {abResult && (
+              <Badge variant={abResult.winner === 'draw' ? 'secondary' : 'default'}>
+                {abResult.winner === 'draw' ? 'Draw' : `Team ${abResult.winner} wins`} — {abResult.turns} turns
+              </Badge>
+            )}
+          </div>
+          {abResult && (
+            <div className="border rounded-md p-2 bg-muted/30">
+              <div className="text-xs mb-2 font-mono">
+                seed={abResult.seed} · casualties=[{abResult.casualties.join(', ') || '—'}] · mvp={abResult.mvpId ?? '—'} ({abResult.mvpDamage} dmg)
+              </div>
+              <ScrollArea className="h-48">
+                <ul className="text-xs font-mono space-y-0.5">
+                  {abResult.log.map((e, i) => (
+                    <li key={i} className={e.faint ? 'text-destructive' : ''}>
+                      T{e.turn} [{e.actorTeam}] {e.message}
+                      {e.faint ? ' — 💀' : ''}
+                    </li>
+                  ))}
+                  {abResult.log.length === 0 && <li className="text-muted-foreground">No entries (enable verbose for the full trace).</li>}
+                </ul>
+              </ScrollArea>
+            </div>
+          )}
+        </Card>
+
         <Card className="p-4">
           <h2 className="font-semibold mb-1">Debug bridge</h2>
           <p className="text-sm text-muted-foreground">
             Open browser DevTools and call <code className="bg-muted px-1 rounded">window.__menagerie.help()</code> for the full bridge API,
-            or <code className="bg-muted px-1 rounded">window.__menagerie.runSmokeTest()</code> to run this suite from the console.
+            <code className="bg-muted px-1 rounded ml-1">runSmokeTest()</code> to run this suite,
+            <code className="bg-muted px-1 rounded ml-1">loadMaxLevelSave()</code> to load the QA fixture, or
+            <code className="bg-muted px-1 rounded ml-1">runAutobattle()</code> to simulate a match from the console.
           </p>
         </Card>
       </div>

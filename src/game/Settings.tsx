@@ -528,9 +528,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           {/* Overworld Rebuild Section */}
           <RebuildOverworldSection />
 
+          {/* Cloud save history — restore any of the last 5 snapshots */}
+          <CloudSaveHistorySection onClose={onClose} />
+
           {/* Return to Main Menu — only shown when a run is active. Suspends
               the run (no progress lost) and switches to the main menu. */}
           <ReturnToMainMenuSection onClose={onClose} />
+
 
 
           <div className="space-y-3 pt-4 border-t">

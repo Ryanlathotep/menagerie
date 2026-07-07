@@ -1642,13 +1642,20 @@ export function DungeonView({
             }
           } catch { /* ignore — validation optional */ }
         }
+        // Refund guard: refuse to place (and keep the kit) if the destination
+        // is blocked. Placing a dead portal wastes the material otherwise.
+        if (!validated) {
+          addLog(`🌀 Cannot place portal — destination (${destX}, ${destY}) is blocked (${invalidReason}). Kit returned.`, 'info');
+          toast.error('Portal destination is blocked');
+          return;
+        }
         nextTiles[p.y][p.x] = {
           ...nextTiles[p.y][p.x],
           type: 'stairs_up',
           stairsBeneath: 'up',
           portal: { destKind: 'overworld', destOverworld: { x: destX, y: destY }, validated, invalidReason },
         };
-        addLog(`🌀 Portal staircase placed → Overworld (${destX}, ${destY})${validated ? '' : ` (blocked: ${invalidReason})`}.`, 'system');
+        addLog(`🌀 Portal staircase placed → Overworld (${destX}, ${destY}).`, 'system');
       } else {
         // Odd-coord: destination is a tower — nearest tower to the mapped coord.
         const mappedX = anchor.x + Math.round(relX / 2);
@@ -1661,19 +1668,25 @@ export function DungeonView({
             if (!best || d < best.d) best = { id, d };
           }
         }
+        // Refund guard: refuse to place if we can't resolve a target tower.
+        if (!best) {
+          addLog('🌀 Cannot place portal — no discovered tower near this coordinate. Kit returned.', 'info');
+          toast.error('No known tower nearby');
+          return;
+        }
         nextTiles[p.y][p.x] = {
           ...nextTiles[p.y][p.x],
           type: 'stairs_up',
           stairsBeneath: 'up',
           portal: {
             destKind: 'tower',
-            destTowerId: best?.id,
-            validated: !!best,
-            invalidReason: best ? undefined : 'no discovered tower nearby',
+            destTowerId: best.id,
+            validated: true,
           },
         };
-        addLog(`🌀 Portal staircase placed → ${best ? `Tower ${best.id}` : 'unresolved (no known tower)'}.`, 'system');
+        addLog(`🌀 Portal staircase placed → Tower ${best.id}.`, 'system');
       }
+
       dispatch({ type: 'UPDATE_DUNGEON', dungeon: { tiles: nextTiles } });
       dispatch({ type: 'USE_ITEM', itemId: item.id });
       toast.success('Portal staircase placed!');

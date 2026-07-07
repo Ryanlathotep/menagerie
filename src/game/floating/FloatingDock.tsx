@@ -105,21 +105,16 @@ function saveState(id: string, s: FabState) {
 
 export function useFloatingButton(cfg: FabConfig) {
   const ctx = useContext(Ctx);
-  // stable ref of latest cfg so we don't re-register on every render
+  // Keep a stable ref pointing at the latest cfg so parents can pass inline
+  // closures for onTap without causing re-registration loops.
   const cfgRef = useRef(cfg);
   cfgRef.current = cfg;
   useEffect(() => {
     if (!ctx) return;
-    ctx.register(cfgRef.current);
-    return () => ctx.unregister(cfgRef.current.id);
+    ctx.register(cfg.id, cfgRef);
+    return () => ctx.unregister(cfg.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cfg.id]);
-  // Update config on prop changes without re-registering (same id)
-  useEffect(() => {
-    if (!ctx) return;
-    ctx.register(cfgRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cfg.onTap, cfg.icon, cfg.title, cfg.className, cfg.ariaLabel]);
 }
 
 export function FloatingDockProvider({ children }: { children: ReactNode }) {

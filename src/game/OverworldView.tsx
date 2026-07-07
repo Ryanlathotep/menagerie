@@ -740,6 +740,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       seed: { x: targetX, y: targetY },
       tileType: startTile.type,
     };
+    automationRunningRef.current = true;
     const stepDelay = Math.max(120, settings.autoRunSpeed || 100);
     addLog(`⛏️ Auto-Harvest started — clearing nearby ${startTile.type}s.`, 'info');
     autoMineTimerRef.current = window.setInterval(() => {

@@ -59,6 +59,7 @@ import {
   calculateOverworldEnemyAction,
   moveOverworldEnemy,
   removeOverworldEnemyFromMap,
+  anyOverworldEnemyThreatensPlayer,
 } from './overworldCombat';
 import { RecruitmentModal, calculateRecruitChance } from './RecruitmentModal';
 import { LevelUpScreen } from './LevelUpScreen';

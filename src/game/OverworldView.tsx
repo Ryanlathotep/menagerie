@@ -508,6 +508,15 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             addLog(`💎 Extracted ${quantity}× ${name}!`, 'loot');
             toast.success(`+${quantity}× 💎 ${name}`);
           }
+          if (result.seedDrop) {
+            const { materialId, name, quantity } = result.seedDrop;
+            queueMicrotask(() => dispatch({ type: 'ADD_MATERIAL', materialId, quantity }));
+            addLog(`🌱 Picked up ${quantity}× ${name}!`, 'loot');
+            toast.success(`+${quantity}× 🌱 ${name}`);
+          }
+          if (result.leftTilled) {
+            addLog(`🟫 The felled tree left plantable soil behind.`, 'system');
+          }
           break;
         }
         case 'plant_harvest': {

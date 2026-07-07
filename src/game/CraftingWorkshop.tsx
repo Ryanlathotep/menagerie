@@ -238,6 +238,8 @@ export function CraftingWorkshop({
             worldSeed={worldSeed}
             station={station}
             username={username}
+            filterCategory={gridFilterCategory}
+            heading={gridHeading}
             onCraft={(item, used, consumable) => {
               onGridCraft?.(item, used, consumable);
             }}

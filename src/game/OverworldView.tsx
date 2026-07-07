@@ -1533,7 +1533,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           newOw.homeBase.position,
           newOw.woodCollected, newOw.stoneCollected,
           selectedBuildType,
-          { isCliff: tile.type === 'cliff', isWaterfall: tile.type === 'waterfall', isRamp: !!tile.isRamp, adjacentCliff } as any,
+          { isCliff: (tile.type as string) === 'cliff', isWaterfall: (tile.type as string) === 'waterfall', isRamp: !!tile.isRamp, adjacentCliff } as any,
         );
         if (!check.canPlace) {
           toast.error(check.reason || 'Cannot build here');

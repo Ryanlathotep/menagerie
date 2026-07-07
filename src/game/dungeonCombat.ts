@@ -1,6 +1,7 @@
 // Dungeon Combat System - Attack targeting, enemy AI, and real-time combat on the map
 
 import { DungeonState, Monster, Position, DungeonTile } from './types';
+import { findPath, getDirection } from './pathfinding';
 import { Move, TargetingPattern } from './moves';
 import { EvolvedMove } from './moveMastery';
 import * as enemyAI from './enemyAI';

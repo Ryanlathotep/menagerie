@@ -156,8 +156,8 @@ export function findOverworldPath(
       // should auto-walk to the boundary instead of silently failing.
       const distToGoal = Math.abs(nb.x - goal.x) + Math.abs(nb.y - goal.y);
       if (!tile.explored && distToGoal > 2) continue;
-      if (!isGoal && !isTraversable(tile, state, nb.x, nb.y)) continue;
-      if (isGoal && !isTraversable(tile, state, nb.x, nb.y) && !goalIsInteractable) continue;
+      if (!isGoal && !isTraversable(tile, state, nb.x, nb.y, avoidStructures)) continue;
+      if (isGoal && !isTraversable(tile, state, nb.x, nb.y, avoidStructures) && !goalIsInteractable) continue;
 
       // Z-transition gate (mirrors movePlayer): only enforced when a wall-top
       // is involved. Natural ground elevation differences are walkable.

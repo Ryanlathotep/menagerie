@@ -244,6 +244,16 @@ export function DungeonView({
   const [stairExitDialogOpen, setStairExitDialogOpen] = useState(false);
   // Auto-Search picker (dungeon-scoped analogue of the overworld picker).
   const [dungeonAutoSearchOpen, setDungeonAutoSearchOpen] = useState(false);
+  // Auto-Search "continue at stairs" prompt. When Auto-Search targets stairs
+  // (up or down), the walker steps onto the stair tile which auto-triggers a
+  // floor change; on the new floor we open this prompt so the player can keep
+  // spiraling through the tower without re-opening the picker each time.
+  const [stairSearchPrompt, setStairSearchPrompt] = useState<
+    | { kind: 'stairs' | 'stairs_up'; fromFloor: number; toFloor: number; direction: 'deeper' | 'shallower' }
+    | null
+  >(null);
+  // While non-null, Auto-Search is chasing this stair type across floors.
+  const autoSearchStairsKindRef = useRef<'stairs' | 'stairs_up' | null>(null);
 
   // Dungeon build mode (per-floor buildings persisted via snapshots)
   const [dungeonBuildPanelOpen, setDungeonBuildPanelOpen] = useState(false);
@@ -1379,6 +1389,65 @@ export function DungeonView({
   // adding it as a dependency (which would re-create the animation loop).
   const planNextHuntStepRef = useRef(planNextHuntStep);
   useEffect(() => { planNextHuntStepRef.current = planNextHuntStep; }, [planNextHuntStep]);
+
+  // ─── Dungeon Auto-Search runner ───────────────────────────────────────────
+  // Extracted from the picker modal so the "continue at stairs" prompt can
+  // re-invoke the same logic on a fresh floor without re-opening the picker.
+  const runDungeonAutoSearch = useCallback((
+    kind: 'stairs' | 'stairs_up' | 'treasure' | 'shop' | 'elevator' | 'plant' | 'mineable_wall' | 'nest',
+    label: string,
+  ) => {
+    const d = dungeonRef.current;
+    if (!d) return;
+    const px = d.playerPosition.x, py = d.playerPosition.y;
+    let best: { x: number; y: number; d: number } | null = null;
+    for (let yy = 0; yy < d.tiles.length; yy++) {
+      for (let xx = 0; xx < d.tiles[yy].length; xx++) {
+        const t = d.tiles[yy][xx];
+        if (!t || !t.explored) continue;
+        if (t.type !== kind && !(kind === 'stairs_up' && t.stairsBeneath === 'up')) continue;
+        const dist = Math.abs(xx - px) + Math.abs(yy - py);
+        if (!best || dist < best.d) best = { x: xx, y: yy, d: dist };
+      }
+    }
+    if (!best) {
+      addLog(`🔎 Auto-Search: no explored ${label.toLowerCase()} found on this floor.`, 'info');
+      toast.info(`No known ${label.toLowerCase()} here`);
+      autoSearchStairsKindRef.current = null;
+      return;
+    }
+    // If chasing stairs across floors, remember the kind so the arrival prompt
+    // can offer to descend/ascend and keep going. Non-stair searches clear it.
+    autoSearchStairsKindRef.current = (kind === 'stairs' || kind === 'stairs_up') ? kind : null;
+    addLog(`🧭 Auto-Search: pathing to ${label.toLowerCase()} at (${best.x}, ${best.y}).`, 'info');
+    handleTileClick(best.x, best.y);
+  }, [addLog, handleTileClick]);
+  const runDungeonAutoSearchRef = useRef(runDungeonAutoSearch);
+  useEffect(() => { runDungeonAutoSearchRef.current = runDungeonAutoSearch; }, [runDungeonAutoSearch]);
+
+  // ─── Floor-change hook: after Auto-Search stairs auto-triggers a floor
+  // transition, open a prompt so the player can continue searching (descend
+  // deeper / ascend shallower) or stop here. Uses direction from the actual
+  // floor delta so it stays correct if we ever support dungeons that go both
+  // up and down from a middle floor. We track our own "last seen" floor here
+  // because the existing lastFloorRef gets updated by an earlier effect on
+  // the same tick, which would race this comparison.
+  const lastAutoSearchFloorRef = useRef<number>(dungeon?.floor ?? 1);
+  useEffect(() => {
+    if (!dungeon) return;
+    const cur = dungeon.floor;
+    const prev = lastAutoSearchFloorRef.current;
+    if (prev === cur) return;
+    lastAutoSearchFloorRef.current = cur;
+    const kind = autoSearchStairsKindRef.current;
+    if (!kind) return;
+    setStairSearchPrompt({
+      kind,
+      fromFloor: prev,
+      toFloor: cur,
+      direction: cur > prev ? 'deeper' : 'shallower',
+    });
+  }, [dungeon?.floor, dungeon]);
 
   
   // Path walking effect — position-driven so it stays in sync with React state
@@ -3165,14 +3234,7 @@ export function DungeonView({
         };
         const go = (k: Kind, label: string) => {
           setDungeonAutoSearchOpen(false);
-          const pos = findNearest(k);
-          if (!pos) {
-            addLog(`🔎 Auto-Search: no explored ${label.toLowerCase()} found.`, 'info');
-            toast.info(`No known ${label.toLowerCase()}`);
-            return;
-          }
-          addLog(`🧭 Auto-Search: pathing to ${label.toLowerCase()} at (${pos.x}, ${pos.y}).`, 'info');
-          handleTileClick(pos.x, pos.y);
+          runDungeonAutoSearchRef.current(k, label);
         };
         return (
           <div
@@ -3201,6 +3263,75 @@ export function DungeonView({
           </div>
         );
       })()}
+
+      {/* Auto-Search stair-chase continuation prompt. Fires after each floor
+          transition triggered by Auto-Search. Wording spells out the direction
+          ("deeper into the tower" / "shallower toward the exit") so it stays
+          readable if we later support dungeons that branch both ways. */}
+      {stairSearchPrompt && dungeon && (() => {
+        const p = stairSearchPrompt;
+        const arrowIcon = p.direction === 'deeper' ? '⬇️' : '⬆️';
+        const arrivalVerb = p.direction === 'deeper' ? 'Descended' : 'Ascended';
+        const nextKind: 'stairs' | 'stairs_up' = p.kind;
+        const nextArrow = nextKind === 'stairs' ? '⬇️' : '⬆️';
+        const nextLabel = nextKind === 'stairs' ? 'Stairs down (deeper)' : 'Stairs up (shallower)';
+        const oppositeKind: 'stairs' | 'stairs_up' = nextKind === 'stairs' ? 'stairs_up' : 'stairs';
+        const oppositeArrow = oppositeKind === 'stairs' ? '⬇️' : '⬆️';
+        const oppositeLabel = oppositeKind === 'stairs' ? 'Stairs down (deeper)' : 'Stairs up (shallower)';
+        return (
+          <div
+            className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-4"
+            onClick={() => { setStairSearchPrompt(null); autoSearchStairsKindRef.current = null; }}
+          >
+            <Card className="w-full max-w-sm p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
+              <div className="space-y-1">
+                <h2 className="text-lg font-bold">
+                  {arrowIcon} {arrivalVerb} to Floor {p.toFloor}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Floor {p.fromFloor} → Floor {p.toFloor} ({p.direction === 'deeper' ? 'deeper into the tower' : 'shallower toward the exit'}).
+                  Keep Auto-Searching on this floor?
+                </p>
+              </div>
+              <div className="grid gap-1.5">
+                <Button
+                  variant="default"
+                  className="justify-start"
+                  onClick={() => {
+                    setStairSearchPrompt(null);
+                    runDungeonAutoSearchRef.current(nextKind, nextLabel);
+                  }}
+                >
+                  <span className="mr-2">{nextArrow}</span>Continue searching for {nextLabel.toLowerCase()}
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="justify-start"
+                  onClick={() => {
+                    setStairSearchPrompt(null);
+                    runDungeonAutoSearchRef.current(oppositeKind, oppositeLabel);
+                  }}
+                >
+                  <span className="mr-2">{oppositeArrow}</span>Switch to {oppositeLabel.toLowerCase()}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setStairSearchPrompt(null);
+                    autoSearchStairsKindRef.current = null;
+                    addLog(`🛑 Auto-Search stopped on Floor ${p.toFloor}.`, 'info');
+                  }}
+                >
+                  Stay on Floor {p.toFloor}
+                </Button>
+              </div>
+            </Card>
+          </div>
+        );
+      })()}
+
+
+
 
 
 

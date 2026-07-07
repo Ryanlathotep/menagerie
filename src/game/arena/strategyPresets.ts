@@ -53,7 +53,7 @@ function stepAway(from: { x: number; y: number }, to: { x: number; y: number }, 
 }
 
 function pickMove(input: TacticInput, filter: (m: any) => boolean, score: (m: any) => number) {
-  const moves = (input.self.monster.moves ?? []).filter(filter);
+  const moves = (getMonsterMoves(input.self.monster.species, input.self.monster.element, input.self.monster.class, input.self.monster.level)).filter(filter);
   if (!moves.length) return undefined;
   return [...moves].sort((a, b) => score(b) - score(a))[0];
 }
@@ -98,7 +98,7 @@ const supportFirst: TeamStrategy = (input) => {
     && a.monster.stats.currentHp > 0
     && a.monster.stats.currentHp / Math.max(1, a.monster.stats.maxHp) < 0.6);
   if (woundedAlly) {
-    const healMove = (input.self.monster.moves ?? []).find(m => m.type === 'heal');
+    const healMove = (getMonsterMoves(input.self.monster.species, input.self.monster.element, input.self.monster.class, input.self.monster.level)).find(m => m.type === 'heal');
     if (healMove) return { move: healMove, targetId: woundedAlly.monster.id };
   }
   return autoStrategy(input);

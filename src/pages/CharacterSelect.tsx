@@ -232,13 +232,37 @@ export function CharacterSelect() {
               return (
                 <div
                   key={i}
+                  draggable={!!member}
+                  onDragStart={(e) => {
+                    if (!member) return;
+                    e.dataTransfer.setData('text/plain', String(i));
+                    e.dataTransfer.effectAllowed = 'move';
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const from = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                    if (isNaN(from) || from === i) return;
+                    setSelectedParty(prev => {
+                      if (from >= prev.length) return prev;
+                      const next = [...prev];
+                      const [moved] = next.splice(from, 1);
+                      const insertAt = Math.min(i, next.length);
+                      next.splice(insertAt, 0, moved);
+                      return next;
+                    });
+                  }}
                   className={`w-16 h-16 rounded-lg border-2 border-dashed flex items-center justify-center transition-all ${
-                    member ? 'border-primary bg-primary/10 cursor-pointer' : 'border-muted-foreground/30'
+                    member ? 'border-primary bg-primary/10 cursor-move' : 'border-muted-foreground/30'
                   }`}
                   onClick={() => member && togglePartyMember(member)}
+                  title={member ? 'Drag to reorder, click to remove' : undefined}
                 >
                   {member ? (
-                    <div className="text-center">
+                    <div className="text-center pointer-events-none">
                       <MonsterSprite species={member.species} element={member.element} classType={member.classType} size={36} animated={false} />
                       <p className="text-[8px] text-muted-foreground">Lv.{member.level}</p>
                     </div>

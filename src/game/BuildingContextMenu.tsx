@@ -98,6 +98,12 @@ export function BuildingContextMenu({
 
         {/* Actions */}
         <div className="space-y-2">
+          {building.type === 'arena' && onOpenArena && (
+            <Button variant="default" className="w-full justify-start" onClick={onOpenArena}>
+              <Trophy className="h-4 w-4 mr-2" />
+              Open Arena Hub
+            </Button>
+          )}
           {isStation && onOpenStationWorkshop && (
             <Button
               variant="default"

@@ -24,12 +24,18 @@ import {
   CRAFTING_MATERIALS,
   CONSUMABLE_RECIPES,
   ConsumableRecipe,
+  getRecipeFromEquipment,
 } from './equipment';
 import { isCreativeMode, onCreativeModeChange } from './creativeMode';
 import { PICKAXE_TIERS, PICKAXE_TIER_ORDER, nextPickaxeTier, SHOVEL_TIERS, SHOVEL_TIER_ORDER, nextShovelTier, WORKSTATION, type PickaxeTier, type ShovelTier, type PlayerTools } from './tools';
 import { useEffect } from 'react';
 import { CraftingGridPanel } from './CraftingGrid';
 import type { InventoryItem } from './types';
+import { legacyRecipeToGrid } from './crafting/legacyConverter';
+import { hashGrid } from './crafting/grid';
+import { recordDiscovery } from './crafting/recipeBook';
+import { getLegacyInventor } from './crafting/legacyInventors';
+import { toast } from 'sonner';
 
 interface MaterialInventory {
   [materialId: string]: number;

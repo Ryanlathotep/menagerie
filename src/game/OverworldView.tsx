@@ -670,10 +670,23 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   useEffect(() => () => cancelAutoWalk(), [cancelAutoWalk]);
 
   // ─── Auto-Harvest loop ──────────────────────────────────────────────────
-  // Repeatedly steps the player into an adjacent harvestable tile (rock, tree,
-  // or any future harvestable type), halting on enemy sighting, when the tile
-  // is depleted/changed, or when the player moves out of range.
-  const autoMineTargetRef = useRef<(Position & { tileType: string }) | null>(null);
+  // Full cluster-harvest job: given a seed tile, keep chopping every same-type
+  // tile within a search radius. Each tick either steps into an adjacent
+  // target (harvesting) or takes one A* step toward the nearest remaining
+  // target. Halts on enemy sighting or when the cluster is exhausted.
+  //
+  // "Adjacent" is Manhattan distance 1. The seed lets us bound the cluster so
+  // an auto-harvest job doesn't crawl across the entire loaded overworld —
+  // 12-tile radius covers big forests / quarries without runaway walking.
+  const HARVEST_SEARCH_RADIUS = 12;
+  type AutoMineJob = {
+    seed: Position;
+    tileType: string;
+    // Cache the last target we picked so we don't thrash between two
+    // equidistant tiles on every tick.
+    lastTarget?: Position;
+  };
+  const autoMineTargetRef = useRef<AutoMineJob | null>(null);
   const autoMineTimerRef = useRef<number | null>(null);
   const cancelAutoMine = useCallback((reason?: string) => {
     if (autoMineTimerRef.current !== null) {
@@ -684,59 +697,100 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     autoMineTargetRef.current = null;
   }, [addLog]);
 
+  // Scan a diamond of radius R around `origin` for tiles matching tileType.
+  // Returns them sorted by Manhattan distance from `from` (nearest first).
+  const findClusterTargets = useCallback((
+    ow: OverworldState,
+    origin: Position,
+    from: Position,
+    tileType: string,
+    radius: number,
+  ): Position[] => {
+    const hits: Array<Position & { d: number }> = [];
+    for (let dy = -radius; dy <= radius; dy++) {
+      const rem = radius - Math.abs(dy);
+      for (let dx = -rem; dx <= rem; dx++) {
+        const x = origin.x + dx, y = origin.y + dy;
+        const t = getOverworldTile(ow, x, y);
+        if (!t || t.type !== tileType) continue;
+        hits.push({ x, y, d: Math.abs(x - from.x) + Math.abs(y - from.y) });
+      }
+    }
+    hits.sort((a, b) => a.d - b.d);
+    return hits.map(({ x, y }) => ({ x, y }));
+  }, []);
+
   const startAutoMine = useCallback((targetX: number, targetY: number) => {
     cancelAutoWalk();
     cancelAutoMine();
     const ow0 = overworldRef.current;
     const startTile = ow0 ? getOverworldTile(ow0, targetX, targetY) : null;
     if (!startTile) return;
-    autoMineTargetRef.current = { x: targetX, y: targetY, tileType: startTile.type };
+    if (startTile.type !== 'rock' && startTile.type !== 'tree') return;
+    autoMineTargetRef.current = {
+      seed: { x: targetX, y: targetY },
+      tileType: startTile.type,
+    };
     const stepDelay = Math.max(120, settings.autoRunSpeed || 100);
+    addLog(`⛏️ Auto-Harvest started — clearing nearby ${startTile.type}s.`, 'info');
     autoMineTimerRef.current = window.setInterval(() => {
-      const target = autoMineTargetRef.current;
+      const job = autoMineTargetRef.current;
       const ow = overworldRef.current;
-      if (!target || !ow) { cancelAutoMine(); return; }
+      if (!job || !ow) { cancelAutoMine(); return; }
+      // Halt on any visible enemy within 6 tiles — same rule as auto-walk.
       const enemiesNearby = getVisibleOverworldEnemies(ow, 6);
       if (enemiesNearby.length > 0) {
         cancelAutoMine('⚠️ Auto-Harvest stopped — enemy spotted!');
         return;
       }
-      const t = getOverworldTile(ow, target.x, target.y);
-      if (!t || t.type !== target.tileType) {
-        // Depleted — look for an adjacent same-type tile to pivot to, so
-        // clusters of trees / rocks harvest without needing a fresh tap.
-        const neighbors = [
-          { x: target.x, y: target.y - 1 },
-          { x: target.x, y: target.y + 1 },
-          { x: target.x - 1, y: target.y },
-          { x: target.x + 1, y: target.y },
-        ];
-        let pivot: Position | null = null;
-        for (const n of neighbors) {
-          const nt = getOverworldTile(ow, n.x, n.y);
-          if (nt && nt.type === target.tileType) {
-            // Must also be adjacent to the player so we can step into it next tick.
-            const d = Math.abs(n.x - ow.playerPosition.x) + Math.abs(n.y - ow.playerPosition.y);
-            if (d === 1) { pivot = n; break; }
-          }
-        }
-        if (pivot) {
-          autoMineTargetRef.current = { x: pivot.x, y: pivot.y, tileType: target.tileType };
-          addLog(`🌲 Auto-Harvest chained to adjacent ${target.tileType}.`, 'info');
-          return;
-        }
-        cancelAutoMine('✅ Auto-Harvest finished — resource depleted.');
+      // Find the nearest remaining same-type tile in the cluster.
+      const targets = findClusterTargets(
+        ow, job.seed, ow.playerPosition, job.tileType, HARVEST_SEARCH_RADIUS,
+      );
+      if (targets.length === 0) {
+        cancelAutoMine('✅ Auto-Harvest finished — cluster exhausted.');
         return;
       }
-      const dx = target.x - ow.playerPosition.x;
-      const dy = target.y - ow.playerPosition.y;
+      const target = targets[0];
+      job.lastTarget = target;
+      const d = Math.abs(target.x - ow.playerPosition.x) + Math.abs(target.y - ow.playerPosition.y);
+      if (d === 1) {
+        // Adjacent — step into it (this harvests via handleMove's interaction path).
+        const dx = target.x - ow.playerPosition.x;
+        const dy = target.y - ow.playerPosition.y;
+        handleMoveRef.current(dx, dy);
+        return;
+      }
+      // Not adjacent — path to the nearest walkable neighbor of the target and
+      // take one step. Next tick will reassess (enemy? still there?).
+      const offsets: Array<[number, number]> = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+      let bestPath: Position[] | null = null;
+      for (const [ox, oy] of offsets) {
+        const ax = target.x + ox, ay = target.y + oy;
+        if (ax === ow.playerPosition.x && ay === ow.playerPosition.y) {
+          bestPath = []; break;
+        }
+        const p = findOverworldPath(ow, ow.playerPosition, { x: ax, y: ay });
+        if (p && p.length > 0 && (!bestPath || p.length < bestPath.length)) bestPath = p;
+      }
+      if (!bestPath || bestPath.length === 0) {
+        // Can't reach this target — try removing it from consideration by
+        // shrinking search from the next-nearest. If none reachable, stop.
+        // (Simpler: bail; the user can re-tap on a specific cluster.)
+        cancelAutoMine(`⚠️ Auto-Harvest stopped — no path to nearest ${job.tileType}.`);
+        return;
+      }
+      const nextStep = bestPath[0];
+      const dx = nextStep.x - ow.playerPosition.x;
+      const dy = nextStep.y - ow.playerPosition.y;
       if (Math.abs(dx) + Math.abs(dy) !== 1) {
-        cancelAutoMine('⚠️ Auto-Harvest stopped — moved out of range.');
+        cancelAutoMine('⚠️ Auto-Harvest stopped — pathing desynced.');
         return;
       }
       handleMoveRef.current(dx, dy);
     }, stepDelay);
-  }, [cancelAutoMine, cancelAutoWalk, settings.autoRunSpeed, addLog]);
+  }, [cancelAutoMine, cancelAutoWalk, settings.autoRunSpeed, addLog, findClusterTargets]);
+
 
   useEffect(() => () => cancelAutoMine(), [cancelAutoMine]);
 

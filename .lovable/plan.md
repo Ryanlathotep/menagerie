@@ -1,134 +1,99 @@
-# Tiered Crafting Stations & Layered Item Stats
+# Universal Auto Actions + Craftable Portal Stairs
 
-Big-scope change; putting the moving pieces in one place before touching code so we don't wire it half-way and regress persistence again.
+Three linked changes: (1) surface Auto-Hunt/Auto-Search everywhere, (2) delete orphan up-stairs on floor load, (3) introduce craftable stairs whose destination is derived from tile coordinates, with tooltip previews, free-space validation, and an "always one entrance" guard.
 
-## 1. Station tiers (per crafting discipline)
+## 1 · Auto-Hunt & Auto-Search in the dungeon menu
 
-Each discipline (Forge / Workbench / Brewing / Enchanting) gets 5 tiers matching rarity colors. Higher tiers = larger grid + more modifier slots.
+The overworld tile menu already surfaces both (`OverworldView.tsx` ~L3401). The dungeon tile menu (`DungeonView.tsx` ~L3830) does not. Add them at the bottom of the dungeon action list so they show on every tile, matching overworld parity:
 
-| Tier | Rarity | Grid | Modifier slots | Cost scaling |
-|------|--------|------|----------------|--------------|
-| I    | common     | 3×3 | 0 | base |
-| II   | uncommon   | 3×3 | 1 | 2× |
-| III  | rare       | 4×4 | 2 | 4× |
-| IV   | epic       | 4×4 | 3 | 8× |
-| V    | legendary  | 5×5 | 4 | 16× |
+- **Auto-Hunt** — walks toward the nearest visible enemy in the current floor and opens the attack picker on arrival (dungeon equivalent of the overworld routine).
+- **Auto-Search** — opens a picker (stairs down, stairs up, treasure, shop, elevator, plant, mineable wall, nest) and auto-paths to the nearest explored match.
 
-Stored on the building itself:
-```ts
-// in PlayerBuilding
-stationTier?: 1|2|3|4|5;
-stationModifiers?: { materialId: string; quantity: number }[];
+New helper `src/game/dungeon/autoActions.ts` holds the shared "nearest tile matching predicate + A* to adjacent" logic used by both. `DungeonView` wires them into `handleTileClick`/`handleMove` the same way overworld does.
+
+## 2 · Orphan up-stairs cleanup on load
+
+Symptom: multiple `stairs_up` tiles exist on a floor with no matching overworld exit. Root cause is snapshot rehydration + the "plant stairs beneath spawn" step on floors > startingFloor.
+
+Fix in `hydrateDungeonFromSnapshot` (in `src/game/dungeon.ts`) and in the DungeonView bootstrap path:
+
+- On load, scan the tile grid; if the floor is > `startingFloor`, keep only the up-stair closest to `entryPosition`. Convert extras to `floor`.
+- If the floor is `startingFloor` (entrance floor), keep exactly the `entryPosition` up-stair. Convert extras.
+- Never delete a stair that is currently under the player (defer until they step off; simplest: relocate the "kept" stair to the player tile in that edge case).
+
+## 3 · Craftable Portal Stairs (coord-mapped)
+
+### Concept
+
+A new placeable item `portal_stairs_kit` (crafted at any station with the new blueprint) can be placed on any floor tile. Once placed, it becomes a `stairs_portal` tile whose destination is computed from its relative dungeon coord to `entryPosition`:
+
+```text
+relX, relY = (x - entryX, y - entryY)
+
+if (relX % 2 === 0 && relY % 2 === 0):
+    destination = OVERWORLD, at entry.overworldPos + (relX/2, relY/2)
+else:
+    destination = nearest known tower entrance within
+                  Chebyshev radius R of that same mapped coord
 ```
 
-## 2. Portable stations
+Even/even tiles map deterministically to overworld coords. Odd tiles route to the nearest tower (uses `overworld.discoveredDungeons` / tower registry).
 
-Each station has a portable tool version (already exist as `PORTABLE_STATIONS`) that is now craftable **inside** its parent building's grid, using a new blueprint per station kind (`portable_forge`, `portable_workbench`, etc.). Portable stations carry their own frozen tier + modifiers snapshot from the workshop that crafted them — cannot be re-modified without recrafting.
+### Data model
 
-## 3. Grid scaling
-
-`CraftingGridPanel` accepts `gridSize` already. Callers now pass the station's grid size:
-- Building context: from `building.stationTier` → tier→grid map.
-- Portable context: from the portable item's `stationTier`.
-- Menu (no station): 3×3, tier 1.
-
-Blueprint `minGrid` is already respected — if a recipe requires 4×4 and the station is 3×3, we now surface that as "Needs Tier III+ station."
-
-## 4. Station modifier slots (separate stat lane)
-
-Above the crafting grid we show N modifier chips (N = tier's modifier slots). Player drops any crafting material in; each contributes stats via `getEffectiveMaterialEffect` but tagged as `stationStats`, kept **separate** from the item's material stats.
-
-Result on any crafted item:
-
+Extend `DungeonTile`:
 ```ts
-interface EquipmentItem {
-  // existing:
-  stats: EquipmentStats;         // baseStats + material fillers
-  // new:
-  stationStats?: EquipmentStats; // from crafter's station modifiers
-  runStats?: EquipmentStats;     // stats added later by dungeon events (empty for now, wired for future)
-  provenance?: {
-    stationKind: CraftingStationKind | null;
-    stationTier: 1|2|3|4|5;
-    stationModifiers: { materialId: string; quantity: number }[];
-    inventor?: { username: string; stationStats: EquipmentStats; stationTier: number };
-    craftedBy?: string;          // username
-    worldSeed?: string | null;
-  };
-}
+type: 'stairs_portal';
+portal?: {
+  destKind: 'overworld' | 'tower';
+  destOverworld?: { x: number; y: number };
+  destTowerId?: string;
+  destFloor?: number;         // for tower dest, resolved on use
+  validated: boolean;         // last free-space check result
+};
 ```
 
-The tooltip/preview shows three separate sections: **Base Stats**, **Station Bonus**, **Dungeon Bonus**.
+New reducer actions:
+- `PLACE_PORTAL_STAIRS { x, y }` — consumes 1 kit, validates dest, sets tile.
+- `REMOVE_PORTAL_STAIRS { x, y }` — refunds kit, blocked if it would leave floor with zero entrances.
+- `USE_PORTAL_STAIRS { x, y }` — transitions player.
 
-## 5. Recipe inventor persistence
+### Free-space guarantee
 
-`crafting_recipes_discovered` gets three new columns:
-- `inventor_station_kind text`
-- `inventor_station_tier int`
-- `inventor_station_stats jsonb`
+Before placement, `computePortalDestination(dungeon, x, y, overworld)` returns:
+- `{ ok: true, dest }` when the mapped tile is walkable (overworld: grass/road; tower: entrance tile exists).
+- `{ ok: false, reason }` when blocked (water, cliff, building, tower undiscovered, out-of-bounds).
 
-When any player later crafts the same recipe hash, `recordDiscovery`/`resolveGrid` looks up the recipe's inventor row and adds the inventor's frozen `stationStats` into `provenance.inventor.stationStats`. The current crafter's own station also adds its `stationStats`. Both stack, both shown separately.
+Placement UI shows the reason and refuses. `validated` is re-checked on floor load so if the overworld changes underneath, the portal shows a broken state (still removable, not usable).
 
-Migration also adds a helper RPC `get_recipe_inventor(_hash)` returning the frozen stats.
+### Tooltip preview
 
-## 6. Seed info hook (dungeon effects later)
+`UnifiedTileMenu` already renders `info` rows. `stairs_portal` tiles add:
+- `Destination`: `Overworld (12, -4)` or `Fire Tower · Floor 3`.
+- `Status`: `Ready` / `Blocked — target is water` / `Tower not yet discovered`.
+- `Type`: `Even-coord (overworld)` or `Odd-coord (tower)`.
 
-`provenance` is included in the deterministic hash used by Item World / dungeon-seed features so a "Forge of Volcanic Ash"-crafted sword generates a different themed dungeon than a plain one. We expose:
+Hovering the tile in `DungeonRenderer` shows the same in the existing hover tooltip.
 
-```ts
-// src/game/crafting/seed.ts
-export function craftSeedHash(item: EquipmentItem): number;
-```
+### "Always one entrance" guard
 
-This is called by `itemWorldTowers.ts` next time we touch dungeon gen — the field is wired in now so the future work is drop-in.
+`canRemoveStair(dungeon, x, y)` counts tiles where `type ∈ { 'stairs_up', 'stairs_portal' with overworld dest }`. Removal is refused when the count would drop to zero and the current floor is `startingFloor`. Menu action is disabled with a `disabledReason`.
 
-## 7. Name reflects materials
+### Crafting
 
-`buildCraftName` already uses primary+filler materials but drops rarity prefixes early. Reworking to always include the primary material word first and append the filler even if same-type, e.g. *"Iron Sword of Oak"*. Also adds station-tier prefix for T3+ (*"Masterwork Iron Sword of Oak"*).
+- New blueprint `portal_stairs_kit` in `recipeBook.ts` (grid pattern: 2 stone + 1 wood in staircase shape). Discoverable at any tier-2+ workbench.
+- Placement flow: item → Use → enters targeting → pick a floor tile within 3 steps → `PLACE_PORTAL_STAIRS`.
 
-## 8. Where players configure it
+## Technical notes
 
-- Player building tooltip / right-click menu → new **"Configure Station"** action. Opens a small modal showing tier (upgradeable with materials) + modifier slot grid. Can be changed anytime.
-- Portable station tool → shows tier + baked-in modifiers, read-only. To change, dismantle and craft new.
+- **Nearest-tower lookup** reuses `overworld.discoveredDungeons` (already scans in `MainMenu`). Chebyshev radius default `R = 16` (tunable).
+- **Cross-dungeon travel** for odd tiles: on `USE_PORTAL_STAIRS` with `destKind: 'tower'`, dispatch `ENTER_DUNGEON` for the target tower at floor 1 (or player's highest cleared floor for that tower, capped by the existing pre-run slider rule).
+- **Persistence**: portal tiles live on the persisted dungeon-floor snapshot (already saved per `entryPosition`), so they survive re-entry. Overworld exit coord is also snapshotted so re-hydration matches.
+- **Migration**: no DB migration needed — everything is in the client save blob.
+- **Files touched (est.)**: `dungeon.ts`, `DungeonView.tsx`, `OverworldView.tsx` (for auto-mining any orphan cross-refs), `UnifiedTileMenu.tsx` (no shape change, just usage), `recipeBook.ts`, `types.ts`, `reducers/*`, new `dungeon/autoActions.ts`, new `dungeon/portalStairs.ts`.
 
-## 9. Data / files touched
+## Out of scope
 
-**New files**
-- `src/game/crafting/stationTiers.ts` — tier table, upgrade costs, tier→grid map, tier→slotCount map.
-- `src/game/crafting/stationEffects.ts` — resolve modifier stats + inventor stats.
-- `src/game/crafting/seed.ts` — craftSeedHash helper.
-- `src/game/StationConfigModal.tsx` — tier + modifier UI.
-- `supabase/migrations/<ts>_recipe_inventor_stats.sql` — new columns + RPC + GRANTs.
-
-**Edited**
-- `src/game/crafting/types.ts` — `stationStats`, `runStats`, `provenance`.
-- `src/game/crafting/grid.ts` — `resolveGrid` returns `stationStats` when passed a station context; enforces `minGrid` against station grid.
-- `src/game/crafting/naming.ts` — name always includes primary material + filler + tier prefix.
-- `src/game/crafting/patterns.ts` — new portable-station blueprints (one per kind).
-- `src/game/crafting/recipeBook.ts` — read/write inventor station snapshot; `recordDiscovery` accepts stationKind/tier/stats.
-- `src/game/buildings.ts` — `stationTier`, `stationModifiers` fields.
-- `src/game/CraftingGrid.tsx` — modifier chip row, station tier/kind props, three-section preview, minGrid enforcement.
-- `src/game/CraftingWorkshop.tsx` — thread station props through when opened from building vs menu vs portable.
-- `src/game/BuildingContextMenu.tsx` — add "Configure Station" option.
-- `src/game/OverworldView.tsx` — open StationConfigModal; pass station tier when opening workshop from a building.
-- `src/admin/CraftGridEditor.tsx` — expose tier requirements per blueprint.
-
-## 10. Rollout order
-
-1. Types + tier tables + naming update.
-2. `resolveGrid` station-context extension + provenance.
-3. DB migration for inventor stats.
-4. `recordDiscovery` + `lookupDiscovery` write/read inventor snapshot.
-5. UI: modifier chips + 3-section preview.
-6. Station config modal + building menu wiring.
-7. Portable-station blueprints + freeze snapshot on craft.
-8. Admin editor tier badge.
-9. `craftSeedHash` helper (unused until dungeon side wired).
-
-No changes to existing persistence — all new fields are optional, so existing saves and recipes keep working.
-
-## Open call I'm making (say the word if wrong)
-
-- Upgrade **cost per tier**: I'll use `10 × tier²` of a themed material (e.g. Forge = Iron→Steel→Mythril→Adamant→Draconic ingots) plus stone/wood scaling. Reasonable but arbitrary — tell me if you want it cheaper/steeper.
-- Modifier chip stat weight: `getEffectiveMaterialEffect` × 2 so a station modifier "feels" bigger than a single grid filler cell. Adjustable.
-- Portable-station blueprints all sit at `minGrid: 3` so any tier can craft them — the tier of the *result* mirrors the tier of the station that crafted them.
+- Placing portals on the overworld side (this pass is dungeon-only outbound). Return travel uses existing entrances.
+- Rebalancing crafting costs beyond a sensible default.
+- New art — portal stairs reuse the existing stairs sprite tinted for now.

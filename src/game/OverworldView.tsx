@@ -1508,12 +1508,16 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           toast.error('Cannot build on a waterfall');
           return prev;
         }
+        const isStairLike = selectedBuildType === 'stone_staircase' || selectedBuildType === 'ladder';
         if (tile.isRamp) {
-          toast.error('Ramps only accept stair-style stone roads — use the road tool');
+          toast.error('Ramps already provide a passable climb');
           return prev;
         }
-        if (tile.type !== 'grass' && tile.type !== 'dirt_road' && tile.type !== 'stone_road') {
-          toast.error('Can only build on open ground!');
+        // Cliff/wall stairs may replace a cliff tile directly.
+        const validGround = tile.type === 'grass' || tile.type === 'dirt_road' || tile.type === 'stone_road'
+          || (isStairLike && tile.type === 'cliff');
+        if (!validGround) {
+          toast.error(isStairLike ? 'Cliff-stairs need open ground or a cliff face' : 'Can only build on open ground!');
           return prev;
         }
         // Compute "adjacent cliff" so stair/ladder placement can attach to natural cliff faces.
@@ -1527,7 +1531,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           newOw.homeBase.position,
           newOw.woodCollected, newOw.stoneCollected,
           selectedBuildType,
-          { isCliff: false, isWaterfall: false, isRamp: false, adjacentCliff } as any,
+          { isCliff: tile.type === 'cliff', isWaterfall: tile.type === 'waterfall', isRamp: !!tile.isRamp, adjacentCliff } as any,
         );
         if (!check.canPlace) {
           toast.error(check.reason || 'Cannot build here');

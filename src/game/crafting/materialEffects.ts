@@ -70,6 +70,25 @@ export function getEffectiveMaterialEffect(id: string): MaterialEffect {
   return runtimeOverrides.get(id) ?? getMaterialEffect(id);
 }
 
+/**
+ * Returns the per-unit stat delta for a material when used as a filler for a
+ * specific blueprint. If the effective effect defines a `perItemPerUnit`
+ * override for that blueprint id, it replaces the default `perUnit`.
+ */
+export function getPerUnitForBlueprint(
+  materialId: string,
+  blueprintId: string,
+): MaterialEffect['perUnit'] {
+  const eff = getEffectiveMaterialEffect(materialId);
+  const override = eff.perItemPerUnit?.[blueprintId];
+  return override ?? eff.perUnit;
+}
+
+/** Convenience: the name prefix (if any) for a material. */
+export function getMaterialNamePrefix(materialId: string): string {
+  return getEffectiveMaterialEffect(materialId).namePrefix ?? '';
+}
+
 export function listDefaultEffects(): Array<{ id: string; effect: MaterialEffect }> {
   return CRAFTING_MATERIALS.map((m) => ({ id: m.id, effect: getMaterialEffect(m.id) }));
 }

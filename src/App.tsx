@@ -80,6 +80,7 @@ const AppRoutes = () => {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/admin/qa" element={<AdminQA />} />
       <Route path="/admin/tiles" element={<AdminTiles />} />
+      <Route path="/admin/rooms" element={<AdminRooms />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />
     </Routes>

@@ -281,12 +281,15 @@ export function AssetLibrary({ initialTab = 'species' }: AssetLibraryProps) {
           <TabsTrigger value="elements">Elements ({slots.elements.length})</TabsTrigger>
           <TabsTrigger value="classes">Classes ({slots.classes.length})</TabsTrigger>
           <TabsTrigger value="equipment">Equipment ({slots.equipment.length})</TabsTrigger>
+          <TabsTrigger value="buildings">Buildings ({slots.buildings.length})</TabsTrigger>
         </TabsList>
         <TabsContent value="species">{renderList(slots.species)}</TabsContent>
         <TabsContent value="elements">{renderList(slots.elements)}</TabsContent>
         <TabsContent value="classes">{renderList(slots.classes)}</TabsContent>
         <TabsContent value="equipment">{renderList(slots.equipment)}</TabsContent>
+        <TabsContent value="buildings">{renderList(slots.buildings)}</TabsContent>
       </Tabs>
+
     </div>
   );
 }

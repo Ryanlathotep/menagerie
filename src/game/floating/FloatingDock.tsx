@@ -118,20 +118,23 @@ export function useFloatingButton(cfg: FabConfig) {
 }
 
 export function FloatingDockProvider({ children }: { children: ReactNode }) {
-  const [configs, setConfigs] = useState<Record<string, FabConfig>>({});
+  const [configs, setConfigs] = useState<Record<string, React.MutableRefObject<FabConfig>>>({});
   const [order, setOrder] = useState<string[]>([]);
   const [states, setStates] = useState<Record<string, FabState>>({});
   const dockRectRef = useRef<DOMRect | null>(null);
   const slotsRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const [slotVersion, setSlotVersion] = useState(0);
 
-  const register = useCallback((cfg: FabConfig) => {
-    setConfigs((prev) => ({ ...prev, [cfg.id]: cfg }));
-    setOrder((prev) => (prev.includes(cfg.id) ? prev : [...prev, cfg.id]));
-    setStates((prev) =>
-      prev[cfg.id] ? prev : { ...prev, [cfg.id]: loadState(cfg) },
-    );
-  }, []);
+  const register = useCallback(
+    (id: string, cfgRef: React.MutableRefObject<FabConfig>) => {
+      setConfigs((prev) => (prev[id] === cfgRef ? prev : { ...prev, [id]: cfgRef }));
+      setOrder((prev) => (prev.includes(id) ? prev : [...prev, id]));
+      setStates((prev) =>
+        prev[id] ? prev : { ...prev, [id]: loadState(cfgRef.current) },
+      );
+    },
+    [],
+  );
 
   const unregister = useCallback((id: string) => {
     setConfigs((prev) => {

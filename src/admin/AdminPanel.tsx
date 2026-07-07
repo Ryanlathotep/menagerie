@@ -158,6 +158,9 @@ export function AdminPanel() {
           <TabsContent value="recipes" className="p-4 m-0">
             <RecipesEditor />
           </TabsContent>
+          <TabsContent value="craftgrid" className="p-4 m-0">
+            <CraftGridEditor />
+          </TabsContent>
           <TabsContent value="monsters" className="p-4 m-0">
             <MonstersEditor />
           </TabsContent>

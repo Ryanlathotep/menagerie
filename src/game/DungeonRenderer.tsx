@@ -552,10 +552,21 @@ function Tile({
       title: '⬇️ Stairs Down',
       description: 'Descend to the next floor'
     },
-    stairs_up: {
-      title: '⬆️ Stairs Up',
-      description: 'Ascend back to the previous floor'
-    },
+    stairs_up: tile.portal
+      ? {
+          title: tile.portal.destKind === 'tower' ? '🌀 Portal (Tower)' : '🌀 Portal (Overworld)',
+          description: tile.portal.validated === false
+            ? `Blocked — ${tile.portal.invalidReason || 'destination unavailable'}`
+            : tile.portal.destKind === 'tower'
+              ? `Warps to Tower ${tile.portal.destTowerId || '(unresolved)'}`
+              : tile.portal.destOverworld
+                ? `Warps to Overworld (${tile.portal.destOverworld.x}, ${tile.portal.destOverworld.y})`
+                : 'Warps to overworld',
+        }
+      : {
+          title: '⬆️ Stairs Up',
+          description: 'Ascend back to the previous floor',
+        },
     shop: {
       title: '🏪 Shop',
       description: 'Buy items and equipment'

@@ -248,6 +248,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
 
   // Portable Workstation modal — opens crafting workshop on overworld when owned
   const [showWorkshop, setShowWorkshop] = useState(false);
+  const [townHallCraftBuildings, setTownHallCraftBuildings] = useState(false);
   
   const monster = state.run?.currentMonster;
   

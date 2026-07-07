@@ -128,6 +128,8 @@ function SlotRow({ slot, currentUrl, onUploaded, onRemoved }: SlotRowProps) {
           />
         ) : currentUrl ? (
           <img src={currentUrl} alt={slot.label} className="w-full h-full object-contain" />
+        ) : slot.category === 'building' ? (
+          <OverworldBuildingTileGraphic type={slot.key as PlayerBuildingType} size={56} seed={1} />
         ) : slot.category === 'equipment' ? (
           (() => {
             const def = getEquipmentIcon(slot.key);
@@ -148,6 +150,7 @@ function SlotRow({ slot, currentUrl, onUploaded, onRemoved }: SlotRowProps) {
         ) : (
           <ImageIcon className="w-6 h-6 text-muted-foreground" />
         )}
+
       </div>
       <div className="flex-1 min-w-0">
         <div className="font-medium truncate">{slot.label}</div>

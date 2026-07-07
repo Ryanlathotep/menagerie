@@ -950,6 +950,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       const ow = overworldRef.current;
       if (!ow) { cancelAutoHunt(); return; }
       const px = ow.playerPosition.x, py = ow.playerPosition.y;
+      // If any visible enemy already has us in attack range, stop advancing
+      // and let the player pick their move.
+      if (anyOverworldEnemyThreatensPlayer(ow)) {
+        cancelAutoHunt('🏹 Auto-Hunt: enemy in attack range — pick a move!');
+        return;
+      }
       const enemies = getVisibleOverworldEnemies(ow, 30);
 
       // ── Enemy in sight: pursue the nearest one ──

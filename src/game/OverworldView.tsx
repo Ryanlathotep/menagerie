@@ -2847,9 +2847,13 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           setWorkshopStationBuilding(contextMenuBuilding);
           setContextMenuBuilding(null);
         }}
+        onOpenArena={() => { setArenaHubOpen(true); setContextMenuBuilding(null); }}
         onClose={() => setContextMenuBuilding(null)}
       />
     )}
+
+    {arenaHubOpen && <ArenaHub onClose={() => setArenaHubOpen(false)} />}
+
 
     {/* ─── Unified Tile Menu (right-click on PC, long-press on touch) ───
         One menu, every tile. Reads the tile and builds an action list

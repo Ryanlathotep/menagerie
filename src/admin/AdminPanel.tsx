@@ -18,6 +18,7 @@ function SwitchAccountButton() {
     </Button>
   );
 }
+import { CraftGridEditor } from './CraftGridEditor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';

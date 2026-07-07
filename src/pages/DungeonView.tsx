@@ -244,6 +244,16 @@ export function DungeonView({
   const [stairExitDialogOpen, setStairExitDialogOpen] = useState(false);
   // Auto-Search picker (dungeon-scoped analogue of the overworld picker).
   const [dungeonAutoSearchOpen, setDungeonAutoSearchOpen] = useState(false);
+  // Auto-Search "continue at stairs" prompt. When Auto-Search targets stairs
+  // (up or down), the walker steps onto the stair tile which auto-triggers a
+  // floor change; on the new floor we open this prompt so the player can keep
+  // spiraling through the tower without re-opening the picker each time.
+  const [stairSearchPrompt, setStairSearchPrompt] = useState<
+    | { kind: 'stairs' | 'stairs_up'; fromFloor: number; toFloor: number; direction: 'deeper' | 'shallower' }
+    | null
+  >(null);
+  // While non-null, Auto-Search is chasing this stair type across floors.
+  const autoSearchStairsKindRef = useRef<'stairs' | 'stairs_up' | null>(null);
 
   // Dungeon build mode (per-floor buildings persisted via snapshots)
   const [dungeonBuildPanelOpen, setDungeonBuildPanelOpen] = useState(false);

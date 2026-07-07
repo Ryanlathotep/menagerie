@@ -57,7 +57,6 @@ const Tooltip = ({
       </TooltipPrimitive.Root>
     </TouchTooltipContext.Provider>
   );
-  );
 };
 
 const LONG_PRESS_MS = 400;

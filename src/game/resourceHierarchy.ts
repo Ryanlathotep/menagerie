@@ -149,6 +149,31 @@ export function getInitialStoneTier(worldX: number, worldY: number, tileSeed: nu
   return 'stone';
 }
 
+// ============= AREA-DIFFICULTY TIER CAPS =============
+// A tile can only upgrade up to the tier its local difficulty (distance from origin)
+// would naturally allow. This prevents a starter-area rock from silently maturing into
+// mithril just because the player has been walking around nearby.
+export function getMaxStoneTier(worldX: number, worldY: number): StoneTier {
+  const dist = Math.sqrt(worldX * worldX + worldY * worldY);
+  const cfg = getOverworldGen().stoneTierRolls;
+  if (dist >= cfg.mithril.minDist) return 'mithril';
+  if (dist >= cfg.gold.minDist) return 'gold';
+  if (dist >= cfg.iron.minDist) return 'iron';
+  if (dist >= cfg.copper.minDist) return 'copper';
+  return 'stone';
+}
+
+export function getMaxTreeTier(worldX: number, worldY: number): TreeTier {
+  const dist = Math.sqrt(worldX * worldX + worldY * worldY);
+  const cfg = getOverworldGen().treeTierRolls;
+  if (dist >= cfg.elderOak.minDist) return 'elder_oak';
+  if (dist >= cfg.maple.minDist) return 'maple';
+  return 'oak';
+}
+
+function stoneTierIndex(t: StoneTier): number { return STONE_TIERS.indexOf(t); }
+function treeTierIndex(t: TreeTier): number { return TREE_TIERS.indexOf(t); }
+
 
 
 function seededRandom(seed: number): number {

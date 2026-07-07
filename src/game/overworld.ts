@@ -784,6 +784,24 @@ export function ensureChunksLoaded(state: OverworldState, worldX: number, worldY
       if (!state.chunks[key]) {
         const difficulty = getDifficulty(cx * CHUNK_SIZE, cy * CHUNK_SIZE);
         state.chunks[key] = generateChunk(cx, cy, difficulty, state.dungeonEntrances, state.nests, state.resourceUpgrades);
+        // Re-apply any persisted tile overrides for this freshly-generated
+        // chunk. Without this, player buildings, roads, harvested resources
+        // etc. vanish visually when the player walks back to a chunk that
+        // was regenerated after save/load (the underlying playerBuildings
+        // array still has them, but the chunk tile has no playerBuildingId
+        // pointing to them, so nothing renders).
+        const overrides = state.tileOverrides;
+        if (overrides) {
+          const baseX = cx * CHUNK_SIZE;
+          const baseY = cy * CHUNK_SIZE;
+          const tiles = state.chunks[key].tiles;
+          for (let ly = 0; ly < CHUNK_SIZE; ly++) {
+            for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+              const ov = overrides[`${baseX + lx},${baseY + ly}`];
+              if (ov && tiles[ly]) tiles[ly][lx] = { ...ov };
+            }
+          }
+        }
       }
     }
   }

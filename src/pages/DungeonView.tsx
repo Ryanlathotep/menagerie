@@ -1040,7 +1040,37 @@ export function DungeonView({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
       if (showShop) return;
-      
+
+      // Space halts every automatic action without moving. Explicitly handle
+      // it up front so it also cancels auto-harvest (which the "any key stops
+      // auto-run/path-walk" branches below don't cover) and so the browser
+      // doesn't scroll the page on space.
+      if (e.key === ' ' || e.key === 'Spacebar') {
+        const halted = isAutoRunning || isPathWalking || !!autoHarvestTargetRef.current;
+        if (halted) {
+          e.preventDefault();
+          if (isAutoRunning) {
+            stopAutoRun.current = true;
+            setIsAutoRunning(false);
+            autoRunDirection.current = null;
+          }
+          if (isPathWalking) {
+            setIsPathWalking(false);
+            setTargetPath([]);
+            pathWalkRef.current = [];
+            pathGoalRef.current = null;
+          }
+          if (autoHarvestTargetRef.current) {
+            cancelAutoHarvest('⏸ Auto-Harvest halted.');
+          }
+          return;
+        }
+        // Nothing automatic running — swallow space so the page doesn't
+        // scroll, but don't treat it as a movement key.
+        e.preventDefault();
+        return;
+      }
+
       // If auto-running or path-walking, any key stops it
       if (isAutoRunning) {
        stopAutoRun.current = true; // Stop immediately
@@ -1055,6 +1085,7 @@ export function DungeonView({
         pathWalkRef.current = [];
         return;
       }
+      
       
       let direction: 'up' | 'down' | 'left' | 'right' | null = null;
       if (e.key === 'ArrowUp' || e.key === 'w') direction = 'up';

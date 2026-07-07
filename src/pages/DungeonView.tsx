@@ -183,6 +183,11 @@ export function DungeonView({
   // expands (which shifts existing coordinates) so we can re-pathfind to the
   // correct destination instead of getting confused by stale path entries.
   const pathGoalRef = useRef<Position | null>(null);
+  // Auto-Hunt mode: when true, the path-walker allows stepping through
+  // treasure/traps (they auto-loot / auto-trigger on step) and after finishing
+  // one leg it re-plans toward the next visible enemy — or, if none, spirals
+  // outward toward the nearest fog-of-war tile so the floor keeps streaming.
+  const huntingModeRef = useRef(false);
   
   // Attack targeting state
   const [targetingMove, setTargetingMove] = useState<Move | null>(null);

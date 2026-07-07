@@ -413,6 +413,11 @@ export function CharacterSelect() {
                 return (
                   <Card
                     key={monster.comboId}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('text/plain', `pool:${monster.comboId}`);
+                      e.dataTransfer.effectAllowed = 'move';
+                    }}
                     className={`p-2 cursor-pointer transition-all relative ${
                       isInParty
                         ? 'ring-2 ring-primary bg-primary/10'

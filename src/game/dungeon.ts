@@ -757,7 +757,7 @@ export function shouldStopAutoRun(
   y: number,
   width: number,
   height: number,
-  options: { allowMineable?: boolean } = {},
+  options: { allowMineable?: boolean; allowInteract?: boolean } = {},
 ): boolean {
   // Out of bounds
   if (x < 0 || x >= width || y < 0 || y >= height) return true;
@@ -772,8 +772,13 @@ export function shouldStopAutoRun(
 
   // Stop on anything interesting
   if (tile.type === 'enemy') return true;
-  if (tile.type === 'treasure') return true;
-  if (tile.type === 'trap' && !tile.triggered) return true;
+  // Auto-Hunt mode (allowInteract) walks through treasure and traps — treasure
+  // is auto-looted on the step, traps are auto-triggered (and become passable
+  // after firing once), and rune terrain is walked over. This lets Auto-Hunt
+  // keep chasing enemies through cluttered floors instead of halting at every
+  // pickup or hazard.
+  if (tile.type === 'treasure' && !options.allowInteract) return true;
+  if (tile.type === 'trap' && !tile.triggered && !options.allowInteract) return true;
   if (tile.type === 'stairs') return true;
   if (tile.type === 'stairs_up') return true;
   if (tile.type === 'shop') return true;

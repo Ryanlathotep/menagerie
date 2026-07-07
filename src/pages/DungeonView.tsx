@@ -1429,15 +1429,18 @@ export function DungeonView({
   // transition, open a prompt so the player can continue searching (descend
   // deeper / ascend shallower) or stop here. Uses direction from the actual
   // floor delta so it stays correct if we ever support dungeons that go both
-  // up and down from a middle floor.
+  // up and down from a middle floor. We track our own "last seen" floor here
+  // because the existing lastFloorRef gets updated by an earlier effect on
+  // the same tick, which would race this comparison.
+  const lastAutoSearchFloorRef = useRef<number>(dungeon?.floor ?? 1);
   useEffect(() => {
     if (!dungeon) return;
+    const cur = dungeon.floor;
+    const prev = lastAutoSearchFloorRef.current;
+    if (prev === cur) return;
+    lastAutoSearchFloorRef.current = cur;
     const kind = autoSearchStairsKindRef.current;
     if (!kind) return;
-    const prev = lastFloorRef.current;
-    const cur = dungeon.floor;
-    if (prev === cur) return;
-    // Floor changed while an Auto-Search stair chase is active — prompt.
     setStairSearchPrompt({
       kind,
       fromFloor: prev,

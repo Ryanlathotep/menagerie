@@ -35,13 +35,16 @@ const Tooltip = ({
   );
 
   if (!isTouch) {
+    // Only forward `open` when the caller actually provided one — otherwise
+    // Radix treats an explicit `open={undefined}` as a controlled-mode signal
+    // that flips between controlled/uncontrolled on every render and triggers
+    // React #185 "maximum update depth" inside its internal useState.
+    const rootExtra: Record<string, unknown> = { ...rootProps };
+    if (openProp !== undefined) rootExtra.open = openProp;
+    if (defaultOpen !== undefined) rootExtra.defaultOpen = defaultOpen;
+    if (onOpenChange) rootExtra.onOpenChange = onOpenChange;
     return (
-      <TooltipPrimitive.Root
-        {...rootProps}
-        open={openProp}
-        defaultOpen={defaultOpen}
-        onOpenChange={onOpenChange}
-      >
+      <TooltipPrimitive.Root {...rootExtra}>
         {children}
       </TooltipPrimitive.Root>
     );
@@ -53,6 +56,7 @@ const Tooltip = ({
         {children}
       </TooltipPrimitive.Root>
     </TouchTooltipContext.Provider>
+  );
   );
 };
 

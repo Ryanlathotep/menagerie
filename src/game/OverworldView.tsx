@@ -508,6 +508,15 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             addLog(`💎 Extracted ${quantity}× ${name}!`, 'loot');
             toast.success(`+${quantity}× 💎 ${name}`);
           }
+          if (result.seedDrop) {
+            const { materialId, name, quantity } = result.seedDrop;
+            queueMicrotask(() => dispatch({ type: 'ADD_MATERIAL', materialId, quantity }));
+            addLog(`🌱 Picked up ${quantity}× ${name}!`, 'loot');
+            toast.success(`+${quantity}× 🌱 ${name}`);
+          }
+          if (result.leftTilled) {
+            addLog(`🟫 The felled tree left plantable soil behind.`, 'system');
+          }
           break;
         }
         case 'plant_harvest': {
@@ -1354,11 +1363,19 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           if (owTile.resourceAmount <= 0) {
             const resKey = `${tile.x},${tile.y}`;
             delete newOw.resourceUpgrades[resKey];
+            // Trees leave plantable soil + guaranteed seed on the fell swing.
+            const felledTree = isTree;
             setOverworldTile(newOw, tile.x, tile.y, {
               ...owTile, type: 'grass', harvested: true,
               treeTier: undefined, stoneTier: undefined, resourceAmount: undefined,
+              tilled: felledTree ? true : owTile.tilled,
             });
+            if (isTree && tierData.seedMaterialId) {
+              dispatch({ type: 'ADD_MATERIAL', materialId: tierData.seedMaterialId, quantity: 1 });
+              addLog(`🌱 Picked up a ${tierData.seedName || 'seed'}!`, 'loot');
+            }
             addLog(`🪓 ${targetingMove.name} felled the ${tierData.name}! ${bulkLabel}`, 'loot');
+            if (isTree) addLog(`🟫 Plantable soil remains where the tree stood.`, 'system');
           } else {
             addLog(`🪓 ${targetingMove.name} chipped the ${tierData.name}! ${bulkLabel} (${owTile.resourceAmount} left)`, 'loot');
           }

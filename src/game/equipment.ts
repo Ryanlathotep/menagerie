@@ -631,7 +631,7 @@ export function calculateEquipmentBonuses(equipment: MonsterEquipment): Equipmen
 export type MaterialType = 
   | 'ore' | 'hide' | 'essence' | 'gem' | 'bone' | 'fabric' | 'herb'
   | 'wood' | 'metal' | 'mote' | 'monster' | 'species' | 'class' | 'element'
-  | 'rune' | 'soil';
+  | 'rune' | 'soil' | 'seed';
 
 export interface CraftingMaterial {
   id: string;
@@ -691,6 +691,13 @@ export const CRAFTING_MATERIALS: CraftingMaterial[] = [
   { id: 'ironwood', name: 'Ironwood', type: 'wood', rarity: 'rare', icon: '🪓', value: 28, description: 'Wood as hard as iron.' },
   { id: 'spiritwood', name: 'Spiritwood', type: 'wood', rarity: 'epic', icon: '🌲', value: 70, description: 'Wood infused with spiritual energy.' },
   { id: 'worldtree_branch', name: 'Worldtree Branch', type: 'wood', rarity: 'legendary', icon: '🌴', value: 180, description: 'A branch from the mythical Worldtree.' },
+  { id: 'maple_sap', name: 'Maple Sap', type: 'wood', rarity: 'uncommon', icon: '🍁', value: 8, description: 'Sweet, sticky sap tapped from a maple tree.' },
+  { id: 'elder_bark', name: 'Elder Bark', type: 'wood', rarity: 'rare', icon: '🌲', value: 22, description: 'Craggy bark from an ancient Elder Oak.' },
+
+  // ============= SEEDS (dropped when trees are felled; replantable on tilled soil) =============
+  { id: 'oak_acorn',    name: 'Oak Acorn',     type: 'seed', rarity: 'common',   icon: '🌰', value: 2, description: 'Plant on tilled soil to grow a new oak.' },
+  { id: 'maple_samara', name: 'Maple Samara',  type: 'seed', rarity: 'uncommon', icon: '🍂', value: 6, description: 'A winged maple seed — flutters into freshly tilled ground.' },
+  { id: 'elder_seed',   name: 'Elder Oak Seed', type: 'seed', rarity: 'rare',   icon: '🌲', value: 18, description: 'Rare seed from an Elder Oak. Slow to grow, worth the wait.' },
   
   // ============= HIDES & LEATHER =============
   { id: 'soft_hide', name: 'Soft Hide', type: 'hide', rarity: 'common', icon: '🟫', value: 3 },

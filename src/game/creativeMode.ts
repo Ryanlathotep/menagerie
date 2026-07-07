@@ -40,7 +40,12 @@ export function onCreativeModeChange(cb: (enabled: boolean) => void): () => void
 import type { PlayerTools } from './tools';
 export function effectiveTools(tools: PlayerTools | undefined): PlayerTools {
   if (isCreativeMode()) {
-    return { pickaxe: 'mithril', shovel: 'mithril', workstation: true };
+    return {
+      pickaxe: 'mithril', shovel: 'mithril', hoe: 'mithril',
+      workstation: true,
+      portableForge: true, portableWorkbench: true,
+      portableBrewing: true, portableEnchanting: true,
+    };
   }
   return tools || {};
 }

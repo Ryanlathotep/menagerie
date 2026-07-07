@@ -45,6 +45,13 @@ export interface OverworldTile {
   stoneTier?: StoneTier; // Resource hierarchy tier for rocks
   plantVariant?: PlantVariant; // For plant tiles — drives drop table
   plantTier?: 1 | 2 | 3;       // Rarity tier (1 = common, 3 = rare)
+  // Tilled soil — the tile is grass but has been broken up (by a Hoe, or left
+  // behind when a tree is chopped down). Renders as a dark, plough-marked
+  // square and lets the player plant a seed on it. Seeds re-grow into their
+  // matching tree/plant tile via the standard regrowth pass.
+  tilled?: boolean;
+  plantedSeed?: string;            // material id of a planted seed, if any
+  plantedSeedProgress?: number;    // steps until the seed matures
   // ─── Elevation system ───
   elevation?: number;             // 0-5; undefined treated as 0 (legacy saves)
   cliffDrops?: { n: boolean; e: boolean; s: boolean; w: boolean }; // sides that drop down
@@ -1032,7 +1039,7 @@ export type MoveResult =
   | { type: 'moved'; bonusMove?: boolean }
   | { type: 'blocked'; reason: string }
   | { type: 'enemy'; enemy: Monster }
-  | { type: 'resource'; resourceType: 'wood' | 'stone'; amount: number; tierName?: string; materialDrop?: { materialId: string; name: string; quantity: number } }
+  | { type: 'resource'; resourceType: 'wood' | 'stone'; amount: number; tierName?: string; materialDrop?: { materialId: string; name: string; quantity: number }; seedDrop?: { materialId: string; name: string; quantity: number }; leftTilled?: boolean }
   | { type: 'plant_harvest'; variant: PlantVariant; tier: 1 | 2 | 3; drops: Array<{ materialId: string; name: string; quantity: number }> }
   | { type: 'building'; buildingType: BuildingType }
   | { type: 'dungeon_entrance'; dungeonId?: string }
@@ -1113,11 +1120,10 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
     case 'tree': {
       const treeTier = tile.treeTier || 'oak';
       const tierData = TREE_TIER_DATA[treeTier];
-      // For upgraded tiers (with materialId), the tree drops its specialty
-      // material as the primary yield. Base wood becomes a minor byproduct.
       const isSpecialTier = !!tierData.materialId;
       const woodAmount = isSpecialTier ? 1 : tierData.harvestYield;
       tile.resourceAmount = (tile.resourceAmount || 1) - 1;
+      let leftTilled = false;
       if (tile.resourceAmount <= 0) {
         const resKey = `${newX},${newY}`;
         delete state.resourceUpgrades[resKey];
@@ -1125,6 +1131,9 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
         tile.harvested = true;
         tile.lastHarvestType = 'tree';
         tile.treeTier = undefined;
+        // A felled tree leaves behind broken, plantable ground.
+        tile.tilled = true;
+        leftTilled = true;
       }
       state.woodCollected += woodAmount;
       let materialDrop: { materialId: string; name: string; quantity: number } | undefined;
@@ -1135,7 +1144,21 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
           quantity: tierData.harvestYield,
         };
       }
-      return { type: 'resource', resourceType: 'wood', amount: woodAmount, tierName: tierData.name, materialDrop };
+      // Seed drop — small chance per chop, guaranteed on the final swing that
+      // fells the tree. Lets the player replant the same species elsewhere.
+      let seedDrop: { materialId: string; name: string; quantity: number } | undefined;
+      if (tierData.seedMaterialId) {
+        const guaranteed = leftTilled;
+        const roll = seededRandom(state.totalSteps * 19 + newX * 5 + newY * 3);
+        if (guaranteed || roll < 0.35) {
+          seedDrop = {
+            materialId: tierData.seedMaterialId,
+            name: tierData.seedName || `${tierData.name} seed`,
+            quantity: 1,
+          };
+        }
+      }
+      return { type: 'resource', resourceType: 'wood', amount: woodAmount, tierName: tierData.name, materialDrop, seedDrop, leftTilled };
     }
     
     case 'rock': {

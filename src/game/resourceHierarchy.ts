@@ -15,7 +15,11 @@ export interface ResourceTierData {
   totalHits: number;            // Hits to fully deplete
   upgradeSteps: number | null;  // Player steps until upgrade (null = max tier)
   materialId?: string;          // Special material dropped (in addition to wood/stone)
-  materialChance?: number;      // Chance (0-1) to drop special material per hit
+  materialChance?: number;      // Chance (0-1) to drop special material per hit (legacy)
+  // Tree-specific: seed material dropped on felling (35% per swing, 100% on the
+  // final swing that removes the tree). Enables replanting the same species.
+  seedMaterialId?: string;
+  seedName?: string;
 }
 
 // ============= TREE TIERS =============
@@ -29,6 +33,8 @@ export const TREE_TIER_DATA: Record<TreeTier, ResourceTierData> = {
     harvestYield: 1,
     totalHits: 3,
     upgradeSteps: 200,
+    seedMaterialId: 'oak_acorn',
+    seedName: 'oak acorn',
   },
   maple: {
     name: 'Maple',
@@ -38,6 +44,8 @@ export const TREE_TIER_DATA: Record<TreeTier, ResourceTierData> = {
     upgradeSteps: 400,
     materialId: 'maple_sap',
     materialChance: 0.3,
+    seedMaterialId: 'maple_samara',
+    seedName: 'maple samara',
   },
   elder_oak: {
     name: 'Elder Oak',
@@ -47,6 +55,8 @@ export const TREE_TIER_DATA: Record<TreeTier, ResourceTierData> = {
     upgradeSteps: null, // Max tier
     materialId: 'elder_bark',
     materialChance: 0.4,
+    seedMaterialId: 'elder_seed',
+    seedName: 'elder oak seed',
   },
 };
 

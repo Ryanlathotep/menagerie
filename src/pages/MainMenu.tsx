@@ -404,6 +404,7 @@ export function MainMenu() {
             dispatch({ type: 'SET_WORKSTATION_OWNED' });
             toast.success('🛠️ Portable Workstation ready! Use it from the dungeon HUD.');
           }}
+          onGridCraft={handleGridCraft}
           onClose={() => setShowCrafting(false)}
         />
       )}

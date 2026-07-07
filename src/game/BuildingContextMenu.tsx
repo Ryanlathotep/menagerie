@@ -12,7 +12,7 @@ import {
 } from './buildings';
 import { getStationTierData } from './crafting/stationTiers';
 import { Monster } from './types';
-import { Hammer, Recycle, RefreshCw, Settings, UserPlus, Wrench, X } from 'lucide-react';
+import { Hammer, Recycle, RefreshCw, Settings, Trophy, UserPlus, Wrench, X } from 'lucide-react';
 
 interface BuildingContextMenuProps {
   building: PlayerBuilding;
@@ -32,6 +32,8 @@ interface BuildingContextMenuProps {
   onConfigureStation?: () => void;
   /** Open the crafting workshop scoped to this station's context. */
   onOpenStationWorkshop?: () => void;
+  /** Open the Arena Hub — only for arena buildings. */
+  onOpenArena?: () => void;
   onClose: () => void;
 }
 

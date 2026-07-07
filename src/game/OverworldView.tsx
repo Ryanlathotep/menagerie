@@ -498,11 +498,15 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           return prev;
         case 'resource': {
           const tierLabel = result.tierName ? ` (${result.tierName})` : '';
-          addLog(`🪓 Gathered ${result.amount} ${result.resourceType}${tierLabel}!`, 'loot');
-          toast.success(`+${result.amount} ${result.resourceType === 'wood' ? '🪵' : '🪨'} ${result.resourceType}${tierLabel}`);
+          if (result.amount > 0) {
+            addLog(`🪓 Gathered ${result.amount} ${result.resourceType}${tierLabel}!`, 'loot');
+            toast.success(`+${result.amount} ${result.resourceType === 'wood' ? '🪵' : '🪨'} ${result.resourceType}${tierLabel}`);
+          }
           if (result.materialDrop) {
-            addLog(`💎 Found ${result.materialDrop.name}!`, 'loot');
-            toast.success(`💎 Found ${result.materialDrop.name}!`);
+            const { materialId, name, quantity } = result.materialDrop;
+            queueMicrotask(() => dispatch({ type: 'ADD_MATERIAL', materialId, quantity }));
+            addLog(`💎 Extracted ${quantity}× ${name}!`, 'loot');
+            toast.success(`+${quantity}× 💎 ${name}`);
           }
           break;
         }

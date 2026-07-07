@@ -19,14 +19,14 @@ import { resolveTournament } from './tournament';
 import { computePool, seedNpcBets } from './betting';
 import { ArenaReplayPlayer } from './ArenaReplayPlayer';
 import { ARENA_SHOP } from './shop';
-import { useGameState } from '@/game/state';
+import { useGame } from "@/game/state";
 
 interface ArenaHubProps {
   onClose: () => void;
 }
 
 export function ArenaHub({ onClose }: ArenaHubProps) {
-  const { state, dispatch } = useGameState();
+  const { state, dispatch } = useGame();
   const [arena, setArena] = useState<ArenaState>(() => loadArenaState());
   const [now, setNow] = useState(Date.now());
   const [openReplay, setOpenReplay] = useState<string | null>(null);
@@ -185,7 +185,7 @@ export function ArenaHub({ onClose }: ArenaHubProps) {
 function TournamentCard({
   cadence, now, arena, setArena,
 }: { cadence: Cadence; now: number; arena: ArenaState; setArena: React.Dispatch<React.SetStateAction<ArenaState>> }) {
-  const { state } = useGameState();
+  const { state } = useGame();
   const t = arena.tournaments[cadence];
   const remaining = Math.max(0, t.startsAt - now);
   const playerHasEntry = t.teams.some(x => x.ownerId === 'player');
@@ -260,7 +260,7 @@ function formatDuration(ms: number): string {
 // ─── Teams tab ─────────────────────────────────────────
 
 function TeamsTab({ arena, setArena }: { arena: ArenaState; setArena: React.Dispatch<React.SetStateAction<ArenaState>> }) {
-  const { state } = useGameState();
+  const { state } = useGame();
   const [name, setName] = useState('My Team');
   const [selected, setSelected] = useState<string[]>([]);
   const unlocked = state.saveData.unlockedMonsters ?? [];

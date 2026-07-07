@@ -1319,6 +1319,8 @@ export function DungeonView({
           continue;
         }
         if (!t.explored) {
+          // Skip fog we already know is un-walkable (walls / mineable walls).
+          if (t.type === 'wall' || t.type === 'mineable_wall') continue;
           // Only consider fog that borders explored walkable ground so we have
           // any chance of pathing there.
           let borders = false;

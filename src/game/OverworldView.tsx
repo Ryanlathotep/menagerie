@@ -104,6 +104,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const { settings, updateSetting } = useSettings();
   const rendererRef = useRef<OverworldRendererHandle>(null);
   const { saveToCloud, syncing, isAuthenticated } = useCloudSave();
+  const { username: myUsername } = useMyUsername();
   
   // Initialize or load overworld state
   const [overworld, setOverworld] = useState<OverworldState>(() => {

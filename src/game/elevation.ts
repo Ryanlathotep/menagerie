@@ -114,7 +114,7 @@ export function getTileElevation(
       break;
     case 'normal':
     default:
-      maxBase = 3;
+      maxBase = 2; // was 3 — cuts cliff density in the most common biome
       minBase = 0;
       break;
   }

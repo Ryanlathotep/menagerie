@@ -1335,23 +1335,22 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           const attackStat = targetingMove.type === 'melee' ? monster.stats.attack : monster.stats.special;
           const hitsDealt = Math.max(1, Math.floor((targetingMove.power + attackStat) / 15));
           const actualHits = Math.min(hitsDealt, owTile.resourceAmount || 1);
-          const amount = tierData.harvestYield * actualHits;
+          const isSpecial = !!tierData.materialId;
+          // Specialty tiers (ores, maple, elder oak) drop mostly the specialty
+          // material with a small wood/stone byproduct.
+          const bulkAmount = (isSpecial ? 1 : tierData.harvestYield) * actualHits;
+          const specialAmount = isSpecial ? tierData.harvestYield * actualHits : 0;
           
           owTile.resourceAmount = (owTile.resourceAmount || 1) - actualHits;
-          if (isTree) newOw.woodCollected += amount;
-          else newOw.stoneCollected += amount;
+          if (isTree) newOw.woodCollected += bulkAmount;
+          else newOw.stoneCollected += bulkAmount;
           
-          // Material drop chance per hit
-          if (tierData.materialId && tierData.materialChance) {
-            for (let h = 0; h < actualHits; h++) {
-              const dropRoll = Math.random();
-              if (dropRoll < tierData.materialChance) {
-                dispatch({ type: 'ADD_MATERIAL', materialId: tierData.materialId, quantity: 1 });
-                addLog(`✨ Found ${tierData.materialId.replace(/_/g, ' ')}!`, 'loot');
-              }
-            }
+          if (tierData.materialId && specialAmount > 0) {
+            dispatch({ type: 'ADD_MATERIAL', materialId: tierData.materialId, quantity: specialAmount });
+            addLog(`✨ Extracted ${specialAmount}× ${tierData.materialId.replace(/_/g, ' ')}!`, 'loot');
           }
           
+          const bulkLabel = `+${bulkAmount} ${isTree ? 'wood' : 'stone'}${specialAmount ? ` +${specialAmount} ${tierData.materialId!.replace(/_/g, ' ')}` : ''}`;
           if (owTile.resourceAmount <= 0) {
             const resKey = `${tile.x},${tile.y}`;
             delete newOw.resourceUpgrades[resKey];
@@ -1359,9 +1358,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
               ...owTile, type: 'grass', harvested: true,
               treeTier: undefined, stoneTier: undefined, resourceAmount: undefined,
             });
-            addLog(`🪓 ${targetingMove.name} felled the ${tierData.name}! +${amount} ${isTree ? 'wood' : 'stone'}`, 'loot');
+            addLog(`🪓 ${targetingMove.name} felled the ${tierData.name}! ${bulkLabel}`, 'loot');
           } else {
-            addLog(`🪓 ${targetingMove.name} chipped the ${tierData.name}! +${amount} ${isTree ? 'wood' : 'stone'} (${owTile.resourceAmount} left)`, 'loot');
+            addLog(`🪓 ${targetingMove.name} chipped the ${tierData.name}! ${bulkLabel} (${owTile.resourceAmount} left)`, 'loot');
           }
           enemiesHit.push({ enemy: { id: `res-${tile.x},${tile.y}`, name: tierData.name } as any, pos: tile });
         }

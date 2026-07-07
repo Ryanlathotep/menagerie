@@ -71,13 +71,22 @@ function isTraversable(
 
 // Find a 4-connected path from start to goal. Goal is included in returned
 // path. Returns null if no path exists within the search budget.
+export interface FindOverworldPathOptions {
+  /** Refuse to path through structures (dungeon entrances, NPC buildings,
+   *  non-gate player buildings). Auto-harvest / auto-hunt / auto-search must
+   *  pass this so they never wander onto a dungeon and trigger entry. */
+  avoidStructures?: boolean;
+}
+
 export function findOverworldPath(
   state: OverworldState,
   start: Position,
   goal: Position,
   maxNodes = 8000,
+  options: FindOverworldPathOptions = {},
 ): Position[] | null {
   if (start.x === goal.x && start.y === goal.y) return [];
+  const avoidStructures = !!options.avoidStructures;
 
   // Make sure tiles around the goal are loaded so we don't pathfind through
   // ungenerated chunks.
@@ -96,7 +105,7 @@ export function findOverworldPath(
     goalTile.type === 'dungeon_entrance' ||
     goalTile.type === 'building' ||
     goalTile.type === 'player_building';
-  if (!isTraversable(goalTile, state, goal.x, goal.y) && !goalIsInteractable) return null;
+  if (!isTraversable(goalTile, state, goal.x, goal.y, avoidStructures) && !goalIsInteractable) return null;
 
   const open: PathNode[] = [];
   const closed = new Set<string>();

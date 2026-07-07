@@ -753,43 +753,63 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         cancelAutoMine('✅ Auto-Harvest finished — cluster exhausted.');
         return;
       }
-      const target = targets[0];
-      job.lastTarget = target;
-      const d = Math.abs(target.x - ow.playerPosition.x) + Math.abs(target.y - ow.playerPosition.y);
-      if (d === 1) {
-        // Adjacent — step into it (this harvests via handleMove's interaction path).
-        const dx = target.x - ow.playerPosition.x;
-        const dy = target.y - ow.playerPosition.y;
-        handleMoveRef.current(dx, dy);
+      // Try targets in nearest-first order. If the nearest is unreachable
+      // (walled off), fall through to the next one instead of giving up —
+      // this is why so many "wall blocks your path" pop-ups appeared when
+      // resources sat behind player-built walls.
+      const offsets: Array<[number, number]> = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+      let chosenTarget: Position | null = null;
+      let bestPath: Position[] | null = null;
+      let adjacentStep: { dx: number; dy: number } | null = null;
+      for (const candidate of targets) {
+        const d = Math.abs(candidate.x - ow.playerPosition.x) + Math.abs(candidate.y - ow.playerPosition.y);
+        if (d === 1) {
+          chosenTarget = candidate;
+          adjacentStep = {
+            dx: candidate.x - ow.playerPosition.x,
+            dy: candidate.y - ow.playerPosition.y,
+          };
+          break;
+        }
+        // Not adjacent — find a walkable neighbor reachable via A*.
+        // `avoidStructures` blocks walls / npc buildings / dungeon entrances,
+        // and we also skip neighbor offsets that ARE such tiles so we never
+        // aim for them.
+        let pathToNeighbor: Position[] | null = null;
+        for (const [ox, oy] of offsets) {
+          const ax = candidate.x + ox, ay = candidate.y + oy;
+          const at = getOverworldTile(ow, ax, ay);
+          if (at && (at.type === 'dungeon_entrance' || at.type === 'building')) continue;
+          if (at && at.type === 'player_building') {
+            const b = ow.playerBuildings?.find(pb => pb.id === at.playerBuildingId);
+            const isWallSlot = b?.type === 'wall'; // gate/wall-top handled inside path
+            if (!isWallSlot) continue;
+          }
+          if (ax === ow.playerPosition.x && ay === ow.playerPosition.y) {
+            pathToNeighbor = []; break;
+          }
+          const p = findOverworldPath(ow, ow.playerPosition, { x: ax, y: ay }, 8000, { avoidStructures: true });
+          if (p && p.length > 0 && (!pathToNeighbor || p.length < pathToNeighbor.length)) {
+            pathToNeighbor = p;
+          }
+        }
+        if (pathToNeighbor && pathToNeighbor.length > 0) {
+          chosenTarget = candidate;
+          bestPath = pathToNeighbor;
+          break;
+        }
+      }
+      if (!chosenTarget) {
+        cancelAutoMine(`⚠️ Auto-Harvest stopped — no reachable ${job.tileType} nearby.`);
         return;
       }
-      // Not adjacent — path to the nearest walkable neighbor of the target and
-      // take one step. Next tick will reassess (enemy? still there?).
-      // IMPORTANT: auto-harvest must never route through dungeon entrances or
-      // player/NPC buildings — `avoidStructures` blocks those tiles mid-path,
-      // and we skip neighbor offsets that land on a structure so we don't aim
-      // for one either.
-      const offsets: Array<[number, number]> = [[0, -1], [0, 1], [-1, 0], [1, 0]];
-      let bestPath: Position[] | null = null;
-      for (const [ox, oy] of offsets) {
-        const ax = target.x + ox, ay = target.y + oy;
-        const at = getOverworldTile(ow, ax, ay);
-        // Skip neighbor tiles that are structures/entrances — walking onto
-        // them would trigger a menu or dungeon entry.
-        if (at && (at.type === 'dungeon_entrance' || at.type === 'building')) continue;
-        if (at && at.type === 'player_building') {
-          const b = ow.playerBuildings?.find(pb => pb.id === at.playerBuildingId);
-          const isGateOrTop = b?.type === 'wall'; // walls handled inside path check
-          if (!isGateOrTop) continue;
-        }
-        if (ax === ow.playerPosition.x && ay === ow.playerPosition.y) {
-          bestPath = []; break;
-        }
-        const p = findOverworldPath(ow, ow.playerPosition, { x: ax, y: ay }, 8000, { avoidStructures: true });
-        if (p && p.length > 0 && (!bestPath || p.length < bestPath.length)) bestPath = p;
+      job.lastTarget = chosenTarget;
+      if (adjacentStep) {
+        handleMoveRef.current(adjacentStep.dx, adjacentStep.dy);
+        return;
       }
       if (!bestPath || bestPath.length === 0) {
-        cancelAutoMine(`⚠️ Auto-Harvest stopped — no path to nearest ${job.tileType}.`);
+        cancelAutoMine(`⚠️ Auto-Harvest stopped — no path to ${job.tileType}.`);
         return;
       }
       const nextStep = bestPath[0];

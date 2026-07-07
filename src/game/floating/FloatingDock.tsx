@@ -52,9 +52,9 @@ interface FabState {
 }
 
 interface CtxVal {
-  register: (cfg: FabConfig) => void;
+  register: (id: string, cfgRef: React.MutableRefObject<FabConfig>) => void;
   unregister: (id: string) => void;
-  configs: Record<string, FabConfig>;
+  configs: Record<string, React.MutableRefObject<FabConfig>>;
   order: string[];
   states: Record<string, FabState>;
   setDocked: (id: string, docked: boolean, pos?: Pos) => void;

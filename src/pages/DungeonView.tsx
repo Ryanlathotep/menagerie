@@ -705,6 +705,22 @@ export function DungeonView({
       return;
     } else if (result.stairsUp && dungeon.floor <= (dungeon.startingFloor ?? 1)) {
       // Stepped onto the entry staircase — ask where to exit to.
+      // Portal-stairs override: if the tile carries `portal` metadata, the
+      // player set the exit coord themselves — honour it by writing an
+      // override that OverworldView reads on next mount, then flee.
+      const stoodOn = dungeon.tiles[dungeon.playerPosition.y]?.[dungeon.playerPosition.x];
+      if (stoodOn?.portal?.destKind === 'overworld' && stoodOn.portal.destOverworld && stoodOn.portal.validated !== false) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(
+            'menagerie_portal_exit_coord',
+            JSON.stringify(stoodOn.portal.destOverworld),
+          );
+        }
+        addLog(`🌀 Portal activated → Overworld (${stoodOn.portal.destOverworld.x}, ${stoodOn.portal.destOverworld.y}).`, 'system');
+        dispatch({ type: 'FLEE_DUNGEON' });
+        dispatch({ type: 'SET_PHASE', phase: 'overworld' });
+        return;
+      }
       setStairExitDialogOpen(true);
       return;
     } else if (result.stairsUp && dungeon.floor > 1) {

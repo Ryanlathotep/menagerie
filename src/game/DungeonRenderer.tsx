@@ -15,6 +15,7 @@ import {
   TerrainTile, 
   StairsTile, 
   StairsUpTile,
+  PortalStairsTile,
   TreasureTile, 
   TrapTile, 
   PlantTile, 

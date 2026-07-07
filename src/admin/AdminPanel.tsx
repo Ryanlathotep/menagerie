@@ -137,6 +137,10 @@ export function AdminPanel() {
               <Lightbulb className="w-4 h-4" />
               Features
             </TabsTrigger>
+            <TabsTrigger value="arena" className="gap-2 shrink-0">
+              <Trophy className="w-4 h-4" />
+              Arena
+            </TabsTrigger>
             <TabsTrigger value="access" className="gap-2 shrink-0">
               <UserCog className="w-4 h-4" />
               Access

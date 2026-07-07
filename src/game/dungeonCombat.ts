@@ -1,6 +1,7 @@
 // Dungeon Combat System - Attack targeting, enemy AI, and real-time combat on the map
 
 import { DungeonState, Monster, Position, DungeonTile } from './types';
+import { findPath, getDirection } from './pathfinding';
 import { Move, TargetingPattern } from './moves';
 import { EvolvedMove } from './moveMastery';
 import * as enemyAI from './enemyAI';
@@ -768,7 +769,12 @@ export function calculateEnemyAction(
 }
 
 
-// Get movement direction towards a target
+// Get movement direction towards a target.
+// Uses the same A* pathfinder as the player's click-to-move so enemies can
+// route around walls, corners, and static obstacles instead of dumbly bumping
+// them. Mineable walls are treated as impassable (enemies don't mine); other
+// enemies, the player tile (unless it's the goal), traps, treasure, stairs
+// and nests all block the path.
 function getMovementTowards(
   from: Position,
   to: Position,
@@ -776,12 +782,39 @@ function getMovementTowards(
   width: number,
   height: number
 ): EnemyAction {
+  const isWalkableForEnemy = (tile: DungeonTile, x: number, y: number, isGoal: boolean): boolean => {
+    // Goal tile is the player — always considered reachable so A* can complete.
+    if (isGoal) return true;
+    // Mid-path: only pass through fully clear tiles.
+    if (tile.type === 'floor') return true;
+    if (tile.type === 'terrain') return true;
+    if (tile.type === 'plant' && tile.harvested) return true;
+    return false;
+  };
+
+  const pseudoDungeon = { tiles, width, height } as DungeonState;
+  const path = findPath(pseudoDungeon, from, to, { isWalkableTile: isWalkableForEnemy });
+
+  if (path && path.length > 0) {
+    // The last node is the player tile — enemies stop one tile short so the
+    // adjacency check attacks instead of walking into the player.
+    const nextStep = path.length >= 2 ? path[0] : path[0];
+    // If the only remaining step is the player itself, we're already adjacent
+    // and shouldn't move.
+    if (path.length === 1 && nextStep.x === to.x && nextStep.y === to.y) {
+      return { type: 'idle' };
+    }
+    const dir = getDirection(from, nextStep);
+    if (dir && canMoveTo(nextStep.x, nextStep.y, tiles, width, height)) {
+      return { type: 'move', direction: dir };
+    }
+  }
+
+  // Fallback: greedy step (original behavior) when A* can't find a route —
+  // e.g. player is behind walls but a wandering enemy can still shuffle.
   const dx = Math.sign(to.x - from.x);
   const dy = Math.sign(to.y - from.y);
-  
-  // Try horizontal movement first if further horizontally
   const horizontalFirst = Math.abs(to.x - from.x) >= Math.abs(to.y - from.y);
-  
   const attempts: Array<{ dx: number; dy: number; dir: 'up' | 'down' | 'left' | 'right' }> = horizontalFirst
     ? [
         { dx, dy: 0, dir: dx > 0 ? 'right' : 'left' },
@@ -795,20 +828,17 @@ function getMovementTowards(
         { dx: -dx || 1, dy: 0, dir: (-dx || 1) > 0 ? 'right' : 'left' },
         { dx: 0, dy: -dy || 1, dir: (-dy || 1) > 0 ? 'down' : 'up' },
       ];
-  
   for (const attempt of attempts) {
     if (attempt.dx === 0 && attempt.dy === 0) continue;
-    
     const newX = from.x + attempt.dx;
     const newY = from.y + attempt.dy;
-    
     if (canMoveTo(newX, newY, tiles, width, height)) {
       return { type: 'move', direction: attempt.dir };
     }
   }
-  
   return { type: 'idle' };
 }
+
 
 // Get movement direction away from a target
 function getMovementAway(

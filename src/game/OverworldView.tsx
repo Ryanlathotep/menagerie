@@ -1559,7 +1559,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     // target tile is a harvestable resource.
     if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) {
       cancelAutoWalk();
-      if (settings.autoMine && (tile?.type === 'rock' || tile?.type === 'tree')) {
+      if (settings.autoMine && (tile?.type === 'rock' || tile?.type === 'tree' || tile?.type === 'plant')) {
         startAutoMine(worldX, worldY);
         return;
       }
@@ -1569,7 +1569,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     // Far-tap on a harvestable while auto-mine is on → hand it straight to
     // the cluster-harvest job. It walks the player over AND chops everything
     // in the cluster, no separate arrival hook needed.
-    if (settings.autoMine && (tile?.type === 'rock' || tile?.type === 'tree')) {
+    if (settings.autoMine && (tile?.type === 'rock' || tile?.type === 'tree' || tile?.type === 'plant')) {
       startAutoMine(worldX, worldY);
       return;
     }

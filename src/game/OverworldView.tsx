@@ -805,6 +805,179 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
 
   useEffect(() => () => cancelAutoMine(), [cancelAutoMine]);
 
+  // ─── Auto-Hunt & Auto-Search ────────────────────────────────────────────
+  // Auto-Hunt: seeks the nearest visible enemy and walks adjacent, then opens
+  // attack targeting with the monster's first melee/ranged move so the player
+  // just confirms the strike. Halts if no enemy is visible or space is pressed.
+  //
+  // Auto-Search: scans explored tiles for a target type (dungeon entrance,
+  // enemy, nest, tree/rock cluster) and walks to the nearest one, avoiding
+  // structures mid-path. Halts on enemy sighting (unless enemies are the target).
+  const autoHuntTimerRef = useRef<number | null>(null);
+  const autoSearchTimerRef = useRef<number | null>(null);
+  const autoSearchKindRef = useRef<string | null>(null);
+
+  const cancelAutoHunt = useCallback((reason?: string) => {
+    if (autoHuntTimerRef.current !== null) {
+      window.clearInterval(autoHuntTimerRef.current);
+      autoHuntTimerRef.current = null;
+      if (reason) addLog(reason, 'info');
+    }
+  }, [addLog]);
+
+  const cancelAutoSearch = useCallback((reason?: string) => {
+    if (autoSearchTimerRef.current !== null) {
+      window.clearInterval(autoSearchTimerRef.current);
+      autoSearchTimerRef.current = null;
+      autoSearchKindRef.current = null;
+      if (reason) addLog(reason, 'info');
+    }
+  }, [addLog]);
+
+  // Pick the "attack" move to auto-fire on hunt arrival: first melee, else
+  // first ranged. Falls back to null (player picks manually).
+  const pickHuntAttackMove = useCallback((): Move | null => {
+    if (!monster) return null;
+    const moves = getMonsterMoves(monster);
+    return (moves.find(m => m.type === 'melee') || moves.find(m => m.type === 'ranged') || null) as Move | null;
+  }, [monster]);
+
+  const startAutoHunt = useCallback(() => {
+    cancelAutoWalk();
+    cancelAutoMine();
+    cancelAutoSearch();
+    cancelAutoHunt();
+    const stepDelay = Math.max(120, settings.autoRunSpeed || 100);
+    addLog('🏹 Auto-Hunt started — seeking nearest enemy.', 'info');
+    autoHuntTimerRef.current = window.setInterval(() => {
+      const ow = overworldRef.current;
+      if (!ow) { cancelAutoHunt(); return; }
+      const enemies = getVisibleOverworldEnemies(ow, 30);
+      if (enemies.length === 0) {
+        cancelAutoHunt('🔎 Auto-Hunt stopped — no visible enemies.');
+        return;
+      }
+      // Nearest enemy by Manhattan distance.
+      const px = ow.playerPosition.x, py = ow.playerPosition.y;
+      enemies.sort((a, b) =>
+        (Math.abs(a.pos.x - px) + Math.abs(a.pos.y - py)) -
+        (Math.abs(b.pos.x - px) + Math.abs(b.pos.y - py)),
+      );
+      const target = enemies[0].pos;
+      const dist = Math.abs(target.x - px) + Math.abs(target.y - py);
+      // Adjacent — stop and open targeting for the best attack move.
+      if (dist <= 1) {
+        cancelAutoHunt();
+        const move = pickHuntAttackMove();
+        if (!move) {
+          addLog('🏹 In range! Pick a move to attack.', 'info');
+          return;
+        }
+        const config = getAttackConfig(move);
+        const validTargets = getOverworldValidTargets(ow.playerPosition, config, ow);
+        if (validTargets.some(t => t.x === target.x && t.y === target.y)) {
+          setTargetingMove(move);
+          setTargetingTiles(validTargets);
+          setTimeout(() => handleTargetingClick(target.x, target.y), 0);
+        } else {
+          addLog(`🏹 In range! Pick a move to attack.`, 'info');
+        }
+        return;
+      }
+      // Walk toward an adjacent tile of the enemy (avoid structures).
+      const offsets: Array<[number, number]> = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+      let bestPath: Position[] | null = null;
+      for (const [ox, oy] of offsets) {
+        const ax = target.x + ox, ay = target.y + oy;
+        if (ax === px && ay === py) { bestPath = []; break; }
+        const p = findOverworldPath(ow, ow.playerPosition, { x: ax, y: ay }, 8000, { avoidStructures: true });
+        if (p && p.length > 0 && (!bestPath || p.length < bestPath.length)) bestPath = p;
+      }
+      if (!bestPath || bestPath.length === 0) {
+        cancelAutoHunt('⚠️ Auto-Hunt stopped — no path to enemy.');
+        return;
+      }
+      const step = bestPath[0];
+      const dx = step.x - px, dy = step.y - py;
+      if (Math.abs(dx) + Math.abs(dy) !== 1) { cancelAutoHunt(); return; }
+      handleMoveRef.current(dx, dy);
+    }, stepDelay);
+  }, [addLog, cancelAutoHunt, cancelAutoMine, cancelAutoSearch, cancelAutoWalk, pickHuntAttackMove, settings.autoRunSpeed]);
+
+  type SearchKind = 'dungeon_entrance' | 'enemy' | 'nest' | 'tree' | 'rock' | 'building';
+  const SEARCH_RADIUS = 40;
+
+  const findNearestExplored = useCallback((ow: OverworldState, kind: SearchKind): Position | null => {
+    const px = ow.playerPosition.x, py = ow.playerPosition.y;
+    let best: (Position & { d: number }) | null = null;
+    for (let dy = -SEARCH_RADIUS; dy <= SEARCH_RADIUS; dy++) {
+      const rem = SEARCH_RADIUS - Math.abs(dy);
+      for (let dx = -rem; dx <= rem; dx++) {
+        const x = px + dx, y = py + dy;
+        const t = getOverworldTile(ow, x, y);
+        if (!t || !t.explored) continue;
+        if (t.type !== kind) continue;
+        const d = Math.abs(dx) + Math.abs(dy);
+        if (!best || d < best.d) best = { x, y, d };
+      }
+    }
+    return best ? { x: best.x, y: best.y } : null;
+  }, []);
+
+  const startAutoSearch = useCallback((kind: SearchKind) => {
+    cancelAutoWalk();
+    cancelAutoMine();
+    cancelAutoHunt();
+    cancelAutoSearch();
+    autoSearchKindRef.current = kind;
+    const stepDelay = Math.max(120, settings.autoRunSpeed || 100);
+    addLog(`🧭 Auto-Search started — looking for nearest ${kind.replace('_', ' ')}.`, 'info');
+    autoSearchTimerRef.current = window.setInterval(() => {
+      const ow = overworldRef.current;
+      if (!ow) { cancelAutoSearch(); return; }
+      // Halt on visible enemy unless enemies are the target.
+      if (kind !== 'enemy') {
+        const enemies = getVisibleOverworldEnemies(ow, 6);
+        if (enemies.length > 0) {
+          cancelAutoSearch('⚠️ Auto-Search stopped — enemy spotted!');
+          return;
+        }
+      }
+      const target = findNearestExplored(ow, kind);
+      if (!target) {
+        cancelAutoSearch(`🔎 Auto-Search stopped — no known ${kind.replace('_', ' ')} within ${SEARCH_RADIUS} tiles.`);
+        return;
+      }
+      const px = ow.playerPosition.x, py = ow.playerPosition.y;
+      const dist = Math.abs(target.x - px) + Math.abs(target.y - py);
+      if (dist <= 1) {
+        cancelAutoSearch(`✅ Auto-Search arrived at ${kind.replace('_', ' ')}.`);
+        return;
+      }
+      // Path to adjacent tile of target (goal itself may be a structure).
+      const offsets: Array<[number, number]> = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+      let bestPath: Position[] | null = null;
+      for (const [ox, oy] of offsets) {
+        const ax = target.x + ox, ay = target.y + oy;
+        if (ax === px && ay === py) { bestPath = []; break; }
+        const p = findOverworldPath(ow, ow.playerPosition, { x: ax, y: ay }, 8000, { avoidStructures: true });
+        if (p && p.length > 0 && (!bestPath || p.length < bestPath.length)) bestPath = p;
+      }
+      if (!bestPath || bestPath.length === 0) {
+        cancelAutoSearch(`⚠️ Auto-Search stopped — no path to ${kind.replace('_', ' ')}.`);
+        return;
+      }
+      const step = bestPath[0];
+      const dx = step.x - px, dy = step.y - py;
+      if (Math.abs(dx) + Math.abs(dy) !== 1) { cancelAutoSearch(); return; }
+      handleMoveRef.current(dx, dy);
+    }, stepDelay);
+  }, [addLog, cancelAutoHunt, cancelAutoMine, cancelAutoSearch, cancelAutoWalk, findNearestExplored, settings.autoRunSpeed]);
+
+  useEffect(() => () => { cancelAutoHunt(); cancelAutoSearch(); }, [cancelAutoHunt, cancelAutoSearch]);
+
+
+
 
 
   // ─── Attack targeting ───

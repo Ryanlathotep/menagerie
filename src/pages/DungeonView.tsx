@@ -1239,10 +1239,10 @@ export function DungeonView({
         if (pathGoalRef.current) {
           // Try goal as-is first; if no path, try shifted goal (covers prepend).
           let goal = pathGoalRef.current;
-          let repath = findPath(currentDungeon, currentDungeon.playerPosition, goal);
+          let repath = findPath(currentDungeon, currentDungeon.playerPosition, goal, { allowMineable: !!settings.autoMine });
           if (!repath || repath.length === 0) {
             const shifted = { x: goal.x + dx, y: goal.y + dy };
-            repath = findPath(currentDungeon, currentDungeon.playerPosition, shifted);
+            repath = findPath(currentDungeon, currentDungeon.playerPosition, shifted, { allowMineable: !!settings.autoMine });
             if (repath && repath.length > 0) {
               goal = shifted;
               pathGoalRef.current = shifted;

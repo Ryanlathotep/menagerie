@@ -4,6 +4,7 @@
 import { CRAFTING_MATERIALS } from '../equipment';
 import type { ResolvedCraft } from './types';
 import { getTierNamePrefix } from './stationTiers';
+import { getMaterialNamePrefix } from './materialEffects';
 
 const RARITY_PREFIX: Record<string, string> = {
   common: '',
@@ -38,5 +39,11 @@ export function buildCraftName(craft: ResolvedCraft, stationTier?: 1|2|3|4|5): s
   // Station-tier prefix wins over rarity prefix once tier >= 3 (they'd read redundant).
   const tierPrefix = stationTier && stationTier >= 3 ? getTierNamePrefix(stationTier) : '';
   const rarityPrefix = tierPrefix ? '' : (RARITY_PREFIX[craft.rarity] ?? '');
-  return `${tierPrefix}${rarityPrefix}${base}${suffix}`.trim();
+  // Material-supplied prefix — comes from the dominant material or top filler.
+  // Prefer filler's prefix (it's the "descriptor"), fall back to primary.
+  const matPrefix =
+    (fillerMat && getMaterialNamePrefix(fillerMat.id)) ||
+    (primary && getMaterialNamePrefix(primary.id)) ||
+    '';
+  return `${tierPrefix}${rarityPrefix}${matPrefix}${base}${suffix}`.trim().replace(/\s+/g, ' ');
 }

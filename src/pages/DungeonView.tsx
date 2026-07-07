@@ -1390,6 +1390,62 @@ export function DungeonView({
   const planNextHuntStepRef = useRef(planNextHuntStep);
   useEffect(() => { planNextHuntStepRef.current = planNextHuntStep; }, [planNextHuntStep]);
 
+  // ─── Dungeon Auto-Search runner ───────────────────────────────────────────
+  // Extracted from the picker modal so the "continue at stairs" prompt can
+  // re-invoke the same logic on a fresh floor without re-opening the picker.
+  const runDungeonAutoSearch = useCallback((
+    kind: 'stairs' | 'stairs_up' | 'treasure' | 'shop' | 'elevator' | 'plant' | 'mineable_wall' | 'nest',
+    label: string,
+  ) => {
+    const d = dungeonRef.current;
+    if (!d) return;
+    const px = d.playerPosition.x, py = d.playerPosition.y;
+    let best: { x: number; y: number; d: number } | null = null;
+    for (let yy = 0; yy < d.tiles.length; yy++) {
+      for (let xx = 0; xx < d.tiles[yy].length; xx++) {
+        const t = d.tiles[yy][xx];
+        if (!t || !t.explored) continue;
+        if (t.type !== kind && !(kind === 'stairs_up' && t.stairsBeneath === 'up')) continue;
+        const dist = Math.abs(xx - px) + Math.abs(yy - py);
+        if (!best || dist < best.d) best = { x: xx, y: yy, d: dist };
+      }
+    }
+    if (!best) {
+      addLog(`🔎 Auto-Search: no explored ${label.toLowerCase()} found on this floor.`, 'info');
+      toast.info(`No known ${label.toLowerCase()} here`);
+      autoSearchStairsKindRef.current = null;
+      return;
+    }
+    // If chasing stairs across floors, remember the kind so the arrival prompt
+    // can offer to descend/ascend and keep going. Non-stair searches clear it.
+    autoSearchStairsKindRef.current = (kind === 'stairs' || kind === 'stairs_up') ? kind : null;
+    addLog(`🧭 Auto-Search: pathing to ${label.toLowerCase()} at (${best.x}, ${best.y}).`, 'info');
+    handleTileClick(best.x, best.y);
+  }, [addLog, handleTileClick]);
+  const runDungeonAutoSearchRef = useRef(runDungeonAutoSearch);
+  useEffect(() => { runDungeonAutoSearchRef.current = runDungeonAutoSearch; }, [runDungeonAutoSearch]);
+
+  // ─── Floor-change hook: after Auto-Search stairs auto-triggers a floor
+  // transition, open a prompt so the player can continue searching (descend
+  // deeper / ascend shallower) or stop here. Uses direction from the actual
+  // floor delta so it stays correct if we ever support dungeons that go both
+  // up and down from a middle floor.
+  useEffect(() => {
+    if (!dungeon) return;
+    const kind = autoSearchStairsKindRef.current;
+    if (!kind) return;
+    const prev = lastFloorRef.current;
+    const cur = dungeon.floor;
+    if (prev === cur) return;
+    // Floor changed while an Auto-Search stair chase is active — prompt.
+    setStairSearchPrompt({
+      kind,
+      fromFloor: prev,
+      toFloor: cur,
+      direction: cur > prev ? 'deeper' : 'shallower',
+    });
+  }, [dungeon?.floor, dungeon]);
+
   
   // Path walking effect — position-driven so it stays in sync with React state
   // updates even on slower mobile devices. Each tick:

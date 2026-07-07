@@ -1120,11 +1120,10 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
     case 'tree': {
       const treeTier = tile.treeTier || 'oak';
       const tierData = TREE_TIER_DATA[treeTier];
-      // For upgraded tiers (with materialId), the tree drops its specialty
-      // material as the primary yield. Base wood becomes a minor byproduct.
       const isSpecialTier = !!tierData.materialId;
       const woodAmount = isSpecialTier ? 1 : tierData.harvestYield;
       tile.resourceAmount = (tile.resourceAmount || 1) - 1;
+      let leftTilled = false;
       if (tile.resourceAmount <= 0) {
         const resKey = `${newX},${newY}`;
         delete state.resourceUpgrades[resKey];
@@ -1132,6 +1131,9 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
         tile.harvested = true;
         tile.lastHarvestType = 'tree';
         tile.treeTier = undefined;
+        // A felled tree leaves behind broken, plantable ground.
+        tile.tilled = true;
+        leftTilled = true;
       }
       state.woodCollected += woodAmount;
       let materialDrop: { materialId: string; name: string; quantity: number } | undefined;
@@ -1142,7 +1144,21 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
           quantity: tierData.harvestYield,
         };
       }
-      return { type: 'resource', resourceType: 'wood', amount: woodAmount, tierName: tierData.name, materialDrop };
+      // Seed drop — small chance per chop, guaranteed on the final swing that
+      // fells the tree. Lets the player replant the same species elsewhere.
+      let seedDrop: { materialId: string; name: string; quantity: number } | undefined;
+      if (tierData.seedMaterialId) {
+        const guaranteed = leftTilled;
+        const roll = seededRandom(state.totalSteps * 19 + newX * 5 + newY * 3);
+        if (guaranteed || roll < 0.35) {
+          seedDrop = {
+            materialId: tierData.seedMaterialId,
+            name: tierData.seedName || `${tierData.name} seed`,
+            quantity: 1,
+          };
+        }
+      }
+      return { type: 'resource', resourceType: 'wood', amount: woodAmount, tierName: tierData.name, materialDrop, seedDrop, leftTilled };
     }
     
     case 'rock': {

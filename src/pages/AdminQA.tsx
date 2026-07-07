@@ -109,6 +109,17 @@ function AdminQAInner() {
             <Button onClick={runSuite} disabled={running}>
               {running ? 'Running…' : 'Run Smoke Test'}
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const ok = window.confirm('Replace your current save with the max-level QA fixture? This overwrites your live save.');
+                if (!ok) return;
+                const save = buildMaxLevelSave();
+                dispatch({ type: 'LOAD_SAVE', saveData: save });
+              }}
+            >
+              Load Max-Level Fixture
+            </Button>
             {summary && (
               <>
                 <Badge variant={summary.fail === 0 ? 'default' : 'destructive'}>

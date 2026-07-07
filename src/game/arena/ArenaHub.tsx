@@ -248,6 +248,7 @@ function TournamentCard({
       <div className="text-xs text-muted-foreground">
         {canEnter ? '✅ You can enter — bracket fills with NPCs on resolve.' : playerHasEntry ? '🏳️ Your team is queued.' : '⚠️ Save a team on the "My Teams" tab first.'}
       </div>
+      <ArenaChampionsLeaderboard cadence={cadence} />
     </Card>
   );
 }

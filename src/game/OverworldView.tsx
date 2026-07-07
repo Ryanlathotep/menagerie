@@ -691,6 +691,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         cancelAutoWalk();
         return;
       }
+      // Universal halt: any visible enemy whose moveset can hit the player now.
+      if (anyOverworldEnemyThreatensPlayer(ow)) {
+        cancelAutoWalk();
+        addLog('⚠️ Auto-walk stopped — enemy in attack range!', 'info');
+        return;
+      }
       // Only treat enemies as danger when a visible enemy is within 2 tiles of
       // the player OR sits next to the queued step. Previously we halted
       // whenever ANY enemy was visible on screen, which locked the player out

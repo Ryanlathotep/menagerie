@@ -2076,12 +2076,16 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
       const b = newOw.playerBuildings?.find(pb => pb.id === contextMenuBuilding.id);
       if (!b) return prev;
-      if (newOw.woodCollected < cost.wood || newOw.stoneCollected < cost.stone) {
+      const creative = isCreativeMode();
+      if (!creative && (newOw.woodCollected < cost.wood || newOw.stoneCollected < cost.stone)) {
         toast.error('Not enough resources!');
         return prev;
       }
-      newOw.woodCollected -= cost.wood;
-      newOw.stoneCollected -= cost.stone;
+      if (!creative) {
+        newOw.woodCollected -= cost.wood;
+        newOw.stoneCollected -= cost.stone;
+      }
+
       b.hp = b.maxHp;
       addLog(`🔧 Repaired ${BUILDING_DEFINITIONS[b.type].name} to full HP.`, 'system');
       toast.success(`Repaired! (-🪵${cost.wood} -🪨${cost.stone})`);
@@ -2719,7 +2723,8 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             <p className="text-xs text-muted-foreground">Roads reduce enemy spawns and stone roads grant bonus movement speed.</p>
             <div className="grid grid-cols-2 gap-2">
               {(Object.entries(ROAD_DEFINITIONS) as [RoadType, typeof ROAD_DEFINITIONS[RoadType]][]).map(([type, def]) => {
-                const canAfford = overworld.woodCollected >= def.cost.wood && overworld.stoneCollected >= def.cost.stone;
+                const canAfford = isCreativeMode() || (overworld.woodCollected >= def.cost.wood && overworld.stoneCollected >= def.cost.stone);
+
                 return (
                   <button
                     key={type}
@@ -2758,7 +2763,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             </p>
             <div className="grid grid-cols-2 gap-2">
               {(Object.values(BUILDING_DEFINITIONS) as typeof BUILDING_DEFINITIONS[PlayerBuildingType][]).map(def => {
-                const canAfford = overworld.woodCollected >= def.cost.wood && overworld.stoneCollected >= def.cost.stone;
+                const canAfford = isCreativeMode() || (overworld.woodCollected >= def.cost.wood && overworld.stoneCollected >= def.cost.stone);
                 const isSelected = buildMode && selectedBuildType === def.type;
                 return (
                   <button

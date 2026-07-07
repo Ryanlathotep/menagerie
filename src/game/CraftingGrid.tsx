@@ -246,10 +246,32 @@ export function CraftingGridPanel({
 
   const tierData = station ? getStationTierData(station.kind ?? 'forge', effectiveTier) : null;
 
+  // ---------------- Drag & drop helpers ----------------
+  const onDragStartMat = (e: React.DragEvent, materialId: string) => {
+    e.dataTransfer.setData('text/x-material-id', materialId);
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+  const onDragOverCell = (e: React.DragEvent) => {
+    if (Array.from(e.dataTransfer.types).includes('text/x-material-id')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  };
+  const onDropCell = (e: React.DragEvent, r: number, c: number) => {
+    const id = e.dataTransfer.getData('text/x-material-id');
+    if (!id) return;
+    e.preventDefault();
+    setCell(r, c, id);
+    setSelectedCell(null);
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-3 p-3 flex-1 overflow-hidden">
       {/* LEFT: grid + preview */}
       <div className="flex flex-col gap-3 min-h-0 overflow-auto">
+        {heading && (
+          <div className="text-sm font-semibold text-primary">{heading}</div>
+        )}
         <div className="flex items-center gap-2 flex-wrap">
           <Button size="sm" variant={view === 'grid' ? 'default' : 'ghost'} onClick={() => setView('grid')}>Grid</Button>
           <Button size="sm" variant={view === 'book' ? 'default' : 'ghost'} onClick={() => setView('book')}>
@@ -291,14 +313,17 @@ export function CraftingGridPanel({
                       cell={cell}
                       selected={selectedCell?.r === r && selectedCell?.c === c}
                       onClick={() => clickCell(r, c)}
+                      onDragOver={onDragOverCell}
+                      onDrop={(e) => onDropCell(e, r, c)}
                     />
                   )),
                 )}
               </div>
               <p className="text-xs text-muted-foreground text-center mt-2">
-                Click empty cell then a material — or click material to auto-place. Click a filled cell to remove.
+                Click a material to auto-place, click an empty cell first to target it, or <b>drag &amp; drop</b> materials onto cells. Click a filled cell to remove.
               </p>
             </Card>
+
 
             <PreviewPanel
               resolved={resolved}

@@ -13,6 +13,8 @@ import { computePool, payoutFor, seedNpcBets } from './betting';
 import { runArenaCombat } from '@/game/arenaCombat';
 import { getRoom, getAllRooms } from './arenaRooms';
 import { createMonster } from '@/game/utils';
+import { resolveStrategy } from './strategyPresets';
+import { submitArenaChampion } from './ArenaChampionsLeaderboard';
 
 function buildBracket(teams: ArenaTeam[], seed: number): ArenaBracketMatch[] {
   const matches: ArenaBracketMatch[] = [];

@@ -107,11 +107,15 @@ export function CraftingGridPanel({
     };
   }, [station, effectiveTier, cloudDiscovery]);
 
+  const blueprintPool = useMemo(
+    () => (filterCategory ? DEFAULT_BLUEPRINTS.filter((b) => b.category === filterCategory) : DEFAULT_BLUEPRINTS),
+    [filterCategory],
+  );
   const resolved = useMemo(() => {
-    const r = resolveGrid(grid, stationCtx);
+    const r = resolveGrid(grid, stationCtx, blueprintPool);
     if (!r) return null;
     return { ...r, name: buildCraftName(r, effectiveTier) };
-  }, [grid, stationCtx, effectiveTier]);
+  }, [grid, stationCtx, effectiveTier, blueprintPool]);
 
   // On grid change, look up discoverer.
   useEffect(() => {

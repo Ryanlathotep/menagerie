@@ -89,6 +89,7 @@ export function ArenaHub({ onClose }: ArenaHubProps) {
             <TabsTrigger value="teams"><Users className="h-4 w-4 mr-1"/>My Teams</TabsTrigger>
             <TabsTrigger value="bets"><ClipboardList className="h-4 w-4 mr-1"/>Bets</TabsTrigger>
             <TabsTrigger value="replays">🎞️ Replays</TabsTrigger>
+            <TabsTrigger value="practice"><Swords className="h-4 w-4 mr-1"/>Practice</TabsTrigger>
             <TabsTrigger value="shop"><Store className="h-4 w-4 mr-1"/>Shop</TabsTrigger>
           </TabsList>
 

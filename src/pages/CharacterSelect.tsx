@@ -61,6 +61,19 @@ export function CharacterSelect() {
   const [showEquipmentSelect, setShowEquipmentSelect] = useState(false);
   const [partyForRun, setPartyForRun] = useState<ReturnType<typeof createMonster>[]>([]);
 
+  // Saved party presets: { name, ids[] } persisted to localStorage.
+  type SavedParty = { name: string; ids: string[] };
+  const [savedParties, setSavedParties] = useState<SavedParty[]>(() => {
+    try {
+      const raw = localStorage.getItem('menagerie_saved_parties');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed.filter(p => p && typeof p.name === 'string' && Array.isArray(p.ids));
+      }
+    } catch {}
+    return [];
+  });
+
   useEffect(() => {
     localStorage.setItem('menagerie_last_party', JSON.stringify(selectedParty.map(m => m.comboId)));
   }, [selectedParty]);
@@ -68,6 +81,54 @@ export function CharacterSelect() {
   useEffect(() => {
     localStorage.setItem('menagerie_party_sort', sortBy);
   }, [sortBy]);
+
+  useEffect(() => {
+    localStorage.setItem('menagerie_saved_parties', JSON.stringify(savedParties));
+  }, [savedParties]);
+
+  const saveCurrentParty = () => {
+    if (selectedParty.length === 0) {
+      toast.error('Add monsters to the party first');
+      return;
+    }
+    const defaultName = `Party ${savedParties.length + 1}`;
+    const name = (typeof window !== 'undefined' ? window.prompt('Name this party layout:', defaultName) : defaultName)?.trim();
+    if (!name) return;
+    const ids = selectedParty.map(m => m.comboId);
+    setSavedParties(prev => {
+      const existing = prev.findIndex(p => p.name === name);
+      const entry: SavedParty = { name, ids };
+      if (existing !== -1) {
+        const next = [...prev];
+        next[existing] = entry;
+        return next;
+      }
+      return [...prev, entry];
+    });
+    toast.success(`Saved "${name}"`);
+  };
+
+  const loadSavedParty = (preset: SavedParty) => {
+    const monsters = preset.ids
+      .map(id => unlockedMonsters.find(m => m.comboId === id))
+      .filter(Boolean) as typeof unlockedMonsters;
+    if (monsters.length === 0) {
+      toast.error(`"${preset.name}" has no available monsters`);
+      return;
+    }
+    setSelectedParty(monsters.slice(0, MAX_PARTY_SIZE));
+    setPreviewMonster(monsters[0] ?? null);
+    if (monsters.length < preset.ids.length) {
+      toast.warning(`Loaded ${monsters.length}/${preset.ids.length} — some monsters are missing`);
+    } else {
+      toast.success(`Loaded "${preset.name}"`);
+    }
+  };
+
+  const deleteSavedParty = (name: string) => {
+    setSavedParties(prev => prev.filter(p => p.name !== name));
+    toast.success(`Deleted "${name}"`);
+  };
 
   const MAX_PARTY_SIZE = 6;
 

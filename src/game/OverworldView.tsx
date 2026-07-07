@@ -964,6 +964,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     autoSearchKindRef.current = kind;
     const stepDelay = Math.max(120, settings.autoRunSpeed || 100);
     addLog(`🧭 Auto-Search started — looking for nearest ${kind.replace('_', ' ')}.`, 'info');
+    automationRunningRef.current = true;
     autoSearchTimerRef.current = window.setInterval(() => {
       const ow = overworldRef.current;
       if (!ow) { cancelAutoSearch(); return; }

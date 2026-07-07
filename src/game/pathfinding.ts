@@ -127,13 +127,16 @@ export function findPath(
         continue;
       }
       
-      // Check walkability. Only the *goal* tile is allowed to be a mineable
-      // wall (and only when the caller opted in) — never a mid-path step, or
-      // the walker would try to phase through solid rock without mining it.
+      // Check walkability. With auto-mine on, mineable walls are walkable at
+      // any step: movePlayer's bump-mine logic chips them and the walker
+      // simply re-issues the same direction until the wall breaks. Callers
+      // can pass `isWalkableTile` to fully override the check (enemy AI).
       const tile = tiles[neighbor.y][neighbor.x];
       const isGoal = neighbor.x === goal.x && neighbor.y === goal.y;
-      if (!isWalkable(tile, allowMineable && isGoal)) {
-        continue;
+      if (walkableFn) {
+        if (!walkableFn(tile, neighbor.x, neighbor.y, isGoal)) continue;
+      } else {
+        if (!isWalkable(tile, allowMineable)) continue;
       }
       
       const g = current.g + 1;

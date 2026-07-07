@@ -1,9 +1,11 @@
 // Overworld Building Tile Graphics - SVG tiles for player-placed structures
 // Matches the hand-drawn ink & watercolor aesthetic
 
-import { PlayerBuildingType } from './buildings';
+import { PlayerBuildingType, BUILDING_DEFINITIONS } from './buildings';
 import { PlayerWallTile, GateTile } from './PlayerWallTileGraphics';
 import type { AutoTileFit } from './autoTiling';
+import { getAssetOverride } from './assetOverrides';
+
 
 interface BuildingTileProps {
   size: number;
@@ -215,6 +217,55 @@ export function LadderTile({
   );
 }
 
+// ─── Generic emoji-on-parchment placeholder ───
+// Used for crafting stations (forge / workbench / brewing stand / enchanting
+// altar) and any future building that hasn't received bespoke art yet. Also
+// serves as the fallback tile whenever an admin-uploaded image is not present.
+function PlaceholderStationTile({
+  size, seed = 0, type,
+}: { size: number; seed?: number; type: PlayerBuildingType }) {
+  const def = BUILDING_DEFINITIONS[type];
+  const r1 = seededRandom(seed + 11);
+  const r2 = seededRandom(seed + 23);
+  // Per-station accent color so stations read at a glance on the map.
+  const accent: Record<string, string> = {
+    forge: 'hsl(20 70% 55%)',
+    workbench: 'hsl(30 45% 45%)',
+    brewing_stand: 'hsl(280 45% 55%)',
+    enchanting_altar: 'hsl(210 60% 60%)',
+  };
+  const fill = accent[type] ?? 'hsl(30 25% 55%)';
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className="block">
+      {/* dirt / floor pad */}
+      <rect width="24" height="24" fill="hsl(35 30% 78%)" opacity={0.35} />
+      <rect x={2 + r1 * 0.6} y={2 + r2 * 0.6} width="20" height="20" rx="2"
+            fill={fill} opacity={0.35}
+            stroke={INK.dark} strokeWidth={0.5} />
+      {/* corner posts to hint at a structure */}
+      <rect x="2.5"  y="2.5"  width="2" height="2" fill={INK.dark} opacity={0.55} />
+      <rect x="19.5" y="2.5"  width="2" height="2" fill={INK.dark} opacity={0.55} />
+      <rect x="2.5"  y="19.5" width="2" height="2" fill={INK.dark} opacity={0.55} />
+      <rect x="19.5" y="19.5" width="2" height="2" fill={INK.dark} opacity={0.55} />
+      {/* emoji label so each station is instantly distinguishable */}
+      <text x="12" y="16" textAnchor="middle" fontSize="12"
+            style={{ userSelect: 'none' }}>{def.emoji}</text>
+      <line x1="0" y1="0" x2="24" y2="0" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
+      <line x1="0" y1="0" x2="0" y2="24" stroke={INK.faint} strokeWidth={0.3} opacity={0.3}/>
+    </svg>
+  );
+}
+
+// If an admin has uploaded a replacement image for this building type, render
+// it verbatim in place of the built-in SVG art.
+function OverrideImageTile({ url, size }: { url: string; size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className="block">
+      <image href={url} x="0" y="0" width="24" height="24" preserveAspectRatio="xMidYMid meet" />
+    </svg>
+  );
+}
+
 // Dispatcher component
 export function OverworldBuildingTileGraphic({
   type, size, seed = 0, harvestReady, wallFit, isGate, gateAxis, gateInsideDir, damaged, wallAttachments, connectorDir,
@@ -234,6 +285,12 @@ export function OverworldBuildingTileGraphic({
   // Direction the stair/ladder ascends (the side with the wall/cliff).
   connectorDir?: 'n' | 's' | 'e' | 'w';
 }) {
+  // Admin-uploaded override wins for every building type EXCEPT walls/gates
+  // (their auto-tiling is stateful and would break with a static image).
+  if (type !== 'wall') {
+    const overrideUrl = getAssetOverride('building', type);
+    if (overrideUrl) return <OverrideImageTile url={overrideUrl} size={size} />;
+  }
   switch (type) {
     case 'wall':
       // axisHorizontal=true means the road runs E-W. GateTile rotates its base
@@ -248,5 +305,13 @@ export function OverworldBuildingTileGraphic({
     case 'farm': return <FarmTile size={size} seed={seed} harvestReady={harvestReady} />;
     case 'stone_staircase': return <StoneStaircaseTile size={size} attachDir={connectorDir} />;
     case 'ladder': return <LadderTile size={size} attachDir={connectorDir} />;
+    // Crafting stations — placeholder art until custom SVGs land or the admin
+    // uploads replacements via the Asset Library ("Buildings" tab).
+    case 'forge':
+    case 'workbench':
+    case 'brewing_stand':
+    case 'enchanting_altar':
+      return <PlaceholderStationTile size={size} seed={seed} type={type} />;
   }
 }
+

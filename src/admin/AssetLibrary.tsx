@@ -24,6 +24,9 @@ import {
 import { SPECIES_DATA, ELEMENT_COLORS, CLASS_STATS } from '@/game/types';
 import { listEquipmentIconKeys, getEquipmentIcon } from '@/game/equipmentUtils';
 import { MonsterSprite } from '@/game/sprites';
+import { BUILDING_DEFINITIONS, type PlayerBuildingType } from '@/game/buildings';
+import { OverworldBuildingTileGraphic } from '@/game/OverworldBuildingTileGraphics';
+
 
 interface AssetSlot {
   category: AssetCategory;
@@ -54,8 +57,17 @@ function buildSlots(): Record<string, AssetSlot[]> {
     key: k,
     label: k,
   }));
-  return { species, elements, classes, equipment };
+  const buildings: AssetSlot[] = (Object.keys(BUILDING_DEFINITIONS) as PlayerBuildingType[])
+    // Walls use auto-tiling; a single static image would break the seams.
+    .filter((k) => k !== 'wall')
+    .map((k) => ({
+      category: 'building',
+      key: k,
+      label: `${BUILDING_DEFINITIONS[k].emoji} ${BUILDING_DEFINITIONS[k].name}`,
+    }));
+  return { species, elements, classes, equipment, buildings };
 }
+
 
 function safePath(category: AssetCategory, key: string, ext: string): string {
   const safeKey = key.replace(/[^a-zA-Z0-9._-]+/g, '_');
@@ -116,6 +128,8 @@ function SlotRow({ slot, currentUrl, onUploaded, onRemoved }: SlotRowProps) {
           />
         ) : currentUrl ? (
           <img src={currentUrl} alt={slot.label} className="w-full h-full object-contain" />
+        ) : slot.category === 'building' ? (
+          <OverworldBuildingTileGraphic type={slot.key as PlayerBuildingType} size={56} seed={1} />
         ) : slot.category === 'equipment' ? (
           (() => {
             const def = getEquipmentIcon(slot.key);
@@ -136,6 +150,7 @@ function SlotRow({ slot, currentUrl, onUploaded, onRemoved }: SlotRowProps) {
         ) : (
           <ImageIcon className="w-6 h-6 text-muted-foreground" />
         )}
+
       </div>
       <div className="flex-1 min-w-0">
         <div className="font-medium truncate">{slot.label}</div>
@@ -168,8 +183,9 @@ function SlotRow({ slot, currentUrl, onUploaded, onRemoved }: SlotRowProps) {
 }
 
 interface AssetLibraryProps {
-  initialTab?: 'species' | 'elements' | 'classes' | 'equipment';
+  initialTab?: 'species' | 'elements' | 'classes' | 'equipment' | 'buildings';
 }
+
 
 export function AssetLibrary({ initialTab = 'species' }: AssetLibraryProps) {
   const { overrides, saveOverride, deleteOverride, loading, refetch } =
@@ -265,12 +281,15 @@ export function AssetLibrary({ initialTab = 'species' }: AssetLibraryProps) {
           <TabsTrigger value="elements">Elements ({slots.elements.length})</TabsTrigger>
           <TabsTrigger value="classes">Classes ({slots.classes.length})</TabsTrigger>
           <TabsTrigger value="equipment">Equipment ({slots.equipment.length})</TabsTrigger>
+          <TabsTrigger value="buildings">Buildings ({slots.buildings.length})</TabsTrigger>
         </TabsList>
         <TabsContent value="species">{renderList(slots.species)}</TabsContent>
         <TabsContent value="elements">{renderList(slots.elements)}</TabsContent>
         <TabsContent value="classes">{renderList(slots.classes)}</TabsContent>
         <TabsContent value="equipment">{renderList(slots.equipment)}</TabsContent>
+        <TabsContent value="buildings">{renderList(slots.buildings)}</TabsContent>
       </Tabs>
+
     </div>
   );
 }

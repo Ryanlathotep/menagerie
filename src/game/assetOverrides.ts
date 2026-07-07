@@ -13,7 +13,9 @@ export type AssetCategory =
   | 'element'
   | 'class'
   | 'equipment'
-  | 'monsterEquipment'; // overlay drawn ON monster when equipped
+  | 'monsterEquipment' // overlay drawn ON monster when equipped
+  | 'building';        // player-placed structures (crafting stations, towers, etc.)
+
 
 const overrides = new Map<string, string>(); // `${category}:${key}` -> url
 

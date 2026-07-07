@@ -294,6 +294,15 @@ function TeamsTab({ arena, setArena }: { arena: ArenaState; setArena: React.Disp
             );
           })}
         </div>
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-muted-foreground">AI:</span>
+          <select className="border rounded px-2 py-1 bg-background flex-1"
+            value={strategyId} onChange={e => setStrategyId(e.target.value)}>
+            {STRATEGY_PRESETS.map(p => (
+              <option key={p.id} value={p.id}>{p.label} — {p.description}</option>
+            ))}
+          </select>
+        </div>
         <Button size="sm" disabled={selected.length === 0}
           onClick={() => {
             const avgLevel = selected.reduce((sum, id) => {
@@ -303,6 +312,7 @@ function TeamsTab({ arena, setArena }: { arena: ArenaState; setArena: React.Disp
             const team: ArenaTeam = {
               id: `player_${Date.now()}`, name: name || 'My Team', ownerId: 'player',
               memberCombos: selected, level: Math.round(avgLevel), banner: '⭐',
+              strategyId,
             };
             setArena(s => ({ ...s, playerTeams: [...s.playerTeams, team] }));
             setSelected([]); setName('My Team');

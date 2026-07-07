@@ -57,8 +57,17 @@ function buildSlots(): Record<string, AssetSlot[]> {
     key: k,
     label: k,
   }));
-  return { species, elements, classes, equipment };
+  const buildings: AssetSlot[] = (Object.keys(BUILDING_DEFINITIONS) as PlayerBuildingType[])
+    // Walls use auto-tiling; a single static image would break the seams.
+    .filter((k) => k !== 'wall')
+    .map((k) => ({
+      category: 'building',
+      key: k,
+      label: `${BUILDING_DEFINITIONS[k].emoji} ${BUILDING_DEFINITIONS[k].name}`,
+    }));
+  return { species, elements, classes, equipment, buildings };
 }
+
 
 function safePath(category: AssetCategory, key: string, ext: string): string {
   const safeKey = key.replace(/[^a-zA-Z0-9._-]+/g, '_');

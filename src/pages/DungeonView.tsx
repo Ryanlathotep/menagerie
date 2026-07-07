@@ -11,7 +11,7 @@ import { expandDungeonIfNeeded, findStairsPosition } from '@/game/dungeonExpansi
 import { PICKAXE_TIERS, hitsToBreak } from '@/game/tools';
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScrollText, Flag, FlagOff, Swords, Footprints, Pickaxe, Hammer, DoorOpen, ChevronDown, ChevronUp, ShoppingBag, Trees, Shovel, FlaskConical, Wand2, Repeat } from 'lucide-react';
+import { ScrollText, Flag, FlagOff, Swords, Footprints, Pickaxe, Hammer, DoorOpen, ChevronDown, ChevronUp, ShoppingBag, Trees, Shovel, FlaskConical, Wand2, Repeat, Crosshair, Search } from 'lucide-react';
 import { findBestMatchupSwap } from '@/game/MatchupIndicator';
 import { UnifiedTileMenu, UnifiedTileAction, UnifiedTileInfo, UnifiedTileCreature } from '@/game/UnifiedTileMenu';
 import { MonsterSprite } from '@/game/sprites';
@@ -27,7 +27,7 @@ import { executeCombat, calculateXpReward, xpToNextLevel, checkLevelUp, getEffec
 import { toast } from 'sonner';
 import { SettingsProvider, SettingsButton, useSettings } from '@/game/Settings';
 import { submitTowerFloor, submitDiscoveryCount, submitExplorationCount } from '@/hooks/useUsername';
-import { countExploredTiles } from '@/game/overworld';
+import { countExploredTiles, getOverworldTile } from '@/game/overworld';
 import { MonsterStatsPreview } from '@/game/MonsterStatsPreview';
 import { LevelUpScreen } from '@/game/LevelUpScreen';
 import { EquipmentItem, MonsterEquipment, createEmptyEquipment } from '@/game/equipment';
@@ -237,6 +237,8 @@ export function DungeonView({
   // Scroll use dialog (Skill Forge scrolls — Teach / Cast Once)
   const [pendingScrollItem, setPendingScrollItem] = useState<InventoryItem | null>(null);
   const [stairExitDialogOpen, setStairExitDialogOpen] = useState(false);
+  // Auto-Search picker (dungeon-scoped analogue of the overworld picker).
+  const [dungeonAutoSearchOpen, setDungeonAutoSearchOpen] = useState(false);
 
   // Dungeon build mode (per-floor buildings persisted via snapshots)
   const [dungeonBuildPanelOpen, setDungeonBuildPanelOpen] = useState(false);
@@ -703,6 +705,22 @@ export function DungeonView({
       return;
     } else if (result.stairsUp && dungeon.floor <= (dungeon.startingFloor ?? 1)) {
       // Stepped onto the entry staircase — ask where to exit to.
+      // Portal-stairs override: if the tile carries `portal` metadata, the
+      // player set the exit coord themselves — honour it by writing an
+      // override that OverworldView reads on next mount, then flee.
+      const stoodOn = dungeon.tiles[dungeon.playerPosition.y]?.[dungeon.playerPosition.x];
+      if (stoodOn?.portal?.destKind === 'overworld' && stoodOn.portal.destOverworld && stoodOn.portal.validated !== false) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(
+            'menagerie_portal_exit_coord',
+            JSON.stringify(stoodOn.portal.destOverworld),
+          );
+        }
+        addLog(`🌀 Portal activated → Overworld (${stoodOn.portal.destOverworld.x}, ${stoodOn.portal.destOverworld.y}).`, 'system');
+        dispatch({ type: 'FLEE_DUNGEON' });
+        dispatch({ type: 'SET_PHASE', phase: 'overworld' });
+        return;
+      }
       setStairExitDialogOpen(true);
       return;
     } else if (result.stairsUp && dungeon.floor > 1) {
@@ -1574,6 +1592,91 @@ export function DungeonView({
       } else {
         dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
       }
+      return;
+    } else if (item.effect === 'place_portal_stairs') {
+      // Craftable Portal Stairs — place on the player's current tile. The
+      // destination is derived from the tile's relative coord to entryPosition:
+      //   even/even  → overworld at entry.overworld + (relX/2, relY/2)
+      //   odd tiles  → nearest known tower (resolved on use; currently a stub)
+      if (!dungeon) return;
+      const p = dungeon.playerPosition;
+      const at = dungeon.tiles[p.y]?.[p.x];
+      if (!at || at.type === 'wall' || at.type === 'mineable_wall') {
+        addLog('🌀 Cannot place a portal here — the ground is unstable.', 'info');
+        return;
+      }
+      if (at.type === 'stairs_up' || at.stairsBeneath === 'up' || at.portal) {
+        addLog('🌀 A staircase already exists here.', 'info');
+        return;
+      }
+      const entry = dungeon.entryPosition ?? p;
+      const relX = p.x - entry.x;
+      const relY = p.y - entry.y;
+      const isEven = (relX % 2 === 0) && (relY % 2 === 0);
+      // Resolve the run's overworld anchor (entry coord in overworld space).
+      // The dungeon entrance's world coords are the true anchor.
+      const ow = state.saveData.overworldState;
+      const anchorId = typeof window !== 'undefined'
+        ? localStorage.getItem('menagerie_current_dungeon_id')
+        : null;
+      const anchorEntrance = anchorId && ow?.dungeonEntrances?.[anchorId];
+      const anchor = anchorEntrance
+        ? { x: anchorEntrance.worldX, y: anchorEntrance.worldY }
+        : { x: 0, y: 0 };
+      const nextTiles = dungeon.tiles.map(row => row.map(t => ({ ...t })));
+      if (isEven) {
+        const destX = anchor.x + Math.floor(relX / 2);
+        const destY = anchor.y + Math.floor(relY / 2);
+        // Validate destination is a walkable overworld tile if we can check.
+        let validated = true;
+        let invalidReason: string | undefined;
+        if (ow) {
+          // Cheap validation: don't allow water / cliff / building overlap.
+          // (Fine-grained lookup lives in overworld.ts; falling back to true
+          // for coords outside loaded chunks so the portal stays usable.)
+          try {
+            const dt = getOverworldTile(ow, destX, destY);
+            if (dt && (dt.type === 'water' || dt.type === 'cliff' || dt.type === 'player_building')) {
+              validated = false;
+              invalidReason = `target is ${dt.type}`;
+            }
+          } catch { /* ignore — validation optional */ }
+        }
+        nextTiles[p.y][p.x] = {
+          ...nextTiles[p.y][p.x],
+          type: 'stairs_up',
+          stairsBeneath: 'up',
+          portal: { destKind: 'overworld', destOverworld: { x: destX, y: destY }, validated, invalidReason },
+        };
+        addLog(`🌀 Portal staircase placed → Overworld (${destX}, ${destY})${validated ? '' : ` (blocked: ${invalidReason})`}.`, 'system');
+      } else {
+        // Odd-coord: destination is a tower — nearest tower to the mapped coord.
+        const mappedX = anchor.x + Math.round(relX / 2);
+        const mappedY = anchor.y + Math.round(relY / 2);
+        let best: { id: string; d: number } | null = null;
+        if (ow?.dungeonEntrances) {
+          for (const [id, e] of Object.entries(ow.dungeonEntrances)) {
+            if (!e.discovered) continue;
+            const d = Math.abs(e.worldX - mappedX) + Math.abs(e.worldY - mappedY);
+            if (!best || d < best.d) best = { id, d };
+          }
+        }
+        nextTiles[p.y][p.x] = {
+          ...nextTiles[p.y][p.x],
+          type: 'stairs_up',
+          stairsBeneath: 'up',
+          portal: {
+            destKind: 'tower',
+            destTowerId: best?.id,
+            validated: !!best,
+            invalidReason: best ? undefined : 'no discovered tower nearby',
+          },
+        };
+        addLog(`🌀 Portal staircase placed → ${best ? `Tower ${best.id}` : 'unresolved (no known tower)'}.`, 'system');
+      }
+      dispatch({ type: 'UPDATE_DUNGEON', dungeon: { tiles: nextTiles } });
+      dispatch({ type: 'USE_ITEM', itemId: item.id });
+      toast.success('Portal staircase placed!');
       return;
     } else if (item.effect === 'revive' || item.effect === 'revive_full') {
       // Check if there are fainted party members
@@ -2865,6 +2968,74 @@ export function DungeonView({
         </div>
       )}
 
+      {dungeonAutoSearchOpen && dungeon && (() => {
+        // Dungeon-scoped Auto-Search: scan explored tiles for the picked
+        // target, then hand off to the path-walker.
+        type Kind = 'stairs' | 'stairs_up' | 'treasure' | 'shop' | 'elevator' | 'plant' | 'mineable_wall' | 'nest';
+        const kinds: Array<{ id: Kind; label: string; icon: string }> = [
+          { id: 'stairs',        label: 'Stairs down', icon: '⬇️' },
+          { id: 'stairs_up',     label: 'Stairs up / exit', icon: '⬆️' },
+          { id: 'treasure',      label: 'Treasure chest', icon: '🎁' },
+          { id: 'plant',         label: 'Plant (harvestable)', icon: '🌿' },
+          { id: 'mineable_wall', label: 'Mineable wall', icon: '⛏️' },
+          { id: 'shop',          label: 'Dungeon shop', icon: '🛒' },
+          { id: 'elevator',      label: 'Elevator', icon: '🛗' },
+          { id: 'nest',          label: 'Monster nest', icon: '🪺' },
+        ];
+        const findNearest = (kind: Kind): Position | null => {
+          const px = dungeon.playerPosition.x, py = dungeon.playerPosition.y;
+          let best: { x: number; y: number; d: number } | null = null;
+          for (let yy = 0; yy < dungeon.tiles.length; yy++) {
+            for (let xx = 0; xx < dungeon.tiles[yy].length; xx++) {
+              const t = dungeon.tiles[yy][xx];
+              if (!t || !t.explored) continue;
+              if (t.type !== kind && !(kind === 'stairs_up' && t.stairsBeneath === 'up')) continue;
+              const d = Math.abs(xx - px) + Math.abs(yy - py);
+              if (!best || d < best.d) best = { x: xx, y: yy, d };
+            }
+          }
+          return best ? { x: best.x, y: best.y } : null;
+        };
+        const go = (k: Kind, label: string) => {
+          setDungeonAutoSearchOpen(false);
+          const pos = findNearest(k);
+          if (!pos) {
+            addLog(`🔎 Auto-Search: no explored ${label.toLowerCase()} found.`, 'info');
+            toast.info(`No known ${label.toLowerCase()}`);
+            return;
+          }
+          addLog(`🧭 Auto-Search: pathing to ${label.toLowerCase()} at (${pos.x}, ${pos.y}).`, 'info');
+          handleTileClick(pos.x, pos.y);
+        };
+        return (
+          <div
+            className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-4"
+            onClick={() => setDungeonAutoSearchOpen(false)}
+          >
+            <Card className="w-full max-w-sm p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
+              <div className="space-y-1">
+                <h2 className="text-lg font-bold">Auto-Search</h2>
+                <p className="text-xs text-muted-foreground">Pick a target to auto-path to.</p>
+              </div>
+              <div className="grid gap-1.5">
+                {kinds.map((k) => (
+                  <Button
+                    key={k.id}
+                    variant="secondary"
+                    className="justify-start"
+                    onClick={() => go(k.id, k.label)}
+                  >
+                    <span className="mr-2">{k.icon}</span>{k.label}
+                  </Button>
+                ))}
+                <Button variant="ghost" onClick={() => setDungeonAutoSearchOpen(false)}>Cancel</Button>
+              </div>
+            </Card>
+          </div>
+        );
+      })()}
+
+
 
       
       {showShop && <ShopView 
@@ -3526,17 +3697,81 @@ export function DungeonView({
                 }
               } else if (tile.type === 'stairs_up') {
                 const isEntranceStairs = dungeon.floor <= (dungeon.startingFloor ?? 1);
-                title = '⬆️ Ascending stairs';
-                subtitle = isEntranceStairs ? 'Entrance staircase' : `Floor ${dungeon.floor} → ${Math.max(1, dungeon.floor - 1)}`;
-                info.push({ label: 'Tile', value: isEntranceStairs ? 'Dungeon entrance / exit' : 'Staircase upward' });
-                info.push({ label: 'Destination', value: isEntranceStairs ? 'Exit / entrance' : `Floor ${Math.max(1, dungeon.floor - 1)}` });
+                const isPortal = !!tile.portal;
+                if (isPortal) {
+                  const p = tile.portal!;
+                  title = '🌀 Portal staircase';
+                  subtitle = p.destKind === 'overworld' ? 'Player-crafted exit' : 'Cross-tower link';
+                  info.push({ label: 'Tile', value: 'Craftable portal (odd/even coord rule)' });
+                  if (p.destKind === 'overworld' && p.destOverworld) {
+                    info.push({ label: 'Destination', value: `Overworld (${p.destOverworld.x}, ${p.destOverworld.y})` });
+                  } else if (p.destKind === 'tower' && p.destTowerId) {
+                    info.push({ label: 'Destination', value: `Tower · ${p.destTowerId}` });
+                  } else {
+                    info.push({ label: 'Destination', value: 'Not yet resolved' });
+                  }
+                  info.push({ label: 'Status', value: p.validated === false ? `Blocked — ${p.invalidReason || 'target unavailable'}` : 'Ready' });
+                } else {
+                  title = '⬆️ Ascending stairs';
+                  subtitle = isEntranceStairs ? 'Entrance staircase' : `Floor ${dungeon.floor} → ${Math.max(1, dungeon.floor - 1)}`;
+                  info.push({ label: 'Tile', value: isEntranceStairs ? 'Dungeon entrance / exit' : 'Staircase upward' });
+                  info.push({ label: 'Destination', value: isEntranceStairs ? 'Exit / entrance' : `Floor ${Math.max(1, dungeon.floor - 1)}` });
+                }
                 if (isAdjacent) {
                   actions.push({
                     id: 'use-stairs-up',
-                    label: isEntranceStairs ? 'Use entrance stairs' : 'Ascend stairs',
+                    label: isPortal ? 'Use portal staircase' : (isEntranceStairs ? 'Use entrance stairs' : 'Ascend stairs'),
                     icon: ChevronUp,
                     variant: 'default',
+                    disabled: isPortal && tile.portal?.validated === false,
+                    disabledReason: 'Portal destination is currently blocked',
                     onClick: stepToTile,
+                  });
+                }
+                if (isPortal) {
+                  // "Always one entrance" guard: count remaining stair-out tiles
+                  // (any non-portal stairs_up + any portal with overworld dest).
+                  let entrances = 0;
+                  for (let yy = 0; yy < dungeon.tiles.length; yy++) {
+                    for (let xx = 0; xx < dungeon.tiles[yy].length; xx++) {
+                      const tt = dungeon.tiles[yy][xx];
+                      if (!tt) continue;
+                      const isThisTile = xx === x && yy === y;
+                      const isStairOut =
+                        tt.type === 'stairs_up' ||
+                        tt.stairsBeneath === 'up' ||
+                        (tt.portal && tt.portal.destKind === 'overworld');
+                      if (isStairOut && !isThisTile) entrances++;
+                    }
+                  }
+                  const canRemove = entrances >= 1;
+                  actions.push({
+                    id: 'remove-portal-stairs',
+                    label: 'Remove portal staircase',
+                    hint: canRemove ? 'Refunds the Portal Stairs Kit' : 'Blocked — this floor must keep at least one entrance',
+                    icon: FlagOff,
+                    variant: 'destructive',
+                    disabled: !canRemove,
+                    disabledReason: 'Removing this would leave the floor with no way out',
+                    onClick: () => {
+                      close();
+                      const nextTiles = dungeon.tiles.map(row => row.map(t => ({ ...t })));
+                      nextTiles[y][x] = { ...nextTiles[y][x], type: 'floor', portal: undefined, stairsBeneath: undefined };
+                      dispatch({ type: 'UPDATE_DUNGEON', dungeon: { tiles: nextTiles } });
+                      dispatch({
+                        type: 'ADD_ITEM',
+                        item: {
+                          id: `portal_stairs_kit_${Date.now()}`,
+                          name: 'Portal Stairs Kit',
+                          type: 'potion',
+                          quantity: 1,
+                          value: 0,
+                          effect: 'place_portal_stairs',
+                          description: 'Places a coordinate-linked portal staircase on your current tile.',
+                        } as InventoryItem,
+                      });
+                      addLog('🌀 Portal staircase dismantled — kit returned to inventory.', 'system');
+                    },
                   });
                 }
               } else if (tile.type === 'shop') {
@@ -3838,6 +4073,43 @@ export function DungeonView({
                   setAutoShovelEnabled(next);
                   toast.info(`Auto-Shovel ${next ? 'enabled' : 'disabled'}`);
                 },
+              });
+
+              // ── Global auto-action shortcuts (available from every tile menu) ──
+              // Mirror the overworld menu so Auto-Hunt / Auto-Search are always
+              // one right-click away, even inside dungeons.
+              actions.push({
+                id: 'auto-hunt',
+                label: 'Auto-Hunt nearest enemy',
+                icon: Crosshair,
+                hint: 'Auto-paths toward the nearest visible enemy on this floor',
+                onClick: () => {
+                  close();
+                  let best: { x: number; y: number; d: number } | null = null;
+                  const px = dungeon.playerPosition.x, py = dungeon.playerPosition.y;
+                  for (let yy = 0; yy < dungeon.tiles.length; yy++) {
+                    for (let xx = 0; xx < dungeon.tiles[yy].length; xx++) {
+                      const t = dungeon.tiles[yy][xx];
+                      if (!t || t.type !== 'enemy' || !t.visible) continue;
+                      const d = Math.abs(xx - px) + Math.abs(yy - py);
+                      if (!best || d < best.d) best = { x: xx, y: yy, d };
+                    }
+                  }
+                  if (!best) {
+                    addLog('🔎 Auto-Hunt: no visible enemies on this floor.', 'info');
+                    toast.info('No visible enemies');
+                    return;
+                  }
+                  addLog(`🏹 Auto-Hunt: pathing to enemy at (${best.x}, ${best.y}).`, 'info');
+                  handleTileClick(best.x, best.y);
+                },
+              });
+              actions.push({
+                id: 'auto-search',
+                label: 'Auto-Search…',
+                icon: Search,
+                hint: 'Pick a target type (stairs, treasure, plant, shop, wall, nest)',
+                onClick: () => { close(); setDungeonAutoSearchOpen(true); },
               });
 
               const existing = dungeon.compassWaypoints || [];

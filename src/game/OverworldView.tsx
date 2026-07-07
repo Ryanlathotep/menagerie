@@ -257,6 +257,31 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     dispatch({ type: 'UPDATE_OVERWORLD', overworld: { ...ow } });
   }, [dispatch]);
 
+  // ─── Portal-stairs exit override ────────────────────────────────────────
+  // DungeonView writes `menagerie_portal_exit_coord` right before it flees
+  // via a craftable portal staircase. Consume it on mount to teleport the
+  // player to the mapped overworld destination (instead of the default
+  // "next to the tower entrance" spawn).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const raw = localStorage.getItem('menagerie_portal_exit_coord');
+    if (!raw) return;
+    localStorage.removeItem('menagerie_portal_exit_coord');
+    try {
+      const dest = JSON.parse(raw) as { x: number; y: number };
+      if (typeof dest?.x !== 'number' || typeof dest?.y !== 'number') return;
+      setOverworld(prev => {
+        ensureChunksLoaded(prev, dest.x, dest.y);
+        const next = { ...prev, playerPosition: { x: dest.x, y: dest.y } };
+        updateVisibility(next);
+        saveOverworld(next);
+        return next;
+      });
+    } catch { /* ignore malformed */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+
   // ─── Settings → Rebuild Overworld ───
   // Listens for the global "rebuild" event fired from the Settings panel.
   // Wipes the current map and regenerates it under the chosen seed, while

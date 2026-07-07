@@ -303,6 +303,27 @@ export interface DungeonTile {
   stairsBeneath?: 'down' | 'up';
   // Embedded nest state when type === 'nest' (dungeon-only). Mirrors NestState shape.
   nestState?: import('./nests').NestState;
+  // ─── Portal stairs (craftable) ───
+  // Present when the tile is a player-placed portal staircase. The tile itself
+  // is stored as `stairs_up` so the existing rendering + stair pathwalker
+  // handling works unchanged; this metadata overrides the destination when
+  // the player steps onto it.
+  //
+  //   destKind: 'overworld' → exits to overworld at destOverworld (even/even
+  //             relative-coord rule: (relX/2, relY/2) from entryPosition).
+  //   destKind: 'tower'     → routes to the nearest known tower entrance
+  //             (odd relative-coord rule).
+  //
+  // `validated` is refreshed on floor load — if the mapped overworld tile
+  // is now blocked (water, cliff, building), the portal shows "Blocked" and
+  // refuses use until it's removed and re-placed.
+  portal?: {
+    destKind: 'overworld' | 'tower';
+    destOverworld?: { x: number; y: number };
+    destTowerId?: string;
+    validated?: boolean;
+    invalidReason?: string;
+  };
 }
 
 export interface Position {

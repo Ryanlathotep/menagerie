@@ -68,6 +68,8 @@ export function CraftingWorkshop({
   onUpgradePickaxe,
   onUpgradeShovel,
   onCraftWorkstation,
+  onGridCraft,
+  worldSeed,
   onClose,
 }: CraftingWorkshopProps) {
   const [selectedRecipe, setSelectedRecipe] = useState<CraftingRecipe | null>(null);

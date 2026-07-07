@@ -124,6 +124,25 @@ function AdminQAInner() {
             >
               Load Max-Level Fixture
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                let s = loadArenaState();
+                let winnerNames: string[] = [];
+                for (const cadence of ['daily', 'weekly', 'monthly'] as Cadence[]) {
+                  const filled = fillTournamentWithNpcs(s.tournaments[cadence]);
+                  s = { ...s, tournaments: { ...s.tournaments, [cadence]: filled } };
+                  const r = resolveTournament(s, cadence, state.saveData.unlockedMonsters ?? []);
+                  const w = r.state.tournaments[cadence].teams.find(t => t.id === r.winnerId)?.name ?? '—';
+                  winnerNames.push(`${cadence}: ${w}`);
+                  s = ensureFutureTournament(r.state, cadence, Date.now() + 1000);
+                }
+                saveArenaState(s);
+                toast({ title: 'All tournaments simulated', description: winnerNames.join(' · ') });
+              }}
+            >
+              Simulate All Tournaments Now
+            </Button>
             {summary && (
               <>
                 <Badge variant={summary.fail === 0 ? 'default' : 'destructive'}>

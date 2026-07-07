@@ -2564,6 +2564,28 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
                 setAttackMenuTarget({ enemy, enemyPos: { x: unifiedMenu.x, y: unifiedMenu.y }, playerPos: overworld.playerPosition });
               },
             });
+            const enemyClass = (enemy as any).class;
+            if (enemyClass && state.run?.party) {
+              const swap = findBestMatchupSwap(
+                state.run.party,
+                state.run.activePartyIndex ?? 0,
+                enemy.element,
+                enemyClass,
+              );
+              if (swap) {
+                actions.push({
+                  id: 'switch-best-matchup',
+                  label: `Switch to ${swap.member.species} (best matchup)`,
+                  hint: `Lv ${swap.member.level} ${swap.member.element}/${swap.member.class} · score ${swap.currentScore > 0 ? '+' : ''}${swap.currentScore} → ${swap.score > 0 ? '+' : ''}${swap.score}`,
+                  icon: Repeat,
+                  variant: 'outline',
+                  onClick: () => {
+                    close();
+                    handlePartySwitch(swap.index);
+                  },
+                });
+              }
+            }
           }
         }
       } else if (tile.type === 'nest' && tile.nestId) {

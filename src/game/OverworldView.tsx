@@ -745,7 +745,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     const ow0 = overworldRef.current;
     const startTile = ow0 ? getOverworldTile(ow0, targetX, targetY) : null;
     if (!startTile) return;
-    if (startTile.type !== 'rock' && startTile.type !== 'tree') return;
+    if (startTile.type !== 'rock' && startTile.type !== 'tree' && startTile.type !== 'plant') return;
     autoMineTargetRef.current = {
       seed: { x: targetX, y: targetY },
       tileType: startTile.type,

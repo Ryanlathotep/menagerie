@@ -3541,31 +3541,40 @@ export function DungeonView({
                 info.push({ label: 'Loot', value: `Drops ${wallName}` });
                 info.push({ label: 'Progress', value: isFinite(hitsNeeded) ? `${tile.wallHits || 0} / ${hitsNeeded} hits` : `${tile.wallHits || 0} hits` });
                 info.push({ label: 'Tool', value: isFinite(hitsNeeded) ? 'Pickaxe can break it' : 'Pickaxe too weak or missing' });
-                if (isAdjacent) {
-                  actions.push({
-                    id: 'mine-wall',
-                    label: autoHarvestOn ? 'Auto-Harvest wall' : 'Mine wall',
-                    hint: autoHarvestOn ? 'Keeps mining until broken or an enemy appears' : 'Consumes a turn',
-                    icon: Pickaxe,
-                    variant: 'default',
-                    onClick: () => {
-                      close();
+                actions.push({
+                  id: 'mine-wall',
+                  label: isAdjacent
+                    ? (autoHarvestOn ? 'Auto-Harvest wall' : 'Mine wall')
+                    : (autoHarvestOn ? 'Walk & Auto-Harvest wall' : 'Walk to wall & mine'),
+                  hint: isAdjacent
+                    ? (autoHarvestOn ? 'Keeps mining until broken or an enemy appears' : 'Consumes a turn')
+                    : 'Auto-paths, then acts on arrival',
+                  icon: Pickaxe,
+                  variant: 'default',
+                  onClick: () => {
+                    close();
+                    if (isAdjacent) {
                       if (autoHarvestOn) startDungeonAutoHarvest(x, y);
                       else handleMove(getDirection(dungeon.playerPosition, { x, y }));
-                    },
-                  });
-                  actions.push({
-                    id: 'toggle-auto-harvest-wall',
-                    label: autoHarvestOn ? 'Disable Auto-Harvest' : 'Enable Auto-Harvest',
-                    hint: 'Applies to dungeon walls and rune tiles; persisted in Settings',
-                    icon: Pickaxe,
-                    variant: 'outline',
-                    onClick: () => {
-                      updateSetting('autoMine', !autoHarvestOn);
-                      toast.info(`Auto-Harvest ${!autoHarvestOn ? 'enabled' : 'disabled'}`);
-                    },
-                  });
-                }
+                    } else {
+                      // The pathwalker honours settings.autoMine, so it will
+                      // chip mineable walls it encounters and finish on the
+                      // target tile.
+                      autoPathToTile();
+                    }
+                  },
+                });
+                actions.push({
+                  id: 'toggle-auto-harvest-wall',
+                  label: autoHarvestOn ? 'Disable Auto-Harvest' : 'Enable Auto-Harvest',
+                  hint: 'Applies to dungeon walls and rune tiles; persisted in Settings',
+                  icon: Pickaxe,
+                  variant: 'outline',
+                  onClick: () => {
+                    updateSetting('autoMine', !autoHarvestOn);
+                    toast.info(`Auto-Harvest ${!autoHarvestOn ? 'enabled' : 'disabled'}`);
+                  },
+                });
               } else if (tile.type === 'plant' && tile.plantType) {
                 title = `🌿 ${tile.plantType.split('_').map(part => part[0].toUpperCase() + part.slice(1)).join(' ')}`;
                 subtitle = tile.harvested ? 'Already harvested' : 'Harvestable plant';

@@ -721,8 +721,57 @@ export function DungeonView({
         dispatch({ type: 'SET_PHASE', phase: 'overworld' });
         return;
       }
+      // Cross-tower portal: FLEE the current tower (persists gear + xp),
+      // then immediately START_RUN into the destination tower with the same
+      // live party. Falls back to overworld if the tower id is unknown.
+      if (
+        stoodOn?.portal?.destKind === 'tower' &&
+        stoodOn.portal.destTowerId &&
+        stoodOn.portal.validated !== false &&
+        state.run
+      ) {
+        const destId = stoodOn.portal.destTowerId;
+        const destEntrance = state.saveData.dungeonEntrances?.[destId];
+        if (!destEntrance) {
+          addLog(`🌀 Tower "${destId}" is no longer known — falling back to overworld.`, 'info');
+          dispatch({ type: 'FLEE_DUNGEON' });
+          dispatch({ type: 'SET_PHASE', phase: 'overworld' });
+          return;
+        }
+        // Snapshot the live party BEFORE flee wipes state.run.
+        const liveParty: Monster[] = state.run.party.map(m => ({ ...m }));
+        const livePartyEquipment: MonsterEquipment[] = liveParty.map(
+          m => m.equipment || createEmptyEquipment(),
+        );
+        // Prime the localStorage handshake DungeonView reads on mount.
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('menagerie_run_destination', 'dungeon');
+          localStorage.setItem('menagerie_run_origin', 'overworld');
+          localStorage.setItem('menagerie_active_dungeon_id', destId);
+          localStorage.setItem('menagerie_current_dungeon_id', destId);
+          localStorage.setItem(
+            'menagerie_active_dungeon_difficulty',
+            String(destEntrance.difficulty || 1),
+          );
+          localStorage.removeItem('menagerie_selected_start_floor');
+        }
+        addLog(`🌀 Portal activated → ${destEntrance.name || destId}. Party warping...`, 'system');
+        dispatch({ type: 'FLEE_DUNGEON' });
+        dispatch({
+          type: 'START_RUN',
+          monster: liveParty[0],
+          party: liveParty,
+          partyPreEquipped: livePartyEquipment,
+          withdrawnIds: [],
+          preSelectedItems: [],
+          destination: 'dungeon',
+        });
+        toast.success(`Warped to ${destEntrance.name || destId}`);
+        return;
+      }
       setStairExitDialogOpen(true);
       return;
+
     } else if (result.stairsUp && dungeon.floor > 1) {
       const visited = { ...(dungeon.visitedFloors || {}) };
       visited[dungeon.floor] = {

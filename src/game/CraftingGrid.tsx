@@ -44,6 +44,10 @@ interface CraftingGridPanelProps {
   };
   /** Current player's username (stamped as inventor when discovering). */
   username?: string | null;
+  /** Restrict blueprints to this category (Town Hall passes 'building'). */
+  filterCategory?: BlueprintCategory;
+  /** Small heading shown above the grid (e.g. "Town Hall — Building Kits"). */
+  heading?: string;
   onCraft: (
     item: EquipmentItem | null,
     usedMaterials: { materialId: string; quantity: number }[],

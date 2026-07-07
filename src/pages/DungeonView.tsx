@@ -1176,7 +1176,7 @@ export function DungeonView({
     // Don't path to current position
     if (dungeon.playerPosition.x === x && dungeon.playerPosition.y === y) return;
     
-    const path = findPath(dungeon, dungeon.playerPosition, { x, y });
+    const path = findPath(dungeon, dungeon.playerPosition, { x, y }, { allowMineable: !!settings.autoMine });
     if (path && path.length > 0) {
       setTargetPath(path);
       pathWalkRef.current = path;

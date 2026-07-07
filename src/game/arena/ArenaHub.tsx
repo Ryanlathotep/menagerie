@@ -289,20 +289,46 @@ function TeamsTab({ arena, setArena }: { arena: ArenaState; setArena: React.Disp
       <Card className="p-3 space-y-2">
         <div className="text-sm font-semibold">Create a team (up to 6)</div>
         <Input value={name} onChange={e => setName(e.target.value)} placeholder="Team name" />
-        <div className="flex items-center justify-between text-xs">
+        <div className="flex items-center justify-between text-xs gap-2 flex-wrap">
           <span className="text-muted-foreground">Selected: {selected.length}/6</span>
-          <Button size="sm" variant="outline"
-            onClick={() => {
-              const ids = loadPartyMenuComboIds()
-                .filter(id => unlocked.some(u => u.comboId === id))
-                .slice(0, 6);
-              if (ids.length === 0) { toast({ title: 'No saved party found', description: 'Build a party from the main menu first.' }); return; }
-              setSelected(ids);
-              toast({ title: `Loaded ${ids.length} monsters from your saved party` });
-            }}>
-            📥 Load from Party Menu
-          </Button>
+          <div className="flex items-center gap-1 flex-wrap">
+            <select
+              className="border rounded px-2 py-1 bg-background text-xs max-w-[180px]"
+              defaultValue=""
+              onChange={e => {
+                const val = e.target.value;
+                e.currentTarget.selectedIndex = 0;
+                if (!val) return;
+                let ids: string[] = [];
+                let sourceName = '';
+                if (val === '__last__') {
+                  ids = loadPartyMenuComboIds();
+                  sourceName = 'last party';
+                } else {
+                  const slot = loadSavedPartySlots().find(s => s.name === val);
+                  if (!slot) return;
+                  ids = slot.ids;
+                  sourceName = slot.name;
+                  if (!name || name === 'My Team') setName(slot.name);
+                }
+                const filtered = ids.filter(id => unlocked.some(u => u.comboId === id)).slice(0, 6);
+                if (filtered.length === 0) {
+                  toast({ title: `"${sourceName}" has no available monsters` });
+                  return;
+                }
+                setSelected(filtered);
+                toast({ title: `Loaded ${filtered.length} monsters from "${sourceName}"` });
+              }}>
+              <option value="">📥 Load party slot…</option>
+              <option value="__last__">Last used party</option>
+              {loadSavedPartySlots().map(s => (
+                <option key={s.name} value={s.name}>{s.name} ({s.ids.length})</option>
+              ))}
+            </select>
+            <Button size="sm" variant="ghost" onClick={() => { setSelected([]); }}>Clear</Button>
+          </div>
         </div>
+
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-64 overflow-auto p-1">
           {unlocked.map(m => {
             const active = selected.includes(m.comboId);

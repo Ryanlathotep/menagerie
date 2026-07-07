@@ -100,9 +100,11 @@ export function resolveTournament(
       const membersA = isNpcTeam(aTeam.id.replace(/_dup\d+$/, '')) ? hydrateNpcTeam({ ...aTeam, id: aTeam.id.replace(/_dup\d+$/, '') }, targetLevel) : hydratePlayerTeam(aTeam, unlocked);
       const membersB = isNpcTeam(bTeam.id.replace(/_dup\d+$/, '')) ? hydrateNpcTeam({ ...bTeam, id: bTeam.id.replace(/_dup\d+$/, '') }, targetLevel) : hydratePlayerTeam(bTeam, unlocked);
 
+      const stratA = resolveStrategy(aTeam.strategyId as any);
+      const stratB = resolveStrategy(bTeam.strategyId as any);
       const result = runArenaCombat(
-        { id: aTeam.id, name: aTeam.name, members: membersA },
-        { id: bTeam.id, name: bTeam.name, members: membersB },
+        { id: aTeam.id, name: aTeam.name, members: membersA, strategy: stratA },
+        { id: bTeam.id, name: bTeam.name, members: membersB, strategy: stratB },
         { seed: (t.seed ^ hashId(match.id)) >>> 0, gridWidth: 6, gridHeight: 6 },
       );
       const winnerTeam = result.winner === 'A' ? aTeam : result.winner === 'B' ? bTeam : aTeam; // draw → default to A

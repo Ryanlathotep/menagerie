@@ -22,7 +22,7 @@ interface QaRunRow {
 }
 
 function AdminQAInner() {
-  const { state } = useGame();
+  const { state, dispatch } = useGame();
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdminRole();
   const [results, setResults] = useState<InvariantResult[] | null>(null);
@@ -30,6 +30,11 @@ function AdminQAInner() {
   const [history, setHistory] = useState<QaRunRow[]>([]);
   const [savingHistory, setSavingHistory] = useState(false);
   const [consoleErrors, setConsoleErrors] = useState<string[]>([]);
+  // Auto-battle sandbox state
+  const [abSeed, setAbSeed] = useState<number>(42);
+  const [abVerbose, setAbVerbose] = useState<boolean>(false);
+  const [abResult, setAbResult] = useState<AutobattleResult | null>(null);
+  const [abRunning, setAbRunning] = useState(false);
 
   // Capture console errors that occur while the panel is open.
   useEffect(() => {

@@ -183,8 +183,9 @@ function SlotRow({ slot, currentUrl, onUploaded, onRemoved }: SlotRowProps) {
 }
 
 interface AssetLibraryProps {
-  initialTab?: 'species' | 'elements' | 'classes' | 'equipment';
+  initialTab?: 'species' | 'elements' | 'classes' | 'equipment' | 'buildings';
 }
+
 
 export function AssetLibrary({ initialTab = 'species' }: AssetLibraryProps) {
   const { overrides, saveOverride, deleteOverride, loading, refetch } =

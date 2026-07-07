@@ -506,6 +506,16 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           }
           break;
         }
+        case 'plant_harvest': {
+          const variantIcon = result.variant === 'mushroom' ? '🍄' : result.variant === 'flower' ? '🌸' : result.variant === 'root' ? '🥕' : '🌿';
+          const tierLabel = result.tier === 3 ? 'Rare' : result.tier === 2 ? 'Uncommon' : 'Common';
+          for (const drop of result.drops) {
+            queueMicrotask(() => dispatch({ type: 'ADD_MATERIAL', materialId: drop.materialId, quantity: drop.quantity }));
+            addLog(`${variantIcon} Gathered ${drop.quantity}× ${drop.name}!`, 'loot');
+          }
+          toast.success(`${variantIcon} ${tierLabel} ${result.variant} harvested`);
+          break;
+        }
         case 'enemy':
           toast.warning(`An enemy ${result.enemy.name} blocks the way! Select a move to attack.`);
           return prev;

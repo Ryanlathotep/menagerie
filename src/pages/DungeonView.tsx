@@ -1494,6 +1494,25 @@ export function DungeonView({
         return;
       }
 
+      // Bail out of any path-walk (auto-hunt, auto-search, click-to-move) the
+      // moment a visible enemy is within move range of the player. This is the
+      // universal "enemy in attack range" halt that ties every automation
+      // loop together — see anyEnemyThreatensPlayer in dungeonCombat.ts.
+      if (anyEnemyThreatensPlayer(currentDungeon)) {
+        pathWalkRef.current = [];
+        setIsPathWalking(false);
+        setTargetPath([]);
+        pathGoalRef.current = null;
+        if (huntingModeRef.current) {
+          huntingModeRef.current = false;
+          addLog('⚠️ Auto-Hunt halted — enemy in attack range!', 'info');
+        } else {
+          addLog('⚠️ Auto-walk halted — enemy in attack range!', 'info');
+        }
+        autoSearchStairsKindRef.current = null;
+        return;
+      }
+
       // Detect dungeon expansion. West/north prepends shift coordinates by
       // STRIP_WIDTH (12). The player position is shifted automatically inside
       // expandDungeonIfNeeded; we just need to shift the stored goal and

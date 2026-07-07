@@ -237,6 +237,8 @@ export function DungeonView({
   // Scroll use dialog (Skill Forge scrolls — Teach / Cast Once)
   const [pendingScrollItem, setPendingScrollItem] = useState<InventoryItem | null>(null);
   const [stairExitDialogOpen, setStairExitDialogOpen] = useState(false);
+  // Auto-Search picker (dungeon-scoped analogue of the overworld picker).
+  const [dungeonAutoSearchOpen, setDungeonAutoSearchOpen] = useState(false);
 
   // Dungeon build mode (per-floor buildings persisted via snapshots)
   const [dungeonBuildPanelOpen, setDungeonBuildPanelOpen] = useState(false);

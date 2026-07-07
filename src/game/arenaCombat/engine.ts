@@ -42,9 +42,9 @@ export function runArenaCombat(
   teamA: ArenaCombatTeam, teamB: ArenaCombatTeam, opts: ArenaCombatOptions = {},
 ): ArenaCombatResult {
   const seed = opts.seed ?? 1;
-  const width = opts.gridWidth ?? 6;
-  const height = opts.gridHeight ?? 6;
-  const maxActions = opts.maxTurns ?? 240;
+  const width = opts.gridWidth ?? 24;
+  const height = opts.gridHeight ?? 24;
+  const maxActions = opts.maxTurns ?? 480;
   const rng = mulberry32(seed);
 
   const membersA = teamA.members.slice(0, 6).map(cloneMonster);

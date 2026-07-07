@@ -37,6 +37,7 @@ export default function AdminTiles() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <Link to="/admin/rooms" className="text-sm underline">Room Editor →</Link>
             <Link to="/admin/qa" className="text-sm underline">QA Panel →</Link>
             <Link to="/" className="text-sm underline">← Back to game</Link>
           </div>

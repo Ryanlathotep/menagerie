@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import AdminQA from "./pages/AdminQA";
 import AdminTiles from "./pages/AdminTiles";
+import AdminRooms from "./pages/AdminRooms";
 import NotFound from "./pages/NotFound";
 import { useDismissTooltipsOnTap } from "./hooks/useDismissTooltipsOnTap";
 import { supabase } from "@/integrations/supabase/client";
@@ -79,6 +80,7 @@ const AppRoutes = () => {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/admin/qa" element={<AdminQA />} />
       <Route path="/admin/tiles" element={<AdminTiles />} />
+      <Route path="/admin/rooms" element={<AdminRooms />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />
     </Routes>

@@ -144,6 +144,10 @@ export function ArenaHub({ onClose }: ArenaHubProps) {
               )}
             </TabsContent>
 
+            <TabsContent value="practice" className="p-3">
+              <PracticeDuel arena={arena} unlocked={state.saveData.unlockedMonsters ?? []} />
+            </TabsContent>
+
             <TabsContent value="shop" className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
               {ARENA_SHOP.map(entry => {
                 const owned = arena.purchasedItems.includes(entry.item.id);

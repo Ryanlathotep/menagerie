@@ -3579,13 +3579,14 @@ export function DungeonView({
                 title = `🌿 ${tile.plantType.split('_').map(part => part[0].toUpperCase() + part.slice(1)).join(' ')}`;
                 subtitle = tile.harvested ? 'Already harvested' : 'Harvestable plant';
                 info.push({ label: 'Status', value: tile.harvested ? 'Harvested' : 'Ready' });
-                if (isAdjacent && !tile.harvested) {
+                if (!tile.harvested) {
                   actions.push({
                     id: 'harvest-plant',
-                    label: 'Harvest plant',
+                    label: isAdjacent ? 'Harvest plant' : 'Walk to plant & harvest',
+                    hint: isAdjacent ? undefined : 'Auto-paths, then steps on to harvest',
                     icon: Trees,
                     variant: 'default',
-                    onClick: stepToTile,
+                    onClick: isAdjacent ? stepToTile : autoPathToTile,
                   });
                 }
               } else if (tile.type === 'terrain' && tile.terrainType) {

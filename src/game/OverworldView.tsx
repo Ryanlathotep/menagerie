@@ -2575,8 +2575,17 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
               </Button>
               <Button variant="outline" size="sm" className="flex-1" onClick={() => { setShowBuildingMenu(false); setShowBuildPanel(true); }}>
                 🏗️ Build
-              </Button>
             </div>
+          )}
+          {overworld.homeBase.buildingType === 'town_hall' && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => { setShowBuildingMenu(false); setTownHallCraftBuildings(true); }}
+            >
+              🏛️ Craft Building Kits (with bonus stats)
+            </Button>
           )}
           <Button variant="ghost" className="w-full" onClick={() => setShowBuildingMenu(false)}>
             Close

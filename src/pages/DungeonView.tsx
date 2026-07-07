@@ -3442,6 +3442,31 @@ export function DungeonView({
                     });
                   }
 
+                  // Suggest switching to a party member with a strictly better
+                  // elemental+class matchup. Skips the active monster and any
+                  // fainted party members; only shown when a better option
+                  // exists. Note: SWITCH_ACTIVE_MONSTER consumes a turn and
+                  // grants the enemy a free attack (see switching mechanics).
+                  const swap = findBestMatchupSwap(
+                    state.run.party,
+                    state.run.activePartyIndex ?? 0,
+                    enemy.element,
+                    enemy.class,
+                  );
+                  if (swap) {
+                    actions.push({
+                      id: 'switch-best-matchup',
+                      label: `Switch to ${swap.member.species} (best matchup)`,
+                      hint: `Lv ${swap.member.level} ${swap.member.element}/${swap.member.class} · score ${swap.currentScore > 0 ? '+' : ''}${swap.currentScore} → ${swap.score > 0 ? '+' : ''}${swap.score}`,
+                      icon: Repeat,
+                      variant: 'outline',
+                      onClick: () => {
+                        close();
+                        handlePartySwitch(swap.index);
+                      },
+                    });
+                  }
+
                 }
               } else if (tile.type === 'nest' && tile.nestState) {
                 title = `🪺 ${tile.nestState.element[0].toUpperCase()}${tile.nestState.element.slice(1)} Nest`;

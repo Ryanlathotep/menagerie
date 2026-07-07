@@ -764,20 +764,30 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
       // Not adjacent — path to the nearest walkable neighbor of the target and
       // take one step. Next tick will reassess (enemy? still there?).
+      // IMPORTANT: auto-harvest must never route through dungeon entrances or
+      // player/NPC buildings — `avoidStructures` blocks those tiles mid-path,
+      // and we skip neighbor offsets that land on a structure so we don't aim
+      // for one either.
       const offsets: Array<[number, number]> = [[0, -1], [0, 1], [-1, 0], [1, 0]];
       let bestPath: Position[] | null = null;
       for (const [ox, oy] of offsets) {
         const ax = target.x + ox, ay = target.y + oy;
+        const at = getOverworldTile(ow, ax, ay);
+        // Skip neighbor tiles that are structures/entrances — walking onto
+        // them would trigger a menu or dungeon entry.
+        if (at && (at.type === 'dungeon_entrance' || at.type === 'building')) continue;
+        if (at && at.type === 'player_building') {
+          const b = ow.playerBuildings?.find(pb => pb.id === at.playerBuildingId);
+          const isGateOrTop = b?.type === 'wall'; // walls handled inside path check
+          if (!isGateOrTop) continue;
+        }
         if (ax === ow.playerPosition.x && ay === ow.playerPosition.y) {
           bestPath = []; break;
         }
-        const p = findOverworldPath(ow, ow.playerPosition, { x: ax, y: ay });
+        const p = findOverworldPath(ow, ow.playerPosition, { x: ax, y: ay }, 8000, { avoidStructures: true });
         if (p && p.length > 0 && (!bestPath || p.length < bestPath.length)) bestPath = p;
       }
       if (!bestPath || bestPath.length === 0) {
-        // Can't reach this target — try removing it from consideration by
-        // shrinking search from the next-nearest. If none reachable, stop.
-        // (Simpler: bail; the user can re-tap on a specific cluster.)
         cancelAutoMine(`⚠️ Auto-Harvest stopped — no path to nearest ${job.tileType}.`);
         return;
       }

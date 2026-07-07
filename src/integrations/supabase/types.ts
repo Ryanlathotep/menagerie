@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      arena_champions: {
+        Row: {
+          achieved_at: string
+          cadence: string
+          id: string
+          team_name: string
+          team_snapshot: Json
+          user_id: string
+          username: string
+          wins: number
+          world_seed: number | null
+        }
+        Insert: {
+          achieved_at?: string
+          cadence: string
+          id?: string
+          team_name: string
+          team_snapshot: Json
+          user_id: string
+          username: string
+          wins?: number
+          world_seed?: number | null
+        }
+        Update: {
+          achieved_at?: string
+          cadence?: string
+          id?: string
+          team_name?: string
+          team_snapshot?: Json
+          user_id?: string
+          username?: string
+          wins?: number
+          world_seed?: number | null
+        }
+        Relationships: []
+      }
       bug_reports: {
         Row: {
           admin_notes: string | null

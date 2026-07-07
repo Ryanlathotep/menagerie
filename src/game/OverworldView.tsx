@@ -2229,7 +2229,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     )}
 
     {/* Portable Workstation or station-building: opens the crafting workshop */}
-    {(showWorkshop || workshopStationBuilding) && (
+    {(showWorkshop || workshopStationBuilding || townHallCraftBuildings) && (
       <CraftingWorkshop
         materials={state.saveData.materials || {}}
         playerLevel={state.run?.currentMonster?.level || 1}

@@ -72,6 +72,9 @@ import { EvolvedMove } from './moveMastery';
 import { CombatEffects } from './statusEffects';
 import { BuildingAssignModal } from './BuildingAssignModal';
 import { BuildingContextMenu } from './BuildingContextMenu';
+import { StationConfigModal } from './StationConfigModal';
+import { CRAFTING_STATION_BUILDINGS } from './buildings';
+import { useMyUsername } from '@/hooks/useUsername';
 
 import { EnemyAttackMenu, EnemyAttackTarget } from './EnemyAttackMenu';
 import { isAutoShovelEnabled, toggleAutoShovel, onAutoShovelChange } from './autoShovel';
@@ -196,6 +199,10 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [assignBuilding, setAssignBuilding] = useState<PlayerBuilding | null>(null);
   // Right-click context menu state for player buildings
   const [contextMenuBuilding, setContextMenuBuilding] = useState<PlayerBuilding | null>(null);
+  // Station config modal (tier upgrade + modifier slots)
+  const [stationConfigBuilding, setStationConfigBuilding] = useState<PlayerBuilding | null>(null);
+  // When set, the workshop is opened with this building's station context.
+  const [workshopStationBuilding, setWorkshopStationBuilding] = useState<PlayerBuilding | null>(null);
   // Unified right-click / long-press menu (one menu for every tile type).
   const [unifiedMenu, setUnifiedMenu] = useState<{ x: number; y: number } | null>(null);
   // Attack picker is opened FROM the unified menu when the tile has an enemy/nest
@@ -2219,14 +2226,21 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       />
     )}
 
-    {/* Portable Workstation: opens the crafting workshop on the overworld */}
-    {showWorkshop && (
+    {/* Portable Workstation or station-building: opens the crafting workshop */}
+    {(showWorkshop || workshopStationBuilding) && (
       <CraftingWorkshop
         materials={state.saveData.materials || {}}
         playerLevel={state.run?.currentMonster?.level || 1}
         storedEquipment={state.saveData.storedEquipment || []}
         unlockedRecipes={state.saveData.unlockedRecipes || []}
         tools={effectiveTools(state.saveData.tools)}
+        username={myUsername}
+        station={workshopStationBuilding ? {
+          kind: (Object.entries(CRAFTING_STATION_BUILDINGS).find(([, bt]) => bt === workshopStationBuilding.type)?.[0]) as any ?? null,
+          tier: (workshopStationBuilding.stationTier ?? 1) as 1|2|3|4|5,
+          modifiers: workshopStationBuilding.stationModifiers ?? [],
+          portable: false,
+        } : undefined}
         onCraft={(recipe, result) => {
           if (!isCreativeMode()) dispatch({ type: 'USE_MATERIALS', materials: recipe.materials });
           // Unified inventory: STORE_EQUIPMENT mirrors into the active run automatically.
@@ -2260,9 +2274,39 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             effect: consumable.effectId, quantity: 1,
           }});
         }}
-        onClose={() => setShowWorkshop(false)}
+        onClose={() => { setShowWorkshop(false); setWorkshopStationBuilding(null); }}
       />
     )}
+
+    {/* Station Config Modal */}
+    {stationConfigBuilding && (() => {
+      const kind = (Object.entries(CRAFTING_STATION_BUILDINGS).find(([, bt]) => bt === stationConfigBuilding.type)?.[0]) as any;
+      if (!kind) return null;
+      return (
+        <StationConfigModal
+          building={stationConfigBuilding}
+          stationKind={kind}
+          materials={state.saveData.materials || {}}
+          onSpendMaterials={(spent) => dispatch({ type: 'USE_MATERIALS', materials: spent })}
+          onUpdate={(nextTier, nextMods) => {
+            setOverworld(prev => {
+              const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
+              const b = newOw.playerBuildings?.find(pb => pb.id === stationConfigBuilding.id);
+              if (b) {
+                b.stationTier = nextTier;
+                b.stationModifiers = nextMods;
+              }
+              saveOverworld(newOw);
+              return newOw;
+            });
+            // Keep modal open with updated data
+            setStationConfigBuilding(prev => prev ? { ...prev, stationTier: nextTier, stationModifiers: nextMods } : prev);
+          }}
+          onClose={() => setStationConfigBuilding(null)}
+        />
+      );
+    })()}
+
     
     {/* Revive Target Modal */}
     <ReviveTargetModal

@@ -220,7 +220,77 @@ export const DEFAULT_BLUEPRINTS: ItemBlueprint[] = [
       { dx: 0, dy: 1, role: 'catalyst', acceptTypes: ['essence', 'gem', 'rune'] },
     ],
   },
+  // ---------------- PORTABLE STATIONS ----------------
+  // Craftable inside their parent building. Slot 'consumable' is a legacy
+  // reuse so the tool grants a portable-station flag on craft (workshop
+  // handler special-cases these blueprint ids).
+  {
+    id: 'portable_forge',
+    name: 'Portable Forge',
+    icon: '🔥',
+    slot: 'consumable',
+    category: 'consumable',
+    minGrid: 3,
+    baseStats: {},
+    effectId: 'grant_portable_forge',
+    pattern: [
+      { dx: 0, dy: 0, role: 'guard',  acceptTypes: ['metal', 'ore'] },
+      { dx: 1, dy: 0, role: 'guard',  acceptTypes: ['metal', 'ore'] },
+      { dx: 0, dy: 1, role: 'binder', acceptTypes: ['hide'] },
+    ],
+  },
+  {
+    id: 'portable_workbench',
+    name: 'Portable Workbench',
+    icon: '🪚',
+    slot: 'consumable',
+    category: 'consumable',
+    minGrid: 3,
+    baseStats: {},
+    effectId: 'grant_portable_workbench',
+    pattern: [
+      { dx: 0, dy: 0, role: 'handle', acceptTypes: ['wood'] },
+      { dx: 1, dy: 0, role: 'handle', acceptTypes: ['wood'] },
+      { dx: 0, dy: 1, role: 'binder', acceptTypes: ['hide', 'fabric'] },
+    ],
+  },
+  {
+    id: 'portable_brewing',
+    name: 'Portable Brewing Kit',
+    icon: '⚗️',
+    slot: 'consumable',
+    category: 'consumable',
+    minGrid: 3,
+    baseStats: {},
+    effectId: 'grant_portable_brewing',
+    pattern: [
+      { dx: 0, dy: 0, role: 'base',   acceptTypes: ['herb'] },
+      { dx: 0, dy: 1, role: 'binder', acceptTypes: ['fabric'] },
+    ],
+  },
+  {
+    id: 'portable_enchanting',
+    name: 'Portable Enchanting Kit',
+    icon: '🔮',
+    slot: 'consumable',
+    category: 'consumable',
+    minGrid: 3,
+    baseStats: {},
+    effectId: 'grant_portable_enchanting',
+    pattern: [
+      { dx: 0, dy: 0, role: 'catalyst', acceptTypes: ['essence', 'gem', 'rune'] },
+      { dx: 0, dy: 1, role: 'binder',   acceptTypes: ['fabric'] },
+    ],
+  },
 ];
+
+/** Blueprint ids that grant a portable-station tool flag when crafted. */
+export const PORTABLE_STATION_BLUEPRINTS: Record<string, 'forge' | 'workbench' | 'brewing' | 'enchanting'> = {
+  portable_forge: 'forge',
+  portable_workbench: 'workbench',
+  portable_brewing: 'brewing',
+  portable_enchanting: 'enchanting',
+};
 
 export function getBlueprint(id: string): ItemBlueprint | undefined {
   return DEFAULT_BLUEPRINTS.find((b) => b.id === id);

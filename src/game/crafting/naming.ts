@@ -1,7 +1,9 @@
 // Deterministic naming — same grid always yields the same name.
+// Now always weaves in the primary material + a filler + optional station-tier prefix.
 
 import { CRAFTING_MATERIALS } from '../equipment';
 import type { ResolvedCraft } from './types';
+import { getTierNamePrefix } from './stationTiers';
 
 const RARITY_PREFIX: Record<string, string> = {
   common: '',
@@ -11,23 +13,30 @@ const RARITY_PREFIX: Record<string, string> = {
   legendary: 'Legendary ',
 };
 
-/** Build a name from the resolved craft. Same craft.hash → same name. */
-export function buildCraftName(craft: ResolvedCraft): string {
+const SUFFIX_STRIP = /(Ore|Ingot|Log|Hide|Scrap|Fragment|Shard|Bundle|Essence|Spore|Pepper|Mint|Root|Seed)$/i;
+
+function shortMaterialWord(name: string): string {
+  const last = name.split(' ').pop() ?? name;
+  return last.replace(SUFFIX_STRIP, '').trim() || last;
+}
+
+/** Build a name from the resolved craft. Same craft.hash + station-tier → same name. */
+export function buildCraftName(craft: ResolvedCraft, stationTier?: 1|2|3|4|5): string {
   const bp = craft.blueprint;
-  // Primary = the material used most.
+  // Primary = the material with the highest quantity in the whole grid.
   const sorted = [...craft.usedMaterials].sort((a, b) => b.quantity - a.quantity);
   const primary = sorted[0]
     ? CRAFTING_MATERIALS.find((m) => m.id === sorted[0].materialId)
     : null;
-  // Secondary = a filler distinct from primary, if any.
+  // Secondary = first filler that isn't the primary.
   const filler = craft.fillerBreakdown.find((f) => f.materialId !== primary?.id);
   const fillerMat = filler ? CRAFTING_MATERIALS.find((m) => m.id === filler.materialId) : null;
 
-  const primaryWord = primary
-    ? primary.name.split(' ').slice(-1)[0].replace(/(Ore|Ingot|Log|Hide|Scrap|Fragment)$/i, '').trim() ||
-      primary.name
-    : '';
+  const primaryWord = primary ? shortMaterialWord(primary.name) : '';
   const base = primaryWord ? `${primaryWord} ${bp.name}`.trim() : bp.name;
-  const suffix = fillerMat ? ` of ${fillerMat.name.replace(/(Ore|Ingot|Log|Hide|Scrap|Fragment)$/i, '').trim() || fillerMat.name}` : '';
-  return `${RARITY_PREFIX[craft.rarity] ?? ''}${base}${suffix}`.trim();
+  const suffix = fillerMat ? ` of ${shortMaterialWord(fillerMat.name)}` : '';
+  // Station-tier prefix wins over rarity prefix once tier >= 3 (they'd read redundant).
+  const tierPrefix = stationTier && stationTier >= 3 ? getTierNamePrefix(stationTier) : '';
+  const rarityPrefix = tierPrefix ? '' : (RARITY_PREFIX[craft.rarity] ?? '');
+  return `${tierPrefix}${rarityPrefix}${base}${suffix}`.trim();
 }

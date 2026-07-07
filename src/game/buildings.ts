@@ -59,6 +59,13 @@ export interface PlayerBuilding {
   // placement time and editable via the right-click "Rotate" action.
   // When undefined, renderer falls back to auto-detection.
   connectorDir?: 'n' | 's' | 'e' | 'w';
+  // Crafting station tier (only meaningful for forge/workbench/brewing_stand/enchanting_altar).
+  // Defaults to 1 when undefined. Higher tiers unlock larger crafting grids
+  // and more modifier slots. See src/game/crafting/stationTiers.ts.
+  stationTier?: 1 | 2 | 3 | 4 | 5;
+  // Materials socketed into the station's modifier slots. Each contributes
+  // to any item crafted here in a separate "Station Bonus" stat lane.
+  stationModifiers?: { materialId: string; quantity: number }[];
 }
 
 // ============= BUILDING DEFINITIONS =============

@@ -53,6 +53,15 @@ interface CraftingWorkshopProps {
     consumable?: { name: string; icon: string; effectId: string; rarity: import('./equipment').Rarity },
   ) => void;
   worldSeed?: string | null;
+  /** Station context if opened from a specific building or portable tool. */
+  station?: {
+    kind: import('./crafting/types').CraftingStationKindLite | null;
+    tier: 1 | 2 | 3 | 4 | 5;
+    modifiers: { materialId: string; quantity: number }[];
+    portable?: boolean;
+  };
+  /** Current player's username — stamped on items and recipe discoveries. */
+  username?: string | null;
   onClose: () => void;
 }
 
@@ -70,6 +79,8 @@ export function CraftingWorkshop({
   onCraftWorkstation,
   onGridCraft,
   worldSeed,
+  station,
+  username,
   onClose,
 }: CraftingWorkshopProps) {
   const [selectedRecipe, setSelectedRecipe] = useState<CraftingRecipe | null>(null);
@@ -219,10 +230,13 @@ export function CraftingWorkshop({
             playerLevel={playerLevel}
             gridSize={3}
             worldSeed={worldSeed}
+            station={station}
+            username={username}
             onCraft={(item, used, consumable) => {
               onGridCraft?.(item, used, consumable);
             }}
           />
+
         ) : activeTab === 'consumables' ? (
           <ConsumablesTab
             consumablesByType={consumablesByType}

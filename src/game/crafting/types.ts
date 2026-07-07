@@ -7,6 +7,10 @@ import type { EquipmentSlot, EquipmentStats, MaterialType, Rarity } from '../equ
 
 export type GridSize = 3 | 4 | 5;
 
+// Local alias so we don't create a circular type dep between equipment.ts
+// and buildings.ts (equipment.ts imports crafting/types.ts).
+export type CraftingStationKindLite = 'forge' | 'workbench' | 'brewing' | 'enchanting';
+
 export interface CraftCell {
   materialId: string;
   count: number; // usually 1 per cell; stacks allow more
@@ -69,10 +73,25 @@ export interface ResolvedCraft {
   hash: string;                 // stable id of this exact grid
   name: string;                 // generated name
   stats: EquipmentStats;        // baseStats + all fillers
+  stationStats?: EquipmentStats; // From current crafter's station modifiers + inventor's frozen modifiers
   levelBonus: number;
   usedMaterials: { materialId: string; quantity: number }[];
   fillerBreakdown: { materialId: string; count: number; label: string }[];
   rarity: Rarity;
+}
+
+/** Optional station context passed to `resolveGrid` for stat provenance. */
+export interface StationContext {
+  kind: CraftingStationKindLite | null;
+  tier: 1 | 2 | 3 | 4 | 5;
+  modifiers: { materialId: string; quantity: number }[];
+  /** Inventor snapshot (from cloud recipe row). Always applied regardless of local station. */
+  inventor?: {
+    username: string;
+    stationKind: CraftingStationKindLite | null;
+    stationTier: 1 | 2 | 3 | 4 | 5;
+    stationStats: EquipmentStats;
+  };
 }
 
 export interface DiscoveredRecipe {
@@ -85,4 +104,8 @@ export interface DiscoveredRecipe {
   discoveredAt?: string;        // ISO
   worldSeed?: string | null;
   local?: boolean;              // discovered locally but not yet synced
+  // Inventor's station snapshot — persists forever, added to any future craft.
+  inventorStationKind?: CraftingStationKindLite | null;
+  inventorStationTier?: 1 | 2 | 3 | 4 | 5;
+  inventorStationStats?: EquipmentStats;
 }

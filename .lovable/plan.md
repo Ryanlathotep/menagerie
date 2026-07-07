@@ -1,69 +1,134 @@
-# Grid-Based Crafting Overhaul
+# Tiered Crafting Stations & Layered Item Stats
 
-Transform crafting from fixed recipes into a Minecraft-style grid where a small **required pattern** determines the item type, and **filler materials** in remaining slots grant additional stats. The same grid always yields the same item; first-time crafting or dismantling adds the recipe to your book and credits the discoverer server-wide.
+Big-scope change; putting the moving pieces in one place before touching code so we don't wire it half-way and regress persistence again.
 
-## Player-Facing Behavior
+## 1. Station tiers (per crafting discipline)
 
-- **Grid crafting UI** at each station. Grid size scales with station tier:
-  - Portable / T1 station: 3x3
-  - T2 (Workbench, Forge, etc.): 4x4
-  - T3 (upgraded stations, future): 5x5
-- **Required pattern**: each item type (dagger, sword, potion, scroll, armor piece…) defines a minimum shape of specific materials (e.g. Dagger = 1 blade material stacked on 1 handle material). Placing this pattern anywhere valid in the grid produces the base item.
-- **Fillers**: every extra material in unfilled slots applies its per-slot-category effect (e.g. extra Iron on a bladed weapon → +min damage, Gold Ore → +starting level, Ember Herb on a potion → +fire duration). Effects stack.
-- **Deterministic naming**: item name is generated from the dominant blade + handle + top filler (e.g. "Iron Dagger of Gilded Embers"). Same grid = same name + stats every time (hash-keyed).
-- **Recipe book**: first successful craft OR dismantle records the grid layout under the resulting item; later you can one-click re-craft or convert to a **Recipe Scroll** item to trade/gift.
-- **Discovery credit**: the first player on the server to produce a given recipe hash is stored as its `discovered_by` (username). Displayed on the recipe card and scrolls: *"Invented by <username>"*.
-- **Pixel preview**: the grid renders a small pixel-art silhouette of the resulting item, assembled from per-material sprites layered by slot role (blade, handle, guard, gem, etc.), similar to Minecraft's crafting preview.
+Each discipline (Forge / Workbench / Brewing / Enchanting) gets 5 tiers matching rarity colors. Higher tiers = larger grid + more modifier slots.
 
-## Data Model
+| Tier | Rarity | Grid | Modifier slots | Cost scaling |
+|------|--------|------|----------------|--------------|
+| I    | common     | 3×3 | 0 | base |
+| II   | uncommon   | 3×3 | 1 | 2× |
+| III  | rare       | 4×4 | 2 | 4× |
+| IV   | epic       | 4×4 | 3 | 8× |
+| V    | legendary  | 5×5 | 4 | 16× |
 
-### New: `src/game/crafting/`
-- `types.ts` — `CraftGrid`, `RecipePattern`, `MaterialEffect`, `ItemBlueprint`, `DiscoveredRecipe`.
-- `patterns.ts` — required patterns per item blueprint (dagger, sword, axe, bow, staff, helm, chest, potion, scroll, ring, …). Each pattern: `{ slots: Array<{ dx, dy, role: 'blade'|'handle'|'guard'|'base'|'catalyst'|'binder', tag: MaterialTag }> }`.
-- `materialEffects.ts` — per-material, per-item-category effect map:
-  `{ materialId, appliesTo: ItemCategory[], perUnit: StatDelta }`. Editable via admin.
-- `grid.ts` — pure functions: `hashGrid(grid)`, `matchPattern(grid)`, `resolveItem(grid) -> { blueprintId, stats, name, previewLayers }`.
-- `recipeBook.ts` — local + cloud persistence of discovered recipes (keyed by hash).
+Stored on the building itself:
+```ts
+// in PlayerBuilding
+stationTier?: 1|2|3|4|5;
+stationModifiers?: { materialId: string; quantity: number }[];
+```
 
-### DB migrations (Lovable Cloud)
-- `crafting_recipes_discovered` — `hash text PK, blueprint_id text, grid_json jsonb, item_name text, discovered_by uuid references profiles, discovered_at timestamptz, world_seed text`.
-  - RLS: anyone authenticated can SELECT; INSERT only if hash not present (unique constraint handles race).
-  - GRANTs: `SELECT, INSERT` to `authenticated`; `SELECT` to `anon` (leaderboard-style read); `ALL` to `service_role`.
-- Extend `game_data_overrides` `data_type` union with `'craft_pattern'` and `'material_effect'`.
+## 2. Portable stations
 
-## Admin Editors
+Each station has a portable tool version (already exist as `PORTABLE_STATIONS`) that is now craftable **inside** its parent building's grid, using a new blueprint per station kind (`portable_forge`, `portable_workbench`, etc.). Portable stations carry their own frozen tier + modifiers snapshot from the workshop that crafted them — cannot be re-modified without recrafting.
 
-Two new tabs in `AdminPanel.tsx`:
-1. **Craft Patterns** — pick an item blueprint, edit its required-slot grid (drag material tags onto cells, mark role). Persists as `craft_pattern` override.
-2. **Material Effects** — matrix editor: rows = materials, columns = item categories, cell = stat delta per extra unit (min damage, max damage, starting level, durability, elemental damage, cast speed, potion duration, etc.). Persists as `material_effect` override.
+## 3. Grid scaling
 
-Both reuse `useGameDataOverrides` + `CopyFromPicker` patterns already in `src/admin/`.
+`CraftingGridPanel` accepts `gridSize` already. Callers now pass the station's grid size:
+- Building context: from `building.stationTier` → tier→grid map.
+- Portable context: from the portable item's `stationTier`.
+- Menu (no station): 3×3, tier 1.
 
-## UI
+Blueprint `minGrid` is already respected — if a recipe requires 4×4 and the station is 3×3, we now surface that as "Needs Tier III+ station."
 
-- Replace `CraftingWorkshop.tsx` main flow with `<CraftingGrid>` (drag-materials-from-inventory-onto-cells) + live-updating right panel showing:
-  - Resolved item name, stats, pixel preview.
-  - "Discovered by" line if hash already known.
-  - Craft button (disabled until required pattern satisfied).
-- `RecipeBookPanel` — searchable list of discovered recipes, click to auto-fill grid; button to burn materials into a `Recipe Scroll`.
+## 4. Station modifier slots (separate stat lane)
 
-## Migration & Compatibility
+Above the crafting grid we show N modifier chips (N = tier's modifier slots). Player drops any crafting material in; each contributes stats via `getEffectiveMaterialEffect` but tagged as `stationStats`, kept **separate** from the item's material stats.
 
-- Legacy `CRAFTING_RECIPES` in `equipment.ts` become **seed patterns** for the new system (auto-generated blueprints so nothing breaks); existing `RecipesEditor` remains for old-style recipes but a banner points to the new Patterns editor.
-- Existing blueprints in save data untouched.
+Result on any crafted item:
 
-## Rollout (implementation order)
+```ts
+interface EquipmentItem {
+  // existing:
+  stats: EquipmentStats;         // baseStats + material fillers
+  // new:
+  stationStats?: EquipmentStats; // from crafter's station modifiers
+  runStats?: EquipmentStats;     // stats added later by dungeon events (empty for now, wired for future)
+  provenance?: {
+    stationKind: CraftingStationKind | null;
+    stationTier: 1|2|3|4|5;
+    stationModifiers: { materialId: string; quantity: number }[];
+    inventor?: { username: string; stationStats: EquipmentStats; stationTier: number };
+    craftedBy?: string;          // username
+    worldSeed?: string | null;
+  };
+}
+```
 
-1. Types, pattern/grid pure logic + unit tests.
-2. Material effects registry with sensible defaults for current materials.
-3. `CraftingGrid` UI + pixel preview renderer.
-4. Recipe book (local first, then cloud sync + discoverer credit table).
-5. Admin editors (Patterns, Material Effects).
-6. Station-tier grid sizing + wire into portable/station gating.
-7. Smoke test invariants + typecheck.
+The tooltip/preview shows three separate sections: **Base Stats**, **Station Bonus**, **Dungeon Bonus**.
 
-## Open Questions
+## 5. Recipe inventor persistence
 
-1. Should Recipe Scrolls be single-use teach-a-recipe items, or infinite-use one-click crafters?
-2. For pixel previews, do you want me to author placeholder sprite layers per material role now, or ship with emoji stand-ins and let you upload real sprites via the Admin Asset Library later (mirroring the building placeholder flow)?
-3. Discovery credit: server-wide (all players share one leaderboard) or per-world-seed (each seed has its own inventors)?
+`crafting_recipes_discovered` gets three new columns:
+- `inventor_station_kind text`
+- `inventor_station_tier int`
+- `inventor_station_stats jsonb`
+
+When any player later crafts the same recipe hash, `recordDiscovery`/`resolveGrid` looks up the recipe's inventor row and adds the inventor's frozen `stationStats` into `provenance.inventor.stationStats`. The current crafter's own station also adds its `stationStats`. Both stack, both shown separately.
+
+Migration also adds a helper RPC `get_recipe_inventor(_hash)` returning the frozen stats.
+
+## 6. Seed info hook (dungeon effects later)
+
+`provenance` is included in the deterministic hash used by Item World / dungeon-seed features so a "Forge of Volcanic Ash"-crafted sword generates a different themed dungeon than a plain one. We expose:
+
+```ts
+// src/game/crafting/seed.ts
+export function craftSeedHash(item: EquipmentItem): number;
+```
+
+This is called by `itemWorldTowers.ts` next time we touch dungeon gen — the field is wired in now so the future work is drop-in.
+
+## 7. Name reflects materials
+
+`buildCraftName` already uses primary+filler materials but drops rarity prefixes early. Reworking to always include the primary material word first and append the filler even if same-type, e.g. *"Iron Sword of Oak"*. Also adds station-tier prefix for T3+ (*"Masterwork Iron Sword of Oak"*).
+
+## 8. Where players configure it
+
+- Player building tooltip / right-click menu → new **"Configure Station"** action. Opens a small modal showing tier (upgradeable with materials) + modifier slot grid. Can be changed anytime.
+- Portable station tool → shows tier + baked-in modifiers, read-only. To change, dismantle and craft new.
+
+## 9. Data / files touched
+
+**New files**
+- `src/game/crafting/stationTiers.ts` — tier table, upgrade costs, tier→grid map, tier→slotCount map.
+- `src/game/crafting/stationEffects.ts` — resolve modifier stats + inventor stats.
+- `src/game/crafting/seed.ts` — craftSeedHash helper.
+- `src/game/StationConfigModal.tsx` — tier + modifier UI.
+- `supabase/migrations/<ts>_recipe_inventor_stats.sql` — new columns + RPC + GRANTs.
+
+**Edited**
+- `src/game/crafting/types.ts` — `stationStats`, `runStats`, `provenance`.
+- `src/game/crafting/grid.ts` — `resolveGrid` returns `stationStats` when passed a station context; enforces `minGrid` against station grid.
+- `src/game/crafting/naming.ts` — name always includes primary material + filler + tier prefix.
+- `src/game/crafting/patterns.ts` — new portable-station blueprints (one per kind).
+- `src/game/crafting/recipeBook.ts` — read/write inventor station snapshot; `recordDiscovery` accepts stationKind/tier/stats.
+- `src/game/buildings.ts` — `stationTier`, `stationModifiers` fields.
+- `src/game/CraftingGrid.tsx` — modifier chip row, station tier/kind props, three-section preview, minGrid enforcement.
+- `src/game/CraftingWorkshop.tsx` — thread station props through when opened from building vs menu vs portable.
+- `src/game/BuildingContextMenu.tsx` — add "Configure Station" option.
+- `src/game/OverworldView.tsx` — open StationConfigModal; pass station tier when opening workshop from a building.
+- `src/admin/CraftGridEditor.tsx` — expose tier requirements per blueprint.
+
+## 10. Rollout order
+
+1. Types + tier tables + naming update.
+2. `resolveGrid` station-context extension + provenance.
+3. DB migration for inventor stats.
+4. `recordDiscovery` + `lookupDiscovery` write/read inventor snapshot.
+5. UI: modifier chips + 3-section preview.
+6. Station config modal + building menu wiring.
+7. Portable-station blueprints + freeze snapshot on craft.
+8. Admin editor tier badge.
+9. `craftSeedHash` helper (unused until dungeon side wired).
+
+No changes to existing persistence — all new fields are optional, so existing saves and recipes keep working.
+
+## Open call I'm making (say the word if wrong)
+
+- Upgrade **cost per tier**: I'll use `10 × tier²` of a themed material (e.g. Forge = Iron→Steel→Mythril→Adamant→Draconic ingots) plus stone/wood scaling. Reasonable but arbitrary — tell me if you want it cheaper/steeper.
+- Modifier chip stat weight: `getEffectiveMaterialEffect` × 2 so a station modifier "feels" bigger than a single grid filler cell. Adjustable.
+- Portable-station blueprints all sit at `minGrid: 3` so any tier can craft them — the tier of the *result* mirrors the tier of the station that crafted them.

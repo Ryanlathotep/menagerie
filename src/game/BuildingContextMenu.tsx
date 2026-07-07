@@ -6,11 +6,13 @@ import { Card } from '@/components/ui/card';
 import {
   PlayerBuilding,
   BUILDING_DEFINITIONS,
+  CRAFTING_STATION_BUILDINGS,
   getDisassembleRefund,
   getRepairCost,
 } from './buildings';
+import { getStationTierData } from './crafting/stationTiers';
 import { Monster } from './types';
-import { Hammer, Recycle, RefreshCw, UserPlus, X } from 'lucide-react';
+import { Hammer, Recycle, RefreshCw, Settings, UserPlus, Wrench, X } from 'lucide-react';
 
 interface BuildingContextMenuProps {
   building: PlayerBuilding;
@@ -26,6 +28,10 @@ interface BuildingContextMenuProps {
   onFlipGate?: () => void;
   /** Cycle a stair/ladder's facing direction (n → e → s → w). */
   onRotateConnector?: () => void;
+  /** Open the tier/modifier config modal — only for crafting station buildings. */
+  onConfigureStation?: () => void;
+  /** Open the crafting workshop scoped to this station's context. */
+  onOpenStationWorkshop?: () => void;
   onClose: () => void;
 }
 
@@ -40,10 +46,17 @@ export function BuildingContextMenu({
   onDisassemble,
   onFlipGate,
   onRotateConnector,
+  onConfigureStation,
+  onOpenStationWorkshop,
   onClose,
 }: BuildingContextMenuProps) {
   const def = BUILDING_DEFINITIONS[building.type];
   const isConnector = building.type === 'stone_staircase' || building.type === 'ladder';
+  const stationKind = (Object.entries(CRAFTING_STATION_BUILDINGS)
+    .find(([, bt]) => bt === building.type)?.[0]) as 'forge' | 'workbench' | 'brewing' | 'enchanting' | undefined;
+  const isStation = !!stationKind;
+  const stationTier = (building.stationTier ?? 1) as 1|2|3|4|5;
+  const stationLabel = isStation ? getStationTierData(stationKind!, stationTier).label : '';
   const assigned = building.assignedMonsterId
     ? party.find(m => m.id === building.assignedMonsterId)
     : null;
@@ -72,6 +85,7 @@ export function BuildingContextMenu({
             <p className="text-[11px] text-muted-foreground">
               ({building.worldX}, {building.worldY}) • HP {building.hp}/{building.maxHp}
               {assigned && ` • 👤 ${assigned.name}`}
+              {isStation && ` • ${stationLabel}`}
             </p>
           </div>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose} aria-label="Close menu">
@@ -81,6 +95,26 @@ export function BuildingContextMenu({
 
         {/* Actions */}
         <div className="space-y-2">
+          {isStation && onOpenStationWorkshop && (
+            <Button
+              variant="default"
+              className="w-full justify-start"
+              onClick={onOpenStationWorkshop}
+            >
+              <Wrench className="h-4 w-4 mr-2" />
+              Open Crafting Workshop
+            </Button>
+          )}
+          {isStation && onConfigureStation && (
+            <Button
+              variant="secondary"
+              className="w-full justify-start"
+              onClick={onConfigureStation}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Configure Station (tier / modifiers)
+            </Button>
+          )}
           {def.requiresMonster && (
             <Button
               variant="secondary"

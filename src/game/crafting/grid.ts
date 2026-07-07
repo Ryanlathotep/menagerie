@@ -2,8 +2,9 @@
 
 import { CRAFTING_MATERIALS, RARITY_MULTIPLIERS, type EquipmentStats, type Rarity } from '../equipment';
 import { DEFAULT_BLUEPRINTS, getBlueprint } from './patterns';
-import type { CraftGrid, GridSize, ItemBlueprint, PatternSlot, ResolvedCraft } from './types';
+import type { CraftGrid, GridSize, ItemBlueprint, PatternSlot, ResolvedCraft, StationContext } from './types';
 import { getEffectiveMaterialEffect } from './materialEffects';
+import { resolveStationModifierStats, mergeStats } from './stationEffects';
 
 // ---- Grid helpers ----
 export function makeEmptyGrid(size: GridSize): CraftGrid {
@@ -76,7 +77,7 @@ export function detectBlueprint(grid: CraftGrid, blueprints = DEFAULT_BLUEPRINTS
 }
 
 /** Resolve a grid into a concrete craftable item, or null if invalid. */
-export function resolveGrid(grid: CraftGrid): ResolvedCraft | null {
+export function resolveGrid(grid: CraftGrid, station?: StationContext): ResolvedCraft | null {
   const match = detectBlueprint(grid);
   if (!match) return null;
   const { blueprint, origin } = match;
@@ -151,11 +152,17 @@ export function resolveGrid(grid: CraftGrid): ResolvedCraft | null {
     materialId, quantity,
   }));
 
+  // Station provenance: combine current station modifiers + inventor's frozen mods.
+  const stationStatsCurrent = station ? resolveStationModifierStats(station.modifiers) : {};
+  const stationStatsInventor = station?.inventor?.stationStats ?? {};
+  const stationStats = mergeStats(stationStatsCurrent, stationStatsInventor);
+
   return {
     blueprint,
     hash: hashGrid(grid),
     name: '', // filled in by naming.ts (called from consumer)
     stats: cleanStats,
+    stationStats: Object.keys(stationStats).length ? stationStats : undefined,
     levelBonus,
     usedMaterials,
     fillerBreakdown,

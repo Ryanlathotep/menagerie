@@ -203,7 +203,7 @@ function MaterialEffectsEditor() {
   }, [overrides]);
 
   const mat = CRAFTING_MATERIALS.find((m) => m.id === selectedId);
-  const currentOverride = mat ? (getOverride('material_effect', mat.id) as MaterialEffect | null) : null;
+  const currentOverride = mat ? (getOverride('material_effect', mat.id) as unknown as MaterialEffect | null) : null;
   const effective = mat ? (currentOverride ?? getMaterialEffect(mat.id)) : null;
   const [draft, setDraft] = useState<MaterialEffect | null>(effective);
 

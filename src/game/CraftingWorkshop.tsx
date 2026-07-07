@@ -158,6 +158,14 @@ export function CraftingWorkshop({
               ⚒️ Equip
             </Button>
             <Button
+              variant={activeTab === 'grid' ? 'default' : 'ghost'}
+              size="sm"
+              className="text-xs h-7 px-2"
+              onClick={() => setActiveTab('grid')}
+            >
+              🧩 Grid
+            </Button>
+            <Button
               variant={activeTab === 'consumables' ? 'default' : 'ghost'}
               size="sm"
               className="text-xs h-7 px-2"

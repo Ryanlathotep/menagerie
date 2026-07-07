@@ -1462,6 +1462,11 @@ export function DungeonView({
         setIsPathWalking(false);
         setTargetPath([]);
         pathGoalRef.current = null;
+        // Auto-Hunt: leg finished — plan the next enemy or fog waypoint. The
+        // planner will either restart pathwalking or clear the mode itself.
+        if (huntingModeRef.current) {
+          setTimeout(() => planNextHuntStepRef.current(), 0);
+        }
         return;
       }
 
@@ -1484,8 +1489,10 @@ export function DungeonView({
           return;
         }
 
-        // Check if we should stop (enemy, trap, etc.)
-        const shouldStop = shouldStopAutoRun(currentDungeon.tiles, nextPos.x, nextPos.y, currentDungeon.width, currentDungeon.height, { allowMineable: !!settings.autoMine });
+        // Check if we should stop (enemy, trap, etc.). In Auto-Hunt mode we
+        // allow stepping through treasure/traps so pickups & disarms don't
+        // break the chase.
+        const shouldStop = shouldStopAutoRun(currentDungeon.tiles, nextPos.x, nextPos.y, currentDungeon.width, currentDungeon.height, { allowMineable: !!settings.autoMine, allowInteract: huntingModeRef.current });
 
         isMovingRef.current = true;
         handleMoveRef.current(direction);
@@ -1505,6 +1512,9 @@ export function DungeonView({
           setIsPathWalking(false);
           setTargetPath([]);
           pathGoalRef.current = null;
+          if (huntingModeRef.current) {
+            setTimeout(() => planNextHuntStepRef.current(), 0);
+          }
           return;
         }
       }

@@ -62,6 +62,10 @@ interface CraftingWorkshopProps {
   };
   /** Current player's username — stamped on items and recipe discoveries. */
   username?: string | null;
+  /** Restrict grid crafting to this blueprint category (Town Hall = 'building'). */
+  gridFilterCategory?: import('./crafting/types').BlueprintCategory;
+  /** Small heading shown above the grid panel. */
+  gridHeading?: string;
   onClose: () => void;
 }
 
@@ -81,6 +85,8 @@ export function CraftingWorkshop({
   worldSeed,
   station,
   username,
+  gridFilterCategory,
+  gridHeading,
   onClose,
 }: CraftingWorkshopProps) {
   const [selectedRecipe, setSelectedRecipe] = useState<CraftingRecipe | null>(null);
@@ -232,6 +238,8 @@ export function CraftingWorkshop({
             worldSeed={worldSeed}
             station={station}
             username={username}
+            filterCategory={gridFilterCategory}
+            heading={gridHeading}
             onCraft={(item, used, consumable) => {
               onGridCraft?.(item, used, consumable);
             }}

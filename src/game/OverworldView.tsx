@@ -248,6 +248,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
 
   // Portable Workstation modal — opens crafting workshop on overworld when owned
   const [showWorkshop, setShowWorkshop] = useState(false);
+  const [townHallCraftBuildings, setTownHallCraftBuildings] = useState(false);
   
   const monster = state.run?.currentMonster;
   
@@ -2228,7 +2229,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     )}
 
     {/* Portable Workstation or station-building: opens the crafting workshop */}
-    {(showWorkshop || workshopStationBuilding) && (
+    {(showWorkshop || workshopStationBuilding || townHallCraftBuildings) && (
       <CraftingWorkshop
         materials={state.saveData.materials || {}}
         playerLevel={state.run?.currentMonster?.level || 1}
@@ -2236,10 +2237,18 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         unlockedRecipes={state.saveData.unlockedRecipes || []}
         tools={effectiveTools(state.saveData.tools)}
         username={myUsername}
+        gridFilterCategory={townHallCraftBuildings ? 'building' : undefined}
+        gridHeading={townHallCraftBuildings ? '🏛️ Town Hall — Craft Building Kits' : undefined}
         station={workshopStationBuilding ? {
           kind: (Object.entries(CRAFTING_STATION_BUILDINGS).find(([, bt]) => bt === workshopStationBuilding.type)?.[0]) as any ?? null,
           tier: (workshopStationBuilding.stationTier ?? 1) as 1|2|3|4|5,
           modifiers: workshopStationBuilding.stationModifiers ?? [],
+          portable: false,
+        } : townHallCraftBuildings ? {
+          // Town Hall = a mega-workbench at tier 3 (4x4 grid) with 2 modifier slots.
+          kind: 'workbench',
+          tier: 3,
+          modifiers: [],
           portable: false,
         } : undefined}
         onCraft={(recipe, result) => {
@@ -2275,7 +2284,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             effect: consumable.effectId, quantity: 1,
           }});
         }}
-        onClose={() => { setShowWorkshop(false); setWorkshopStationBuilding(null); }}
+        onClose={() => { setShowWorkshop(false); setWorkshopStationBuilding(null); setTownHallCraftBuildings(false); }}
       />
     )}
 
@@ -2568,6 +2577,16 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
                 🏗️ Build
               </Button>
             </div>
+          )}
+          {overworld.homeBase.buildingType === 'town_hall' && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => { setShowBuildingMenu(false); setTownHallCraftBuildings(true); }}
+            >
+              🏛️ Craft Building Kits (with bonus stats)
+            </Button>
           )}
           <Button variant="ghost" className="w-full" onClick={() => setShowBuildingMenu(false)}>
             Close

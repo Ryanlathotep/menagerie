@@ -25,7 +25,7 @@ import {
   recordDiscovery,
   syncCloudRecipeBook,
 } from './crafting/recipeBook';
-import type { CraftCell, CraftGrid, CraftingStationKindLite, DiscoveredRecipe, GridSize, StationContext } from './crafting/types';
+import type { BlueprintCategory, CraftCell, CraftGrid, CraftingStationKindLite, DiscoveredRecipe, GridSize, StationContext } from './crafting/types';
 import { getStationTierData, getGridForTier, getModifierSlotsForTier, type StationTier } from './crafting/stationTiers';
 import { resolveStationModifierStats } from './crafting/stationEffects';
 
@@ -44,6 +44,10 @@ interface CraftingGridPanelProps {
   };
   /** Current player's username (stamped as inventor when discovering). */
   username?: string | null;
+  /** Restrict blueprints to this category (Town Hall passes 'building'). */
+  filterCategory?: BlueprintCategory;
+  /** Small heading shown above the grid (e.g. "Town Hall — Building Kits"). */
+  heading?: string;
   onCraft: (
     item: EquipmentItem | null,
     usedMaterials: { materialId: string; quantity: number }[],
@@ -58,6 +62,8 @@ export function CraftingGridPanel({
   worldSeed,
   station,
   username,
+  filterCategory,
+  heading,
   onCraft,
 }: CraftingGridPanelProps) {
   const effectiveTier: StationTier = station?.tier ?? 1;
@@ -101,11 +107,15 @@ export function CraftingGridPanel({
     };
   }, [station, effectiveTier, cloudDiscovery]);
 
+  const blueprintPool = useMemo(
+    () => (filterCategory ? DEFAULT_BLUEPRINTS.filter((b) => b.category === filterCategory) : DEFAULT_BLUEPRINTS),
+    [filterCategory],
+  );
   const resolved = useMemo(() => {
-    const r = resolveGrid(grid, stationCtx);
+    const r = resolveGrid(grid, stationCtx, blueprintPool);
     if (!r) return null;
     return { ...r, name: buildCraftName(r, effectiveTier) };
-  }, [grid, stationCtx, effectiveTier]);
+  }, [grid, stationCtx, effectiveTier, blueprintPool]);
 
   // On grid change, look up discoverer.
   useEffect(() => {
@@ -236,10 +246,32 @@ export function CraftingGridPanel({
 
   const tierData = station ? getStationTierData(station.kind ?? 'forge', effectiveTier) : null;
 
+  // ---------------- Drag & drop helpers ----------------
+  const onDragStartMat = (e: React.DragEvent, materialId: string) => {
+    e.dataTransfer.setData('text/x-material-id', materialId);
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+  const onDragOverCell = (e: React.DragEvent) => {
+    if (Array.from(e.dataTransfer.types).includes('text/x-material-id')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  };
+  const onDropCell = (e: React.DragEvent, r: number, c: number) => {
+    const id = e.dataTransfer.getData('text/x-material-id');
+    if (!id) return;
+    e.preventDefault();
+    setCell(r, c, id);
+    setSelectedCell(null);
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-3 p-3 flex-1 overflow-hidden">
       {/* LEFT: grid + preview */}
       <div className="flex flex-col gap-3 min-h-0 overflow-auto">
+        {heading && (
+          <div className="text-sm font-semibold text-primary">{heading}</div>
+        )}
         <div className="flex items-center gap-2 flex-wrap">
           <Button size="sm" variant={view === 'grid' ? 'default' : 'ghost'} onClick={() => setView('grid')}>Grid</Button>
           <Button size="sm" variant={view === 'book' ? 'default' : 'ghost'} onClick={() => setView('book')}>
@@ -281,14 +313,17 @@ export function CraftingGridPanel({
                       cell={cell}
                       selected={selectedCell?.r === r && selectedCell?.c === c}
                       onClick={() => clickCell(r, c)}
+                      onDragOver={onDragOverCell}
+                      onDrop={(e) => onDropCell(e, r, c)}
                     />
                   )),
                 )}
               </div>
               <p className="text-xs text-muted-foreground text-center mt-2">
-                Click empty cell then a material — or click material to auto-place. Click a filled cell to remove.
+                Click a material to auto-place, click an empty cell first to target it, or <b>drag &amp; drop</b> materials onto cells. Click a filled cell to remove.
               </p>
             </Card>
+
 
             <PreviewPanel
               resolved={resolved}
@@ -321,8 +356,10 @@ export function CraftingGridPanel({
               <button
                 key={mat.id}
                 onClick={() => pickMaterial(mat.id)}
-                className={`text-left p-1.5 rounded border hover:bg-primary/10 transition text-xs flex items-center gap-1.5 ${RARITY_COLORS[mat.rarity].border}`}
-                title={`${mat.name} (${mat.type}, ${mat.rarity})`}
+                draggable
+                onDragStart={(e) => onDragStartMat(e, mat.id)}
+                className={`text-left p-1.5 rounded border hover:bg-primary/10 transition text-xs flex items-center gap-1.5 cursor-grab active:cursor-grabbing ${RARITY_COLORS[mat.rarity].border}`}
+                title={`${mat.name} (${mat.type}, ${mat.rarity}) — click or drag`}
               >
                 <span className="text-base">{mat.icon}</span>
                 <span className="truncate flex-1">{mat.name}</span>
@@ -344,12 +381,20 @@ export function CraftingGridPanel({
 // ---------------- subcomponents ----------------
 
 function GridSlot({
-  cell, selected, onClick,
-}: { cell: CraftCell | null; selected: boolean; onClick: () => void }) {
+  cell, selected, onClick, onDragOver, onDrop,
+}: {
+  cell: CraftCell | null;
+  selected: boolean;
+  onClick: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
+}) {
   const mat = cell ? CRAFTING_MATERIALS.find((m) => m.id === cell.materialId) : null;
   return (
     <button
       onClick={onClick}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
       className={`aspect-square rounded border-2 flex items-center justify-center transition-colors text-2xl
         ${selected ? 'border-primary bg-primary/15' : 'border-muted-foreground/25 bg-background/60 hover:border-primary/50'}`}
       title={mat ? mat.name : 'Empty'}

@@ -3,7 +3,7 @@
 import { CRAFTING_MATERIALS, RARITY_MULTIPLIERS, type EquipmentStats, type Rarity } from '../equipment';
 import { DEFAULT_BLUEPRINTS, getBlueprint } from './patterns';
 import type { CraftGrid, GridSize, ItemBlueprint, PatternSlot, ResolvedCraft, StationContext } from './types';
-import { getEffectiveMaterialEffect } from './materialEffects';
+import { getEffectiveMaterialEffect, getPerUnitForBlueprint } from './materialEffects';
 import { resolveStationModifierStats, mergeStats } from './stationEffects';
 
 // ---- Grid helpers ----
@@ -77,8 +77,12 @@ export function detectBlueprint(grid: CraftGrid, blueprints = DEFAULT_BLUEPRINTS
 }
 
 /** Resolve a grid into a concrete craftable item, or null if invalid. */
-export function resolveGrid(grid: CraftGrid, station?: StationContext): ResolvedCraft | null {
-  const match = detectBlueprint(grid);
+export function resolveGrid(
+  grid: CraftGrid,
+  station?: StationContext,
+  blueprints: ItemBlueprint[] = DEFAULT_BLUEPRINTS,
+): ResolvedCraft | null {
+  const match = detectBlueprint(grid, blueprints);
   if (!match) return null;
   const { blueprint, origin } = match;
 
@@ -99,12 +103,12 @@ export function resolveGrid(grid: CraftGrid, station?: StationContext): Resolved
   // Add per-pattern-slot material contributions (required cells also count once
   // toward stats — otherwise using Iron in a Sword's blade slot wouldn't matter
   // versus using Copper). We use a small "required" contribution: 1x their
-  // effect.
+  // effect. Uses the per-blueprint override when defined.
   const usedMap = new Map<string, number>();
   for (const s of blueprint.pattern) {
     const cell = grid[origin.row + s.dy][origin.col + s.dx]!;
-    const eff = getEffectiveMaterialEffect(cell.materialId);
-    for (const [k, v] of Object.entries(eff.perUnit)) {
+    const perUnit = getPerUnitForBlueprint(cell.materialId, blueprint.id);
+    for (const [k, v] of Object.entries(perUnit)) {
       if (typeof v === 'number' && k in stats) (stats as Record<string, number>)[k] += v;
     }
     usedMap.set(cell.materialId, (usedMap.get(cell.materialId) ?? 0) + cell.count);
@@ -120,8 +124,8 @@ export function resolveGrid(grid: CraftGrid, station?: StationContext): Resolved
       if (!cell) continue;
       const key = `${r},${c}`;
       if (consumed.has(key)) continue;
-      const eff = getEffectiveMaterialEffect(cell.materialId);
-      for (const [k, v] of Object.entries(eff.perUnit)) {
+      const perUnit = getPerUnitForBlueprint(cell.materialId, blueprint.id);
+      for (const [k, v] of Object.entries(perUnit)) {
         if (typeof v !== 'number') continue;
         if (k === 'levelBonus') levelBonus += v * cell.count;
         else if (k in stats) (stats as Record<string, number>)[k] += v * cell.count;

@@ -154,15 +154,29 @@ export function inventoryReducer(state: GameState, action: GameAction): GameStat
     }
 
     case 'ADD_MATERIAL': {
-      if (!state.run) return state;
+      // Unified inventory: mirror to BOTH run.runMaterials (in-run display /
+      // flee merge) AND saveData.materials (persists across reload, area
+      // change, and run end). Prior to this, materials picked up in the
+      // overworld only existed on the transient run state and vanished on
+      // refresh or when END_RUN merged an empty map.
+      const nextSaveMaterials = {
+        ...state.saveData.materials,
+        [action.materialId]: (state.saveData.materials?.[action.materialId] || 0) + action.quantity,
+      };
       return {
         ...state,
-        run: {
-          ...state.run,
-          runMaterials: {
-            ...state.run.runMaterials,
-            [action.materialId]: (state.run.runMaterials[action.materialId] || 0) + action.quantity,
-          },
+        run: state.run
+          ? {
+              ...state.run,
+              runMaterials: {
+                ...state.run.runMaterials,
+                [action.materialId]: (state.run.runMaterials[action.materialId] || 0) + action.quantity,
+              },
+            }
+          : state.run,
+        saveData: {
+          ...state.saveData,
+          materials: nextSaveMaterials,
         },
       };
     }

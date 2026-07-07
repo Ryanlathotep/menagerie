@@ -158,6 +158,42 @@ export const BUILDING_DEFINITIONS: Record<PlayerBuildingType, BuildingDefinition
     maxHp: 20,
     category: 'utility',
   },
+  forge: {
+    type: 'forge',
+    name: 'Forge',
+    emoji: '🔥',
+    description: 'Smelt ores and craft metal weapons, armor, and tools. Stand adjacent to open the Forge workshop tab.',
+    cost: { wood: 10, stone: 20 },
+    maxHp: 80,
+    category: 'utility',
+  },
+  workbench: {
+    type: 'workbench',
+    name: 'Workbench',
+    emoji: '🪚',
+    description: 'Shape wood, leather, and fabric into gear. Stand adjacent to open the Workbench tab.',
+    cost: { wood: 15, stone: 5 },
+    maxHp: 60,
+    category: 'utility',
+  },
+  brewing_stand: {
+    type: 'brewing_stand',
+    name: 'Brewing Stand',
+    emoji: '⚗️',
+    description: 'Turn herbs and essences into potions and elixirs. Stand adjacent to open the Brewing tab.',
+    cost: { wood: 5, stone: 10, materials: [{ materialId: 'herb_bundle', quantity: 3 }] },
+    maxHp: 50,
+    category: 'utility',
+  },
+  enchanting_altar: {
+    type: 'enchanting_altar',
+    name: 'Enchanting Altar',
+    emoji: '🔮',
+    description: 'Bind essences into rune scrolls and infuse potions into gear. Stand adjacent to open the Enchanting tab.',
+    cost: { wood: 8, stone: 25, materials: [{ materialId: 'normal_essence', quantity: 5 }] },
+    maxHp: 70,
+    category: 'utility',
+  },
 };
 
 // ============= FARM OUTPUT =============

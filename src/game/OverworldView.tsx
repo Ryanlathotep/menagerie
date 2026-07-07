@@ -1533,6 +1533,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           toast.error(check.reason || 'Cannot build here');
           return prev;
         }
+        // Tier gate: Arena requires Log Cabin or Town Hall home base.
+        if (selectedBuildType === 'arena' && newOw.homeBase.buildingType === 'campfire') {
+          toast.error('Arena requires a Log Cabin or Town Hall home base');
+          return prev;
+        }
         const def = BUILDING_DEFINITIONS[selectedBuildType];
         // Creative mode: skip the resource deduction (canPlaceBuilding already
         // accepted the placement without a resource check).

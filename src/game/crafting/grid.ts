@@ -99,12 +99,12 @@ export function resolveGrid(grid: CraftGrid, station?: StationContext): Resolved
   // Add per-pattern-slot material contributions (required cells also count once
   // toward stats — otherwise using Iron in a Sword's blade slot wouldn't matter
   // versus using Copper). We use a small "required" contribution: 1x their
-  // effect.
+  // effect. Uses the per-blueprint override when defined.
   const usedMap = new Map<string, number>();
   for (const s of blueprint.pattern) {
     const cell = grid[origin.row + s.dy][origin.col + s.dx]!;
-    const eff = getEffectiveMaterialEffect(cell.materialId);
-    for (const [k, v] of Object.entries(eff.perUnit)) {
+    const perUnit = getPerUnitForBlueprint(cell.materialId, blueprint.id);
+    for (const [k, v] of Object.entries(perUnit)) {
       if (typeof v === 'number' && k in stats) (stats as Record<string, number>)[k] += v;
     }
     usedMap.set(cell.materialId, (usedMap.get(cell.materialId) ?? 0) + cell.count);
@@ -120,8 +120,8 @@ export function resolveGrid(grid: CraftGrid, station?: StationContext): Resolved
       if (!cell) continue;
       const key = `${r},${c}`;
       if (consumed.has(key)) continue;
-      const eff = getEffectiveMaterialEffect(cell.materialId);
-      for (const [k, v] of Object.entries(eff.perUnit)) {
+      const perUnit = getPerUnitForBlueprint(cell.materialId, blueprint.id);
+      for (const [k, v] of Object.entries(perUnit)) {
         if (typeof v !== 'number') continue;
         if (k === 'levelBonus') levelBonus += v * cell.count;
         else if (k in stats) (stats as Record<string, number>)[k] += v * cell.count;

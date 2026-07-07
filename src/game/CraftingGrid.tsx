@@ -62,6 +62,8 @@ export function CraftingGridPanel({
   worldSeed,
   station,
   username,
+  filterCategory,
+  heading,
   onCraft,
 }: CraftingGridPanelProps) {
   const effectiveTier: StationTier = station?.tier ?? 1;

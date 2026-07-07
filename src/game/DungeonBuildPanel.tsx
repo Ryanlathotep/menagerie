@@ -73,7 +73,7 @@ export function DungeonBuildPanel({
           <h3 className="text-sm font-semibold text-muted-foreground">🏗️ Structures</h3>
           <p className="text-xs text-muted-foreground">Select a structure, then click an open floor tile to place it.</p>
           <div className="grid grid-cols-2 gap-2">
-            {(Object.values(BUILDING_DEFINITIONS) as typeof BUILDING_DEFINITIONS[PlayerBuildingType][]).map(def => {
+            {(Object.values(BUILDING_DEFINITIONS) as typeof BUILDING_DEFINITIONS[PlayerBuildingType][]).filter(def => def.type !== 'arena').map(def => {
               const canAfford = wood >= def.cost.wood && stone >= def.cost.stone;
               return (
                 <button

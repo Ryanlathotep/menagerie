@@ -263,7 +263,19 @@ function MaterialEffectsEditor() {
         </div>
 
         <div>
-          <Label>Per-unit stat contribution</Label>
+          <Label>Name prefix (added to items when this material is dominant)</Label>
+          <Input
+            value={draft.namePrefix ?? ''}
+            placeholder="e.g. Blazing, Frost-Kissed, Verdant"
+            onChange={(e) => setDraft({ ...draft, namePrefix: e.target.value })}
+          />
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Prepended before the item name (with trailing space) when this material is the top filler.
+          </p>
+        </div>
+
+        <div>
+          <Label>Default per-unit stat contribution</Label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1">
             {STAT_KEYS.map((k) => (
               <div key={k}>
@@ -278,6 +290,11 @@ function MaterialEffectsEditor() {
             ))}
           </div>
         </div>
+
+        <PerItemOverrides
+          draft={draft}
+          setDraft={setDraft}
+        />
 
         <div className="flex gap-2">
           <Button onClick={async () => {
@@ -294,6 +311,102 @@ function MaterialEffectsEditor() {
           )}
         </div>
       </Card>
+    </div>
+  );
+}
+
+// ---------- Per-item override sub-editor ----------
+
+function PerItemOverrides({
+  draft, setDraft,
+}: {
+  draft: MaterialEffect;
+  setDraft: (e: MaterialEffect) => void;
+}) {
+  const overrides = draft.perItemPerUnit ?? {};
+  const [addingBp, setAddingBp] = useState<string>('');
+
+  const updateBpStat = (bpId: string, k: StatKey, v: number) => {
+    const cur = { ...(overrides[bpId] ?? {}) } as Record<string, number>;
+    if (v === 0) delete cur[k];
+    else cur[k] = v;
+    const next = { ...overrides, [bpId]: cur };
+    if (Object.keys(cur).length === 0) delete next[bpId];
+    setDraft({ ...draft, perItemPerUnit: Object.keys(next).length ? next : undefined });
+  };
+
+  const removeBp = (bpId: string) => {
+    const next = { ...overrides };
+    delete next[bpId];
+    setDraft({ ...draft, perItemPerUnit: Object.keys(next).length ? next : undefined });
+  };
+
+  const unusedBps = DEFAULT_BLUEPRINTS.filter((b) => !(b.id in overrides));
+
+  return (
+    <div className="border-t pt-3">
+      <Label>Per-item bonus overrides</Label>
+      <p className="text-[10px] text-muted-foreground mb-2">
+        When this material is used in the named blueprint, these stats replace the default per-unit contribution.
+        Leave empty to fall back to the default.
+      </p>
+
+      <div className="space-y-2">
+        {Object.entries(overrides).map(([bpId, stats]) => {
+          const bp = DEFAULT_BLUEPRINTS.find((b) => b.id === bpId);
+          return (
+            <Card key={bpId} className="p-2 bg-muted/30">
+              <div className="flex items-center gap-2 mb-1">
+                <span>{bp?.icon}</span>
+                <span className="text-sm font-medium flex-1">{bp?.name ?? bpId}</span>
+                <button
+                  className="text-destructive text-xs hover:underline"
+                  onClick={() => removeBp(bpId)}
+                >remove</button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {STAT_KEYS.map((k) => (
+                  <div key={k}>
+                    <div className="text-[9px] text-muted-foreground capitalize">{k}</div>
+                    <Input
+                      type="number"
+                      value={(stats as Record<string, number>)[k] ?? 0}
+                      onChange={(e) => updateBpStat(bpId, k, Number(e.target.value) || 0)}
+                      className="h-7 text-xs"
+                    />
+                  </div>
+                ))}
+              </div>
+            </Card>
+          );
+        })}
+
+        {unusedBps.length > 0 && (
+          <div className="flex gap-2">
+            <select
+              className="flex-1 h-8 text-xs bg-background border rounded px-2"
+              value={addingBp}
+              onChange={(e) => setAddingBp(e.target.value)}
+            >
+              <option value="">— add per-item override —</option>
+              {unusedBps.map((b) => (
+                <option key={b.id} value={b.id}>{b.icon} {b.name}</option>
+              ))}
+            </select>
+            <Button
+              size="sm"
+              disabled={!addingBp}
+              onClick={() => {
+                setDraft({
+                  ...draft,
+                  perItemPerUnit: { ...overrides, [addingBp]: {} },
+                });
+                setAddingBp('');
+              }}
+            >Add</Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

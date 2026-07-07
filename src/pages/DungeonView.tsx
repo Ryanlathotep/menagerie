@@ -27,7 +27,7 @@ import { executeCombat, calculateXpReward, xpToNextLevel, checkLevelUp, getEffec
 import { toast } from 'sonner';
 import { SettingsProvider, SettingsButton, useSettings } from '@/game/Settings';
 import { submitTowerFloor, submitDiscoveryCount, submitExplorationCount } from '@/hooks/useUsername';
-import { countExploredTiles } from '@/game/overworld';
+import { countExploredTiles, getOverworldTile } from '@/game/overworld';
 import { MonsterStatsPreview } from '@/game/MonsterStatsPreview';
 import { LevelUpScreen } from '@/game/LevelUpScreen';
 import { EquipmentItem, MonsterEquipment, createEmptyEquipment } from '@/game/equipment';

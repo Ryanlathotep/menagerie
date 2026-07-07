@@ -980,3 +980,61 @@ export function enemyHasStaminaToAttack(enemy: Monster): boolean {
   const cur = enemy.stats.currentStamina ?? enemy.stats.stamina ?? 0;
   return cur >= ENEMY_ATTACK_STAMINA_COST;
 }
+
+// ============= THREAT MODEL =============
+// Used by every automation loop (auto-hunt, auto-search, auto-mine,
+// auto-harvest, path-walk, dungeon auto-run) to decide "is an enemy actually
+// close enough to hit me next turn?". Factors each visible enemy's affordable
+// moveset — not just their tile — so long-range spells, cones, and auras
+// interrupt automation even when the enemy is a few tiles away.
+
+/** Manhattan-distance reach of one move, folding in AoE radius so cones/auras
+ *  count as bigger threats than their base range suggests. Non-damage moves
+ *  return 0 (they don't threaten). */
+export function estimateMoveReach(move: Move | EvolvedMove): number {
+  const kind = (move as Move).type;
+  if (kind !== 'melee' && kind !== 'ranged') return 0;
+  const cfg = getAttackConfig(move);
+  const aoe = ('aoeRadius' in move && typeof (move as Move).aoeRadius === 'number')
+    ? ((move as Move).aoeRadius as number)
+    : 0;
+  const width = cfg.width ?? 0;
+  return Math.max(1, cfg.range + Math.max(aoe, width));
+}
+
+/** Max tiles-away this enemy can meaningfully damage the player right now,
+ *  given its current stamina & known moveset. Falls back to melee 1 so a
+ *  stamina-locked enemy still counts as a threat when adjacent. */
+export function getEnemyThreatReach(enemy: Monster): number {
+  const moves = getMonsterMoves(enemy.species, enemy.element, enemy.class, enemy.level);
+  const stamina = enemy.stats.currentStamina ?? enemy.stats.stamina ?? 0;
+  let best = 0;
+  for (const m of moves) {
+    if (m.staminaCost > stamina) continue;
+    const r = estimateMoveReach(m);
+    if (r > best) best = r;
+  }
+  return best > 0 ? best : 1;
+}
+
+/** True if any *visible & alive* enemy on the current floor has an affordable
+ *  attack whose reach covers the player's tile. Cheap enough to call per tick
+ *  from every automation loop. */
+export function anyEnemyThreatensPlayer(dungeon: DungeonState): boolean {
+  const px = dungeon.playerPosition.x, py = dungeon.playerPosition.y;
+  const rows = dungeon.tiles.length;
+  for (let y = 0; y < rows; y++) {
+    const row = dungeon.tiles[y];
+    for (let x = 0; x < row.length; x++) {
+      const t = row[x];
+      if (!t || t.type !== 'enemy' || !t.visible || !t.enemyId) continue;
+      const enemy = dungeon.enemies.find(e => e.id === t.enemyId);
+      if (!enemy || (enemy.stats.currentHp ?? 0) <= 0) continue;
+      const reach = getEnemyThreatReach(enemy);
+      const dist = Math.abs(x - px) + Math.abs(y - py);
+      if (dist <= reach) return true;
+    }
+  }
+  return false;
+}
+

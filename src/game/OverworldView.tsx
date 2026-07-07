@@ -838,7 +838,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   // first ranged. Falls back to null (player picks manually).
   const pickHuntAttackMove = useCallback((): Move | null => {
     if (!monster) return null;
-    const moves = getMonsterMoves(monster);
+    const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
     return (moves.find(m => m.type === 'melee') || moves.find(m => m.type === 'ranged') || null) as Move | null;
   }, [monster]);
 

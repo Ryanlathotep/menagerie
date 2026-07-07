@@ -2794,6 +2794,14 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         onDisassemble={handleDisassembleBuilding}
         onFlipGate={handleFlipGate}
         onRotateConnector={handleRotateConnector}
+        onConfigureStation={() => {
+          setStationConfigBuilding(contextMenuBuilding);
+          setContextMenuBuilding(null);
+        }}
+        onOpenStationWorkshop={() => {
+          setWorkshopStationBuilding(contextMenuBuilding);
+          setContextMenuBuilding(null);
+        }}
         onClose={() => setContextMenuBuilding(null)}
       />
     )}

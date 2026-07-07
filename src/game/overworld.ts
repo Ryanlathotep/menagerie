@@ -37,12 +37,14 @@ export interface OverworldTile {
   buildingType?: BuildingType;
   resourceAmount?: number; // For trees/rocks - how much resource is left
   harvested?: boolean;
-  lastHarvestType?: 'tree' | 'rock'; // What was harvested here — used by regrowth pass
+  lastHarvestType?: 'tree' | 'rock' | 'plant'; // What was harvested here — used by regrowth pass
   dungeonId?: string; // For dungeon_entrance tiles - links to DungeonEntrance
   playerBuildingId?: string; // For player_building tiles
   nestId?: string; // For nest tiles
   treeTier?: TreeTier;   // Resource hierarchy tier for trees
   stoneTier?: StoneTier; // Resource hierarchy tier for rocks
+  plantVariant?: PlantVariant; // For plant tiles — drives drop table
+  plantTier?: 1 | 2 | 3;       // Rarity tier (1 = common, 3 = rare)
   // ─── Elevation system ───
   elevation?: number;             // 0-5; undefined treated as 0 (legacy saves)
   cliffDrops?: { n: boolean; e: boolean; s: boolean; w: boolean }; // sides that drop down

@@ -24,6 +24,9 @@ import {
 import { SPECIES_DATA, ELEMENT_COLORS, CLASS_STATS } from '@/game/types';
 import { listEquipmentIconKeys, getEquipmentIcon } from '@/game/equipmentUtils';
 import { MonsterSprite } from '@/game/sprites';
+import { BUILDING_DEFINITIONS, type PlayerBuildingType } from '@/game/buildings';
+import { OverworldBuildingTileGraphic } from '@/game/OverworldBuildingTileGraphics';
+
 
 interface AssetSlot {
   category: AssetCategory;

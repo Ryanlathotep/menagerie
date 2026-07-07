@@ -43,7 +43,7 @@ import { findOverworldPath } from './overworldPathfinding';
 import { playParticleEffectForMove } from './particles/api';
 import { OverworldDirectionArrows } from './OverworldDirectionArrows';
 import { UnifiedTileMenu, UnifiedTileAction, UnifiedTileInfo, UnifiedTileCreature } from './UnifiedTileMenu';
-import { Flag, FlagOff, DoorOpen, Hammer, Footprints, Swords, Shovel, Droplet, Trash2, Settings as SettingsIcon, Pickaxe, TreePine, Wheat, Wrench, Users, Sparkles, Home, FlaskConical, Wand2, Repeat } from 'lucide-react';
+import { Flag, FlagOff, DoorOpen, Hammer, Footprints, Swords, Shovel, Droplet, Trash2, Settings as SettingsIcon, Pickaxe, TreePine, Wheat, Wrench, Users, Sparkles, Home, FlaskConical, Wand2, Repeat, Search, Crosshair } from 'lucide-react';
 import { findBestMatchupSwap } from './MatchupIndicator';
 import { useSettings } from './Settings';
 import { GameSidebar } from './GameSidebar';
@@ -3241,6 +3241,24 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         if (!footnote) footnote = 'Pinned waypoints show an edge-of-screen arrow.';
       }
 
+
+      // ── Global auto-action shortcuts (available from every tile menu) ──
+      // These don't act on the tapped tile — they start map-wide auto jobs.
+      // Kept at the bottom so per-tile actions stay on top.
+      actions.push({
+        id: 'auto-hunt',
+        label: 'Auto-Hunt nearest enemy',
+        icon: Crosshair,
+        hint: 'Walks to the nearest visible enemy and opens attack (H)',
+        onClick: () => { close(); startAutoHunt(); },
+      });
+      actions.push({
+        id: 'auto-search',
+        label: 'Auto-Search…',
+        icon: Search,
+        hint: 'Pick a target type (dungeon, enemy, nest, tree, rock, building) (F)',
+        onClick: () => { close(); setAutoSearchPickerOpen(true); },
+      });
 
 
       return (

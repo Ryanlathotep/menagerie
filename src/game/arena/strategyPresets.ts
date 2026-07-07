@@ -5,6 +5,7 @@
 import type { TacticInput, TacticDecision, TeamStrategy } from '@/game/arenaCombat/types';
 import { autoStrategy } from '@/game/arenaCombat/strategy';
 import { chebyshev } from '@/game/arenaCombat/turnOrder';
+import { getMonsterMoves } from '@/game/moves';
 
 export type StrategyPresetId =
   | 'balanced'          // default AI

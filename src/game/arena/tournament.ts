@@ -76,7 +76,11 @@ export function resolveTournament(
     }
   }
 
-  const room = getRoom('oval_sand');
+  const allRooms = getAllRooms();
+  const pickRoom = (matchId: string) => {
+    const idx = (hashId(matchId) ^ t.seed) % allRooms.length;
+    return allRooms[Math.abs(idx)];
+  };
   let payoutsToPlayer = 0;
   let currencyGained = 0;
   let bracketWinnerId: string | undefined;

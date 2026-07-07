@@ -66,7 +66,7 @@ export function CraftingWorkshop({
   const [selectedConsumable, setSelectedConsumable] = useState<ConsumableRecipe | null>(null);
   const [craftedItem, setCraftedItem] = useState<EquipmentItem | null>(null);
   const [craftedConsumable, setCraftedConsumable] = useState<ConsumableRecipe | null>(null);
-  const [activeTab, setActiveTab] = useState<'craft' | 'consumables' | 'dismantle' | 'tools'>('craft');
+  const [activeTab, setActiveTab] = useState<'craft' | 'grid' | 'consumables' | 'dismantle' | 'tools'>('craft');
   const [selectedDismantle, setSelectedDismantle] = useState<EquipmentItem | null>(null);
   
   // Creative mode flag — re-renders when toggled so disabled buttons & "missing

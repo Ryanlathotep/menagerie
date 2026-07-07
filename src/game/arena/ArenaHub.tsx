@@ -22,6 +22,7 @@ import { ARENA_SHOP } from './shop';
 import { PracticeDuel } from './PracticeDuel';
 import { STRATEGY_PRESETS } from './strategyPresets';
 import { ArenaChampionsLeaderboard } from './ArenaChampionsLeaderboard';
+import { loadPartyMenuComboIds, validateArenaTeam } from './teamValidation';
 import { useGame } from "@/game/state";
 
 interface ArenaHubProps {
@@ -218,6 +219,11 @@ function TournamentCard({
                 if (!teamId) return;
                 const team = arena.playerTeams.find(x => x.id === teamId);
                 if (!team) return;
+                const check = validateArenaTeam(team, state.saveData);
+                if (!check.valid) {
+                  toast({ title: 'Team failed legitimacy check', description: check.issues.map(i => i.message).join(' · '), variant: 'destructive' as any });
+                  return;
+                }
                 setArena(s => ({
                   ...s,
                   tournaments: {
@@ -229,7 +235,10 @@ function TournamentCard({
               }}
               defaultValue="">
               <option value="">Enter team…</option>
-              {arena.playerTeams.map(pt => <option key={pt.id} value={pt.id}>{pt.name}</option>)}
+              {arena.playerTeams.map(pt => {
+                const v = validateArenaTeam(pt, state.saveData);
+                return <option key={pt.id} value={pt.id}>{v.valid ? '✓' : '⚠'} {pt.name}</option>;
+              })}
             </select>
           )}
           <Button size="sm" variant="outline"
@@ -280,7 +289,20 @@ function TeamsTab({ arena, setArena }: { arena: ArenaState; setArena: React.Disp
       <Card className="p-3 space-y-2">
         <div className="text-sm font-semibold">Create a team (up to 6)</div>
         <Input value={name} onChange={e => setName(e.target.value)} placeholder="Team name" />
-        <div className="text-xs text-muted-foreground">Selected: {selected.length}/6</div>
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">Selected: {selected.length}/6</span>
+          <Button size="sm" variant="outline"
+            onClick={() => {
+              const ids = loadPartyMenuComboIds()
+                .filter(id => unlocked.some(u => u.comboId === id))
+                .slice(0, 6);
+              if (ids.length === 0) { toast({ title: 'No saved party found', description: 'Build a party from the main menu first.' }); return; }
+              setSelected(ids);
+              toast({ title: `Loaded ${ids.length} monsters from your saved party` });
+            }}>
+            📥 Load from Party Menu
+          </Button>
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-64 overflow-auto p-1">
           {unlocked.map(m => {
             const active = selected.includes(m.comboId);
@@ -325,11 +347,24 @@ function TeamsTab({ arena, setArena }: { arena: ArenaState; setArena: React.Disp
       <div className="space-y-2">
         <div className="text-sm font-semibold">Saved teams</div>
         {arena.playerTeams.length === 0 && <p className="text-xs text-muted-foreground">No teams yet.</p>}
-        {arena.playerTeams.map(t => (
+        {arena.playerTeams.map(t => {
+          const validation = validateArenaTeam(t, state.saveData);
+          return (
           <Card key={t.id} className="p-2 flex items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium">{t.banner} {t.name} <span className="text-xs text-muted-foreground">(avg L{t.level})</span></div>
+              <div className="text-sm font-medium flex items-center gap-1.5">
+                {t.banner} {t.name}
+                <span className="text-xs text-muted-foreground">(avg L{t.level})</span>
+                {validation.valid
+                  ? <span title="Verified against your save data" className="text-[10px] px-1 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">✓ verified</span>
+                  : <span title={validation.issues.map(i => i.message).join('\n')} className="text-[10px] px-1 rounded bg-red-500/15 text-red-600 dark:text-red-400">⚠ invalid</span>}
+              </div>
               <div className="text-[11px] text-muted-foreground truncate">{t.memberCombos.join(', ')}</div>
+              {!validation.valid && (
+                <ul className="text-[10px] text-red-500 mt-0.5 list-disc list-inside">
+                  {validation.issues.filter(i => i.level === 'error').slice(0, 3).map((i, k) => <li key={k}>{i.message}</li>)}
+                </ul>
+              )}
               <div className="text-[11px] mt-0.5">
                 AI:{' '}
                 <select className="border rounded px-1 py-0.5 bg-background text-[11px]"
@@ -344,7 +379,8 @@ function TeamsTab({ arena, setArena }: { arena: ArenaState; setArena: React.Disp
             </div>
             <Button size="sm" variant="destructive" onClick={() => setArena(s => ({ ...s, playerTeams: s.playerTeams.filter(x => x.id !== t.id) }))}>Delete</Button>
           </Card>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

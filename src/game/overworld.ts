@@ -158,6 +158,63 @@ export const BUILDING_UPGRADES: Record<BuildingType, {
   },
 };
 
+// ============= PLANT DROP TABLES =============
+// Wild-plant drop tables reuse existing herb materials from equipment.ts.
+// Tier 1: 1 common; Tier 2: 1 uncommon; Tier 3: 2 items (uncommon+rare).
+// Variant biases which herb pool we roll from so mushrooms feel different
+// from flowers in the log, even when tier is the same.
+const PLANT_DROP_POOL: Record<PlantVariant, { t1: string[]; t2: string[]; t3: string[] }> = {
+  herb: {
+    t1: ['healing_herb', 'antidote_leaf'],
+    t2: ['ice_mint', 'revive_moss'],
+    t3: ['golden_ginseng', 'panacea_petal'],
+  },
+  flower: {
+    t1: ['healing_herb'],
+    t2: ['mana_blossom'],
+    t3: ['phoenix_flower', 'panacea_petal'],
+  },
+  mushroom: {
+    t1: ['stamina_root', 'antidote_leaf'],
+    t2: ['revive_moss'],
+    t3: ['miracle_lotus'],
+  },
+  root: {
+    t1: ['stamina_root'],
+    t2: ['fire_pepper'],
+    t3: ['golden_ginseng'],
+  },
+};
+
+const MATERIAL_NAME_LOOKUP: Record<string, string> = {
+  healing_herb: 'Healing Herb', stamina_root: 'Stamina Root', antidote_leaf: 'Antidote Leaf',
+  mana_blossom: 'Mana Blossom', fire_pepper: 'Fire Pepper', ice_mint: 'Ice Mint',
+  revive_moss: 'Revive Moss', golden_ginseng: 'Golden Ginseng', phoenix_flower: 'Phoenix Flower',
+  panacea_petal: 'Panacea Petal', miracle_lotus: 'Miracle Lotus',
+};
+
+function rollPlantDrops(
+  variant: PlantVariant,
+  tier: 1 | 2 | 3,
+  totalSteps: number,
+  x: number,
+  y: number,
+): Array<{ materialId: string; name: string; quantity: number }> {
+  const pool = PLANT_DROP_POOL[variant];
+  const drops: Array<{ materialId: string; name: string; quantity: number }> = [];
+  const rollSeed = totalSteps * 31 + x * 91 + y * 13;
+  const pick = (list: string[], salt: number): string => list[Math.floor(seededRandom(rollSeed + salt) * list.length)];
+  // Primary drop: tier-matched.
+  const primary = tier === 3 ? pick(pool.t3, 1) : tier === 2 ? pick(pool.t2, 3) : pick(pool.t1, 5);
+  drops.push({ materialId: primary, name: MATERIAL_NAME_LOOKUP[primary] || primary, quantity: 1 });
+  // Tier 3: bonus lower-tier herb.
+  if (tier === 3) {
+    const bonus = pick(pool.t2, 7);
+    drops.push({ materialId: bonus, name: MATERIAL_NAME_LOOKUP[bonus] || bonus, quantity: 1 });
+  }
+  return drops;
+}
+
 // ============= BIOME / NOISE SYSTEM (Phase 2) =============
 
 const BIOME_ELEMENTS: ElementType[] = ['fire', 'water', 'earth', 'air', 'void'];

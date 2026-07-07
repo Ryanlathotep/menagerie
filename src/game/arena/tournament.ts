@@ -11,7 +11,7 @@ import type {
 import { hydrateNpcTeam, isNpcTeam } from './npcTeams';
 import { computePool, payoutFor, seedNpcBets } from './betting';
 import { runArenaCombat } from '@/game/arenaCombat';
-import { getRoom } from './arenaRooms';
+import { getRoom, getAllRooms } from './arenaRooms';
 import { createMonster } from '@/game/utils';
 
 function buildBracket(teams: ArenaTeam[], seed: number): ArenaBracketMatch[] {

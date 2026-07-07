@@ -65,6 +65,9 @@ export type Database = {
           grid_json: Json
           grid_size: number
           hash: string
+          inventor_station_kind: string | null
+          inventor_station_stats: Json | null
+          inventor_station_tier: number | null
           item_name: string
           world_seed: string | null
         }
@@ -76,6 +79,9 @@ export type Database = {
           grid_json: Json
           grid_size?: number
           hash: string
+          inventor_station_kind?: string | null
+          inventor_station_stats?: Json | null
+          inventor_station_tier?: number | null
           item_name: string
           world_seed?: string | null
         }
@@ -87,6 +93,9 @@ export type Database = {
           grid_json?: Json
           grid_size?: number
           hash?: string
+          inventor_station_kind?: string | null
+          inventor_station_stats?: Json | null
+          inventor_station_tier?: number | null
           item_name?: string
           world_seed?: string | null
         }

@@ -75,6 +75,34 @@ export interface EquipmentItem {
   affinityBonus?: AffinityBonus;           // Bonus when matching (any can equip)
   // Protection system
   bound?: boolean; // If true, item came from town and always returns on death/flee
+  // ----- Layered stat provenance (grid-crafted items only) -----
+  // `stats` above stays the pattern+filler stats. These extra buckets are
+  // shown as separate sections in the tooltip so their source is clear.
+  stationStats?: EquipmentStats;   // From the crafter's station modifiers + inventor's frozen modifiers
+  runStats?: EquipmentStats;       // Stats earned by the item during dungeon runs (future hook)
+  provenance?: CraftProvenance;
+  // Portable crafting stations freeze a station snapshot on the item.
+  portableStation?: {
+    kind: import('./crafting/types').CraftingStationKindLite;
+    tier: 1 | 2 | 3 | 4 | 5;
+    modifiers: { materialId: string; quantity: number }[];
+  };
+}
+
+/** Where + how an item was originally crafted, and by whom. */
+export interface CraftProvenance {
+  stationKind: import('./crafting/types').CraftingStationKindLite | null;
+  stationTier: 1 | 2 | 3 | 4 | 5;
+  stationModifiers: { materialId: string; quantity: number }[];
+  craftedBy?: string;
+  worldSeed?: string | null;
+  /** The very first player to discover this recipe. Their station bonus persists forever. */
+  inventor?: {
+    username: string;
+    stationKind: import('./crafting/types').CraftingStationKindLite | null;
+    stationTier: 1 | 2 | 3 | 4 | 5;
+    stationStats: EquipmentStats;
+  };
 }
 
 // ============= EQUIPMENT SETS =============

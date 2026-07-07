@@ -494,7 +494,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           applyRoadsToChunks(newState);
           break;
         case 'blocked':
-          toast.info(result.reason);
+          if (!automationRunningRef.current) toast.info(result.reason);
           return prev;
         case 'resource': {
           const tierLabel = result.tierName ? ` (${result.tierName})` : '';

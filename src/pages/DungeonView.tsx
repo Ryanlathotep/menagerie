@@ -3664,6 +3664,7 @@ export function DungeonView({
                           name: 'Portal Stairs Kit',
                           type: 'utility',
                           quantity: 1,
+                          value: 0,
                           effect: 'place_portal_stairs',
                           description: 'Places a coordinate-linked portal staircase on your current tile.',
                         } as InventoryItem,

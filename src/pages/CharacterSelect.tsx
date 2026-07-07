@@ -235,7 +235,8 @@ export function CharacterSelect() {
                   draggable={!!member}
                   onDragStart={(e) => {
                     if (!member) return;
-                    e.dataTransfer.setData('text/plain', String(i));
+                    // Party-slot reorder: encode the source index.
+                    e.dataTransfer.setData('text/plain', `slot:${i}`);
                     e.dataTransfer.effectAllowed = 'move';
                   }}
                   onDragOver={(e) => {
@@ -244,7 +245,34 @@ export function CharacterSelect() {
                   }}
                   onDrop={(e) => {
                     e.preventDefault();
-                    const from = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                    const raw = e.dataTransfer.getData('text/plain');
+                    // Two drag sources land here:
+                    //   slot:<i>  → reorder within the party
+                    //   pool:<id> → add / replace from the unlocked pool
+                    if (raw.startsWith('pool:')) {
+                      const comboId = raw.slice(5);
+                      const monster = unlockedMonsters.find(m => m.comboId === comboId);
+                      if (!monster) return;
+                      setSelectedParty(prev => {
+                        const existingIdx = prev.findIndex(m => m.comboId === comboId);
+                        const next = [...prev];
+                        if (existingIdx !== -1) next.splice(existingIdx, 1);
+                        // Pad empty slots so the drop lands at the target index.
+                        const insertAt = Math.min(i, next.length);
+                        if (next.length >= MAX_PARTY_SIZE) {
+                          // Full party — replace the slot instead.
+                          next[insertAt] = monster;
+                        } else {
+                          next.splice(insertAt, 0, monster);
+                        }
+                        return next.slice(0, MAX_PARTY_SIZE);
+                      });
+                      setPreviewMonster(monster);
+                      return;
+                    }
+                    // Legacy numeric or "slot:N" party reorder
+                    const fromStr = raw.startsWith('slot:') ? raw.slice(5) : raw;
+                    const from = parseInt(fromStr, 10);
                     if (isNaN(from) || from === i) return;
                     setSelectedParty(prev => {
                       if (from >= prev.length) return prev;
@@ -259,7 +287,7 @@ export function CharacterSelect() {
                     member ? 'border-primary bg-primary/10 cursor-move' : 'border-muted-foreground/30'
                   }`}
                   onClick={() => member && togglePartyMember(member)}
-                  title={member ? 'Drag to reorder, click to remove' : undefined}
+                  title={member ? 'Drag to reorder, click to remove' : 'Drag a monster here'}
                 >
                   {member ? (
                     <div className="text-center pointer-events-none">
@@ -385,6 +413,11 @@ export function CharacterSelect() {
                 return (
                   <Card
                     key={monster.comboId}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('text/plain', `pool:${monster.comboId}`);
+                      e.dataTransfer.effectAllowed = 'move';
+                    }}
                     className={`p-2 cursor-pointer transition-all relative ${
                       isInParty
                         ? 'ring-2 ring-primary bg-primary/10'

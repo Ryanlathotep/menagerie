@@ -11,9 +11,15 @@ interface PathNode {
   parent: PathNode | null;
 }
 
-// Check if a tile is walkable
-export function isWalkable(tile: DungeonTile): boolean {
-  return tile.type !== 'wall';
+// Check if a tile is walkable.
+// `allowMineable` is opt-in: when the player has Auto-Mine on, we let A* route
+// through mineable_wall tiles (the walker will mine on arrival). When it's off
+// — the default — mineable walls block pathing so double-tap-to-run walks
+// around cavestone instead of stalling against it.
+export function isWalkable(tile: DungeonTile, allowMineable = false): boolean {
+  if (tile.type === 'wall') return false;
+  if (tile.type === 'mineable_wall') return allowMineable;
+  return true;
 }
 
 // Manhattan distance heuristic
@@ -21,19 +27,27 @@ function heuristic(a: Position, b: Position): number {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 }
 
+export interface FindPathOptions {
+  /** When true, mineable walls are treated as walkable (auto-mine flow). */
+  allowMineable?: boolean;
+}
+
 // Find path from start to goal using A*
 export function findPath(
   dungeon: DungeonState,
   start: Position,
-  goal: Position
+  goal: Position,
+  options: FindPathOptions = {},
 ): Position[] | null {
   const { tiles, width, height } = dungeon;
-  
-  // Check if goal is walkable (except for unexplored tiles)
+  const allowMineable = !!options.allowMineable;
+
+  // Check if goal is walkable (except for unexplored tiles).
+  // Mineable walls at the goal are only reachable when the caller opted in.
   const goalTile = tiles[goal.y]?.[goal.x];
-  if (!goalTile || goalTile.type === 'wall') {
-    return null;
-  }
+  if (!goalTile) return null;
+  if (goalTile.type === 'wall') return null;
+  if (goalTile.type === 'mineable_wall' && !allowMineable) return null;
   
   // Open and closed sets
   const openSet: PathNode[] = [];

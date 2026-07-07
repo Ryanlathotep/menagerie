@@ -210,6 +210,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [targetingTiles, setTargetingTiles] = useState<Position[]>([]);
   const [affectedTiles, setAffectedTiles] = useState<Position[]>([]);
   const [hoveredTile, setHoveredTile] = useState<Position | null>(null);
+  const [autoSearchPickerOpen, setAutoSearchPickerOpen] = useState(false);
   // Mobile AoE: tap to preview, tap again on same tile to fire.
   const aoePendingConfirmRef = useRef<{ x: number; y: number; time: number } | null>(null);
   

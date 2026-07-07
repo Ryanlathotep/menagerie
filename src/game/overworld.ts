@@ -45,6 +45,13 @@ export interface OverworldTile {
   stoneTier?: StoneTier; // Resource hierarchy tier for rocks
   plantVariant?: PlantVariant; // For plant tiles — drives drop table
   plantTier?: 1 | 2 | 3;       // Rarity tier (1 = common, 3 = rare)
+  // Tilled soil — the tile is grass but has been broken up (by a Hoe, or left
+  // behind when a tree is chopped down). Renders as a dark, plough-marked
+  // square and lets the player plant a seed on it. Seeds re-grow into their
+  // matching tree/plant tile via the standard regrowth pass.
+  tilled?: boolean;
+  plantedSeed?: string;            // material id of a planted seed, if any
+  plantedSeedProgress?: number;    // steps until the seed matures
   // ─── Elevation system ───
   elevation?: number;             // 0-5; undefined treated as 0 (legacy saves)
   cliffDrops?: { n: boolean; e: boolean; s: boolean; w: boolean }; // sides that drop down

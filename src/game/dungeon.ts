@@ -717,15 +717,25 @@ export interface MoveResult {
 }
 
 // Check if a tile should stop auto-run
-export function shouldStopAutoRun(tiles: DungeonTile[][], x: number, y: number, width: number, height: number): boolean {
+export function shouldStopAutoRun(
+  tiles: DungeonTile[][],
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  options: { allowMineable?: boolean } = {},
+): boolean {
   // Out of bounds
   if (x < 0 || x >= width || y < 0 || y >= height) return true;
-  
+
   const tile = tiles[y][x];
-  
-  // Stop on walls (bedrock + mineable both block movement)
-  if (tile.type === 'wall' || tile.type === 'mineable_wall') return true;
-  
+
+  // Stop on bedrock walls always.
+  if (tile.type === 'wall') return true;
+  // Mineable walls: only stop if the caller doesn't want to auto-chip through
+  // them. When Auto-Harvest is on, the path-walker chips them turn-by-turn.
+  if (tile.type === 'mineable_wall' && !options.allowMineable) return true;
+
   // Stop on anything interesting
   if (tile.type === 'enemy') return true;
   if (tile.type === 'treasure') return true;
@@ -735,7 +745,7 @@ export function shouldStopAutoRun(tiles: DungeonTile[][], x: number, y: number, 
   if (tile.type === 'shop') return true;
   if (tile.type === 'elevator') return true;
   if (tile.type === 'nest') return true;
-  
+
   return false;
 }
 

@@ -76,7 +76,7 @@ export function useCloudSave() {
 
   const saveToCloud = useCallback(async (
     saveData: SaveData,
-    options: { skipPreflight?: boolean } = {},
+    options: { skipPreflight?: boolean; snapshotKind?: 'auto' | 'manual'; snapshotLabel?: string } = {},
   ) => {
     if (!isAuthenticated || !user) {
       return { success: false, error: 'Not authenticated' };
@@ -116,6 +116,18 @@ export function useCloudSave() {
 
       if (error) throw error;
 
+      // Best-effort snapshot into rolling history (trigger keeps last 5).
+      try {
+        await supabase.from('game_save_snapshots' as any).insert({
+          user_id: user.id,
+          save_data: saveData as unknown as Record<string, unknown>,
+          kind: options.snapshotKind ?? 'auto',
+          label: options.snapshotLabel ?? null,
+        });
+      } catch (snapErr) {
+        console.warn('Snapshot insert failed (non-fatal):', snapErr);
+      }
+
       const now = new Date();
       setLastSyncTime(now);
       return { success: true, savedAt: now.toISOString() };
@@ -126,6 +138,32 @@ export function useCloudSave() {
       setSyncing(false);
     }
   }, [user, isAuthenticated, loadFromCloud]);
+
+  const listSnapshots = useCallback(async () => {
+    if (!isAuthenticated || !user) return { success: false as const, error: 'Not authenticated' };
+    const { data, error } = await supabase
+      .from('game_save_snapshots' as any)
+      .select('id, created_at, kind, label')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(5);
+    if (error) return { success: false as const, error: error.message };
+    return { success: true as const, snapshots: (data ?? []) as Array<{ id: string; created_at: string; kind: string; label: string | null }> };
+  }, [user, isAuthenticated]);
+
+  const restoreSnapshot = useCallback(async (snapshotId: string): Promise<{ success: boolean; data?: SaveData; error?: string }> => {
+    if (!isAuthenticated || !user) return { success: false, error: 'Not authenticated' };
+    const { data, error } = await supabase
+      .from('game_save_snapshots' as any)
+      .select('save_data')
+      .eq('id', snapshotId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (error) return { success: false, error: error.message };
+    if (!data) return { success: false, error: 'Snapshot not found' };
+    return { success: true, data: (data as any).save_data as SaveData };
+  }, [user, isAuthenticated]);
+
 
   const syncSave = useCallback(async (localSaveData: SaveData) => {
     if (!isAuthenticated) return { action: 'skip' as const };
@@ -172,9 +210,12 @@ export function useCloudSave() {
     saveToCloud,
     loadFromCloud,
     syncSave,
+    listSnapshots,
+    restoreSnapshot,
     syncing,
     lastSyncTime,
     isAuthenticated,
     scoreSave: cloudScore.scoreSave,
   };
+
 }

@@ -37,7 +37,9 @@ import { ParticlesEditor } from './ParticlesEditor';
 import { WorldGenEditor } from './WorldGenEditor';
 import { TileAssetManager } from './TileAssetManager';
 import { TilePatternPainter } from './TilePatternPainter';
-import { Shield, Swords, Package, Ghost, UserCog, Bug, Crosshair, Image as ImageIcon, Palette, Sparkles, Globe2, Lightbulb, Grid3x3 } from 'lucide-react';
+import { Shield, Swords, Package, Ghost, UserCog, Bug, Crosshair, Image as ImageIcon, Palette, Sparkles, Globe2, Lightbulb, Grid3x3, Trophy } from 'lucide-react';
+import { ArenaRoomEditor } from './ArenaRoomEditor';
+import { ArenaAnalyticsPanel } from './ArenaAnalyticsPanel';
 
 
 export function AdminPanel() {

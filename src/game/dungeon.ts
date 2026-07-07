@@ -666,6 +666,40 @@ export function prepareDungeonForEntry(dungeon: DungeonState): DungeonState {
       }
     }
   }
+  // ─── Purge orphan up-stairs ────────────────────────────────────────────
+  // Snapshot rehydration + per-entry stairs-planting can leave stale
+  // `stairs_up` tiles that don't correspond to any overworld exit. Keep
+  // only the up-stair closest to entryPosition (or the player if entry is
+  // unknown); convert every other player-facing up-stair to plain floor.
+  // Portal stairs (`tile.portal` set) are always preserved — they're the
+  // player's craftable exits and their destinations are validated
+  // separately.
+  {
+    const anchor = dungeon.entryPosition ?? playerPosition;
+    let bestX = -1, bestY = -1, bestD = Infinity;
+    for (let y = 0; y < tiles.length; y++) {
+      for (let x = 0; x < tiles[y].length; x++) {
+        const t = tiles[y][x];
+        if (t.type !== 'stairs_up' || t.portal) continue;
+        const d = Math.abs(x - anchor.x) + Math.abs(y - anchor.y);
+        if (d < bestD) { bestD = d; bestX = x; bestY = y; }
+      }
+    }
+    if (bestX >= 0) {
+      for (let y = 0; y < tiles.length; y++) {
+        for (let x = 0; x < tiles[y].length; x++) {
+          const t = tiles[y][x];
+          if (t.type !== 'stairs_up' || t.portal) continue;
+          if (x === bestX && y === bestY) continue;
+          // Preserve the player's current tile — restore its underlying
+          // form (stairsBeneath will keep the intended state).
+          if (x === playerPosition.x && y === playerPosition.y) continue;
+          t.type = 'floor';
+          if (t.stairsBeneath === 'up') t.stairsBeneath = undefined;
+        }
+      }
+    }
+  }
   // Mark player tile (preserve stairsBeneath / terrainType under it).
   const pTile = tiles[playerPosition.y][playerPosition.x];
   if (pTile.type === 'stairs') { pTile.stairsBeneath = 'down'; }

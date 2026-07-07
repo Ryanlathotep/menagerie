@@ -275,16 +275,17 @@ function FloatingDockRoot() {
       {/* Render each button. Docked ones portal into their dock slot;
           floating ones render into document.body at their saved position. */}
       {ctx.order.map((id) => {
-        const cfg = ctx.configs[id];
+        const cfgRef = ctx.configs[id];
         const st = ctx.states[id];
-        if (!cfg || !st) return null;
-        return <FabInstance key={id} cfg={cfg} state={st} />;
+        if (!cfgRef || !st) return null;
+        return <FabInstance key={id} cfgRef={cfgRef} state={st} />;
       })}
     </>
   );
 }
 
-function FabInstance({ cfg, state }: { cfg: FabConfig; state: FabState }) {
+function FabInstance({ cfgRef, state }: { cfgRef: React.MutableRefObject<FabConfig>; state: FabState }) {
+  const cfg = cfgRef.current;
   const ctx = useContext(Ctx)!;
   const size = cfg.size ?? 40;
   const zIndex = cfg.zIndex ?? 9999;

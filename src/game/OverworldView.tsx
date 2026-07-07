@@ -2265,8 +2265,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
               { k: 'nest',             label: '🥚 Nest' },
               { k: 'tree',             label: '🌳 Tree' },
               { k: 'rock',             label: '⛰ Rock' },
+              { k: 'plant',            label: '🌿 Herb' },
               { k: 'building',         label: '🏠 Building' },
-            ] as Array<{ k: 'dungeon_entrance' | 'enemy' | 'nest' | 'tree' | 'rock' | 'building'; label: string }>).map(({ k, label }) => (
+            ] as Array<{ k: SearchKind; label: string }>).map(({ k, label }) => (
               <button
                 key={k}
                 className="px-2 py-1.5 rounded border border-[hsl(30,40%,40%)] bg-[hsl(40,30%,85%)] hover:bg-[hsl(40,40%,80%)] text-sm text-[hsl(30,40%,20%)]"

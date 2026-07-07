@@ -433,8 +433,13 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
         Math.max(0, gen.enemies.baseChance + (difficulty - 1) * gen.enemies.perDifficulty),
       );
 
+      // Plants: sparse in open grass, denser near forests and water. Rolled
+      // AFTER trees/enemies so they only occupy leftover grass slots.
+      const plantBase = 0.035; // 3.5% base chance on open grass
+      const plantForestBoost = forestNoise > gen.trees.forestThreshold ? (forestNoise - gen.trees.forestThreshold) * 0.25 : 0;
+      const plantChance = plantBase + plantForestBoost;
       // Decide tile type. Order matters:
-      //   water (lake or river)  >  stone  >  tree  >  enemy  >  grass
+      //   water (lake or river)  >  stone  >  tree  >  enemy  >  plant  >  grass
       if (isLake || isRiver) {
         type = 'water';
       } else if (isStone) {
@@ -443,6 +448,8 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
         type = 'tree';
       } else if (r < treeChance + enemyChance) {
         type = 'enemy';
+      } else if (r < treeChance + enemyChance + plantChance) {
+        type = 'plant';
       }
 
 

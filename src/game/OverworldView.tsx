@@ -703,6 +703,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     }
     if (autoMineTargetRef.current && reason) addLog(reason, 'info');
     autoMineTargetRef.current = null;
+    automationRunningRef.current = false;
   }, [addLog]);
 
   // Scan a diamond of radius R around `origin` for tiles matching tileType.

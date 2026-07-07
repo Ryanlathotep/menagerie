@@ -1611,16 +1611,20 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       switch (e.key) {
         case ' ': case 'Spacebar': {
           // Space halts every automatic action (auto-walk, auto-mine,
-          // targeting) but only when the player isn't typing — isTypingTarget
-          // above already returned early for inputs/textareas/contenteditable.
+          // auto-hunt, auto-search, targeting) — as long as the player isn't
+          // typing, which isTypingTarget above already filtered.
           const walking = !!autoWalkPathRef.current;
           const mining = !!autoMineTargetRef.current;
-          if (walking || mining || targetingMove) {
+          const hunting = autoHuntTimerRef.current !== null;
+          const searching = autoSearchTimerRef.current !== null;
+          if (walking || mining || hunting || searching || targetingMove) {
             e.preventDefault();
             if (walking) cancelAutoWalk();
             if (mining) cancelAutoMine('⏸ Auto-Harvest halted.');
+            if (hunting) cancelAutoHunt('⏸ Auto-Hunt halted.');
+            if (searching) cancelAutoSearch('⏸ Auto-Search halted.');
             if (targetingMove) cancelTargeting();
-            if (walking && !mining) addLog('⏸ Auto-walk halted.', 'info');
+            if (walking && !mining && !hunting && !searching) addLog('⏸ Auto-walk halted.', 'info');
           }
           break;
         }
@@ -1632,6 +1636,18 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           e.preventDefault(); cancelAutoWalk(); handleMove(-1, 0); break;
         case 'ArrowRight': case 'd': case 'D':
           e.preventDefault(); cancelAutoWalk(); handleMove(1, 0); break;
+        case 'h': case 'H':
+          if (!targetingMove && !buildMode) {
+            e.preventDefault();
+            startAutoHunt();
+          }
+          break;
+        case 'f': case 'F':
+          if (!targetingMove && !buildMode) {
+            e.preventDefault();
+            setAutoSearchPickerOpen(true);
+          }
+          break;
         case 'b': case 'B':
           if (!targetingMove && !buildMode) {
             e.preventDefault();

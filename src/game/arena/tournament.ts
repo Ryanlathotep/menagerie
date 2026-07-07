@@ -178,7 +178,16 @@ export function resolveTournament(
 
     if (roundWinners.length === 1) {
       bracketWinnerId = roundWinners[0].id;
-      if (roundWinners[0].ownerId === 'player') currencyGained += 50;
+      if (roundWinners[0].ownerId === 'player') {
+        currencyGained += 50;
+        // Fire-and-forget: publish to cross-server leaderboard.
+        void submitArenaChampion({
+          cadence,
+          teamName: roundWinners[0].name,
+          teamSnapshot: { members: roundWinners[0].memberCombos, level: roundWinners[0].level, strategyId: roundWinners[0].strategyId ?? 'balanced' },
+          worldSeed: null,
+        });
+      }
       break;
     }
     // Build next round

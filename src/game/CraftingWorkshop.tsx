@@ -213,6 +213,16 @@ export function CraftingWorkshop({
             isUnlocked={isUnlocked}
             handleCraft={handleCraft}
           />
+        ) : activeTab === 'grid' ? (
+          <CraftingGridPanel
+            materials={materials}
+            playerLevel={playerLevel}
+            gridSize={3}
+            worldSeed={worldSeed}
+            onCraft={(item, used, consumable) => {
+              onGridCraft?.(item, used, consumable);
+            }}
+          />
         ) : activeTab === 'consumables' ? (
           <ConsumablesTab
             consumablesByType={consumablesByType}

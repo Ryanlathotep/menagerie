@@ -1577,6 +1577,92 @@ export function DungeonView({
         dispatch({ type: 'SET_PHASE', phase: 'run_summary' });
       }
       return;
+    } else if (item.effect === 'place_portal_stairs') {
+      // Craftable Portal Stairs — place on the player's current tile. The
+      // destination is derived from the tile's relative coord to entryPosition:
+      //   even/even  → overworld at entry.overworld + (relX/2, relY/2)
+      //   odd tiles  → nearest known tower (resolved on use; currently a stub)
+      if (!dungeon) return;
+      const p = dungeon.playerPosition;
+      const at = dungeon.tiles[p.y]?.[p.x];
+      if (!at || at.type === 'wall' || at.type === 'mineable_wall') {
+        addLog('🌀 Cannot place a portal here — the ground is unstable.', 'info');
+        return;
+      }
+      if (at.type === 'stairs_up' || at.stairsBeneath === 'up' || at.portal) {
+        addLog('🌀 A staircase already exists here.', 'info');
+        return;
+      }
+      const entry = dungeon.entryPosition ?? p;
+      const relX = p.x - entry.x;
+      const relY = p.y - entry.y;
+      const isEven = (relX % 2 === 0) && (relY % 2 === 0);
+      // Resolve the run's overworld anchor (entry coord in overworld space).
+      // The dungeon entrance's world coords are the true anchor.
+      const ow = state.saveData.overworldState;
+      const anchorId = typeof window !== 'undefined'
+        ? localStorage.getItem('menagerie_current_dungeon_id')
+        : null;
+      const anchorEntrance = anchorId && ow?.dungeonEntrances?.[anchorId];
+      const anchor = anchorEntrance
+        ? { x: anchorEntrance.worldX, y: anchorEntrance.worldY }
+        : { x: 0, y: 0 };
+      const nextTiles = dungeon.tiles.map(row => row.map(t => ({ ...t })));
+      if (isEven) {
+        const destX = anchor.x + Math.floor(relX / 2);
+        const destY = anchor.y + Math.floor(relY / 2);
+        // Validate destination is a walkable overworld tile if we can check.
+        let validated = true;
+        let invalidReason: string | undefined;
+        if (ow) {
+          // Cheap validation: don't allow water / cliff / building overlap.
+          // (Fine-grained lookup lives in overworld.ts; falling back to true
+          // for coords outside loaded chunks so the portal stays usable.)
+          try {
+            const { getOverworldTile } = require('@/game/overworld');
+            const dt = getOverworldTile(ow, destX, destY);
+            if (dt && (dt.type === 'water' || dt.type === 'cliff' || dt.type === 'player_building')) {
+              validated = false;
+              invalidReason = `target is ${dt.type}`;
+            }
+          } catch { /* ignore — validation optional */ }
+        }
+        nextTiles[p.y][p.x] = {
+          ...nextTiles[p.y][p.x],
+          type: 'stairs_up',
+          stairsBeneath: 'up',
+          portal: { destKind: 'overworld', destOverworld: { x: destX, y: destY }, validated, invalidReason },
+        };
+        addLog(`🌀 Portal staircase placed → Overworld (${destX}, ${destY})${validated ? '' : ` (blocked: ${invalidReason})`}.`, 'system');
+      } else {
+        // Odd-coord: destination is a tower — nearest tower to the mapped coord.
+        const mappedX = anchor.x + Math.round(relX / 2);
+        const mappedY = anchor.y + Math.round(relY / 2);
+        let best: { id: string; d: number } | null = null;
+        if (ow?.dungeonEntrances) {
+          for (const [id, e] of Object.entries(ow.dungeonEntrances)) {
+            if (!e.discovered) continue;
+            const d = Math.abs(e.worldX - mappedX) + Math.abs(e.worldY - mappedY);
+            if (!best || d < best.d) best = { id, d };
+          }
+        }
+        nextTiles[p.y][p.x] = {
+          ...nextTiles[p.y][p.x],
+          type: 'stairs_up',
+          stairsBeneath: 'up',
+          portal: {
+            destKind: 'tower',
+            destTowerId: best?.id,
+            validated: !!best,
+            invalidReason: best ? undefined : 'no discovered tower nearby',
+          },
+        };
+        addLog(`🌀 Portal staircase placed → ${best ? `Tower ${best.id}` : 'unresolved (no known tower)'}.`, 'system');
+      }
+      dispatch({ type: 'UPDATE_DUNGEON', dungeon: { tiles: nextTiles } });
+      dispatch({ type: 'USE_ITEM', itemId: item.id });
+      toast.success('Portal staircase placed!');
+      return;
     } else if (item.effect === 'revive' || item.effect === 'revive_full') {
       // Check if there are fainted party members
       const hasFainted = state.run!.party.some(m => m.stats.currentHp <= 0);

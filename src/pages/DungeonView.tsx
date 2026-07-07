@@ -3842,7 +3842,42 @@ export function DungeonView({
                 },
               });
 
-              const existing = dungeon.compassWaypoints || [];
+              // ── Global auto-action shortcuts (available from every tile menu) ──
+              // Mirror the overworld menu so Auto-Hunt / Auto-Search are always
+              // one right-click away, even inside dungeons.
+              actions.push({
+                id: 'auto-hunt',
+                label: 'Auto-Hunt nearest enemy',
+                icon: Crosshair,
+                hint: 'Auto-paths toward the nearest visible enemy on this floor',
+                onClick: () => {
+                  close();
+                  let best: { x: number; y: number; d: number } | null = null;
+                  const px = dungeon.playerPosition.x, py = dungeon.playerPosition.y;
+                  for (let yy = 0; yy < dungeon.tiles.length; yy++) {
+                    for (let xx = 0; xx < dungeon.tiles[yy].length; xx++) {
+                      const t = dungeon.tiles[yy][xx];
+                      if (!t || t.type !== 'enemy' || !t.visible) continue;
+                      const d = Math.abs(xx - px) + Math.abs(yy - py);
+                      if (!best || d < best.d) best = { x: xx, y: yy, d };
+                    }
+                  }
+                  if (!best) {
+                    addLog('🔎 Auto-Hunt: no visible enemies on this floor.', 'info');
+                    toast.info('No visible enemies');
+                    return;
+                  }
+                  addLog(`🏹 Auto-Hunt: pathing to enemy at (${best.x}, ${best.y}).`, 'info');
+                  handleTileClick(best.x, best.y);
+                },
+              });
+              actions.push({
+                id: 'auto-search',
+                label: 'Auto-Search…',
+                icon: Search,
+                hint: 'Pick a target type (stairs, treasure, plant, shop, wall, nest)',
+                onClick: () => { close(); setDungeonAutoSearchOpen(true); },
+              });
               const pinnedWp = existing.find(p => p.x === x && p.y === y);
               const isPinned = !!pinnedWp;
               actions.push({

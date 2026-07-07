@@ -76,9 +76,10 @@ export function getTileElevation(
   biome: ElementType | null,
 ): Elevation {
   // Flatten the immediate spawn region so the player never starts trapped
-  // between cliff faces.
+  // between cliff faces. Widened to 12 tiles after players reported the
+  // starting basin was choked with cliffs.
   const distFromHome = Math.sqrt(wx * wx + wy * wy);
-  if (distFromHome < 6) return 1;
+  if (distFromHome < 12) return 1;
 
   const base = baseElevationNoise(wx, wy); // 0..1
   const mega = megaMountainNoise(wx, wy);  // 0..1

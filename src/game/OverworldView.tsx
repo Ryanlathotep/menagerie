@@ -607,7 +607,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     autoWalkPathRef.current = null;
   }, []);
 
-  const startAutoWalk = useCallback((path: Position[]) => {
+  const startAutoWalk = useCallback((path: Position[], onArrive?: () => void) => {
     cancelAutoWalk();
     autoWalkPathRef.current = [...path];
     const stepDelay = Math.max(80, settings.autoRunSpeed || 100);
@@ -657,7 +657,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         if (queue.length > 0) addLog('⚠️ Auto-walk stopped — enemy too close! Tap again to keep moving.', 'info');
         return;
       }
-      if (queue.length === 0) cancelAutoWalk();
+      if (queue.length === 0) {
+        cancelAutoWalk();
+        // Fire the arrival hook AFTER the state has settled — auto-harvest
+        // reads player position from the ref and needs the last move committed.
+        if (onArrive) window.setTimeout(onArrive, stepDelay);
+      }
     }, stepDelay);
   }, [cancelAutoWalk, settings.autoRunSpeed, addLog]);
 
@@ -698,6 +703,28 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
       const t = getOverworldTile(ow, target.x, target.y);
       if (!t || t.type !== target.tileType) {
+        // Depleted — look for an adjacent same-type tile to pivot to, so
+        // clusters of trees / rocks harvest without needing a fresh tap.
+        const neighbors = [
+          { x: target.x, y: target.y - 1 },
+          { x: target.x, y: target.y + 1 },
+          { x: target.x - 1, y: target.y },
+          { x: target.x + 1, y: target.y },
+        ];
+        let pivot: Position | null = null;
+        for (const n of neighbors) {
+          const nt = getOverworldTile(ow, n.x, n.y);
+          if (nt && nt.type === target.tileType) {
+            // Must also be adjacent to the player so we can step into it next tick.
+            const d = Math.abs(n.x - ow.playerPosition.x) + Math.abs(n.y - ow.playerPosition.y);
+            if (d === 1) { pivot = n; break; }
+          }
+        }
+        if (pivot) {
+          autoMineTargetRef.current = { x: pivot.x, y: pivot.y, tileType: target.tileType };
+          addLog(`🌲 Auto-Harvest chained to adjacent ${target.tileType}.`, 'info');
+          return;
+        }
         cancelAutoMine('✅ Auto-Harvest finished — resource depleted.');
         return;
       }
@@ -709,7 +736,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
       handleMoveRef.current(dx, dy);
     }, stepDelay);
-  }, [cancelAutoMine, cancelAutoWalk, settings.autoRunSpeed]);
+  }, [cancelAutoMine, cancelAutoWalk, settings.autoRunSpeed, addLog]);
 
   useEffect(() => () => cancelAutoMine(), [cancelAutoMine]);
 
@@ -1289,7 +1316,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         return;
       }
     }
-    startAutoWalk(path);
+    // If the far-tap target itself is a harvestable AND auto-mine is on, kick
+    // off auto-harvest as soon as we arrive at the adjacent walkable tile —
+    // matches the mental model "walk over there and start chopping".
+    const kickHarvest = settings.autoMine && (tile?.type === 'rock' || tile?.type === 'tree');
+    startAutoWalk(path, kickHarvest ? () => startAutoMine(worldX, worldY) : undefined);
   }, [overworld, monster, targetingMove, handleTargetingClick, handleMove, addLog, buildMode, selectedBuildType, roadBuildMode, selectedRoadType, saveOverworld, settings.autoMine, startAutoMine]);
   
   // Right-click → context menu for player buildings, or auto-attack for enemies/nests

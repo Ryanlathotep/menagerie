@@ -13,6 +13,25 @@ Format:
 
 ---
 
+## 2026-07-07 — Auto-harvest chains adjacent + kicks in after auto-walk arrival
+- **Source**: bug `69a179cd` — auto-harvest-issue
+- **Root cause**: `startAutoMine` cancelled the moment its target tile depleted, and far-tap on a distant tree/rock only walked the player over — you had to tap again to actually harvest.
+- **Fix**:
+  - `src/game/OverworldView.tsx` `startAutoMine`: on depletion, scan the 4 adjacent tiles for a same-type resource that is also adjacent to the player, and pivot the target onto it before the next tick. Logs "chained to adjacent {type}". All existing halt conditions (enemy sighted / moved out of range) still fire.
+  - `src/game/OverworldView.tsx` `startAutoWalk`: accepts an optional `onArrive` callback fired one tick after the queue empties.
+  - `src/game/OverworldView.tsx` far-tap handler: when the tapped tile is `rock` or `tree` AND `settings.autoMine` is on, passes `onArrive = () => startAutoMine(worldX, worldY)` so the harvest starts automatically on arrival.
+- **Verified by**: TS build clean. Behavior: tap far tree → walk to adjacent, chop until depleted, jump to next tree in the cluster, stop cleanly on enemy sight / cluster exhausted / player moves away.
+
+## 2026-07-07 — Pathing tries to walk through mineable walls
+- **Source**: bug `03cd6bec` — pathing (dungeon)
+- **Root cause**: `pathfinding.ts` `isWalkable()` returned true for anything that wasn't `type === 'wall'`, including `mineable_wall`. A* happily routed through cavestone even when auto-mine was off, and the player got stuck against the first mineable tile with no way to reach the goal.
+- **Fix**:
+  - `src/game/pathfinding.ts`: `isWalkable(tile, allowMineable)` now blocks `mineable_wall` unless the caller opts in. `findPath` takes `{ allowMineable }` — mid-path steps are always disallowed (walker can't phase through solid rock without mining), only the goal itself may be a mineable wall when `allowMineable` is true.
+  - `src/pages/DungeonView.tsx`: both `findPath` call sites (tap-to-move + post-expansion repath) now pass `{ allowMineable: !!settings.autoMine }`.
+- **Verified by**: TS build clean. With auto-mine OFF the walker routes around mineable_wall; with auto-mine ON it treats the goal wall as reachable (dungeon combat/mine step handles the actual dig).
+
+
+
 ## 2026-06-18 — Tooltips/HoverCards unusable on mobile (no hover, no long-press)
 - **Source**: bug `ffcffd41` — originally filed as "Tower of the Infinite tooltip empty on mobile long-press" but the real scope is app-wide: every Radix `Tooltip` and `HoverCard` was suppressed on touch devices via `if (isTouch) return null`, so mobile users had no way to read them.
 - **First attempt (rejected by user)**: Added an ⓘ Popover to dungeon rows only. User feedback: not helpful — they want the actual mobile equivalent of desktop hover (long-press) working across the whole app.

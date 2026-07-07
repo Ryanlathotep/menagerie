@@ -67,6 +67,14 @@ export interface MaterialEffect {
   label: string;
   /** Which blueprint categories the effect applies to (empty = all). */
   categories?: BlueprintCategory[];
+  /** Name prefix contributed by this material when it's the top filler (e.g. "Blazing "). */
+  namePrefix?: string;
+  /**
+   * Per-blueprint overrides: when this material is used in the named blueprint,
+   * these stat contributions REPLACE the default `perUnit`. Missing entries
+   * fall through to the default.
+   */
+  perItemPerUnit?: Record<string, EquipmentStats & { levelBonus?: number; durabilityBonus?: number }>;
 }
 
 export interface ResolvedCraft {

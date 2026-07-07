@@ -23,26 +23,38 @@ function heuristic(a: Position, b: Position): number {
 }
 
 // Tiles a path can step *through*. Goal tile uses a looser check.
-function isTraversable(tile: OverworldTile | null, state: OverworldState, x: number, y: number): boolean {
+// `avoidStructures` (used by auto-harvest / auto-hunt / auto-search) forbids
+// stepping onto dungeon entrances, NPC buildings, and player-built structures
+// mid-path — auto-jobs must never blunder into a dungeon or trigger a build
+// menu just because it happened to lie on the shortest route.
+function isTraversable(
+  tile: OverworldTile | null,
+  state: OverworldState,
+  x: number,
+  y: number,
+  avoidStructures = false,
+): boolean {
   if (!tile) return false;
   switch (tile.type) {
     case 'grass':
     case 'dirt_road':
     case 'stone_road':
-    case 'building':       // towns/campfires are walked onto
-    case 'dungeon_entrance':
       return true;
+    case 'building':
+    case 'dungeon_entrance':
+      return !avoidStructures;
     case 'player_building': {
       const id = tile.playerBuildingId;
-      if (!id) return true;
+      if (!id) return !avoidStructures;
       const b = state.playerBuildings?.find(pb => pb.id === id);
-      if (!b) return true;
-      // Walls are only traversable when they're a gate OR when this is a
-      // walkable wall-top (interior of a 3×3+ wall block).
+      if (!b) return !avoidStructures;
+      // Walls: only traversable via gate OR walkable wall-top. Those remain
+      // legal even for auto-jobs since they're the intended traversal path
+      // through a walled area.
       if (b.type === 'wall') {
         return isWallActingAsGate(b, state) || isWalkableWallTop(state, x, y);
       }
-      return true;
+      return !avoidStructures;
     }
     case 'water':
     case 'tree':
@@ -59,13 +71,22 @@ function isTraversable(tile: OverworldTile | null, state: OverworldState, x: num
 
 // Find a 4-connected path from start to goal. Goal is included in returned
 // path. Returns null if no path exists within the search budget.
+export interface FindOverworldPathOptions {
+  /** Refuse to path through structures (dungeon entrances, NPC buildings,
+   *  non-gate player buildings). Auto-harvest / auto-hunt / auto-search must
+   *  pass this so they never wander onto a dungeon and trigger entry. */
+  avoidStructures?: boolean;
+}
+
 export function findOverworldPath(
   state: OverworldState,
   start: Position,
   goal: Position,
   maxNodes = 8000,
+  options: FindOverworldPathOptions = {},
 ): Position[] | null {
   if (start.x === goal.x && start.y === goal.y) return [];
+  const avoidStructures = !!options.avoidStructures;
 
   // Make sure tiles around the goal are loaded so we don't pathfind through
   // ungenerated chunks.
@@ -84,7 +105,7 @@ export function findOverworldPath(
     goalTile.type === 'dungeon_entrance' ||
     goalTile.type === 'building' ||
     goalTile.type === 'player_building';
-  if (!isTraversable(goalTile, state, goal.x, goal.y) && !goalIsInteractable) return null;
+  if (!isTraversable(goalTile, state, goal.x, goal.y, avoidStructures) && !goalIsInteractable) return null;
 
   const open: PathNode[] = [];
   const closed = new Set<string>();
@@ -135,8 +156,8 @@ export function findOverworldPath(
       // should auto-walk to the boundary instead of silently failing.
       const distToGoal = Math.abs(nb.x - goal.x) + Math.abs(nb.y - goal.y);
       if (!tile.explored && distToGoal > 2) continue;
-      if (!isGoal && !isTraversable(tile, state, nb.x, nb.y)) continue;
-      if (isGoal && !isTraversable(tile, state, nb.x, nb.y) && !goalIsInteractable) continue;
+      if (!isGoal && !isTraversable(tile, state, nb.x, nb.y, avoidStructures)) continue;
+      if (isGoal && !isTraversable(tile, state, nb.x, nb.y, avoidStructures) && !goalIsInteractable) continue;
 
       // Z-transition gate (mirrors movePlayer): only enforced when a wall-top
       // is involved. Natural ground elevation differences are walkable.

@@ -1635,7 +1635,6 @@ export function DungeonView({
           // (Fine-grained lookup lives in overworld.ts; falling back to true
           // for coords outside loaded chunks so the portal stays usable.)
           try {
-            const { getOverworldTile } = require('@/game/overworld');
             const dt = getOverworldTile(ow, destX, destY);
             if (dt && (dt.type === 'water' || dt.type === 'cliff' || dt.type === 'player_building')) {
               validated = false;

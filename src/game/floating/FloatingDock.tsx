@@ -345,7 +345,7 @@ function FabInstance({ cfgRef, state }: { cfgRef: React.MutableRefObject<FabConf
     if (!d.moved) {
       setDragging(false);
       setDragPos(null);
-      cfg.onTap();
+      cfgRef.current.onTap();
       return;
     }
     const finalPos = clampFloat({

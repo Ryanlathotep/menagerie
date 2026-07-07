@@ -23,26 +23,38 @@ function heuristic(a: Position, b: Position): number {
 }
 
 // Tiles a path can step *through*. Goal tile uses a looser check.
-function isTraversable(tile: OverworldTile | null, state: OverworldState, x: number, y: number): boolean {
+// `avoidStructures` (used by auto-harvest / auto-hunt / auto-search) forbids
+// stepping onto dungeon entrances, NPC buildings, and player-built structures
+// mid-path — auto-jobs must never blunder into a dungeon or trigger a build
+// menu just because it happened to lie on the shortest route.
+function isTraversable(
+  tile: OverworldTile | null,
+  state: OverworldState,
+  x: number,
+  y: number,
+  avoidStructures = false,
+): boolean {
   if (!tile) return false;
   switch (tile.type) {
     case 'grass':
     case 'dirt_road':
     case 'stone_road':
-    case 'building':       // towns/campfires are walked onto
-    case 'dungeon_entrance':
       return true;
+    case 'building':
+    case 'dungeon_entrance':
+      return !avoidStructures;
     case 'player_building': {
       const id = tile.playerBuildingId;
-      if (!id) return true;
+      if (!id) return !avoidStructures;
       const b = state.playerBuildings?.find(pb => pb.id === id);
-      if (!b) return true;
-      // Walls are only traversable when they're a gate OR when this is a
-      // walkable wall-top (interior of a 3×3+ wall block).
+      if (!b) return !avoidStructures;
+      // Walls: only traversable via gate OR walkable wall-top. Those remain
+      // legal even for auto-jobs since they're the intended traversal path
+      // through a walled area.
       if (b.type === 'wall') {
         return isWallActingAsGate(b, state) || isWalkableWallTop(state, x, y);
       }
-      return true;
+      return !avoidStructures;
     }
     case 'water':
     case 'tree':

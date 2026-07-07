@@ -31,13 +31,13 @@ const HoverCard = ({
   );
 
   if (!isTouch) {
+    // Only forward `open` when the caller provided one — avoids React #185.
+    const rootExtra: Record<string, unknown> = { ...rootProps };
+    if (openProp !== undefined) rootExtra.open = openProp;
+    if (defaultOpen !== undefined) rootExtra.defaultOpen = defaultOpen;
+    if (onOpenChange) rootExtra.onOpenChange = onOpenChange;
     return (
-      <HoverCardPrimitive.Root
-        {...rootProps}
-        open={openProp}
-        defaultOpen={defaultOpen}
-        onOpenChange={onOpenChange}
-      >
+      <HoverCardPrimitive.Root {...rootExtra}>
         {children}
       </HoverCardPrimitive.Root>
     );

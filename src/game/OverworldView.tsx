@@ -943,52 +943,93 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     autoHuntTimerRef.current = window.setInterval(() => {
       const ow = overworldRef.current;
       if (!ow) { cancelAutoHunt(); return; }
-      const enemies = getVisibleOverworldEnemies(ow, 30);
-      if (enemies.length === 0) {
-        cancelAutoHunt('🔎 Auto-Hunt stopped — no visible enemies.');
-        return;
-      }
-      // Nearest enemy by Manhattan distance.
       const px = ow.playerPosition.x, py = ow.playerPosition.y;
-      enemies.sort((a, b) =>
-        (Math.abs(a.pos.x - px) + Math.abs(a.pos.y - py)) -
-        (Math.abs(b.pos.x - px) + Math.abs(b.pos.y - py)),
-      );
-      const target = enemies[0].pos;
-      const dist = Math.abs(target.x - px) + Math.abs(target.y - py);
-      // Adjacent — stop and open targeting for the best attack move.
-      if (dist <= 1) {
-        cancelAutoHunt();
-        const move = pickHuntAttackMove();
-        if (!move) {
-          addLog('🏹 In range! Pick a move to attack.', 'info');
+      const enemies = getVisibleOverworldEnemies(ow, 30);
+
+      // ── Enemy in sight: pursue the nearest one ──
+      if (enemies.length > 0) {
+        enemies.sort((a, b) =>
+          (Math.abs(a.pos.x - px) + Math.abs(a.pos.y - py)) -
+          (Math.abs(b.pos.x - px) + Math.abs(b.pos.y - py)),
+        );
+        const target = enemies[0].pos;
+        const dist = Math.abs(target.x - px) + Math.abs(target.y - py);
+        // Adjacent — stop and open targeting for the best attack move.
+        if (dist <= 1) {
+          cancelAutoHunt();
+          const move = pickHuntAttackMove();
+          if (!move) {
+            addLog('🏹 In range! Pick a move to attack.', 'info');
+            return;
+          }
+          const config = getAttackConfig(move);
+          const validTargets = getOverworldValidTargets(ow.playerPosition, config, ow);
+          if (validTargets.some(t => t.x === target.x && t.y === target.y)) {
+            setTargetingMove(move);
+            setTargetingTiles(validTargets);
+            setTimeout(() => handleTargetingClick(target.x, target.y), 0);
+          } else {
+            addLog(`🏹 In range! Pick a move to attack.`, 'info');
+          }
           return;
         }
-        const config = getAttackConfig(move);
-        const validTargets = getOverworldValidTargets(ow.playerPosition, config, ow);
-        if (validTargets.some(t => t.x === target.x && t.y === target.y)) {
-          setTargetingMove(move);
-          setTargetingTiles(validTargets);
-          setTimeout(() => handleTargetingClick(target.x, target.y), 0);
-        } else {
-          addLog(`🏹 In range! Pick a move to attack.`, 'info');
+        // Walk toward an adjacent tile of the enemy (avoid structures).
+        const offsets: Array<[number, number]> = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+        let bestPath: Position[] | null = null;
+        for (const [ox, oy] of offsets) {
+          const ax = target.x + ox, ay = target.y + oy;
+          if (ax === px && ay === py) { bestPath = []; break; }
+          const p = findOverworldPath(ow, ow.playerPosition, { x: ax, y: ay }, 8000, { avoidStructures: true });
+          if (p && p.length > 0 && (!bestPath || p.length < bestPath.length)) bestPath = p;
         }
+        if (!bestPath || bestPath.length === 0) {
+          // Can't reach that enemy — fall through to fog-exploration below
+          // instead of quitting so the hunt keeps making progress.
+        } else {
+          const step = bestPath[0];
+          const dx = step.x - px, dy = step.y - py;
+          if (Math.abs(dx) + Math.abs(dy) !== 1) { cancelAutoHunt(); return; }
+          handleMoveRef.current(dx, dy);
+          return;
+        }
+      }
+
+      // ── No enemy in sight (or unreachable): spiral outward through fog ──
+      // Find the nearest explored, walkable tile that borders an unexplored
+      // (or ungenerated) neighbor — that's a frontier tile — and walk toward
+      // it. This keeps the map streaming until an enemy appears.
+      const SCAN = 30;
+      let bestFrontier: { x: number; y: number; d: number } | null = null;
+      for (let dy = -SCAN; dy <= SCAN; dy++) {
+        const rem = SCAN - Math.abs(dy);
+        for (let dx = -rem; dx <= rem; dx++) {
+          const x = px + dx, y = py + dy;
+          const t = getOverworldTile(ow, x, y);
+          if (!t || !t.explored) continue;
+          // Skip walls & other unpassable tile types quickly.
+          if (t.type === 'wall' || t.type === 'building' || t.type === 'tree' ||
+              t.type === 'rock' || t.type === 'water' || t.type === 'cliff') continue;
+          // Frontier check: any neighbor missing / unexplored.
+          let frontier = false;
+          for (const [ox, oy] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
+            const nt = getOverworldTile(ow, x + ox, y + oy);
+            if (!nt || !nt.explored) { frontier = true; break; }
+          }
+          if (!frontier) continue;
+          const d = Math.abs(dx) + Math.abs(dy);
+          if (!bestFrontier || d < bestFrontier.d) bestFrontier = { x, y, d };
+        }
+      }
+      if (!bestFrontier) {
+        cancelAutoHunt('🔎 Auto-Hunt stopped — no enemies visible and no fog to explore.');
         return;
       }
-      // Walk toward an adjacent tile of the enemy (avoid structures).
-      const offsets: Array<[number, number]> = [[0, -1], [0, 1], [-1, 0], [1, 0]];
-      let bestPath: Position[] | null = null;
-      for (const [ox, oy] of offsets) {
-        const ax = target.x + ox, ay = target.y + oy;
-        if (ax === px && ay === py) { bestPath = []; break; }
-        const p = findOverworldPath(ow, ow.playerPosition, { x: ax, y: ay }, 8000, { avoidStructures: true });
-        if (p && p.length > 0 && (!bestPath || p.length < bestPath.length)) bestPath = p;
-      }
-      if (!bestPath || bestPath.length === 0) {
-        cancelAutoHunt('⚠️ Auto-Hunt stopped — no path to enemy.');
+      const path = findOverworldPath(ow, ow.playerPosition, { x: bestFrontier.x, y: bestFrontier.y }, 8000, { avoidStructures: true });
+      if (!path || path.length === 0) {
+        cancelAutoHunt('⚠️ Auto-Hunt stopped — no path outward.');
         return;
       }
-      const step = bestPath[0];
+      const step = path[0];
       const dx = step.x - px, dy = step.y - py;
       if (Math.abs(dx) + Math.abs(dy) !== 1) { cancelAutoHunt(); return; }
       handleMoveRef.current(dx, dy);

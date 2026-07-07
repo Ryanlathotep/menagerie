@@ -163,7 +163,7 @@ export function ArenaHub({ onClose }: ArenaHubProps) {
                             currency: s.currency - entry.cost,
                             purchasedItems: [...s.purchasedItems, entry.item.id],
                           }));
-                          dispatch({ type: 'ADD_EQUIPMENT', equipment: entry.item } as any);
+                          dispatch({ type: 'ADD_EQUIPMENT', item: entry.item } as any);
                           toast({ title: `Bought ${entry.item.name}` });
                         }}>
                         {owned ? 'Owned' : 'Buy'}

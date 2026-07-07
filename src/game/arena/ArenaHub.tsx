@@ -272,6 +272,7 @@ function TeamsTab({ arena, setArena }: { arena: ArenaState; setArena: React.Disp
   const { state } = useGame();
   const [name, setName] = useState('My Team');
   const [selected, setSelected] = useState<string[]>([]);
+  const [strategyId, setStrategyId] = useState<string>('balanced');
   const unlocked = state.saveData.unlockedMonsters ?? [];
 
   return (

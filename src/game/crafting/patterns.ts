@@ -281,6 +281,7 @@ export const DEFAULT_BLUEPRINTS: ItemBlueprint[] = [
       { dx: 0, dy: 0, role: 'catalyst', acceptTypes: ['essence', 'gem', 'rune'] },
       { dx: 0, dy: 1, role: 'binder',   acceptTypes: ['fabric'] },
     ],
+  },
   // ---------------- BUILDING KITS (Town Hall only) ----------------
   // Crafted output is a placeable "Building Kit" — currently surfaces as an
   // inventory item whose crafted stats represent the bonuses the built

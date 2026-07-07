@@ -47,6 +47,12 @@ interface CraftingWorkshopProps {
   onUpgradePickaxe?: (tier: PickaxeTier, materials: { materialId: string; quantity: number }[]) => void;
   onUpgradeShovel?: (tier: ShovelTier, materials: { materialId: string; quantity: number }[]) => void;
   onCraftWorkstation?: (materials: { materialId: string; quantity: number }[]) => void;
+  onGridCraft?: (
+    item: EquipmentItem | null,
+    used: { materialId: string; quantity: number }[],
+    consumable?: { name: string; icon: string; effectId: string; rarity: import('./equipment').Rarity },
+  ) => void;
+  worldSeed?: string | null;
   onClose: () => void;
 }
 

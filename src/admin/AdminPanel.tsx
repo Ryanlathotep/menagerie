@@ -200,6 +200,16 @@ export function AdminPanel() {
           <TabsContent value="features" className="p-4 m-0">
             <FeatureRequestsEditor />
           </TabsContent>
+          <TabsContent value="arena" className="p-4 m-0">
+            <Tabs defaultValue="rooms">
+              <TabsList>
+                <TabsTrigger value="rooms">Room Editor</TabsTrigger>
+                <TabsTrigger value="analytics">Balance Analytics</TabsTrigger>
+              </TabsList>
+              <TabsContent value="rooms" className="mt-4"><ArenaRoomEditor /></TabsContent>
+              <TabsContent value="analytics" className="mt-4"><ArenaAnalyticsPanel /></TabsContent>
+            </Tabs>
+          </TabsContent>
           <TabsContent value="access" className="p-4 m-0">
             <AdminAccessEditor />
           </TabsContent>

@@ -279,14 +279,53 @@ export function CharacterSelect() {
         />
 
         <Card className="p-3">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <h3 className="text-sm font-semibold">Party ({selectedParty.length}/{MAX_PARTY_SIZE})</h3>
             {selectedParty.length > 0 && (
               <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setSelectedParty([])}>
                 Clear
               </Button>
             )}
+            <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={saveCurrentParty}>
+              💾 Save Layout
+            </Button>
+            <div className="ml-auto">
+              <Button
+                size="sm"
+                className="h-7 text-xs bg-gradient-to-r from-primary to-secondary"
+                disabled={selectedParty.length === 0}
+                onClick={proceedToEquipment}
+              >
+                {state.saveData.storedEquipment?.length > 0
+                  ? `Proceed to Equip (${selectedParty.length}) →`
+                  : `Start Run (${selectedParty.length}) ✨`}
+              </Button>
+            </div>
           </div>
+          {savedParties.length > 0 && (
+            <div className="flex items-center gap-1 mb-2 flex-wrap">
+              <span className="text-[10px] text-muted-foreground mr-1">Layouts:</span>
+              {savedParties.map(preset => (
+                <div key={preset.name} className="inline-flex items-center rounded-full border bg-muted/30 pl-2 pr-1 h-6 gap-1">
+                  <button
+                    className="text-[11px] font-medium hover:text-primary"
+                    onClick={() => loadSavedParty(preset)}
+                    title={`Load ${preset.name} (${preset.ids.length} monsters)`}
+                  >
+                    {preset.name}
+                    <span className="text-muted-foreground ml-1">({preset.ids.length})</span>
+                  </button>
+                  <button
+                    className="text-[10px] text-muted-foreground hover:text-destructive w-4 h-4 rounded-full flex items-center justify-center"
+                    onClick={() => deleteSavedParty(preset.name)}
+                    title="Delete layout"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex gap-2">
             {Array.from({ length: MAX_PARTY_SIZE }).map((_, i) => {
               const member = selectedParty[i];

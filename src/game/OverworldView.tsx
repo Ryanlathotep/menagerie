@@ -2284,7 +2284,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             effect: consumable.effectId, quantity: 1,
           }});
         }}
-        onClose={() => { setShowWorkshop(false); setWorkshopStationBuilding(null); }}
+        onClose={() => { setShowWorkshop(false); setWorkshopStationBuilding(null); setTownHallCraftBuildings(false); }}
       />
     )}
 

@@ -1,60 +1,79 @@
+# Herbs + Crafting Overhaul
 
-## The problem
-The current tile editor asks you to describe rules (neighbors, shapes, bitmasks) before you ever see results. You shouldn't have to. You already have the sliced tiles and reference gifs — you just need a place to arrange them and have the dungeon copy your arrangements.
+Two features shipped in one pass, in the order they unblock each other.
 
-## What I'll build
+---
 
-### 1. A "Tile Patterns" painter (new admin page)
-- Blank 8×8 grid.
-- Left panel: your existing sliced tiles (already in `game_data_overrides`, kind='sliced').
-- Click a tile, click a grid cell → it paints. That's it. No shapes, no bitmasks, no neighbor toggles.
-- "Save pattern" → stores the grid as one named example (e.g. "stone corner room").
-- "Tag" field: which **tile family** it belongs to (e.g. `stone-wall`, `brick-wall`). Patterns for the same family pool together.
+## Phase 1 — Wild & Farmed Herbs
 
-### 2. Pattern storage
-- New key namespace in `game_data_overrides`: `tile_pattern:<id>`.
-- Shape: `{ name, family, width, height, cells: [{x,y,tileKey}] }`.
-- No schema migration needed — reuses the existing override table you're already using for tiles.
+### 1a. New tile type `plant`
+- Add `'plant'` to `OverworldTile.type` union with fields `plantVariant: 'herb'|'flower'|'mushroom'|'root'`, `regrowSteps`, `harvested: boolean`.
+- Reuse the exact `rock`/`tree` plumbing:
+  - Chunk generation (`overworld.ts`): scatter plants in grass/forest biomes via noise, denser near water and forest clusters.
+  - `movePlayer` → `case 'resource'`: on step, drop 1-3 herb materials + rare seeds; toggle `harvested=true`; regrow after N steps like current resource regen.
+  - Auto-Harvest: `findClusterTargets` already keys on `tileType`, so `plant` clusters harvest via the same job — no new loop needed.
+  - Unified menu: add plant branch (Harvest / Walk & Harvest / Auto-Harvest / Disable Auto).
+  - Tile graphics: new `OverworldTileGraphics` case with 4 hand-drawn SVG variants.
+  - Tooltip: plant name, variant, drop preview.
 
-### 3. The "rule learner" (pure function, no UI)
-- Reads all patterns for a family.
-- For each painted cell, records: "this tileKey was used when its 8 neighbors looked like [N=stone, NE=empty, E=stone, …]."
-- Builds a lookup: `neighborSignature → [candidate tileKeys]`.
-- That's the entire ruleset. No hand-authored bitmasks.
+### 1b. Herb materials + seeds
+- Extend `materials.ts` with herb category: `mint_leaf`, `moon_flower`, `red_cap_mushroom`, `bitterroot`, `starweed`, `emberpetal`, `frost_lily`, plus their `_seed` counterparts.
+- Seeds have `plantable: true` metadata for Phase 1c.
 
-### 4. Dungeon renderer hook
-- When the dungeon needs to draw a wall tile, it asks the learner: "given these 8 neighbors, what tile?"
-- Picks from candidates (random if multiple match — gives natural variation).
-- Falls back to a designated "default" tile if no pattern covered that situation (ugly but never crashes).
-- The current Blob-47 path stays as-is. A wall family opts in by setting `useExamples: true` on its meta. **Nothing existing breaks.**
+### 1c. Farm plot integration
+- Existing farm building already accepts `assignedMonsterId` and outputs materials — extend it:
+  - Add "Plant seed" dialog when interacting with a farm: pick any seed from inventory.
+  - `harvestOutput` picks recipe based on planted seed (higher yield + tier bonus vs wild).
+  - Growth speed scales with assigned monster's Earth/Bio affinity.
 
-### 5. The repeatable process for future tile sets
-When you upload a new sheet later:
-1. Slice it (existing flow, unchanged).
-2. Open Tile Patterns → pick the new family tag.
-3. Paint 2–5 small examples of what walls/floors/corners should look like.
-4. Mark the family `useExamples: true`.
-5. Generate a dungeon — it copies your style.
+---
 
-No code changes per tile set. Ever.
+## Phase 2 — Crafting Overhaul (Stations / Recipes / Tiers)
+
+### 2a. Station buildings
+Add four new `player_building` sub-types:
+| Station | Recipes | Requires |
+|--------|---------|----------|
+| **Forge** | Metal gear, weapons, ore refinement | 20 stone, 10 wood |
+| **Workbench** | Wood/leather gear, traps, utility items | 10 wood |
+| **Brewing Stand** | Potions, elixirs, infusions | 5 stone, 5 wood, 3 herb |
+| **Enchanting Altar** | Rune scrolls, monster-catch enhancers | 15 stone, 3 mithril, 5 essence |
+
+Existing `CraftingWorkshop` becomes a **portable "any-station"** granted by the Portable Workstation item (unchanged), so single-player crafting still works anywhere.
+
+### 2b. Recipe & tier restructure
+- New `recipes.ts` module. Each recipe carries: `station`, `tier` (Common/Uncommon/Rare/Epic/Legendary), `inputs`, `output`, `unlockCondition`.
+- Tier gating: T3+ recipes require the station to be **upgraded** (spend materials to upgrade Forge Mk1 → Mk2 → Mk3, etc.). Upgrade unlocks that station's higher-tier recipes.
+- Discovery still uses existing "escape dungeon to unlock blueprints" flow (already memory-locked).
+
+### 2c. Potions & Infusions
+- Potions are Brewing Stand outputs: heal, cure status, buff stats, elemental resist, XP boost.
+- **Infusion**: at any station, you can consume a potion during crafting to add its effect as a passive to the item (e.g. brew Fire Resist → infuse into armor → armor grants +10% fire resist). Infusions consume the potion and cost 1 essence.
+
+### 2d. UI
+- Rework `CraftingWorkshop.tsx` into tabbed view: **Forge | Workbench | Brewing | Enchanting**, plus **Dismantle** (kept) and **Infuse** (new).
+- Non-portable use: each tab is grayed out unless the player stands adjacent to the matching station OR holds the Portable Workstation.
+- Recipe list per tab with tier badges, station-Mk requirement chip, material-cost preview.
+
+---
 
 ## Technical notes
-- New file: `src/admin/TilePatternPainter.tsx` (the grid painter + save).
-- New file: `src/game/tilePatternLearner.ts` (pure function: patterns → lookup).
-- New route entry in `AdminTiles.tsx` (tab alongside existing editors).
-- Renderer hook added in the wall draw path, gated on `useExamples`.
-- Existing `TileAssetManager.tsx` is **not modified**. Existing Blob-47 data is **not touched**.
 
-## What I'm NOT doing
-- Not removing the Blob-47 editor.
-- Not modifying any of your existing tile assignments.
-- Not changing how slicing works.
-- Not touching the renderer's current code path for families without `useExamples`.
+- No database schema changes needed. Herbs, seeds, potions, and stations all live in existing `saveData.storedItems`, `run.inventory`, `overworld.playerBuildings`.
+- Existing constraints respected: recipes still unlock via dungeon escape, materials remain global, station buildings follow the 10-tile Manhattan build-radius rule.
+- `Full overhaul` scope is ~7 file additions and ~5 substantial edits. Estimate: several turns; will land it in this order:
+  1. `plant` tile + chunk gen + graphics + auto-harvest (playable herbs).
+  2. Herb/seed materials + drop table.
+  3. Farm seed-planting dialog.
+  4. Station buildings + upgrade tiers.
+  5. Recipes module + tier gating.
+  6. Brewing + Infusion.
+  7. Workshop UI rebuild with tabs and station gating.
 
-## Order of work in one go
-1. Build the painter UI + save flow.
-2. Build the learner.
-3. Wire one wall family through the new path end-to-end.
-4. Show you the result in the actual dungeon so you can judge before we touch anything else.
+---
 
-If step 4 looks wrong, we iterate on the painter. Nothing else in the project moves.
+## What stays the same
+
+- Every existing recipe keeps its inputs — only its **station assignment** and **tier** are added.
+- Dismantling, blueprint discovery, materials list, and Portable Workstation flow are untouched.
+- Sprite Editor stays forbidden (memory rule).

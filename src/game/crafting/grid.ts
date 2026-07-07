@@ -77,8 +77,12 @@ export function detectBlueprint(grid: CraftGrid, blueprints = DEFAULT_BLUEPRINTS
 }
 
 /** Resolve a grid into a concrete craftable item, or null if invalid. */
-export function resolveGrid(grid: CraftGrid, station?: StationContext): ResolvedCraft | null {
-  const match = detectBlueprint(grid);
+export function resolveGrid(
+  grid: CraftGrid,
+  station?: StationContext,
+  blueprints: ItemBlueprint[] = DEFAULT_BLUEPRINTS,
+): ResolvedCraft | null {
+  const match = detectBlueprint(grid, blueprints);
   if (!match) return null;
   const { blueprint, origin } = match;
 

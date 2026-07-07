@@ -157,9 +157,43 @@ export function CraftingWorkshop({
   
   const handleDismantle = () => {
     if (!selectedDismantle) return;
-    
+
     const result = dismantleEquipment(selectedDismantle);
     onDismantle(selectedDismantle.id, result.materials);
+
+    // Try to teach the recipe book about this item.
+    // 1) Grid-crafted items carry provenance with usedMaterials — future work
+    //    will store the actual grid; for now legacy pathway is what mattered.
+    // 2) Legacy items match one of the CRAFTING_RECIPES entries.
+    try {
+      const legacy = getRecipeFromEquipment(selectedDismantle);
+      if (legacy) {
+        const { grid, size } = legacyRecipeToGrid(legacy);
+        const inventor = getLegacyInventor(legacy.resultSlot);
+        recordDiscovery(
+          {
+            hash: hashGrid(grid),
+            blueprintId: legacy.id,
+            itemName: legacy.name,
+            grid,
+            gridSize: size,
+            discoveredBy: inventor.username,
+            discoveredAt: new Date().toISOString(),
+            worldSeed: null,
+            inventorStationKind: null,
+            inventorStationTier: 1,
+            inventorStationStats: {},
+          },
+          { skipCloud: true },
+        );
+        toast.success(`Recipe learned: ${legacy.name}`, {
+          description: `Invented by ${inventor.username}. Check your Grid tab.`,
+        });
+      }
+    } catch {
+      /* non-fatal — dismantle still succeeds */
+    }
+
     setSelectedDismantle(null);
   };
   

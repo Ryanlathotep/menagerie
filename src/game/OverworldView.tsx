@@ -736,7 +736,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
       handleMoveRef.current(dx, dy);
     }, stepDelay);
-  }, [cancelAutoMine, cancelAutoWalk, settings.autoRunSpeed]);
+  }, [cancelAutoMine, cancelAutoWalk, settings.autoRunSpeed, addLog]);
 
   useEffect(() => () => cancelAutoMine(), [cancelAutoMine]);
 

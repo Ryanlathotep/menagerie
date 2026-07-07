@@ -1032,7 +1032,7 @@ export type MoveResult =
   | { type: 'moved'; bonusMove?: boolean }
   | { type: 'blocked'; reason: string }
   | { type: 'enemy'; enemy: Monster }
-  | { type: 'resource'; resourceType: 'wood' | 'stone'; amount: number; tierName?: string; materialDrop?: { materialId: string; name: string } }
+  | { type: 'resource'; resourceType: 'wood' | 'stone'; amount: number; tierName?: string; materialDrop?: { materialId: string; name: string; quantity: number } }
   | { type: 'plant_harvest'; variant: PlantVariant; tier: 1 | 2 | 3; drops: Array<{ materialId: string; name: string; quantity: number }> }
   | { type: 'building'; buildingType: BuildingType }
   | { type: 'dungeon_entrance'; dungeonId?: string }

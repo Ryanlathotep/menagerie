@@ -62,6 +62,10 @@ interface CraftingWorkshopProps {
   };
   /** Current player's username — stamped on items and recipe discoveries. */
   username?: string | null;
+  /** Restrict grid crafting to this blueprint category (Town Hall = 'building'). */
+  gridFilterCategory?: import('./crafting/types').BlueprintCategory;
+  /** Small heading shown above the grid panel. */
+  gridHeading?: string;
   onClose: () => void;
 }
 

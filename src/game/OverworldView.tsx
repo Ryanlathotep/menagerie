@@ -3242,6 +3242,24 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
 
 
+      // ── Global auto-action shortcuts (available from every tile menu) ──
+      // These don't act on the tapped tile — they start map-wide auto jobs.
+      // Kept at the bottom so per-tile actions stay on top.
+      actions.push({
+        id: 'auto-hunt',
+        label: 'Auto-Hunt nearest enemy',
+        icon: Crosshair,
+        hint: 'Walks to the nearest visible enemy and opens attack (H)',
+        onClick: () => { close(); startAutoHunt(); },
+      });
+      actions.push({
+        id: 'auto-search',
+        label: 'Auto-Search…',
+        icon: Search,
+        hint: 'Pick a target type (dungeon, enemy, nest, tree, rock, building) (F)',
+        onClick: () => { close(); setAutoSearchPickerOpen(true); },
+      });
+
 
       return (
         <UnifiedTileMenu

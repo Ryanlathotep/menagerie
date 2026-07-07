@@ -259,11 +259,10 @@ export function handleFleeDungeon(state: GameState, _action: FleeDungeonAction):
   // Equipment stays equipped to each party member (persisted onto UnlockedMonster).
   if (!state.run) return state;
 
-  // Merge run materials with saved materials
+  // Materials are already mirrored to saveData.materials on pickup (unified
+  // inventory — see inventoryReducer ADD_MATERIAL). Don't re-add or fleeing
+  // will double every material collected this run.
   const mergedMaterials = { ...state.saveData.materials };
-  for (const [materialId, quantity] of Object.entries(state.run.runMaterials)) {
-    mergedMaterials[materialId] = (mergedMaterials[materialId] || 0) + quantity;
-  }
 
   // Add run gold to town gold
   const newTownGold = (state.saveData.gold || 0) + state.run.gold;

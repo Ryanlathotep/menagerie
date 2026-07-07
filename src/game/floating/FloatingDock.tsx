@@ -223,6 +223,21 @@ export function FloatingDockProvider({ children }: { children: ReactNode }) {
 function FloatingDockRoot() {
   const ctx = useContext(Ctx)!;
   const dockRef = useRef<HTMLDivElement | null>(null);
+  // Stable ref callbacks per id — inline `(el) => registerSlot(id, el)` would
+  // create a new function each render and cause React to null/re-set the ref
+  // every commit, which combined with a version-bump inside registerSlot
+  // triggers an infinite update loop.
+  const slotRefCbs = useRef<Map<string, (el: HTMLDivElement | null) => void>>(
+    new Map(),
+  );
+  const getSlotRef = (id: string) => {
+    let cb = slotRefCbs.current.get(id);
+    if (!cb) {
+      cb = (el: HTMLDivElement | null) => ctx.registerSlot(id, el);
+      slotRefCbs.current.set(id, cb);
+    }
+    return cb;
+  };
 
   useEffect(() => {
     const update = () => {
@@ -242,16 +257,17 @@ function FloatingDockRoot() {
   }, [ctx]);
 
   const dockedIds = ctx.order.filter((id) => ctx.states[id]?.docked);
-  const floatIds = ctx.order.filter((id) => ctx.states[id] && !ctx.states[id].docked);
+
+  const setDockRef = (el: HTMLDivElement | null) => {
+    dockRef.current = el;
+    if (el) ctx.dockRectRef.current = el.getBoundingClientRect();
+  };
 
   return (
     <>
       {/* Dock strip */}
       <div
-        ref={(el) => {
-          dockRef.current = el;
-          if (el) ctx.dockRectRef.current = el.getBoundingClientRect();
-        }}
+        ref={setDockRef}
         className="fixed bottom-3 right-3 z-[9998] flex items-center gap-2 p-2 rounded-2xl border border-border bg-card/85 backdrop-blur shadow-md max-w-[75vw] overflow-x-auto overflow-y-hidden"
         aria-label="Floating action dock"
         style={{ scrollbarGutter: 'stable' }}
@@ -264,13 +280,14 @@ function FloatingDockRoot() {
           dockedIds.map((id) => (
             <div
               key={id}
-              ref={(el) => ctx.registerSlot(id, el)}
+              ref={getSlotRef(id)}
               className="shrink-0"
               style={{ width: ctx.configs[id]?.current.size ?? 40, height: ctx.configs[id]?.current.size ?? 40 }}
             />
           ))
         )}
       </div>
+
 
       {/* Render each button. Docked ones portal into their dock slot;
           floating ones render into document.body at their saved position. */}

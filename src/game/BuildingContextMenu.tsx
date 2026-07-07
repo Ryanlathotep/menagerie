@@ -50,6 +50,7 @@ export function BuildingContextMenu({
   onRotateConnector,
   onConfigureStation,
   onOpenStationWorkshop,
+  onOpenArena,
   onClose,
 }: BuildingContextMenuProps) {
   const def = BUILDING_DEFINITIONS[building.type];

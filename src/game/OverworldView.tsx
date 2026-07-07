@@ -72,6 +72,7 @@ import { EvolvedMove } from './moveMastery';
 import { CombatEffects } from './statusEffects';
 import { BuildingAssignModal } from './BuildingAssignModal';
 import { BuildingContextMenu } from './BuildingContextMenu';
+import { ArenaHub } from './arena/ArenaHub';
 import { StationConfigModal } from './StationConfigModal';
 import { CRAFTING_STATION_BUILDINGS } from './buildings';
 import { useMyUsername } from '@/hooks/useUsername';

@@ -1032,7 +1032,7 @@ export type MoveResult =
   | { type: 'moved'; bonusMove?: boolean }
   | { type: 'blocked'; reason: string }
   | { type: 'enemy'; enemy: Monster }
-  | { type: 'resource'; resourceType: 'wood' | 'stone'; amount: number; tierName?: string; materialDrop?: { materialId: string; name: string } }
+  | { type: 'resource'; resourceType: 'wood' | 'stone'; amount: number; tierName?: string; materialDrop?: { materialId: string; name: string; quantity: number } }
   | { type: 'plant_harvest'; variant: PlantVariant; tier: 1 | 2 | 3; drops: Array<{ materialId: string; name: string; quantity: number }> }
   | { type: 'building'; buildingType: BuildingType }
   | { type: 'dungeon_entrance'; dungeonId?: string }
@@ -1113,10 +1113,12 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
     case 'tree': {
       const treeTier = tile.treeTier || 'oak';
       const tierData = TREE_TIER_DATA[treeTier];
-      const amount = tierData.harvestYield;
+      // For upgraded tiers (with materialId), the tree drops its specialty
+      // material as the primary yield. Base wood becomes a minor byproduct.
+      const isSpecialTier = !!tierData.materialId;
+      const woodAmount = isSpecialTier ? 1 : tierData.harvestYield;
       tile.resourceAmount = (tile.resourceAmount || 1) - 1;
       if (tile.resourceAmount <= 0) {
-        // Remove resource tracking when depleted
         const resKey = `${newX},${newY}`;
         delete state.resourceUpgrades[resKey];
         tile.type = 'grass';
@@ -1124,22 +1126,25 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
         tile.lastHarvestType = 'tree';
         tile.treeTier = undefined;
       }
-      state.woodCollected += amount;
-      // Check for special material drop
-      let materialDrop: { materialId: string; name: string } | undefined;
-      if (tierData.materialId && tierData.materialChance) {
-        const dropRoll = seededRandom(state.totalSteps * 13 + newX * 7 + newY);
-        if (dropRoll < tierData.materialChance) {
-          materialDrop = { materialId: tierData.materialId, name: tierData.name + ' material' };
-        }
+      state.woodCollected += woodAmount;
+      let materialDrop: { materialId: string; name: string; quantity: number } | undefined;
+      if (tierData.materialId) {
+        materialDrop = {
+          materialId: tierData.materialId,
+          name: tierData.name.toLowerCase(),
+          quantity: tierData.harvestYield,
+        };
       }
-      return { type: 'resource', resourceType: 'wood', amount, tierName: tierData.name, materialDrop };
+      return { type: 'resource', resourceType: 'wood', amount: woodAmount, tierName: tierData.name, materialDrop };
     }
     
     case 'rock': {
       const stoneTier = tile.stoneTier || 'stone';
       const tierData = STONE_TIER_DATA[stoneTier];
-      const amount = tierData.harvestYield;
+      // Ore-bearing rocks (copper/iron/gold/mithril) drop the ore as the
+      // primary yield; only base 'stone' fills the stone counter fully.
+      const isOreTier = !!tierData.materialId;
+      const stoneAmount = isOreTier ? 1 : tierData.harvestYield;
       tile.resourceAmount = (tile.resourceAmount || 1) - 1;
       if (tile.resourceAmount <= 0) {
         const resKey = `${newX},${newY}`;
@@ -1149,15 +1154,16 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
         tile.lastHarvestType = 'rock';
         tile.stoneTier = undefined;
       }
-      state.stoneCollected += amount;
-      let materialDrop: { materialId: string; name: string } | undefined;
-      if (tierData.materialId && tierData.materialChance) {
-        const dropRoll = seededRandom(state.totalSteps * 17 + newX * 11 + newY);
-        if (dropRoll < tierData.materialChance) {
-          materialDrop = { materialId: tierData.materialId, name: tierData.name + ' material' };
-        }
+      state.stoneCollected += stoneAmount;
+      let materialDrop: { materialId: string; name: string; quantity: number } | undefined;
+      if (tierData.materialId) {
+        materialDrop = {
+          materialId: tierData.materialId,
+          name: tierData.name.toLowerCase(),
+          quantity: tierData.harvestYield,
+        };
       }
-      return { type: 'resource', resourceType: 'stone', amount, tierName: tierData.name, materialDrop };
+      return { type: 'resource', resourceType: 'stone', amount: stoneAmount, tierName: tierData.name, materialDrop };
     }
 
     case 'plant': {

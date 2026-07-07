@@ -149,6 +149,31 @@ export function getInitialStoneTier(worldX: number, worldY: number, tileSeed: nu
   return 'stone';
 }
 
+// ============= AREA-DIFFICULTY TIER CAPS =============
+// A tile can only upgrade up to the tier its local difficulty (distance from origin)
+// would naturally allow. This prevents a starter-area rock from silently maturing into
+// mithril just because the player has been walking around nearby.
+export function getMaxStoneTier(worldX: number, worldY: number): StoneTier {
+  const dist = Math.sqrt(worldX * worldX + worldY * worldY);
+  const cfg = getOverworldGen().stoneTierRolls;
+  if (dist >= cfg.mithril.minDist) return 'mithril';
+  if (dist >= cfg.gold.minDist) return 'gold';
+  if (dist >= cfg.iron.minDist) return 'iron';
+  if (dist >= cfg.copper.minDist) return 'copper';
+  return 'stone';
+}
+
+export function getMaxTreeTier(worldX: number, worldY: number): TreeTier {
+  const dist = Math.sqrt(worldX * worldX + worldY * worldY);
+  const cfg = getOverworldGen().treeTierRolls;
+  if (dist >= cfg.elderOak.minDist) return 'elder_oak';
+  if (dist >= cfg.maple.minDist) return 'maple';
+  return 'oak';
+}
+
+function stoneTierIndex(t: StoneTier): number { return STONE_TIERS.indexOf(t); }
+function treeTierIndex(t: TreeTier): number { return TREE_TIERS.indexOf(t); }
+
 
 
 function seededRandom(seed: number): number {
@@ -189,7 +214,8 @@ export function tickResourceUpgrades(
       const [kx, ky] = key.split(',').map(Number);
       if (res.treeTier) {
         const next = getNextTreeTier(res.treeTier);
-        if (next) {
+        const maxTier = getMaxTreeTier(kx, ky);
+        if (next && treeTierIndex(next) <= treeTierIndex(maxTier)) {
           res.treeTier = next;
           const tierData = TREE_TIER_DATA[next];
           // Jitter the next-tier countdown so siblings don't re-sync.
@@ -197,16 +223,22 @@ export function tickResourceUpgrades(
             ? jitterUpgradeSteps(tierData.upgradeSteps, kx, ky, 1)
             : 0;
           upgrades.push({ key, type: 'tree', newTier: next });
+        } else {
+          // Capped by area difficulty — stop ticking.
+          res.stepsUntilUpgrade = 0;
         }
       } else if (res.stoneTier) {
         const next = getNextStoneTier(res.stoneTier);
-        if (next) {
+        const maxTier = getMaxStoneTier(kx, ky);
+        if (next && stoneTierIndex(next) <= stoneTierIndex(maxTier)) {
           res.stoneTier = next;
           const tierData = STONE_TIER_DATA[next];
           res.stepsUntilUpgrade = tierData.upgradeSteps
             ? jitterUpgradeSteps(tierData.upgradeSteps, kx, ky, 2)
             : 0;
           upgrades.push({ key, type: 'stone', newTier: next });
+        } else {
+          res.stepsUntilUpgrade = 0;
         }
       }
     }

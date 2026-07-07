@@ -4,7 +4,7 @@ import { Position, Monster } from './types';
 import { OverworldState, OverworldTile, getOverworldTile, getOverworldEnemy, removeOverworldEnemy, setOverworldTile } from './overworld';
 import { Move } from './moves';
 import { EvolvedMove } from './moveMastery';
-import { AttackConfig, getAttackConfig, getEnemyBehavior } from './dungeonCombat';
+import { AttackConfig, getAttackConfig, getEnemyBehavior, getEnemyThreatReach } from './dungeonCombat';
 import * as enemyAI from './enemyAI';
 
 // A tile is "blocking" for line-of-sight / AoE propagation if a projectile or

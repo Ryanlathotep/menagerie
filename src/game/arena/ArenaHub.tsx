@@ -258,6 +258,20 @@ function TournamentCard({
       <div className="text-xs text-muted-foreground">
         {canEnter ? '✅ You can enter — bracket fills with NPCs on resolve.' : playerHasEntry ? '🏳️ Your team is queued.' : '⚠️ Save a team on the "My Teams" tab first.'}
       </div>
+      {t.teams.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {t.teams.map(team => {
+            const mine = team.ownerId === 'player';
+            return (
+              <span key={team.id}
+                className={`text-[11px] px-1.5 py-0.5 rounded border ${mine ? 'bg-amber-500/15 border-amber-500/40 text-amber-700 dark:text-amber-300' : 'bg-muted border-border text-muted-foreground'}`}
+                title={`${team.name} · avg L${team.level}`}>
+                {mine ? '⭐ ' : ''}{team.banner ?? ''} {team.name}
+              </span>
+            );
+          })}
+        </div>
+      )}
       <ArenaChampionsLeaderboard cadence={cadence} />
     </Card>
   );

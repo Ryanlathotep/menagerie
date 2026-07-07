@@ -1,99 +1,86 @@
-# Universal Auto Actions + Craftable Portal Stairs
+# Max-Level QA Fixture, Town-Build Invariant, and Autobattle Engine
 
-Three linked changes: (1) surface Auto-Hunt/Auto-Search everywhere, (2) delete orphan up-stairs on floor load, (3) introduce craftable stairs whose destination is derived from tile coordinates, with tooltip previews, free-space validation, and an "always one entrance" guard.
+Three linked deliverables. Each is independently useful; together they give the smoke test real coverage of endgame content and lay the groundwork for the future Arena building + cross-server tournaments.
 
-## 1 · Auto-Hunt & Auto-Search in the dungeon menu
+## 1. Max-level "everything unlocked" fixture
 
-The overworld tile menu already surfaces both (`OverworldView.tsx` ~L3401). The dungeon tile menu (`DungeonView.tsx` ~L3830) does not. Add them at the bottom of the dungeon action list so they show on every tile, matching overworld parity:
+**Goal:** a deterministic, in-memory `GameState` the invariant suite can spin up in one call so tests exercise endgame code paths (mastered moves, full sets, all species, deep inventory) without touching cloud saves.
 
-- **Auto-Hunt** — walks toward the nearest visible enemy in the current floor and opens the attack picker on arrival (dungeon equivalent of the overworld routine).
-- **Auto-Search** — opens a picker (stairs down, stairs up, treasure, shop, elevator, plant, mineable wall, nest) and auto-paths to the nearest explored match.
+- New `src/dev/fixtures/maxLevelSave.ts` exporting `buildMaxLevelSave(seed = 1)` → `SaveData`:
+  - All 20 species × 5 classes × 6 elements (+ shiny variants) as `UnlockedMonster`s at level 100.
+  - Each monster: full `moveMastery` at Omega, `equipment` filled with a matched set (uses the same helpers `createMonster`/`createEmptyEquipment` the game uses).
+  - `storedItems`: one of every consumable + 3 Portal Stairs Kits + 5 Town Portal Scrolls.
+  - `storedEquipment`: a rotating slate of tier-5 gear per slot for diff testing.
+  - `dungeonEntrances`: HOME_TOWER_ID + one of each themed tower (element/class/species), all `discovered: true`, `deepestFloor: 100`.
+  - `overworldState`: pre-explored 40×40 chunk around (0,0) with a mixed biome sample.
+  - `unlockedRecipes`: every recipe in `recipeBook.ts`.
+- New `buildMaxLevelParty(save)` → `Monster[]` returning 4 balanced picks (tank/dps/support/ranger) fully equipped.
+- Add `window.__menagerie.loadMaxLevelSave()` bridge helper (dev bridge, guarded by admin role) that dispatches `LOAD_SAVE` with the fixture. Handy for manual smoke and for the browser-driven QA panel.
 
-New helper `src/game/dungeon/autoActions.ts` holds the shared "nearest tile matching predicate + A* to adjacent" logic used by both. `DungeonView` wires them into `handleTileClick`/`handleMove` the same way overworld does.
+## 2. Town-build QA invariant
 
-## 2 · Orphan up-stairs cleanup on load
+**Goal:** prove the settlement-building system still lets a max-level save construct a canonical town without violating placement rules, and that everything is refunded when disassembled.
 
-Symptom: multiple `stairs_up` tiles exist on a floor with no matching overworld exit. Root cause is snapshot rehydration + the "plant stairs beneath spawn" step on floors > startingFloor.
+- New `src/dev/fixtures/canonicalTownLayout.ts`: an ordered list of `{type, dx, dy}` builds relative to home (Campfire → Log Cabin → Town Hall → Storehouse → Farm → Watchtower → Workbench → Elevator → 2 road spokes). ~10 buildings, all within the 10-Manhattan build radius chain.
+- New invariant `town-build-and-refund` in `src/dev/qaInvariants.ts`:
+  1. Load the max-level fixture.
+  2. For each entry, dispatch `BUILD_STRUCTURE`; assert placement succeeded + materials debited.
+  3. Snapshot resulting `overworldState.playerBuildings`.
+  4. Dispatch `DISASSEMBLE_STRUCTURE` on each in reverse order; assert materials returned within refund tolerance and no orphan buildings remain.
+  5. Rebuild once more to prove the placement chain still works after teardown.
+- Suggested-fix mapping: → `src/game/overworld.ts` BUILD_STRUCTURE + DISASSEMBLE_STRUCTURE handlers; check placement-radius rule + `getDisassembleRefund`.
+- Wire the new invariant into `runSmokeTest()` and the Admin QA panel's summary table.
 
-Fix in `hydrateDungeonFromSnapshot` (in `src/game/dungeon.ts`) and in the DungeonView bootstrap path:
+## 3. Autobattle engine (arena foundation)
 
-- On load, scan the tile grid; if the floor is > `startingFloor`, keep only the up-stair closest to `entryPosition`. Convert extras to `floor`.
-- If the floor is `startingFloor` (entrance floor), keep exactly the `entryPosition` up-stair. Convert extras.
-- Never delete a stair that is currently under the player (defer until they step off; simplest: relocate the "kept" stair to the player tile in that edge case).
+**Goal:** headless, deterministic combat resolver that plays two parties against each other with no UI, seeded RNG, and a compact result payload. Reused by (a) the new QA invariant, (b) the future Arena building, (c) daily/weekly/monthly tournament backend jobs.
 
-## 3 · Craftable Portal Stairs (coord-mapped)
-
-### Concept
-
-A new placeable item `portal_stairs_kit` (crafted at any station with the new blueprint) can be placed on any floor tile. Once placed, it becomes a `stairs_portal` tile whose destination is computed from its relative dungeon coord to `entryPosition`:
+New module `src/game/autobattle/`:
 
 ```text
-relX, relY = (x - entryX, y - entryY)
-
-if (relX % 2 === 0 && relY % 2 === 0):
-    destination = OVERWORLD, at entry.overworldPos + (relX/2, relY/2)
-else:
-    destination = nearest known tower entrance within
-                  Chebyshev radius R of that same mapped coord
+autobattle/
+  types.ts        AutobattleTeam, AutobattleResult, AutobattleLogEntry
+  ai.ts           chooseMove(monster, enemies, allies, rng) — reuses enemyAI archetype scoring
+  resolver.ts     runAutobattle(teamA, teamB, opts) — turn loop, status ticks, faint handling
+  seeded.ts       mulberry32-backed RNG (same family as dungeon seeding)
+  index.ts        public API
 ```
 
-Even/even tiles map deterministically to overworld coords. Odd tiles route to the nearest tower (uses `overworld.discoveredDungeons` / tower registry).
+- `runAutobattle` returns `{winner: 'A'|'B'|'draw', turns, casualties, mvpId, log[]}` and never mutates inputs.
+- Turn order = existing speed rule; move selection reuses existing `enemyAI` scoring so results feel consistent with map combat.
+- Status effects, stamina, elemental/class multipliers all delegate to the existing `combat.ts` helpers — no combat-math duplication.
+- Auto-battle cap: 200 turns → draw (prevents infinite ping-pong).
 
-### Data model
+New QA invariant `autobattle-deterministic`:
+- Runs `runAutobattle(partyA, partyB, {seed: 42})` three times and asserts identical results.
+- Runs it with seed 42 vs 43 and asserts *different* logs (proves seed actually threads through).
 
-Extend `DungeonTile`:
-```ts
-type: 'stairs_portal';
-portal?: {
-  destKind: 'overworld' | 'tower';
-  destOverworld?: { x: number; y: number };
-  destTowerId?: string;
-  destFloor?: number;         // for tower dest, resolved on use
-  validated: boolean;         // last free-space check result
-};
-```
+Admin QA panel gains a small "Auto-battle sandbox" section: pick two saved parties, seed, click **Simulate** → shows result summary + collapsible log. Uses the max-level fixture as default opponents.
 
-New reducer actions:
-- `PLACE_PORTAL_STAIRS { x, y }` — consumes 1 kit, validates dest, sets tile.
-- `REMOVE_PORTAL_STAIRS { x, y }` — refunds kit, blocked if it would leave floor with zero entrances.
-- `USE_PORTAL_STAIRS { x, y }` — transitions player.
+## Out of scope (explicitly)
 
-### Free-space guarantee
-
-Before placement, `computePortalDestination(dungeon, x, y, overworld)` returns:
-- `{ ok: true, dest }` when the mapped tile is walkable (overworld: grass/road; tower: entrance tile exists).
-- `{ ok: false, reason }` when blocked (water, cliff, building, tower undiscovered, out-of-bounds).
-
-Placement UI shows the reason and refuses. `validated` is re-checked on floor load so if the overworld changes underneath, the portal shows a broken state (still removable, not usable).
-
-### Tooltip preview
-
-`UnifiedTileMenu` already renders `info` rows. `stairs_portal` tiles add:
-- `Destination`: `Overworld (12, -4)` or `Fire Tower · Floor 3`.
-- `Status`: `Ready` / `Blocked — target is water` / `Tower not yet discovered`.
-- `Type`: `Even-coord (overworld)` or `Odd-coord (tower)`.
-
-Hovering the tile in `DungeonRenderer` shows the same in the existing hover tooltip.
-
-### "Always one entrance" guard
-
-`canRemoveStair(dungeon, x, y)` counts tiles where `type ∈ { 'stairs_up', 'stairs_portal' with overworld dest }`. Removal is refused when the count would drop to zero and the current floor is `startingFloor`. Menu action is disabled with a `disabledReason`.
-
-### Crafting
-
-- New blueprint `portal_stairs_kit` in `recipeBook.ts` (grid pattern: 2 stone + 1 wood in staircase shape). Discoverable at any tier-2+ workbench.
-- Placement flow: item → Use → enters targeting → pick a floor tile within 3 steps → `PLACE_PORTAL_STAIRS`.
+- **No Arena building yet** — this plan ships the engine and QA hooks. Placing an Arena on the overworld, betting UI, cross-server matchmaking, and the tournament scheduler are follow-up work, gated on the engine being stable.
+- No new Supabase tables. Tournament persistence (`tournament_entries`, `arena_matches`, betting ledger) will be a separate plan once the engine is proven and you've decided the payout economy.
+- No balance changes to existing combat math.
 
 ## Technical notes
 
-- **Nearest-tower lookup** reuses `overworld.discoveredDungeons` (already scans in `MainMenu`). Chebyshev radius default `R = 16` (tunable).
-- **Cross-dungeon travel** for odd tiles: on `USE_PORTAL_STAIRS` with `destKind: 'tower'`, dispatch `ENTER_DUNGEON` for the target tower at floor 1 (or player's highest cleared floor for that tower, capped by the existing pre-run slider rule).
-- **Persistence**: portal tiles live on the persisted dungeon-floor snapshot (already saved per `entryPosition`), so they survive re-entry. Overworld exit coord is also snapshotted so re-hydration matches.
-- **Migration**: no DB migration needed — everything is in the client save blob.
-- **Files touched (est.)**: `dungeon.ts`, `DungeonView.tsx`, `OverworldView.tsx` (for auto-mining any orphan cross-refs), `UnifiedTileMenu.tsx` (no shape change, just usage), `recipeBook.ts`, `types.ts`, `reducers/*`, new `dungeon/autoActions.ts`, new `dungeon/portalStairs.ts`.
+- Fixture uses the real `createMonster` / `equipment` helpers so any future breaking change to those signatures fails loudly instead of drifting.
+- All new dev-only code lives under `src/dev/` and `src/game/autobattle/` — nothing ships to the player build unless the Arena feature explicitly imports the resolver.
+- Bridge helpers (`loadMaxLevelSave`, autobattle sandbox) check `has_role('admin')` before doing anything destructive to the current save.
+- The town-build invariant runs against a *cloned* fixture per invocation so it can't corrupt the caller's live game.
 
-## Out of scope
+## Files touched / created
 
-- Placing portals on the overworld side (this pass is dungeon-only outbound). Return travel uses existing entrances.
-- Rebalancing crafting costs beyond a sensible default.
-- New art — portal stairs reuse the existing stairs sprite tinted for now.
+Created:
+- `src/dev/fixtures/maxLevelSave.ts`
+- `src/dev/fixtures/canonicalTownLayout.ts`
+- `src/game/autobattle/{types,ai,resolver,seeded,index}.ts`
+
+Edited:
+- `src/dev/qaInvariants.ts` — add `town-build-and-refund`, `autobattle-deterministic`
+- `src/dev/DebugBridgeMount.tsx` (or wherever `window.__menagerie` is assembled) — expose `loadMaxLevelSave`, `runAutobattle`
+- `src/pages/AdminQA.tsx` — new invariant rows + optional Auto-battle sandbox card
+- `.workspace/skills/menagerie-smoke-test/SKILL.md` (if the workspace copy is writable) — mention the two new invariants and the fixture; suggested-fix mapping entries added
+
+No DB migrations. No RLS changes.

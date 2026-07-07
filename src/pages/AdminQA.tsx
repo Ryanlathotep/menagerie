@@ -4,6 +4,8 @@ import { useGame, GameProvider } from '@/game/state';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { runAllInvariants, summarize, type InvariantResult } from '@/dev/qaInvariants';
+import { buildMaxLevelSave, buildTwoMaxLevelTeams } from '@/dev/fixtures/maxLevelSave';
+import { runAutobattle, type AutobattleResult } from '@/game/autobattle';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -20,7 +22,7 @@ interface QaRunRow {
 }
 
 function AdminQAInner() {
-  const { state } = useGame();
+  const { state, dispatch } = useGame();
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdminRole();
   const [results, setResults] = useState<InvariantResult[] | null>(null);
@@ -28,6 +30,11 @@ function AdminQAInner() {
   const [history, setHistory] = useState<QaRunRow[]>([]);
   const [savingHistory, setSavingHistory] = useState(false);
   const [consoleErrors, setConsoleErrors] = useState<string[]>([]);
+  // Auto-battle sandbox state
+  const [abSeed, setAbSeed] = useState<number>(42);
+  const [abVerbose, setAbVerbose] = useState<boolean>(false);
+  const [abResult, setAbResult] = useState<AutobattleResult | null>(null);
+  const [abRunning, setAbRunning] = useState(false);
 
   // Capture console errors that occur while the panel is open.
   useEffect(() => {
@@ -101,6 +108,17 @@ function AdminQAInner() {
           <div className="flex items-center gap-3 flex-wrap">
             <Button onClick={runSuite} disabled={running}>
               {running ? 'Running…' : 'Run Smoke Test'}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const ok = window.confirm('Replace your current save with the max-level QA fixture? This overwrites your live save.');
+                if (!ok) return;
+                const save = buildMaxLevelSave();
+                dispatch({ type: 'LOAD_SAVE', saveData: save });
+              }}
+            >
+              Load Max-Level Fixture
             </Button>
             {summary && (
               <>
@@ -191,11 +209,80 @@ function AdminQAInner() {
           )}
         </Card>
 
+        <Card className="p-4 space-y-3">
+          <div>
+            <h2 className="font-semibold">Auto-battle sandbox</h2>
+            <p className="text-xs text-muted-foreground">
+              Headless team-vs-team simulation using the max-level fixture. Same engine the future Arena will run against, deterministic per seed.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="text-sm flex items-center gap-2">
+              Seed
+              <input
+                type="number"
+                className="w-24 border rounded px-2 py-1 text-sm bg-background"
+                value={abSeed}
+                onChange={(e) => setAbSeed(Number(e.target.value) || 0)}
+              />
+            </label>
+            <label className="text-sm flex items-center gap-2">
+              <input type="checkbox" checked={abVerbose} onChange={(e) => setAbVerbose(e.target.checked)} />
+              Verbose log
+            </label>
+            <Button
+              size="sm"
+              onClick={() => {
+                setAbRunning(true);
+                try {
+                  const { teamA, teamB } = buildTwoMaxLevelTeams(state.saveData);
+                  const res = runAutobattle(
+                    { id: 'A', name: 'Team A', members: teamA },
+                    { id: 'B', name: 'Team B', members: teamB },
+                    { seed: abSeed, verbose: abVerbose },
+                  );
+                  setAbResult(res);
+                } finally {
+                  setAbRunning(false);
+                }
+              }}
+              disabled={abRunning}
+            >
+              {abRunning ? 'Simulating…' : 'Simulate'}
+            </Button>
+            {abResult && (
+              <Badge variant={abResult.winner === 'draw' ? 'secondary' : 'default'}>
+                {abResult.winner === 'draw' ? 'Draw' : `Team ${abResult.winner} wins`} — {abResult.turns} turns
+              </Badge>
+            )}
+          </div>
+          {abResult && (
+            <div className="border rounded-md p-2 bg-muted/30">
+              <div className="text-xs mb-2 font-mono">
+                seed={abResult.seed} · casualties=[{abResult.casualties.join(', ') || '—'}] · mvp={abResult.mvpId ?? '—'} ({abResult.mvpDamage} dmg)
+              </div>
+              <ScrollArea className="h-48">
+                <ul className="text-xs font-mono space-y-0.5">
+                  {abResult.log.map((e, i) => (
+                    <li key={i} className={e.faint ? 'text-destructive' : ''}>
+                      T{e.turn} [{e.actorTeam}] {e.message}
+                      {e.faint ? ' — 💀' : ''}
+                    </li>
+                  ))}
+                  {abResult.log.length === 0 && <li className="text-muted-foreground">No entries (enable verbose for the full trace).</li>}
+                </ul>
+              </ScrollArea>
+            </div>
+          )}
+        </Card>
+
         <Card className="p-4">
           <h2 className="font-semibold mb-1">Debug bridge</h2>
           <p className="text-sm text-muted-foreground">
             Open browser DevTools and call <code className="bg-muted px-1 rounded">window.__menagerie.help()</code> for the full bridge API,
-            or <code className="bg-muted px-1 rounded">window.__menagerie.runSmokeTest()</code> to run this suite from the console.
+            <code className="bg-muted px-1 rounded ml-1">runSmokeTest()</code> to run this suite,
+            <code className="bg-muted px-1 rounded ml-1">loadMaxLevelSave()</code> to load the QA fixture, or
+            <code className="bg-muted px-1 rounded ml-1">runAutobattle()</code> to simulate a match from the console.
           </p>
         </Card>
       </div>
@@ -211,6 +298,8 @@ function buildSuggestions(results: InvariantResult[]) {
     'mastery-merge-max': 'persistRunPartyProgress mastery merge regressed. Verify the max-uses comparison at state.ts ~line 95.',
     'unified-inventory-live': 'Find the most recent ADD_ITEM / USE_ITEM / DROP_ITEM change. Both run.inventory and saveData.storedItems must be mirrored in the same case.',
     'corrupt-save-tolerance': 'Helper threw or returned empty on missing moveMastery. Add a guard like (existing.moveMastery || {}) where it iterates mastery entries.',
+    'town-build-and-refund': 'Check src/game/buildings.ts canPlaceBuilding — MAX_BUILD_RADIUS chain, tile-occupancy, and cost gating. If refund count regressed, verify getDisassembleRefund + DISASSEMBLE_REFUND_RATIO.',
+    'autobattle-deterministic': 'Autobattle non-determinism — inspect src/game/autobattle/seeded.ts (Math.random swap) and src/game/autobattle/resolver.ts (make sure ALL rng consumers run inside withSeededRandom).',
   };
   return results.filter(r => !r.pass).map(r => ({ id: r.id, suggestion: map[r.id] || r.detail }));
 }

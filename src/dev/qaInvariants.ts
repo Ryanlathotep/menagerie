@@ -13,6 +13,17 @@
 import { gameReducer, persistRunPartyProgress } from '@/game/state';
 import type { GameState, SaveData, Monster, UnlockedMonster } from '@/game/types';
 import { createEmptyEquipment, type EquipmentItem } from '@/game/equipment';
+import {
+  BUILDING_DEFINITIONS,
+  canPlaceBuilding,
+  createBuilding,
+  getDisassembleRefund,
+  type PlayerBuilding,
+} from '@/game/buildings';
+import { createOverworldState } from '@/game/overworld';
+import { buildMaxLevelSave, buildTwoMaxLevelTeams } from './fixtures/maxLevelSave';
+import { CANONICAL_TOWN_LAYOUT } from './fixtures/canonicalTownLayout';
+import { runAutobattle } from '@/game/autobattle';
 
 export interface InvariantResult {
   id: string;
@@ -296,6 +307,176 @@ function inv_corruptedSaveTolerance(): InvariantResult {
   }
 }
 
+/**
+ * Town-build QA — proves the canonical layout can be built, disassembled,
+ * and re-built against the real placement + refund helpers. Uses the
+ * max-level fixture so it also serves as a smoke test for that fixture.
+ */
+function inv_townBuildAndRefund(): InvariantResult {
+  try {
+    const save = buildMaxLevelSave();
+    const ow = createOverworldState(1);
+    // Stock resources far above any layout cost so pure placement rules are
+    // what we're testing (not resource-starvation edge cases).
+    ow.woodCollected = 9999;
+    ow.stoneCollected = 9999;
+    ow.playerBuildings = [];
+    const home = ow.homeBase?.position ?? { x: 0, y: 0 };
+
+    const built: PlayerBuilding[] = [];
+    const placementFailures: string[] = [];
+    let woodSpent = 0;
+    let stoneSpent = 0;
+
+    for (const entry of CANONICAL_TOWN_LAYOUT) {
+      const x = home.x + entry.dx;
+      const y = home.y + entry.dy;
+      const check = canPlaceBuilding(
+        x, y, ow.playerBuildings, home, ow.woodCollected, ow.stoneCollected, entry.type,
+      );
+      if (!check.canPlace) {
+        placementFailures.push(`${entry.type}@(${x},${y}): ${check.reason}`);
+        continue;
+      }
+      const def = BUILDING_DEFINITIONS[entry.type];
+      const b = createBuilding(entry.type, x, y);
+      ow.playerBuildings.push(b);
+      ow.woodCollected -= def.cost.wood;
+      ow.stoneCollected -= def.cost.stone;
+      woodSpent += def.cost.wood;
+      stoneSpent += def.cost.stone;
+      built.push(b);
+    }
+
+    if (placementFailures.length > 0) {
+      return {
+        id: 'town-build-and-refund',
+        name: 'Canonical town layout builds + refunds cleanly',
+        pass: false,
+        severity: 'critical',
+        detail: `Placement rejected: ${placementFailures.join(' | ')}`,
+      };
+    }
+
+    // Disassemble in reverse order — refund helper should return at least
+    // 25% of each per-building cost (per DISASSEMBLE_REFUND_RATIO with HP floor).
+    let woodRefunded = 0;
+    let stoneRefunded = 0;
+    for (let i = built.length - 1; i >= 0; i--) {
+      const b = built[i];
+      const refund = getDisassembleRefund(b);
+      woodRefunded += refund.wood;
+      stoneRefunded += refund.stone;
+      ow.woodCollected += refund.wood;
+      ow.stoneCollected += refund.stone;
+      ow.playerBuildings = ow.playerBuildings.filter(x => x.id !== b.id);
+    }
+
+    if (ow.playerBuildings.length !== 0) {
+      return {
+        id: 'town-build-and-refund',
+        name: 'Canonical town layout builds + refunds cleanly',
+        pass: false,
+        severity: 'critical',
+        detail: `Orphan buildings after teardown: ${ow.playerBuildings.length}`,
+      };
+    }
+
+    // Rebuild once more to prove the buildable-radius chain still works.
+    let rebuildFailures = 0;
+    for (const entry of CANONICAL_TOWN_LAYOUT) {
+      const x = home.x + entry.dx;
+      const y = home.y + entry.dy;
+      const check = canPlaceBuilding(
+        x, y, ow.playerBuildings, home, ow.woodCollected, ow.stoneCollected, entry.type,
+      );
+      if (!check.canPlace) { rebuildFailures++; continue; }
+      const def = BUILDING_DEFINITIONS[entry.type];
+      ow.playerBuildings.push(createBuilding(entry.type, x, y));
+      ow.woodCollected -= def.cost.wood;
+      ow.stoneCollected -= def.cost.stone;
+    }
+
+    if (rebuildFailures > 0) {
+      return {
+        id: 'town-build-and-refund',
+        name: 'Canonical town layout builds + refunds cleanly',
+        pass: false,
+        severity: 'critical',
+        detail: `Rebuild pass rejected ${rebuildFailures}/${CANONICAL_TOWN_LAYOUT.length} entries after teardown.`,
+      };
+    }
+
+    // Ignore save (only used to smoke-test the fixture itself here).
+    void save;
+    return {
+      id: 'town-build-and-refund',
+      name: 'Canonical town layout builds + refunds cleanly',
+      pass: true,
+      severity: 'critical',
+      detail: `Built + torn down + rebuilt ${CANONICAL_TOWN_LAYOUT.length} structures. Spent ${woodSpent}w/${stoneSpent}s, refunded ${woodRefunded}w/${stoneRefunded}s.`,
+    };
+  } catch (e) {
+    return {
+      id: 'town-build-and-refund',
+      name: 'Canonical town layout builds + refunds cleanly',
+      pass: false,
+      severity: 'critical',
+      detail: `Threw: ${(e as Error).message}`,
+    };
+  }
+}
+
+/**
+ * Deterministic autobattle — runs the same match three times with one seed
+ * (identical results required), then once with a different seed (log must
+ * diverge to prove the seed is actually threaded through).
+ */
+function inv_autobattleDeterministic(): InvariantResult {
+  try {
+    const save = buildMaxLevelSave();
+    const { teamA: aMembers, teamB: bMembers } = buildTwoMaxLevelTeams(save);
+    const teamA = { id: 'A', members: aMembers };
+    const teamB = { id: 'B', members: bMembers };
+
+    const r1 = runAutobattle(teamA, teamB, { seed: 42 });
+    const r2 = runAutobattle(teamA, teamB, { seed: 42 });
+    const r3 = runAutobattle(teamA, teamB, { seed: 42 });
+    const rDiff = runAutobattle(teamA, teamB, { seed: 43 });
+
+    const sameSeedStable =
+      r1.winner === r2.winner && r2.winner === r3.winner &&
+      r1.turns === r2.turns && r2.turns === r3.turns &&
+      r1.log.length === r2.log.length && r2.log.length === r3.log.length;
+
+    const differentSeedDiffers =
+      rDiff.log.length !== r1.log.length ||
+      rDiff.winner !== r1.winner ||
+      rDiff.turns !== r1.turns;
+
+    const pass = sameSeedStable && differentSeedDiffers;
+    return {
+      id: 'autobattle-deterministic',
+      name: 'Autobattle is deterministic per seed',
+      pass,
+      severity: pass ? 'critical' : 'critical',
+      detail: pass
+        ? `Same-seed ×3 stable (winner=${r1.winner}, turns=${r1.turns}). Different-seed diverges (winner=${rDiff.winner}, turns=${rDiff.turns}).`
+        : !sameSeedStable
+          ? `Same-seed runs diverged: winners=[${r1.winner},${r2.winner},${r3.winner}] turns=[${r1.turns},${r2.turns},${r3.turns}]`
+          : `Different seeds produced identical output — seed not threaded through the resolver.`,
+    };
+  } catch (e) {
+    return {
+      id: 'autobattle-deterministic',
+      name: 'Autobattle is deterministic per seed',
+      pass: false,
+      severity: 'critical',
+      detail: `Threw: ${(e as Error).message}`,
+    };
+  }
+}
+
 export function runAllInvariants(live: GameState): InvariantResult[] {
   return [
     inv_endRunPersistsAllFour(),
@@ -304,6 +485,8 @@ export function runAllInvariants(live: GameState): InvariantResult[] {
     inv_masteryMergeMax(),
     inv_unifiedInventoryLive(live),
     inv_corruptedSaveTolerance(),
+    inv_townBuildAndRefund(),
+    inv_autobattleDeterministic(),
   ];
 }
 

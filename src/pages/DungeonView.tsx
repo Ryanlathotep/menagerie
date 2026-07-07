@@ -3600,39 +3600,47 @@ export function DungeonView({
                 info.push({ label: 'Favored', value: terrainConfig.favoredElement ?? terrainConfig.favoredClass ?? 'None' });
                 info.push({ label: 'Backlash', value: '2 damage if mismatched' });
                 info.push({ label: 'Digging', value: isFinite(hitsNeeded) ? `${hitsNeeded} dig${hitsNeeded === 1 ? '' : 's'} with current shovel` : 'Shovel too weak or missing' });
-                if (isAdjacent) {
-                  actions.push({
-                    id: 'step-on-rune',
-                    label: autoHarvestOn && isFinite(hitsNeeded)
-                      ? 'Auto-Harvest rune'
-                      : isAutoShovelEnabled() && isFinite(hitsNeeded)
-                        ? 'Step on & auto-dig'
-                        : 'Step onto rune',
-                    hint: autoHarvestOn
-                      ? 'Keeps digging until the rune is removed or an enemy appears'
-                      : isAutoShovelEnabled()
-                        ? 'Auto-Shovel is on'
-                        : 'Auto-Shovel is off',
-                    icon: isAutoShovelEnabled() ? Shovel : Footprints,
-                    variant: 'default',
-                    onClick: () => {
-                      close();
+                actions.push({
+                  id: 'step-on-rune',
+                  label: isAdjacent
+                    ? (autoHarvestOn && isFinite(hitsNeeded)
+                        ? 'Auto-Harvest rune'
+                        : isAutoShovelEnabled() && isFinite(hitsNeeded)
+                          ? 'Step on & auto-dig'
+                          : 'Step onto rune')
+                    : (autoHarvestOn && isFinite(hitsNeeded)
+                        ? 'Walk & Auto-Harvest rune'
+                        : 'Walk to rune'),
+                  hint: isAdjacent
+                    ? (autoHarvestOn
+                        ? 'Keeps digging until the rune is removed or an enemy appears'
+                        : isAutoShovelEnabled()
+                          ? 'Auto-Shovel is on'
+                          : 'Auto-Shovel is off')
+                    : 'Auto-paths, then acts on arrival',
+                  icon: isAutoShovelEnabled() ? Shovel : Footprints,
+                  variant: 'default',
+                  onClick: () => {
+                    close();
+                    if (isAdjacent) {
                       if (autoHarvestOn && isFinite(hitsNeeded)) startDungeonAutoHarvest(x, y);
                       else handleMove(getDirection(dungeon.playerPosition, { x, y }));
-                    },
-                  });
-                  actions.push({
-                    id: 'toggle-auto-harvest-rune',
-                    label: autoHarvestOn ? 'Disable Auto-Harvest' : 'Enable Auto-Harvest',
-                    hint: 'Applies to dungeon walls and rune tiles; persisted in Settings',
-                    icon: Pickaxe,
-                    variant: 'outline',
-                    onClick: () => {
-                      updateSetting('autoMine', !autoHarvestOn);
-                      toast.info(`Auto-Harvest ${!autoHarvestOn ? 'enabled' : 'disabled'}`);
-                    },
-                  });
-                }
+                    } else {
+                      autoPathToTile();
+                    }
+                  },
+                });
+                actions.push({
+                  id: 'toggle-auto-harvest-rune',
+                  label: autoHarvestOn ? 'Disable Auto-Harvest' : 'Enable Auto-Harvest',
+                  hint: 'Applies to dungeon walls and rune tiles; persisted in Settings',
+                  icon: Pickaxe,
+                  variant: 'outline',
+                  onClick: () => {
+                    updateSetting('autoMine', !autoHarvestOn);
+                    toast.info(`Auto-Harvest ${!autoHarvestOn ? 'enabled' : 'disabled'}`);
+                  },
+                });
               } else if (tile.type === 'trap') {
                 const trapType = tile.trapType || 'spike';
                 const trapInfo = trapNames[trapType];

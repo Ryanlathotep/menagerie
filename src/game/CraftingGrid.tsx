@@ -356,8 +356,10 @@ export function CraftingGridPanel({
               <button
                 key={mat.id}
                 onClick={() => pickMaterial(mat.id)}
-                className={`text-left p-1.5 rounded border hover:bg-primary/10 transition text-xs flex items-center gap-1.5 ${RARITY_COLORS[mat.rarity].border}`}
-                title={`${mat.name} (${mat.type}, ${mat.rarity})`}
+                draggable
+                onDragStart={(e) => onDragStartMat(e, mat.id)}
+                className={`text-left p-1.5 rounded border hover:bg-primary/10 transition text-xs flex items-center gap-1.5 cursor-grab active:cursor-grabbing ${RARITY_COLORS[mat.rarity].border}`}
+                title={`${mat.name} (${mat.type}, ${mat.rarity}) — click or drag`}
               >
                 <span className="text-base">{mat.icon}</span>
                 <span className="truncate flex-1">{mat.name}</span>

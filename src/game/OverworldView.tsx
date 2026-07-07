@@ -2237,10 +2237,18 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         unlockedRecipes={state.saveData.unlockedRecipes || []}
         tools={effectiveTools(state.saveData.tools)}
         username={myUsername}
+        gridFilterCategory={townHallCraftBuildings ? 'building' : undefined}
+        gridHeading={townHallCraftBuildings ? '🏛️ Town Hall — Craft Building Kits' : undefined}
         station={workshopStationBuilding ? {
           kind: (Object.entries(CRAFTING_STATION_BUILDINGS).find(([, bt]) => bt === workshopStationBuilding.type)?.[0]) as any ?? null,
           tier: (workshopStationBuilding.stationTier ?? 1) as 1|2|3|4|5,
           modifiers: workshopStationBuilding.stationModifiers ?? [],
+          portable: false,
+        } : townHallCraftBuildings ? {
+          // Town Hall = a mega-workbench at tier 3 (4x4 grid) with 2 modifier slots.
+          kind: 'workbench',
+          tier: 3,
+          modifiers: [],
           portable: false,
         } : undefined}
         onCraft={(recipe, result) => {

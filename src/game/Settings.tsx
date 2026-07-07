@@ -922,6 +922,88 @@ function ReturnToMainMenuSection({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ─── Cloud Save History ───
+// Rolling last-5 snapshots from `game_save_snapshots`. Lets the user restore
+// any recent cloud save after a mistake (e.g. accidental QA-fixture overwrite).
+function CloudSaveHistorySection({ onClose }: { onClose: () => void }) {
+  const { dispatch } = useGame();
+  const { listSnapshots, restoreSnapshot, saveToCloud, isAuthenticated } = useCloudSave();
+  const [snapshots, setSnapshots] = useState<Array<{ id: string; created_at: string; kind: string; label: string | null }>>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  const refresh = async () => {
+    if (!isAuthenticated) return;
+    setLoading(true);
+    const res = await listSnapshots();
+    if (res.success) setSnapshots(res.snapshots);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (open) void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isAuthenticated]);
+
+  if (!isAuthenticated) return null;
+
+  const handleRestore = async (id: string, when: string) => {
+    if (!window.confirm(`Restore save from ${new Date(when).toLocaleString()}? Your current progress will be replaced (a snapshot of the current state is saved first).`)) return;
+    // Snapshot current state before overwriting, so restore itself is undoable.
+    try {
+      const { state } = (window as any).__menagerie ?? {};
+      if (state?.saveData) {
+        await saveToCloud(state.saveData, { skipPreflight: true, snapshotKind: 'manual', snapshotLabel: 'Before restore' });
+      }
+    } catch {}
+    const res = await restoreSnapshot(id);
+    if (!res.success || !res.data) {
+      sonnerToast.error(`Restore failed: ${res.error ?? 'unknown error'}`);
+      return;
+    }
+    dispatch({ type: 'LOAD_SAVE', saveData: res.data });
+    sonnerToast.success('☁️ Save restored');
+    onClose();
+  };
+
+  return (
+    <div className="space-y-2 pt-4 border-t">
+      <Label className="text-base flex items-center gap-2">
+        <Download className="w-4 h-4 text-primary" />
+        Cloud Save History
+      </Label>
+      <p className="text-xs text-muted-foreground">
+        The last 5 cloud saves are kept automatically. Restore any of them if something goes wrong.
+      </p>
+      <Button variant="outline" size="sm" className="w-full" onClick={() => setOpen(o => !o)}>
+        {open ? 'Hide history' : 'Show history'}
+      </Button>
+      {open && (
+        <div className="space-y-1">
+          {loading && <p className="text-xs text-muted-foreground">Loading…</p>}
+          {!loading && snapshots.length === 0 && (
+            <p className="text-xs text-muted-foreground">No snapshots yet — they'll appear here after your next cloud save.</p>
+          )}
+          {snapshots.map(s => (
+            <div key={s.id} className="flex items-center justify-between gap-2 border rounded p-2 text-xs">
+              <div className="min-w-0 flex-1">
+                <div className="font-medium">{new Date(s.created_at).toLocaleString()}</div>
+                <div className="text-muted-foreground">
+                  {s.kind}{s.label ? ` · ${s.label}` : ''}
+                </div>
+              </div>
+              <Button size="sm" variant="secondary" onClick={() => handleRestore(s.id, s.created_at)}>
+                Restore
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 // Standalone Admin Panel Dialog - lives outside settings
 function AdminPanelDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   return (

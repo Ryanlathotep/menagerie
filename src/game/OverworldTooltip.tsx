@@ -125,6 +125,31 @@ export function OverworldTooltipContent({
       );
     }
 
+    case 'plant': {
+      const variant = tile.plantVariant || 'herb';
+      const tier = tile.plantTier || 1;
+      const variantEmoji = variant === 'mushroom' ? '🍄' : variant === 'flower' ? '🌸' : variant === 'root' ? '🥕' : '🌿';
+      const tierName = tier === 3 ? 'Rare' : tier === 2 ? 'Uncommon' : 'Common';
+      const variantLabel = variant.charAt(0).toUpperCase() + variant.slice(1);
+      return (
+        <div className="space-y-1 text-xs">
+          <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-1">
+            <span className="font-bold text-sm">{variantEmoji} {tierName} {variantLabel}</span>
+            {coords}
+          </div>
+          <p className="text-muted-foreground italic">Walk into it to harvest for herbs.</p>
+          <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+            <span className="text-muted-foreground">Drops:</span>
+            <span>{tier === 3 ? '2 herbs (uncommon+rare)' : tier === 2 ? '1 uncommon herb' : '1 common herb'}</span>
+            <span className="text-muted-foreground">Use:</span>
+            <span>Potion brewing, infusions</span>
+          </div>
+          {dim && <p className="text-[10px] text-muted-foreground italic">Last seen — info may be stale.</p>}
+        </div>
+      );
+    }
+
+
     case 'water':
       return (
         <div className="space-y-1 text-xs">

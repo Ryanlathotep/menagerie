@@ -11,10 +11,25 @@ export type PlayerBuildingType =
   | 'wall'
   | 'spike_trap' | 'poison_trap' | 'fire_trap' | 'ice_trap'
   | 'scout_tower' | 'farm'
+  // Crafting stations — anchor a specific crafting discipline. Adjacent player
+  // can open the workshop keyed to the station's category. Portable variants
+  // exist as tools (see tools.ts → PORTABLE_STATIONS).
+  | 'forge' | 'workbench' | 'brewing_stand' | 'enchanting_altar'
   // Elevation connectors — let the player climb onto wall-tops & cliffs.
   // Both are functionally identical; cost & art differ.
   | 'stone_staircase'
   | 'ladder';
+
+// Which crafting discipline a station provides. Consumed by the workshop UI
+// to filter recipes; portable tools in tools.ts share this taxonomy.
+export type CraftingStationKind = 'forge' | 'workbench' | 'brewing' | 'enchanting';
+
+export const CRAFTING_STATION_BUILDINGS: Record<CraftingStationKind, PlayerBuildingType> = {
+  forge: 'forge',
+  workbench: 'workbench',
+  brewing: 'brewing_stand',
+  enchanting: 'enchanting_altar',
+};
 
 export interface BuildingCost {
   wood: number;

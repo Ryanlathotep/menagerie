@@ -119,7 +119,7 @@ export function resolveTournament(
         log: result.log,
         winner: result.winner,
         turns: result.turns,
-        roomId: room.id,
+        roomId: pickRoom(match.id).id,
       };
       match.replayId = replay.id;
       replays.push(replay);

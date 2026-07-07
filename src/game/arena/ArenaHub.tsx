@@ -219,6 +219,11 @@ function TournamentCard({
                 if (!teamId) return;
                 const team = arena.playerTeams.find(x => x.id === teamId);
                 if (!team) return;
+                const check = validateArenaTeam(team, state.saveData);
+                if (!check.valid) {
+                  toast({ title: 'Team failed legitimacy check', description: check.issues.map(i => i.message).join(' · '), variant: 'destructive' as any });
+                  return;
+                }
                 setArena(s => ({
                   ...s,
                   tournaments: {
@@ -230,7 +235,10 @@ function TournamentCard({
               }}
               defaultValue="">
               <option value="">Enter team…</option>
-              {arena.playerTeams.map(pt => <option key={pt.id} value={pt.id}>{pt.name}</option>)}
+              {arena.playerTeams.map(pt => {
+                const v = validateArenaTeam(pt, state.saveData);
+                return <option key={pt.id} value={pt.id}>{v.valid ? '✓' : '⚠'} {pt.name}</option>;
+              })}
             </select>
           )}
           <Button size="sm" variant="outline"

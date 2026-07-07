@@ -703,6 +703,28 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
       const t = getOverworldTile(ow, target.x, target.y);
       if (!t || t.type !== target.tileType) {
+        // Depleted — look for an adjacent same-type tile to pivot to, so
+        // clusters of trees / rocks harvest without needing a fresh tap.
+        const neighbors = [
+          { x: target.x, y: target.y - 1 },
+          { x: target.x, y: target.y + 1 },
+          { x: target.x - 1, y: target.y },
+          { x: target.x + 1, y: target.y },
+        ];
+        let pivot: Position | null = null;
+        for (const n of neighbors) {
+          const nt = getOverworldTile(ow, n.x, n.y);
+          if (nt && nt.type === target.tileType) {
+            // Must also be adjacent to the player so we can step into it next tick.
+            const d = Math.abs(n.x - ow.playerPosition.x) + Math.abs(n.y - ow.playerPosition.y);
+            if (d === 1) { pivot = n; break; }
+          }
+        }
+        if (pivot) {
+          autoMineTargetRef.current = { x: pivot.x, y: pivot.y, tileType: target.tileType };
+          addLog(`🌲 Auto-Harvest chained to adjacent ${target.tileType}.`, 'info');
+          return;
+        }
         cancelAutoMine('✅ Auto-Harvest finished — resource depleted.');
         return;
       }

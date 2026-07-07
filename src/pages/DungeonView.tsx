@@ -1085,7 +1085,14 @@ export function DungeonView({
           
           // Stop CONTINUED running when any enemy is visible (spotted!) — but
           // always allow the first step so the player is never frozen in place.
+          // Also break out immediately (even on step 0) if a visible enemy is
+          // already close enough to hit us with one of its moves.
           if (stepsTaken > 0 && hasVisibleEnemy(currentDungeon.tiles)) {
+            setIsAutoRunning(false);
+            autoRunDirection.current = null;
+            return;
+          }
+          if (anyEnemyThreatensPlayer(currentDungeon)) {
             setIsAutoRunning(false);
             autoRunDirection.current = null;
             return;

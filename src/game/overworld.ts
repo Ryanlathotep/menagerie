@@ -1301,6 +1301,7 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
 export function canUpgradeBase(state: OverworldState): boolean {
   const info = BUILDING_UPGRADES[state.homeBase.buildingType];
   if (!info.next || !info.upgradeCost) return false;
+  if (isCreativeMode()) return true;
   return state.woodCollected >= info.upgradeCost.wood && state.stoneCollected >= info.upgradeCost.stone;
 }
 
@@ -1308,19 +1309,22 @@ export function upgradeBase(state: OverworldState): BuildingType | null {
   const info = BUILDING_UPGRADES[state.homeBase.buildingType];
   if (!info.next || !info.upgradeCost) return null;
   if (!canUpgradeBase(state)) return null;
-  
-  state.woodCollected -= info.upgradeCost.wood;
-  state.stoneCollected -= info.upgradeCost.stone;
+
+  if (!isCreativeMode()) {
+    state.woodCollected -= info.upgradeCost.wood;
+    state.stoneCollected -= info.upgradeCost.stone;
+  }
   state.homeBase.buildingType = info.next;
-  
+
   // Update the tile
   const tile = getOverworldTile(state, 0, 0);
   if (tile) {
     tile.buildingType = info.next;
   }
-  
+
   return info.next;
 }
+
 
 // ============= ROAD SYSTEM =============
 

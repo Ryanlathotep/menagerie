@@ -1339,6 +1339,13 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       handleMove(dx, dy);
       return;
     }
+    // Far-tap on a harvestable while auto-mine is on → hand it straight to
+    // the cluster-harvest job. It walks the player over AND chops everything
+    // in the cluster, no separate arrival hook needed.
+    if (settings.autoMine && (tile?.type === 'rock' || tile?.type === 'tree')) {
+      startAutoMine(worldX, worldY);
+      return;
+    }
     // Far tap → A* path to destination and walk it step-by-step. This is what
     // makes mobile tap-to-move actually usable when the target isn't right
     // next to you.
@@ -1370,11 +1377,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         return;
       }
     }
-    // If the far-tap target itself is a harvestable AND auto-mine is on, kick
-    // off auto-harvest as soon as we arrive at the adjacent walkable tile —
-    // matches the mental model "walk over there and start chopping".
-    const kickHarvest = settings.autoMine && (tile?.type === 'rock' || tile?.type === 'tree');
-    startAutoWalk(path, kickHarvest ? () => startAutoMine(worldX, worldY) : undefined);
+    startAutoWalk(path);
   }, [overworld, monster, targetingMove, handleTargetingClick, handleMove, addLog, buildMode, selectedBuildType, roadBuildMode, selectedRoadType, saveOverworld, settings.autoMine, startAutoMine]);
   
   // Right-click → context menu for player buildings, or auto-attack for enemies/nests

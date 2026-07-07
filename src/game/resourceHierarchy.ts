@@ -214,7 +214,8 @@ export function tickResourceUpgrades(
       const [kx, ky] = key.split(',').map(Number);
       if (res.treeTier) {
         const next = getNextTreeTier(res.treeTier);
-        if (next) {
+        const maxTier = getMaxTreeTier(kx, ky);
+        if (next && treeTierIndex(next) <= treeTierIndex(maxTier)) {
           res.treeTier = next;
           const tierData = TREE_TIER_DATA[next];
           // Jitter the next-tier countdown so siblings don't re-sync.
@@ -222,16 +223,22 @@ export function tickResourceUpgrades(
             ? jitterUpgradeSteps(tierData.upgradeSteps, kx, ky, 1)
             : 0;
           upgrades.push({ key, type: 'tree', newTier: next });
+        } else {
+          // Capped by area difficulty — stop ticking.
+          res.stepsUntilUpgrade = 0;
         }
       } else if (res.stoneTier) {
         const next = getNextStoneTier(res.stoneTier);
-        if (next) {
+        const maxTier = getMaxStoneTier(kx, ky);
+        if (next && stoneTierIndex(next) <= stoneTierIndex(maxTier)) {
           res.stoneTier = next;
           const tierData = STONE_TIER_DATA[next];
           res.stepsUntilUpgrade = tierData.upgradeSteps
             ? jitterUpgradeSteps(tierData.upgradeSteps, kx, ky, 2)
             : 0;
           upgrades.push({ key, type: 'stone', newTier: next });
+        } else {
+          res.stepsUntilUpgrade = 0;
         }
       }
     }

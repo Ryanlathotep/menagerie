@@ -880,6 +880,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     cancelAutoHunt();
     const stepDelay = Math.max(120, settings.autoRunSpeed || 100);
     addLog('🏹 Auto-Hunt started — seeking nearest enemy.', 'info');
+    automationRunningRef.current = true;
     autoHuntTimerRef.current = window.setInterval(() => {
       const ow = overworldRef.current;
       if (!ow) { cancelAutoHunt(); return; }

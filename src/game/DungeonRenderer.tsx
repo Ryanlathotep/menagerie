@@ -15,6 +15,7 @@ import {
   TerrainTile, 
   StairsTile, 
   StairsUpTile,
+  PortalStairsTile,
   TreasureTile, 
   TrapTile, 
   PlantTile, 
@@ -551,10 +552,21 @@ function Tile({
       title: '⬇️ Stairs Down',
       description: 'Descend to the next floor'
     },
-    stairs_up: {
-      title: '⬆️ Stairs Up',
-      description: 'Ascend back to the previous floor'
-    },
+    stairs_up: tile.portal
+      ? {
+          title: tile.portal.destKind === 'tower' ? '🌀 Portal (Tower)' : '🌀 Portal (Overworld)',
+          description: tile.portal.validated === false
+            ? `Blocked — ${tile.portal.invalidReason || 'destination unavailable'}`
+            : tile.portal.destKind === 'tower'
+              ? `Warps to Tower ${tile.portal.destTowerId || '(unresolved)'}`
+              : tile.portal.destOverworld
+                ? `Warps to Overworld (${tile.portal.destOverworld.x}, ${tile.portal.destOverworld.y})`
+                : 'Warps to overworld',
+        }
+      : {
+          title: '⬆️ Stairs Up',
+          description: 'Ascend back to the previous floor',
+        },
     shop: {
       title: '🏪 Shop',
       description: 'Buy items and equipment'
@@ -585,7 +597,14 @@ function Tile({
       case 'stairs':
         return <StairsTile size={tileSize} seed={tileSeed} />;
       case 'stairs_up':
-        return <StairsUpTile size={tileSize} seed={tileSeed} />;
+        return tile.portal
+          ? <PortalStairsTile
+              size={tileSize}
+              seed={tileSeed}
+              blocked={tile.portal.validated === false}
+              destKind={tile.portal.destKind}
+            />
+          : <StairsUpTile size={tileSize} seed={tileSeed} />;
       case 'shop':
         return <ShopTile size={tileSize} seed={tileSeed} />;
       case 'elevator':

@@ -721,8 +721,57 @@ export function DungeonView({
         dispatch({ type: 'SET_PHASE', phase: 'overworld' });
         return;
       }
+      // Cross-tower portal: FLEE the current tower (persists gear + xp),
+      // then immediately START_RUN into the destination tower with the same
+      // live party. Falls back to overworld if the tower id is unknown.
+      if (
+        stoodOn?.portal?.destKind === 'tower' &&
+        stoodOn.portal.destTowerId &&
+        stoodOn.portal.validated !== false &&
+        state.run
+      ) {
+        const destId = stoodOn.portal.destTowerId;
+        const destEntrance = state.saveData.dungeonEntrances?.[destId];
+        if (!destEntrance) {
+          addLog(`🌀 Tower "${destId}" is no longer known — falling back to overworld.`, 'info');
+          dispatch({ type: 'FLEE_DUNGEON' });
+          dispatch({ type: 'SET_PHASE', phase: 'overworld' });
+          return;
+        }
+        // Snapshot the live party BEFORE flee wipes state.run.
+        const liveParty: Monster[] = state.run.party.map(m => ({ ...m }));
+        const livePartyEquipment: MonsterEquipment[] = liveParty.map(
+          m => m.equipment || createEmptyEquipment(),
+        );
+        // Prime the localStorage handshake DungeonView reads on mount.
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('menagerie_run_destination', 'dungeon');
+          localStorage.setItem('menagerie_run_origin', 'overworld');
+          localStorage.setItem('menagerie_active_dungeon_id', destId);
+          localStorage.setItem('menagerie_current_dungeon_id', destId);
+          localStorage.setItem(
+            'menagerie_active_dungeon_difficulty',
+            String(destEntrance.difficulty || 1),
+          );
+          localStorage.removeItem('menagerie_selected_start_floor');
+        }
+        addLog(`🌀 Portal activated → ${destEntrance.name || destId}. Party warping...`, 'system');
+        dispatch({ type: 'FLEE_DUNGEON' });
+        dispatch({
+          type: 'START_RUN',
+          monster: liveParty[0],
+          party: liveParty,
+          partyPreEquipped: livePartyEquipment,
+          withdrawnIds: [],
+          preSelectedItems: [],
+          destination: 'dungeon',
+        });
+        toast.success(`Warped to ${destEntrance.name || destId}`);
+        return;
+      }
       setStairExitDialogOpen(true);
       return;
+
     } else if (result.stairsUp && dungeon.floor > 1) {
       const visited = { ...(dungeon.visitedFloors || {}) };
       visited[dungeon.floor] = {
@@ -1642,13 +1691,20 @@ export function DungeonView({
             }
           } catch { /* ignore — validation optional */ }
         }
+        // Refund guard: refuse to place (and keep the kit) if the destination
+        // is blocked. Placing a dead portal wastes the material otherwise.
+        if (!validated) {
+          addLog(`🌀 Cannot place portal — destination (${destX}, ${destY}) is blocked (${invalidReason}). Kit returned.`, 'info');
+          toast.error('Portal destination is blocked');
+          return;
+        }
         nextTiles[p.y][p.x] = {
           ...nextTiles[p.y][p.x],
           type: 'stairs_up',
           stairsBeneath: 'up',
           portal: { destKind: 'overworld', destOverworld: { x: destX, y: destY }, validated, invalidReason },
         };
-        addLog(`🌀 Portal staircase placed → Overworld (${destX}, ${destY})${validated ? '' : ` (blocked: ${invalidReason})`}.`, 'system');
+        addLog(`🌀 Portal staircase placed → Overworld (${destX}, ${destY}).`, 'system');
       } else {
         // Odd-coord: destination is a tower — nearest tower to the mapped coord.
         const mappedX = anchor.x + Math.round(relX / 2);
@@ -1661,19 +1717,25 @@ export function DungeonView({
             if (!best || d < best.d) best = { id, d };
           }
         }
+        // Refund guard: refuse to place if we can't resolve a target tower.
+        if (!best) {
+          addLog('🌀 Cannot place portal — no discovered tower near this coordinate. Kit returned.', 'info');
+          toast.error('No known tower nearby');
+          return;
+        }
         nextTiles[p.y][p.x] = {
           ...nextTiles[p.y][p.x],
           type: 'stairs_up',
           stairsBeneath: 'up',
           portal: {
             destKind: 'tower',
-            destTowerId: best?.id,
-            validated: !!best,
-            invalidReason: best ? undefined : 'no discovered tower nearby',
+            destTowerId: best.id,
+            validated: true,
           },
         };
-        addLog(`🌀 Portal staircase placed → ${best ? `Tower ${best.id}` : 'unresolved (no known tower)'}.`, 'system');
+        addLog(`🌀 Portal staircase placed → Tower ${best.id}.`, 'system');
       }
+
       dispatch({ type: 'UPDATE_DUNGEON', dungeon: { tiles: nextTiles } });
       dispatch({ type: 'USE_ITEM', itemId: item.id });
       toast.success('Portal staircase placed!');

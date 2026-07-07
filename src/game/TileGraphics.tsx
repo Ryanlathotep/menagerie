@@ -479,6 +479,70 @@ export function StairsUpTile({ size, seed = 0 }: TileGraphicProps) {
   );
 }
 
+/**
+ * Craftable portal staircase — visually distinct from the plain ascending
+ * stairs so players can spot player-placed exits at a glance. Uses a cool
+ * violet/cyan palette + a swirling arcane ring instead of the warm stone
+ * archway. `blocked=true` desaturates the swirl and paints a red X so
+ * unusable portals are obvious without opening the tooltip.
+ */
+export function PortalStairsTile({
+  size,
+  seed = 0,
+  blocked = false,
+  destKind = 'overworld',
+}: TileGraphicProps & { blocked?: boolean; destKind?: 'overworld' | 'tower' }) {
+  const swirl = blocked ? 'hsl(0 40% 45%)' : (destKind === 'tower' ? 'hsl(285 70% 55%)' : 'hsl(200 75% 55%)');
+  const swirlBright = blocked ? 'hsl(0 40% 65%)' : (destKind === 'tower' ? 'hsl(285 85% 75%)' : 'hsl(190 90% 72%)');
+  const stone = 'hsl(260 20% 32%)';
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className="block">
+      <line x1="0" y1="0" x2="24" y2="0" stroke={INK_COLORS.faint} strokeWidth={0.3} opacity={0.4} />
+      <line x1="0" y1="0" x2="0" y2="24" stroke={INK_COLORS.faint} strokeWidth={0.3} opacity={0.4} />
+
+      {/* Dark obsidian archway (contrasts with warm stone of a normal staircase) */}
+      <path
+        d="M3 21 L3 9 Q3 3 12 3 Q21 3 21 9 L21 21 Z"
+        fill={stone}
+        stroke={INK_COLORS.dark}
+        strokeWidth={0.7}
+      />
+
+      {/* Swirling portal core */}
+      <circle cx="12" cy="10" r="5.5" fill={swirl} opacity={0.9} />
+      <circle cx="12" cy="10" r="3.6" fill={swirlBright} opacity={0.85} />
+      <path
+        d="M12 5.5 Q17 8 12 10 Q7 12 12 14.5"
+        stroke={swirlBright}
+        strokeWidth={0.8}
+        fill="none"
+        opacity={0.9}
+      />
+      <path
+        d="M12 5.5 Q7 8 12 10 Q17 12 12 14.5"
+        stroke="hsl(0 0% 100%)"
+        strokeWidth={0.5}
+        fill="none"
+        opacity={0.7}
+      />
+      <circle cx="12" cy="10" r="5.5" fill="none" stroke={INK_COLORS.dark} strokeWidth={0.5} />
+
+      {/* Descending step glyphs at the base — hints "this is still a staircase" */}
+      <rect x="6"  y="17.4" width="12" height="1.8" fill={stone} stroke={INK_COLORS.dark} strokeWidth={0.4} />
+      <rect x="5"  y="19.4" width="14" height="1.8" fill="hsl(260 18% 24%)" stroke={INK_COLORS.dark} strokeWidth={0.5} />
+
+      {/* Blocked marker */}
+      {blocked && (
+        <>
+          <line x1="6" y1="4" x2="18" y2="16" stroke="hsl(0 85% 45%)" strokeWidth={1.4} />
+          <line x1="18" y1="4" x2="6" y2="16" stroke="hsl(0 85% 45%)" strokeWidth={1.4} />
+        </>
+      )}
+    </svg>
+  );
+}
+
+
 // Treasure tile
 export function TreasureTile({ size, seed = 0 }: TileGraphicProps) {
   const r1 = seededRandom(seed);

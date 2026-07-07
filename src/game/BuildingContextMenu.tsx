@@ -12,7 +12,7 @@ import {
 } from './buildings';
 import { getStationTierData } from './crafting/stationTiers';
 import { Monster } from './types';
-import { Hammer, Recycle, RefreshCw, Settings, UserPlus, Wrench, X } from 'lucide-react';
+import { Hammer, Recycle, RefreshCw, Settings, Trophy, UserPlus, Wrench, X } from 'lucide-react';
 
 interface BuildingContextMenuProps {
   building: PlayerBuilding;
@@ -32,6 +32,8 @@ interface BuildingContextMenuProps {
   onConfigureStation?: () => void;
   /** Open the crafting workshop scoped to this station's context. */
   onOpenStationWorkshop?: () => void;
+  /** Open the Arena Hub — only for arena buildings. */
+  onOpenArena?: () => void;
   onClose: () => void;
 }
 
@@ -48,6 +50,7 @@ export function BuildingContextMenu({
   onRotateConnector,
   onConfigureStation,
   onOpenStationWorkshop,
+  onOpenArena,
   onClose,
 }: BuildingContextMenuProps) {
   const def = BUILDING_DEFINITIONS[building.type];
@@ -95,6 +98,12 @@ export function BuildingContextMenu({
 
         {/* Actions */}
         <div className="space-y-2">
+          {building.type === 'arena' && onOpenArena && (
+            <Button variant="default" className="w-full justify-start" onClick={onOpenArena}>
+              <Trophy className="h-4 w-4 mr-2" />
+              Open Arena Hub
+            </Button>
+          )}
           {isStation && onOpenStationWorkshop && (
             <Button
               variant="default"

@@ -312,6 +312,34 @@ export function OverworldBuildingTileGraphic({
     case 'brewing_stand':
     case 'enchanting_altar':
       return <PlaceholderStationTile size={size} seed={seed} type={type} />;
+    case 'arena':
+      return <ArenaBuildingTile size={size} />;
   }
+}
+
+// ─── Arena building tile ───
+function ArenaBuildingTile({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className="block">
+      <rect width="24" height="24" fill="hsl(38 45% 78%)" opacity={0.35}/>
+      {/* Oval floor */}
+      <ellipse cx="12" cy="13" rx="9" ry="6" fill="hsl(38 55% 68%)" opacity={0.75}
+        stroke={INK.dark} strokeWidth={0.6}/>
+      <ellipse cx="12" cy="13" rx="6" ry="4" fill="none"
+        stroke={INK.medium} strokeWidth={0.4} opacity={0.6}/>
+      {/* Crowd dots */}
+      {Array.from({ length: 14 }).map((_, i) => {
+        const a = (i / 14) * Math.PI * 2;
+        const rx = 10.5, ry = 7;
+        const x = 12 + Math.cos(a) * rx;
+        const y = 13 + Math.sin(a) * ry;
+        return <circle key={i} cx={x} cy={y} r={0.9} fill={INK.dark} opacity={0.75}/>;
+      })}
+      {/* Banner */}
+      <path d="M4 2 L20 2 L18 6 L12 5 L6 6 Z" fill="hsl(0 70% 55%)" opacity={0.8}
+        stroke={INK.dark} strokeWidth={0.4}/>
+      <text x="12" y="5" textAnchor="middle" fontSize="3.5" fill="white" fontWeight="700">ARENA</text>
+    </svg>
+  );
 }
 

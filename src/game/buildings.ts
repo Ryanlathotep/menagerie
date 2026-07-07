@@ -18,7 +18,9 @@ export type PlayerBuildingType =
   // Elevation connectors — let the player climb onto wall-tops & cliffs.
   // Both are functionally identical; cost & art differ.
   | 'stone_staircase'
-  | 'ladder';
+  | 'ladder'
+  // Arena — right-click to open the Arena Hub (tournaments, bets, replays).
+  | 'arena';
 
 // Which crafting discipline a station provides. Consumed by the workshop UI
 // to filter recipes; portable tools in tools.ts share this taxonomy.
@@ -199,6 +201,15 @@ export const BUILDING_DEFINITIONS: Record<PlayerBuildingType, BuildingDefinition
     description: 'Bind essences into rune scrolls and infuse potions into gear. Stand adjacent to open the Enchanting tab.',
     cost: { wood: 8, stone: 25, materials: [{ materialId: 'normal_essence', quantity: 5 }] },
     maxHp: 70,
+    category: 'utility',
+  },
+  arena: {
+    type: 'arena',
+    name: 'Arena',
+    emoji: '🏟️',
+    description: 'Host daily, weekly, and monthly autobattle tournaments. Right-click to enter teams, place bets, watch replays, and shop for arena-only gear.',
+    cost: { wood: 30, stone: 60 },
+    maxHp: 200,
     category: 'utility',
   },
 };

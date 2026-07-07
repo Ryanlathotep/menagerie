@@ -1,86 +1,97 @@
-# Max-Level QA Fixture, Town-Build Invariant, and Autobattle Engine
+# Arena System Plan
 
-Three linked deliverables. Each is independently useful; together they give the smoke test real coverage of endgame content and lay the groundwork for the future Arena building + cross-server tournaments.
+Huge scope — shipping in one plan, split into clear modules. Nothing here touches shipped map combat balance; the new 6x6 combat is a parallel system reused later for scripted dungeons.
 
-## 1. Max-level "everything unlocked" fixture
+## 1. Arena Building (Overworld)
 
-**Goal:** a deterministic, in-memory `GameState` the invariant suite can spin up in one call so tests exercise endgame code paths (mastered moves, full sets, all species, deep inventory) without touching cloud saves.
+- New player-buildable: `arena` (in `src/game/buildings.ts`), placeable under normal building rules, 3x3 footprint, needs Log Cabin+ tier.
+- Right-click / enter → opens **Arena Hub** modal (new `src/game/arena/ArenaHub.tsx`).
+- Hub tabs: **Tournaments**, **My Teams**, **Betting Ledger**, **Replays**, **Shop**.
 
-- New `src/dev/fixtures/maxLevelSave.ts` exporting `buildMaxLevelSave(seed = 1)` → `SaveData`:
-  - All 20 species × 5 classes × 6 elements (+ shiny variants) as `UnlockedMonster`s at level 100.
-  - Each monster: full `moveMastery` at Omega, `equipment` filled with a matched set (uses the same helpers `createMonster`/`createEmptyEquipment` the game uses).
-  - `storedItems`: one of every consumable + 3 Portal Stairs Kits + 5 Town Portal Scrolls.
-  - `storedEquipment`: a rotating slate of tier-5 gear per slot for diff testing.
-  - `dungeonEntrances`: HOME_TOWER_ID + one of each themed tower (element/class/species), all `discovered: true`, `deepestFloor: 100`.
-  - `overworldState`: pre-explored 40×40 chunk around (0,0) with a mixed biome sample.
-  - `unlockedRecipes`: every recipe in `recipeBook.ts`.
-- New `buildMaxLevelParty(save)` → `Monster[]` returning 4 balanced picks (tank/dps/support/ranger) fully equipped.
-- Add `window.__menagerie.loadMaxLevelSave()` bridge helper (dev bridge, guarded by admin role) that dispatches `LOAD_SAVE` with the fixture. Handy for manual smoke and for the browser-driven QA panel.
+## 2. Tournaments
 
-## 2. Town-build QA invariant
+- Three fixed cadences: **Daily** (24h), **Weekly** (7d), **Monthly** (30d). Anchored to UTC epoch so every client shows the same countdown; no server needed for MVP.
+- State stored in `saveData.arena` (new field): `{ entries, bets, replays, currency, teams, npcTeams }`.
+- Each tournament: 8-team single-elimination bracket. Player may enter **one team per cadence**. Missing player slots filled from the 5 seeded NPC teams + procedurally-generated filler so bracket always fills.
+- On countdown reaching 0: `resolveTournament(cadence, seed=cadenceEpoch)` runs all matches through the autobattle-style 6x6 engine (below), stores full logs as `ArenaReplay[]`, pays out bets, awards arena currency.
+- Countdown surfaced on Arena building tooltip + Hub header.
 
-**Goal:** prove the settlement-building system still lets a max-level save construct a canonical town without violating placement rules, and that everything is refunded when disassembled.
+## 3. Betting Pool
 
-- New `src/dev/fixtures/canonicalTownLayout.ts`: an ordered list of `{type, dx, dy}` builds relative to home (Campfire → Log Cabin → Town Hall → Storehouse → Farm → Watchtower → Workbench → Elevator → 2 road spokes). ~10 buildings, all within the 10-Manhattan build radius chain.
-- New invariant `town-build-and-refund` in `src/dev/qaInvariants.ts`:
-  1. Load the max-level fixture.
-  2. For each entry, dispatch `BUILD_STRUCTURE`; assert placement succeeded + materials debited.
-  3. Snapshot resulting `overworldState.playerBuildings`.
-  4. Dispatch `DISASSEMBLE_STRUCTURE` on each in reverse order; assert materials returned within refund tolerance and no orphan buildings remain.
-  5. Rebuild once more to prove the placement chain still works after teardown.
-- Suggested-fix mapping: → `src/game/overworld.ts` BUILD_STRUCTURE + DISASSEMBLE_STRUCTURE handlers; check placement-radius rule + `getDisassembleRefund`.
-- Wire the new invariant into `runSmokeTest()` and the Admin QA panel's summary table.
+- Each match opens with **seeded NPC bets**: pools of **1,000 / 10,000 / 100,000 gp** distributed randomly (seeded) across the 6 teams.
+- Player bets any amount of gp on either side until countdown hits 0.
+- Payout: `bet * (totalPool / winningSidePool)` minus 5% house cut going to arena currency for participants.
+- Bets recorded in ledger with match id for replay linking.
 
-## 3. Autobattle engine (arena foundation)
+## 4. Arena Currency + Shop
 
-**Goal:** headless, deterministic combat resolver that plays two parties against each other with no UI, seeded RNG, and a compact result payload. Reused by (a) the new QA invariant, (b) the future Arena building, (c) daily/weekly/monthly tournament backend jobs.
+- New resource `arenaTokens` (never dropped elsewhere).
+- Earned by: entering a team (+5), winning a match (+10), your team winning bracket (+50), placing any bet (+1).
+- Shop sells **Arena-exclusive equipment** (added to `equipment.ts` as a new `arena` set):
+  - Gladiator's Edge (weapon, +crit chance)
+  - Duelist's Cloak (armor, +dodge)
+  - Phantom Sash (accessory, +evasion)
+  - Venomtongue Ring / Emberheart Ring / Frostbite Ring (accessories, +DoT damage of matching element)
+- Icons use existing equipment icon system; sprites reused.
 
-New module `src/game/autobattle/`:
+## 5. New 6x6 Alternating Combat Engine (`src/game/arenaCombat/`)
 
-```text
-autobattle/
-  types.ts        AutobattleTeam, AutobattleResult, AutobattleLogEntry
-  ai.ts           chooseMove(monster, enemies, allies, rng) — reuses enemyAI archetype scoring
-  resolver.ts     runAutobattle(teamA, teamB, opts) — turn loop, status ticks, faint handling
-  seeded.ts       mulberry32-backed RNG (same family as dungeon seeding)
-  index.ts        public API
-```
+Parallel to existing map/autobattle. Reused later for solo-piloted dungeons and duo/trio rules.
 
-- `runAutobattle` returns `{winner: 'A'|'B'|'draw', turns, casualties, mvpId, log[]}` and never mutates inputs.
-- Turn order = existing speed rule; move selection reuses existing `enemyAI` scoring so results feel consistent with map combat.
-- Status effects, stamina, elemental/class multipliers all delegate to the existing `combat.ts` helpers — no combat-math duplication.
-- Auto-battle cap: 200 turns → draw (prevents infinite ping-pong).
+- **Grid**: 24x24 tile grid, teams start on opposite edges.
+- **Team size**: 1–6 per side (`teamMode: 'solo'|'duo'|'trio'|'full'`).
+- **Turn order**: Sort all alive fighters by Speed desc. Then walk that list but **alternate teams** — pick fastest of team A, then fastest still-waiting of team B, then next fastest of A, etc. If one team runs out, remaining team acts consecutively.
+- **AI hook**: `TeamStrategy` interface — default = `autoStrategy` (reuses `chooseEnemyMove` scoring + naive move-toward-nearest-enemy pathing). Slot exists so players can later script their own.
+- **Reuses** `combat.ts` `executeCombat` + status effects; adds only positioning + turn scheduling.
+- Produces `ArenaMatchLog` — every action tagged with actor id/species/class/element, target, move id, damage, crit, dodged, DoT ticks, distance, turn index, tile before/after.
 
-New QA invariant `autobattle-deterministic`:
-- Runs `runAutobattle(partyA, partyB, {seed: 42})` three times and asserts identical results.
-- Runs it with seed 42 vs 43 and asserts *different* logs (proves seed actually threads through).
+## 6. NPC Teams
 
-Admin QA panel gains a small "Auto-battle sandbox" section: pick two saved parties, seed, click **Simulate** → shows result summary + collapsible log. Uses the max-level fixture as default opponents.
+- 5 hand-authored teams in `src/game/arena/npcTeams.ts` (Fire Bruisers, Void Mages, Balanced All-Rounders, Water Tanks, Assassin Swarm) — level scales to player's roster average.
+- Additional procedural filler if bracket has open slots.
 
-## Out of scope (explicitly)
+## 7. Replay Viewer
 
-- **No Arena building yet** — this plan ships the engine and QA hooks. Placing an Arena on the overworld, betting UI, cross-server matchmaking, and the tournament scheduler are follow-up work, gated on the engine being stable.
-- No new Supabase tables. Tournament persistence (`tournament_entries`, `arena_matches`, betting ledger) will be a separate plan once the engine is proven and you've decided the payout economy.
-- No balance changes to existing combat math.
+- `ArenaReplayPlayer.tsx` — steps through `ArenaMatchLog` on a rendered 6x6 board (SVG, sepia parchment style). Play/pause/step/speed. Rich sidebar: per-monster HP/stamina/status timeline + full action log with filter (element, class, species, crit only, etc.).
 
-## Technical notes
+## 8. Spectator Crowd + Arena Renderer
 
-- Fixture uses the real `createMonster` / `equipment` helpers so any future breaking change to those signatures fails loudly instead of drifting.
-- All new dev-only code lives under `src/dev/` and `src/game/autobattle/` — nothing ships to the player build unless the Arena feature explicitly imports the resolver.
-- Bridge helpers (`loadMaxLevelSave`, autobattle sandbox) check `has_role('admin')` before doing anything destructive to the current save.
-- The town-build invariant runs against a *cloned* fixture per invocation so it can't corrupt the caller's live game.
+- `ArenaBoard.tsx` renders the 24x24 combat grid inside an oval arena (SVG ellipse, sand-colored floor, stone rim).
+- Outside the rim: ring of **non-combat monster sprites** pulled from existing species assets, positioned around the ellipse.
+- Idle animation: gentle CSS `wiggle` keyframe (already have similar); on crit event → burst `cheer` animation (jump + scale) triggered by replay player.
+- Admin **Arena Room Builder** tab (new `src/admin/ArenaRoomEditor.tsx`): edit floor shape (oval default), rim color, crowd density, crowd species mix; saves JSON to `game_data_overrides` under `arena_rooms`. MVP ships with just the plain oval preset; the editor is the framework.
 
-## Files touched / created
+## 9. Balance Analytics
 
-Created:
-- `src/dev/fixtures/maxLevelSave.ts`
-- `src/dev/fixtures/canonicalTownLayout.ts`
-- `src/game/autobattle/{types,ai,resolver,seeded,index}.ts`
+- Every resolved match appends compact rows to `saveData.arena.analytics` (capped at ~5k rows, ring-buffer).
+- Admin QA panel gains an **Arena Analytics** card:
+  - Win rate by element, class, species
+  - Damage dealt/received per element/class
+  - Move usage frequency + avg damage + crit rate per move
+  - Equipment win-rate correlation
+- Simple ranker suggests: "Fire is over-performing (+12% win rate vs mean) — consider nerfing X move" using z-score thresholds. Pure heuristic, non-authoritative.
 
-Edited:
-- `src/dev/qaInvariants.ts` — add `town-build-and-refund`, `autobattle-deterministic`
-- `src/dev/DebugBridgeMount.tsx` (or wherever `window.__menagerie` is assembled) — expose `loadMaxLevelSave`, `runAutobattle`
-- `src/pages/AdminQA.tsx` — new invariant rows + optional Auto-battle sandbox card
-- `.workspace/skills/menagerie-smoke-test/SKILL.md` (if the workspace copy is writable) — mention the two new invariants and the fixture; suggested-fix mapping entries added
+## 10. Files (create)
 
-No DB migrations. No RLS changes.
+- `src/game/arena/{types,tournament,betting,npcTeams,currency,shop,analytics}.ts`
+- `src/game/arena/ArenaHub.tsx`, `ArenaBoard.tsx`, `ArenaReplayPlayer.tsx`, `CrowdRing.tsx`
+- `src/game/arenaCombat/{engine,turnOrder,pathing,strategy,types}.ts`
+- `src/admin/ArenaRoomEditor.tsx`, `src/admin/ArenaAnalyticsPanel.tsx`
+- `src/game/arena/arenaRooms.ts` (default oval preset)
+
+## Files (edit)
+
+- `src/game/types.ts` — add `arena` slice to `SaveData`, `ArenaReplay`, `ArenaMatch*`.
+- `src/game/state.ts` — reducer actions: `ARENA_ENTER_TEAM`, `ARENA_PLACE_BET`, `ARENA_RESOLVE_TICK`, `ARENA_CLAIM_REWARDS`, `ARENA_BUY_ITEM`.
+- `src/game/buildings.ts` + `OverworldBuildingTileGraphics.tsx` — arena building + sprite.
+- `src/game/equipment.ts` — new arena set items.
+- `src/admin/AdminPanel.tsx` — new **Arena** tab (Room Editor + Analytics).
+- `src/pages/AdminQA.tsx` — quick "simulate next tournament now" button for testing.
+
+## Out of scope (called out to user)
+
+- Real cross-server sync of bets/tournaments. Everything is local per save; hooks stubbed so we can move to Cloud tables later without ripping up UI.
+- Player-scripted AI DSL — just the `TeamStrategy` interface for now.
+- Solo/duo/trio dungeon integration — engine supports it, dungeon wiring is a follow-up.
+
+Sound good? I'll build straight through once you approve.

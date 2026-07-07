@@ -37,7 +37,9 @@ import { ParticlesEditor } from './ParticlesEditor';
 import { WorldGenEditor } from './WorldGenEditor';
 import { TileAssetManager } from './TileAssetManager';
 import { TilePatternPainter } from './TilePatternPainter';
-import { Shield, Swords, Package, Ghost, UserCog, Bug, Crosshair, Image as ImageIcon, Palette, Sparkles, Globe2, Lightbulb, Grid3x3 } from 'lucide-react';
+import { Shield, Swords, Package, Ghost, UserCog, Bug, Crosshair, Image as ImageIcon, Palette, Sparkles, Globe2, Lightbulb, Grid3x3, Trophy } from 'lucide-react';
+import { ArenaRoomEditor } from './ArenaRoomEditor';
+import { ArenaAnalyticsPanel } from './ArenaAnalyticsPanel';
 
 
 export function AdminPanel() {
@@ -135,6 +137,10 @@ export function AdminPanel() {
               <Lightbulb className="w-4 h-4" />
               Features
             </TabsTrigger>
+            <TabsTrigger value="arena" className="gap-2 shrink-0">
+              <Trophy className="w-4 h-4" />
+              Arena
+            </TabsTrigger>
             <TabsTrigger value="access" className="gap-2 shrink-0">
               <UserCog className="w-4 h-4" />
               Access
@@ -193,6 +199,16 @@ export function AdminPanel() {
           </TabsContent>
           <TabsContent value="features" className="p-4 m-0">
             <FeatureRequestsEditor />
+          </TabsContent>
+          <TabsContent value="arena" className="p-4 m-0">
+            <Tabs defaultValue="rooms">
+              <TabsList>
+                <TabsTrigger value="rooms">Room Editor</TabsTrigger>
+                <TabsTrigger value="analytics">Balance Analytics</TabsTrigger>
+              </TabsList>
+              <TabsContent value="rooms" className="mt-4"><ArenaRoomEditor /></TabsContent>
+              <TabsContent value="analytics" className="mt-4"><ArenaAnalyticsPanel /></TabsContent>
+            </Tabs>
           </TabsContent>
           <TabsContent value="access" className="p-4 m-0">
             <AdminAccessEditor />

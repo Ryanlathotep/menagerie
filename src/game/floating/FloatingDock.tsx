@@ -266,7 +266,7 @@ function FloatingDockRoot() {
               key={id}
               ref={(el) => ctx.registerSlot(id, el)}
               className="shrink-0"
-              style={{ width: ctx.configs[id]?.size ?? 40, height: ctx.configs[id]?.size ?? 40 }}
+              style={{ width: ctx.configs[id]?.current.size ?? 40, height: ctx.configs[id]?.current.size ?? 40 }}
             />
           ))
         )}

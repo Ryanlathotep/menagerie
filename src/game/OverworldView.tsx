@@ -2076,12 +2076,16 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       const newOw = JSON.parse(JSON.stringify(prev)) as OverworldState;
       const b = newOw.playerBuildings?.find(pb => pb.id === contextMenuBuilding.id);
       if (!b) return prev;
-      if (newOw.woodCollected < cost.wood || newOw.stoneCollected < cost.stone) {
+      const creative = isCreativeMode();
+      if (!creative && (newOw.woodCollected < cost.wood || newOw.stoneCollected < cost.stone)) {
         toast.error('Not enough resources!');
         return prev;
       }
-      newOw.woodCollected -= cost.wood;
-      newOw.stoneCollected -= cost.stone;
+      if (!creative) {
+        newOw.woodCollected -= cost.wood;
+        newOw.stoneCollected -= cost.stone;
+      }
+
       b.hp = b.maxHp;
       addLog(`🔧 Repaired ${BUILDING_DEFINITIONS[b.type].name} to full HP.`, 'system');
       toast.success(`Repaired! (-🪵${cost.wood} -🪨${cost.stone})`);

@@ -1086,7 +1086,24 @@ export function movePlayer(state: OverworldState, dx: number, dy: number): MoveR
       }
       return { type: 'resource', resourceType: 'stone', amount, tierName: tierData.name, materialDrop };
     }
-    
+
+    case 'plant': {
+      const variant = tile.plantVariant || 'herb';
+      const tier = tile.plantTier || 1;
+      // Roll drop pool from the shared herb table in equipment.ts. Higher tier
+      // biases toward rarer picks; tier 3 can drop 2 items in one harvest.
+      const drops = rollPlantDrops(variant, tier, state.totalSteps, newX, newY);
+      // Deplete the tile — grass with harvested flag, regrows via the same
+      // resource-regrow pass that handles trees/rocks.
+      tile.type = 'grass';
+      tile.harvested = true;
+      tile.lastHarvestType = 'plant';
+      tile.plantVariant = undefined;
+      tile.plantTier = undefined;
+      tile.resourceAmount = undefined;
+      return { type: 'plant_harvest', variant, tier, drops };
+    }
+
     case 'enemy': {
       if (tile.enemyId) {
         const enemy = getOverworldEnemy(state, tile.enemyId);

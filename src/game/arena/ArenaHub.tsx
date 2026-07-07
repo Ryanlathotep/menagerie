@@ -339,11 +339,24 @@ function TeamsTab({ arena, setArena }: { arena: ArenaState; setArena: React.Disp
       <div className="space-y-2">
         <div className="text-sm font-semibold">Saved teams</div>
         {arena.playerTeams.length === 0 && <p className="text-xs text-muted-foreground">No teams yet.</p>}
-        {arena.playerTeams.map(t => (
+        {arena.playerTeams.map(t => {
+          const validation = validateArenaTeam(t, state.saveData);
+          return (
           <Card key={t.id} className="p-2 flex items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium">{t.banner} {t.name} <span className="text-xs text-muted-foreground">(avg L{t.level})</span></div>
+              <div className="text-sm font-medium flex items-center gap-1.5">
+                {t.banner} {t.name}
+                <span className="text-xs text-muted-foreground">(avg L{t.level})</span>
+                {validation.valid
+                  ? <span title="Verified against your save data" className="text-[10px] px-1 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">✓ verified</span>
+                  : <span title={validation.issues.map(i => i.message).join('\n')} className="text-[10px] px-1 rounded bg-red-500/15 text-red-600 dark:text-red-400">⚠ invalid</span>}
+              </div>
               <div className="text-[11px] text-muted-foreground truncate">{t.memberCombos.join(', ')}</div>
+              {!validation.valid && (
+                <ul className="text-[10px] text-red-500 mt-0.5 list-disc list-inside">
+                  {validation.issues.filter(i => i.level === 'error').slice(0, 3).map((i, k) => <li key={k}>{i.message}</li>)}
+                </ul>
+              )}
               <div className="text-[11px] mt-0.5">
                 AI:{' '}
                 <select className="border rounded px-1 py-0.5 bg-background text-[11px]"
@@ -358,7 +371,8 @@ function TeamsTab({ arena, setArena }: { arena: ArenaState; setArena: React.Disp
             </div>
             <Button size="sm" variant="destructive" onClick={() => setArena(s => ({ ...s, playerTeams: s.playerTeams.filter(x => x.id !== t.id) }))}>Delete</Button>
           </Card>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

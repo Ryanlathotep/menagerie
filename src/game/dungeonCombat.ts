@@ -2,7 +2,7 @@
 
 import { DungeonState, Monster, Position, DungeonTile } from './types';
 import { findPath, getDirection } from './pathfinding';
-import { Move, TargetingPattern } from './moves';
+import { Move, TargetingPattern, getMonsterMoves } from './moves';
 import { EvolvedMove } from './moveMastery';
 import * as enemyAI from './enemyAI';
 

@@ -101,6 +101,7 @@ export function findOverworldPath(
   const goalIsInteractable =
     goalTile.type === 'tree' ||
     goalTile.type === 'rock' ||
+    goalTile.type === 'plant' ||
     goalTile.type === 'enemy' ||
     goalTile.type === 'nest' ||
     goalTile.type === 'dungeon_entrance' ||

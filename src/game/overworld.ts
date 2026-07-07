@@ -21,7 +21,11 @@ const ALL_SPECIES = Object.keys(SPECIES_DATA) as SpeciesType[];
 
 // ============= TYPES =============
 
-export type OverworldTileType = 'grass' | 'tree' | 'rock' | 'water' | 'building' | 'enemy' | 'player' | 'dungeon_entrance' | 'player_building' | 'nest' | 'dirt_road' | 'stone_road' | 'cliff' | 'waterfall';
+export type OverworldTileType = 'grass' | 'tree' | 'rock' | 'plant' | 'water' | 'building' | 'enemy' | 'player' | 'dungeon_entrance' | 'player_building' | 'nest' | 'dirt_road' | 'stone_road' | 'cliff' | 'waterfall';
+
+// Wild-plant variant → drop pool. Rarity tuned so cheap herbs dominate wild
+// spawns; farming will give access to the rarer picks.
+export type PlantVariant = 'herb' | 'flower' | 'mushroom' | 'root';
 
 export type BuildingType = 'campfire' | 'log_cabin' | 'town_hall';
 

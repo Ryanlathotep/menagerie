@@ -2867,6 +2867,74 @@ export function DungeonView({
         </div>
       )}
 
+      {dungeonAutoSearchOpen && dungeon && (() => {
+        // Dungeon-scoped Auto-Search: scan explored tiles for the picked
+        // target, then hand off to the path-walker.
+        type Kind = 'stairs' | 'stairs_up' | 'treasure' | 'shop' | 'elevator' | 'plant' | 'mineable_wall' | 'nest';
+        const kinds: Array<{ id: Kind; label: string; icon: string }> = [
+          { id: 'stairs',        label: 'Stairs down', icon: '⬇️' },
+          { id: 'stairs_up',     label: 'Stairs up / exit', icon: '⬆️' },
+          { id: 'treasure',      label: 'Treasure chest', icon: '🎁' },
+          { id: 'plant',         label: 'Plant (harvestable)', icon: '🌿' },
+          { id: 'mineable_wall', label: 'Mineable wall', icon: '⛏️' },
+          { id: 'shop',          label: 'Dungeon shop', icon: '🛒' },
+          { id: 'elevator',      label: 'Elevator', icon: '🛗' },
+          { id: 'nest',          label: 'Monster nest', icon: '🪺' },
+        ];
+        const findNearest = (kind: Kind): Position | null => {
+          const px = dungeon.playerPosition.x, py = dungeon.playerPosition.y;
+          let best: { x: number; y: number; d: number } | null = null;
+          for (let yy = 0; yy < dungeon.tiles.length; yy++) {
+            for (let xx = 0; xx < dungeon.tiles[yy].length; xx++) {
+              const t = dungeon.tiles[yy][xx];
+              if (!t || !t.explored) continue;
+              if (t.type !== kind && !(kind === 'stairs_up' && t.stairsBeneath === 'up')) continue;
+              const d = Math.abs(xx - px) + Math.abs(yy - py);
+              if (!best || d < best.d) best = { x: xx, y: yy, d };
+            }
+          }
+          return best ? { x: best.x, y: best.y } : null;
+        };
+        const go = (k: Kind, label: string) => {
+          setDungeonAutoSearchOpen(false);
+          const pos = findNearest(k);
+          if (!pos) {
+            addLog(`🔎 Auto-Search: no explored ${label.toLowerCase()} found.`, 'info');
+            toast.info(`No known ${label.toLowerCase()}`);
+            return;
+          }
+          addLog(`🧭 Auto-Search: pathing to ${label.toLowerCase()} at (${pos.x}, ${pos.y}).`, 'info');
+          handleTileClick(pos.x, pos.y);
+        };
+        return (
+          <div
+            className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-4"
+            onClick={() => setDungeonAutoSearchOpen(false)}
+          >
+            <Card className="w-full max-w-sm p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
+              <div className="space-y-1">
+                <h2 className="text-lg font-bold">Auto-Search</h2>
+                <p className="text-xs text-muted-foreground">Pick a target to auto-path to.</p>
+              </div>
+              <div className="grid gap-1.5">
+                {kinds.map((k) => (
+                  <Button
+                    key={k.id}
+                    variant="secondary"
+                    className="justify-start"
+                    onClick={() => go(k.id, k.label)}
+                  >
+                    <span className="mr-2">{k.icon}</span>{k.label}
+                  </Button>
+                ))}
+                <Button variant="ghost" onClick={() => setDungeonAutoSearchOpen(false)}>Cancel</Button>
+              </div>
+            </Card>
+          </div>
+        );
+      })()}
+
+
 
       
       {showShop && <ShopView 

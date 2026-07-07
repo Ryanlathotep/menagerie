@@ -211,6 +211,10 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const [affectedTiles, setAffectedTiles] = useState<Position[]>([]);
   const [hoveredTile, setHoveredTile] = useState<Position | null>(null);
   const [autoSearchPickerOpen, setAutoSearchPickerOpen] = useState(false);
+  // Set true while any automatic job (walk/mine/hunt/search) is running so
+  // movePlayer's "wall blocks your path" style toasts stay quiet — the auto
+  // loop will replan or halt itself.
+  const automationRunningRef = useRef(false);
   // Mobile AoE: tap to preview, tap again on same tile to fire.
   const aoePendingConfirmRef = useRef<{ x: number; y: number; time: number } | null>(null);
   

@@ -484,7 +484,7 @@ function BetsTab({
                         title="Inspect team roster, stats, equipment, and moves"
                         onClick={() => setInspectTeam(teamA)}
                       >
-                        {teamA.name}
+                        {teamA.ownerId === 'player' ? '⭐ ' : ''}{teamA.name}
                       </button>
                       <span className="mx-1 text-muted-foreground">vs</span>
                       <button
@@ -493,7 +493,7 @@ function BetsTab({
                         title="Inspect team roster, stats, equipment, and moves"
                         onClick={() => setInspectTeam(teamB)}
                       >
-                        {teamB.name}
+                        {teamB.ownerId === 'player' ? '⭐ ' : ''}{teamB.name}
                       </button>
                     </div>
                     <div className="text-muted-foreground">Pool {pool.totalPool}gp · A {pool.perTeam[teamA.id] ?? 0} / B {pool.perTeam[teamB.id] ?? 0}</div>

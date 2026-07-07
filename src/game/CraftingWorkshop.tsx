@@ -28,6 +28,8 @@ import {
 import { isCreativeMode, onCreativeModeChange } from './creativeMode';
 import { PICKAXE_TIERS, PICKAXE_TIER_ORDER, nextPickaxeTier, SHOVEL_TIERS, SHOVEL_TIER_ORDER, nextShovelTier, WORKSTATION, type PickaxeTier, type ShovelTier, type PlayerTools } from './tools';
 import { useEffect } from 'react';
+import { CraftingGridPanel } from './CraftingGrid';
+import type { InventoryItem } from './types';
 
 interface MaterialInventory {
   [materialId: string]: number;

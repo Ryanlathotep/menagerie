@@ -1110,13 +1110,10 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     autoSearchTimerRef.current = window.setInterval(() => {
       const ow = overworldRef.current;
       if (!ow) { cancelAutoSearch(); return; }
-      // Halt on visible enemy unless enemies are the target.
-      if (kind !== 'enemy') {
-        const enemies = getVisibleOverworldEnemies(ow, 6);
-        if (enemies.length > 0) {
-          cancelAutoSearch('⚠️ Auto-Search stopped — enemy spotted!');
-          return;
-        }
+      // Halt on any enemy already in attack range (uses full moveset reach).
+      if (anyOverworldEnemyThreatensPlayer(ow)) {
+        cancelAutoSearch('⚠️ Auto-Search stopped — enemy in attack range!');
+        return;
       }
       const target = findNearestExplored(ow, kind);
       if (!target) {

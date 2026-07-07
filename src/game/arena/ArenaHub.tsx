@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { X, Trophy, Coins, Users, ClipboardList, Store, Ticket } from 'lucide-react';
+import { X, Trophy, Coins, Users, ClipboardList, Store, Ticket, Swords } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
   loadArenaState, saveArenaState, ensureFutureTournament, fillTournamentWithNpcs,
@@ -19,6 +19,9 @@ import { resolveTournament } from './tournament';
 import { computePool, seedNpcBets } from './betting';
 import { ArenaReplayPlayer } from './ArenaReplayPlayer';
 import { ARENA_SHOP } from './shop';
+import { PracticeDuel } from './PracticeDuel';
+import { STRATEGY_PRESETS } from './strategyPresets';
+import { ArenaChampionsLeaderboard } from './ArenaChampionsLeaderboard';
 import { useGame } from "@/game/state";
 
 interface ArenaHubProps {

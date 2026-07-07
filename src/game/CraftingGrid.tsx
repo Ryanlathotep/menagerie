@@ -25,7 +25,7 @@ import {
   recordDiscovery,
   syncCloudRecipeBook,
 } from './crafting/recipeBook';
-import type { CraftCell, CraftGrid, CraftingStationKindLite, DiscoveredRecipe, GridSize, StationContext } from './crafting/types';
+import type { BlueprintCategory, CraftCell, CraftGrid, CraftingStationKindLite, DiscoveredRecipe, GridSize, StationContext } from './crafting/types';
 import { getStationTierData, getGridForTier, getModifierSlotsForTier, type StationTier } from './crafting/stationTiers';
 import { resolveStationModifierStats } from './crafting/stationEffects';
 

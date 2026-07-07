@@ -607,7 +607,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     autoWalkPathRef.current = null;
   }, []);
 
-  const startAutoWalk = useCallback((path: Position[]) => {
+  const startAutoWalk = useCallback((path: Position[], onArrive?: () => void) => {
     cancelAutoWalk();
     autoWalkPathRef.current = [...path];
     const stepDelay = Math.max(80, settings.autoRunSpeed || 100);
@@ -657,7 +657,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         if (queue.length > 0) addLog('⚠️ Auto-walk stopped — enemy too close! Tap again to keep moving.', 'info');
         return;
       }
-      if (queue.length === 0) cancelAutoWalk();
+      if (queue.length === 0) {
+        cancelAutoWalk();
+        // Fire the arrival hook AFTER the state has settled — auto-harvest
+        // reads player position from the ref and needs the last move committed.
+        if (onArrive) window.setTimeout(onArrive, stepDelay);
+      }
     }, stepDelay);
   }, [cancelAutoWalk, settings.autoRunSpeed, addLog]);
 

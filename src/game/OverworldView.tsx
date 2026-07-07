@@ -1425,6 +1425,21 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
       
       switch (e.key) {
+        case ' ': case 'Spacebar': {
+          // Space halts every automatic action (auto-walk, auto-mine,
+          // targeting) but only when the player isn't typing — isTypingTarget
+          // above already returned early for inputs/textareas/contenteditable.
+          const walking = !!autoWalkPathRef.current;
+          const mining = !!autoMineTargetRef.current;
+          if (walking || mining || targetingMove) {
+            e.preventDefault();
+            if (walking) cancelAutoWalk();
+            if (mining) cancelAutoMine('⏸ Auto-Harvest halted.');
+            if (targetingMove) cancelTargeting();
+            if (walking && !mining) addLog('⏸ Auto-walk halted.', 'info');
+          }
+          break;
+        }
         case 'ArrowUp': case 'w': case 'W':
           e.preventDefault(); cancelAutoWalk(); handleMove(0, -1); break;
         case 'ArrowDown': case 's': case 'S':
@@ -2658,66 +2673,88 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             close();
           },
         });
-      } else if (tile.type === 'tree') {
-        title = '🌳 Tree';
-        subtitle = 'Step onto it to chop for wood';
-        const tier = (tile as any).treeTier as TreeTier | undefined;
-        if (tier && TREE_TIER_DATA[tier]) info.push({ label: 'Tier', value: TREE_TIER_DATA[tier].name });
-        if (isAdjacent) {
-          const autoOn = !!settings.autoMine;
-          actions.push({
-            id: 'chop',
-            label: autoOn ? 'Auto-Chop until done/attacked' : 'Chop tree (one swing)',
-            icon: TreePine, variant: 'default',
-            hint: autoOn ? 'Halts on enemy spotted or exhaustion' : undefined,
-            onClick: () => {
-              const tx = unifiedMenu.x, ty = unifiedMenu.y;
-              close();
+      } else if (tile.type === 'tree' || tile.type === 'rock') {
+        const isTree = tile.type === 'tree';
+        title = isTree ? '🌳 Tree' : '🪨 Rock';
+        subtitle = isTree ? 'Step onto it to chop for wood' : 'Step onto it to mine for stone';
+        if (isTree) {
+          const tier = (tile as any).treeTier as TreeTier | undefined;
+          if (tier && TREE_TIER_DATA[tier]) info.push({ label: 'Tier', value: TREE_TIER_DATA[tier].name });
+        } else {
+          const tier = (tile as any).stoneTier as StoneTier | undefined;
+          if (tier && STONE_TIER_DATA[tier]) info.push({ label: 'Tier', value: STONE_TIER_DATA[tier].name });
+        }
+
+        const autoOn = !!settings.autoMine;
+        const tx = unifiedMenu.x, ty = unifiedMenu.y;
+        const label = autoOn
+          ? (isTree ? 'Auto-Chop until done/attacked' : 'Auto-Mine until done/attacked')
+          : (isAdjacent
+              ? (isTree ? 'Chop tree (one swing)' : 'Mine rock (one swing)')
+              : (isTree ? 'Walk here & chop' : 'Walk here & mine'));
+
+        // Walk-then-swing helper: finds the nearest walkable neighbour of the
+        // target tile, auto-walks there, then either kicks off Auto-Mine (when
+        // enabled) or takes the one-step swing.
+        const walkThenAct = () => {
+          const ow = overworldRef.current;
+          if (!ow) return;
+          const offsets: Array<[number, number]> = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+          let best: Position[] | null = null;
+          for (const [ox, oy] of offsets) {
+            const ax = tx + ox, ay = ty + oy;
+            if (ax === ow.playerPosition.x && ay === ow.playerPosition.y) {
+              // Already adjacent — no walk needed.
+              if (autoOn) startAutoMine(tx, ty);
+              else handleMove(tx - ow.playerPosition.x, ty - ow.playerPosition.y);
+              return;
+            }
+            const p = findOverworldPath(ow, ow.playerPosition, { x: ax, y: ay });
+            if (p && p.length > 0 && (!best || p.length < best.length)) best = p;
+          }
+          if (!best) {
+            toast.error("Can't reach that tile.");
+            return;
+          }
+          startAutoWalk(best, () => {
+            const now = overworldRef.current;
+            if (!now) return;
+            if (autoOn) startAutoMine(tx, ty);
+            else handleMove(tx - now.playerPosition.x, ty - now.playerPosition.y);
+          });
+        };
+
+        actions.push({
+          id: isTree ? 'chop' : 'mine',
+          label,
+          icon: isTree ? TreePine : Pickaxe,
+          variant: 'default',
+          hint: autoOn
+            ? 'Halts on enemy spotted, exhaustion, or Space'
+            : (!isAdjacent ? 'Auto-paths adjacent, then acts' : undefined),
+          onClick: () => {
+            close();
+            if (isAdjacent) {
               if (autoOn) startAutoMine(tx, ty);
               else handleMove(tx - px, ty - py);
-            },
-          });
-          actions.push({
-            id: 'toggle-auto-harvest',
-            label: autoOn ? 'Disable Auto-Harvest' : 'Enable Auto-Harvest',
-            icon: TreePine, variant: 'outline',
-            hint: 'Applies to all harvestables; persisted in Settings',
-            onClick: () => {
-              updateSetting('autoMine', !autoOn);
-              toast.info(`Auto-Harvest ${!autoOn ? 'enabled' : 'disabled'}`);
-            },
-          });
-        }
-      } else if (tile.type === 'rock') {
-        title = '🪨 Rock';
-        subtitle = 'Step onto it to mine for stone';
-        const tier = (tile as any).stoneTier as StoneTier | undefined;
-        if (tier && STONE_TIER_DATA[tier]) info.push({ label: 'Tier', value: STONE_TIER_DATA[tier].name });
-        if (isAdjacent) {
-          const autoMineOn = !!settings.autoMine;
-          actions.push({
-            id: 'mine',
-            label: autoMineOn ? 'Auto-Mine until done/attacked' : 'Mine rock (one swing)',
-            icon: Pickaxe, variant: 'default',
-            hint: autoMineOn ? 'Halts on enemy spotted or exhaustion' : undefined,
-            onClick: () => {
-              const tx = unifiedMenu.x, ty = unifiedMenu.y;
-              close();
-              if (autoMineOn) startAutoMine(tx, ty);
-              else handleMove(tx - px, ty - py);
-            },
-          });
-          actions.push({
-            id: 'toggle-auto-harvest',
-            label: autoMineOn ? 'Disable Auto-Harvest' : 'Enable Auto-Harvest',
-            icon: Pickaxe, variant: 'outline',
-            hint: 'Applies to all harvestables; persisted in Settings',
-            onClick: () => {
-              updateSetting('autoMine', !autoMineOn);
-              toast.info(`Auto-Harvest ${!autoMineOn ? 'enabled' : 'disabled'}`);
-            },
-          });
-        }
+            } else {
+              walkThenAct();
+            }
+          },
+        });
+        actions.push({
+          id: 'toggle-auto-harvest',
+          label: autoOn ? 'Disable Auto-Harvest' : 'Enable Auto-Harvest',
+          icon: isTree ? TreePine : Pickaxe,
+          variant: 'outline',
+          hint: 'Applies to all harvestables; persisted in Settings',
+          onClick: () => {
+            updateSetting('autoMine', !autoOn);
+            toast.info(`Auto-Harvest ${!autoOn ? 'enabled' : 'disabled'}`);
+          },
+        });
+
+
 
 
       } else if (tile.type === 'cliff' || tile.type === 'waterfall') {

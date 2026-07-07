@@ -813,10 +813,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       const job = autoMineTargetRef.current;
       const ow = overworldRef.current;
       if (!job || !ow) { cancelAutoMine(); return; }
-      // Halt on any visible enemy within 6 tiles — same rule as auto-walk.
-      const enemiesNearby = getVisibleOverworldEnemies(ow, 6);
-      if (enemiesNearby.length > 0) {
-        cancelAutoMine('⚠️ Auto-Harvest stopped — enemy spotted!');
+      // Halt on any enemy in attack range (uses full moveset reach).
+      if (anyOverworldEnemyThreatensPlayer(ow)) {
+        cancelAutoMine('⚠️ Auto-Harvest stopped — enemy in attack range!');
         return;
       }
       // Find the nearest remaining same-type tile in the cluster.

@@ -946,7 +946,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     }, stepDelay);
   }, [addLog, cancelAutoHunt, cancelAutoMine, cancelAutoSearch, cancelAutoWalk, pickHuntAttackMove, settings.autoRunSpeed]);
 
-  type SearchKind = 'dungeon_entrance' | 'enemy' | 'nest' | 'tree' | 'rock' | 'building';
+  type SearchKind = 'dungeon_entrance' | 'enemy' | 'nest' | 'tree' | 'rock' | 'plant' | 'building';
   const SEARCH_RADIUS = 40;
 
   const findNearestExplored = useCallback((ow: OverworldState, kind: SearchKind): Position | null => {

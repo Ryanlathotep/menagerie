@@ -7,7 +7,7 @@
 // Tools are auto-applied — they don't occupy an equipment slot. Owning a
 // Pickaxe lets you mine matching wall tiers anywhere in any dungeon.
 
-export type ToolKind = 'pickaxe' | 'shovel';
+export type ToolKind = 'pickaxe' | 'shovel' | 'hoe';
 
 // Pickaxe tiers, lowest → highest. The numeric `power` is what matters for
 // gating: a Pickaxe of power N can mine any wall whose `tier <= N`.

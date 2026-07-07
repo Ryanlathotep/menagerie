@@ -4,6 +4,8 @@ import { useGame, GameProvider } from '@/game/state';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { runAllInvariants, summarize, type InvariantResult } from '@/dev/qaInvariants';
+import { buildMaxLevelSave, buildTwoMaxLevelTeams } from '@/dev/fixtures/maxLevelSave';
+import { runAutobattle, type AutobattleResult } from '@/game/autobattle';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';

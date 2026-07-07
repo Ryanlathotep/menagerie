@@ -485,6 +485,29 @@ function generateChunk(cx: number, cy: number, difficulty: number, dungeonEntran
           }
         }
       }
+
+      if (type === 'plant') {
+        // Variant chosen by a second hash so trees/plants don't share the same
+        // biome roll. Mushrooms prefer forest tiles, roots prefer high-noise
+        // clusters, flowers prefer open grass.
+        const variantRoll = seededRandom(tileSeed + 4747);
+        let variant: PlantVariant;
+        if (forestNoise > gen.trees.forestThreshold + 0.1) {
+          variant = variantRoll < 0.6 ? 'mushroom' : variantRoll < 0.85 ? 'herb' : 'root';
+        } else if (isRiver || Math.abs(worldX) + Math.abs(worldY) < 12) {
+          variant = variantRoll < 0.5 ? 'flower' : variantRoll < 0.85 ? 'herb' : 'root';
+        } else {
+          variant = variantRoll < 0.55 ? 'herb' : variantRoll < 0.85 ? 'flower' : variantRoll < 0.95 ? 'root' : 'mushroom';
+        }
+        // Tier: mostly 1, some 2, rare 3. Difficulty pushes tier up.
+        const tierRoll = seededRandom(tileSeed + 7853) + Math.min(0.15, difficulty * 0.01);
+        const tier: 1 | 2 | 3 = tierRoll > 0.9 ? 3 : tierRoll > 0.65 ? 2 : 1;
+        tile.plantVariant = variant;
+        tile.plantTier = tier;
+        tile.resourceAmount = 1; // one harvest per plant, regrows
+      }
+
+
       
       if (type === 'enemy') {
         const level = Math.max(1, Math.floor(difficulty));

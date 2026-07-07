@@ -2719,7 +2719,8 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             <p className="text-xs text-muted-foreground">Roads reduce enemy spawns and stone roads grant bonus movement speed.</p>
             <div className="grid grid-cols-2 gap-2">
               {(Object.entries(ROAD_DEFINITIONS) as [RoadType, typeof ROAD_DEFINITIONS[RoadType]][]).map(([type, def]) => {
-                const canAfford = overworld.woodCollected >= def.cost.wood && overworld.stoneCollected >= def.cost.stone;
+                const canAfford = isCreativeMode() || (overworld.woodCollected >= def.cost.wood && overworld.stoneCollected >= def.cost.stone);
+
                 return (
                   <button
                     key={type}

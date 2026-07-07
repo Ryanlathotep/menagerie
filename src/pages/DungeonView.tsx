@@ -3596,17 +3596,82 @@ export function DungeonView({
                 }
               } else if (tile.type === 'stairs_up') {
                 const isEntranceStairs = dungeon.floor <= (dungeon.startingFloor ?? 1);
-                title = '⬆️ Ascending stairs';
-                subtitle = isEntranceStairs ? 'Entrance staircase' : `Floor ${dungeon.floor} → ${Math.max(1, dungeon.floor - 1)}`;
-                info.push({ label: 'Tile', value: isEntranceStairs ? 'Dungeon entrance / exit' : 'Staircase upward' });
-                info.push({ label: 'Destination', value: isEntranceStairs ? 'Exit / entrance' : `Floor ${Math.max(1, dungeon.floor - 1)}` });
+                const isPortal = !!tile.portal;
+                if (isPortal) {
+                  const p = tile.portal!;
+                  title = '🌀 Portal staircase';
+                  subtitle = p.destKind === 'overworld' ? 'Player-crafted exit' : 'Cross-tower link';
+                  info.push({ label: 'Tile', value: 'Craftable portal (odd/even coord rule)' });
+                  if (p.destKind === 'overworld' && p.destOverworld) {
+                    info.push({ label: 'Destination', value: `Overworld (${p.destOverworld.x}, ${p.destOverworld.y})` });
+                  } else if (p.destKind === 'tower' && p.destTowerId) {
+                    info.push({ label: 'Destination', value: `Tower · ${p.destTowerId}` });
+                  } else {
+                    info.push({ label: 'Destination', value: 'Not yet resolved' });
+                  }
+                  info.push({ label: 'Status', value: p.validated === false ? `Blocked — ${p.invalidReason || 'target unavailable'}` : 'Ready' });
+                } else {
+                  title = '⬆️ Ascending stairs';
+                  subtitle = isEntranceStairs ? 'Entrance staircase' : `Floor ${dungeon.floor} → ${Math.max(1, dungeon.floor - 1)}`;
+                  info.push({ label: 'Tile', value: isEntranceStairs ? 'Dungeon entrance / exit' : 'Staircase upward' });
+                  info.push({ label: 'Destination', value: isEntranceStairs ? 'Exit / entrance' : `Floor ${Math.max(1, dungeon.floor - 1)}` });
+                }
                 if (isAdjacent) {
                   actions.push({
                     id: 'use-stairs-up',
-                    label: isEntranceStairs ? 'Use entrance stairs' : 'Ascend stairs',
+                    label: isPortal ? 'Use portal staircase' : (isEntranceStairs ? 'Use entrance stairs' : 'Ascend stairs'),
                     icon: ChevronUp,
                     variant: 'default',
+                    disabled: isPortal && tile.portal?.validated === false,
+                    disabledReason: 'Portal destination is currently blocked',
                     onClick: stepToTile,
+                  });
+                }
+                if (isPortal) {
+                  // "Always one entrance" guard: count remaining stair-out tiles
+                  // (any non-portal stairs_up + any portal with overworld dest).
+                  let entrances = 0;
+                  for (let yy = 0; yy < dungeon.tiles.length; yy++) {
+                    for (let xx = 0; xx < dungeon.tiles[yy].length; xx++) {
+                      const tt = dungeon.tiles[yy][xx];
+                      if (!tt) continue;
+                      const isThisTile = xx === x && yy === y;
+                      const isStairOut =
+                        tt.type === 'stairs_up' ||
+                        tt.stairsBeneath === 'up' ||
+                        (tt.portal && tt.portal.destKind === 'overworld');
+                      if (isStairOut && !isThisTile) entrances++;
+                    }
+                  }
+                  const canRemove = entrances >= 1;
+                  actions.push({
+                    id: 'remove-portal-stairs',
+                    label: 'Remove portal staircase',
+                    hint: canRemove ? 'Refunds the Portal Stairs Kit' : 'Blocked — this floor must keep at least one entrance',
+                    icon: FlagOff,
+                    variant: 'destructive',
+                    disabled: !canRemove,
+                    disabledReason: 'Removing this would leave the floor with no way out',
+                    onClick: () => {
+                      close();
+                      dispatch({
+                        type: 'UPDATE_DUNGEON_TILE',
+                        x, y,
+                        tile: { type: 'floor', portal: undefined, stairsBeneath: undefined },
+                      } as any);
+                      dispatch({
+                        type: 'ADD_ITEM',
+                        item: {
+                          id: `portal_stairs_kit_${Date.now()}`,
+                          name: 'Portal Stairs Kit',
+                          type: 'utility',
+                          quantity: 1,
+                          effect: 'place_portal_stairs',
+                          description: 'Places a coordinate-linked portal staircase.',
+                        },
+                      } as any);
+                      addLog('🌀 Portal staircase dismantled — kit returned to inventory.', 'system');
+                    },
                   });
                 }
               } else if (tile.type === 'shop') {

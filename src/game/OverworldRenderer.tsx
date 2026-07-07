@@ -5,7 +5,7 @@ import { OverworldState, OverworldTile, getOverworldTile } from './overworld';
 import { Position, Monster, UnlockedMonster } from './types';
 import { MonsterSprite } from './sprites';
 import {
-  OverworldGrassTile, OverworldHarvestedTile, OverworldTreeTile,
+  OverworldGrassTile, OverworldHarvestedTile, OverworldTreeTile, OverworldPlantTile,
   OverworldRockTile, OverworldWaterTile, OverworldBuildingTile,
   OverworldDungeonTile, OverworldFogTile, OverworldNestTile,
   OverworldDirtRoadTile, OverworldStoneRoadTile,

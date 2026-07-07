@@ -1316,7 +1316,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         return;
       }
     }
-    startAutoWalk(path);
+    // If the far-tap target itself is a harvestable AND auto-mine is on, kick
+    // off auto-harvest as soon as we arrive at the adjacent walkable tile —
+    // matches the mental model "walk over there and start chopping".
+    const kickHarvest = settings.autoMine && (tile?.type === 'rock' || tile?.type === 'tree');
+    startAutoWalk(path, kickHarvest ? () => startAutoMine(worldX, worldY) : undefined);
   }, [overworld, monster, targetingMove, handleTargetingClick, handleMove, addLog, buildMode, selectedBuildType, roadBuildMode, selectedRoadType, saveOverworld, settings.autoMine, startAutoMine]);
   
   // Right-click → context menu for player buildings, or auto-attack for enemies/nests

@@ -241,12 +241,85 @@ export function nextShovelTier(current: ShovelTier | undefined): ShovelTier | nu
   return SHOVEL_TIER_ORDER[idx + 1];
 }
 
+// ----- Hoe tier ladder -----
+// Hoes till grass/dirt into "tilled" soil so seeds (dropped when trees are
+// felled) can be replanted. Same tier ladder shape as pickaxes/shovels so
+// the upgrade UI can reuse the pattern.
+export type HoeTier =
+  | 'wooden'   // power 1: till flat grass
+  | 'stone'    // power 2: till rocky grass, harvested plant patches
+  | 'copper'   // power 3: till compact dirt/road shoulder
+  | 'iron'     // power 4: till hardened elemental soil
+  | 'mithril'; // power 5: legendary till speed
+
+export const HOE_TIER_ORDER: HoeTier[] = [
+  'wooden', 'stone', 'copper', 'iron', 'mithril',
+];
+
+export interface HoeTierData {
+  tier: HoeTier;
+  power: number;
+  name: string;
+  icon: string;
+  description: string;
+  speed: number;
+  materials: { materialId: string; quantity: number }[];
+}
+
+export const HOE_TIERS: Record<HoeTier, HoeTierData> = {
+  wooden: {
+    tier: 'wooden', power: 1, name: 'Wooden Hoe', icon: '🪒',
+    description: 'A crude hoe. Turns grass into plantable soil, one tile at a time.',
+    speed: 1,
+    materials: [{ materialId: 'wood_log', quantity: 4 }],
+  },
+  stone: {
+    tier: 'stone', power: 2, name: 'Stone Hoe', icon: '🪒',
+    description: 'Heavier head. Bites through rocky soil and old plant patches.',
+    speed: 2,
+    materials: [{ materialId: 'wood_log', quantity: 3 }, { materialId: 'cavestone', quantity: 5 }],
+  },
+  copper: {
+    tier: 'copper', power: 3, name: 'Copper Hoe', icon: '🪒',
+    description: 'Metal edge. Turns roadside dirt back into fertile ground.',
+    speed: 3,
+    materials: [{ materialId: 'copper_ore', quantity: 4 }, { materialId: 'wood_log', quantity: 2 }],
+  },
+  iron: {
+    tier: 'iron', power: 4, name: 'Iron Hoe', icon: '🪒',
+    description: 'Heavy-duty. Rips through elemental crust with ease.',
+    speed: 4,
+    materials: [{ materialId: 'iron_ore', quantity: 5 }, { materialId: 'hardwood', quantity: 2 }],
+  },
+  mithril: {
+    tier: 'mithril', power: 5, name: 'Mithril Hoe', icon: '🪒',
+    description: 'Legendary. Tills any patch of ground in a single swing.',
+    speed: 6,
+    materials: [{ materialId: 'mythril_ore', quantity: 3 }, { materialId: 'ironwood', quantity: 2 }],
+  },
+};
+
+export function nextHoeTier(current: HoeTier | undefined): HoeTier | null {
+  if (!current) return 'wooden';
+  const idx = HOE_TIER_ORDER.indexOf(current);
+  if (idx === -1 || idx === HOE_TIER_ORDER.length - 1) return null;
+  return HOE_TIER_ORDER[idx + 1];
+}
+
 // Player's tool collection: at most one of each kind, with a current tier.
 // Persisted on SaveData under `tools`.
 export interface PlayerTools {
   pickaxe?: PickaxeTier; // undefined = not yet crafted
   shovel?: ShovelTier;   // undefined = not yet crafted
-  workstation?: boolean; // true = owns Portable Workstation (singleton, no tiers)
+  hoe?: HoeTier;         // undefined = not yet crafted
+  workstation?: boolean; // true = owns Portable Workstation (universal, all disciplines)
+  // Portable single-discipline crafters. Each unlocks its own workshop tab
+  // anywhere on the map, without needing to stand next to the matching
+  // building. Cheaper than the Portable Workstation and useful early game.
+  portableForge?: boolean;
+  portableWorkbench?: boolean;
+  portableBrewing?: boolean;
+  portableEnchanting?: boolean;
 }
 
 // ----- Workstation -----
@@ -262,12 +335,77 @@ export interface WorkstationData {
 export const WORKSTATION: WorkstationData = {
   name: 'Portable Workstation',
   icon: '🛠️',
-  description: 'A folding bench, anvil, and alchemy kit. Lets you open the crafting workshop anywhere.',
+  description: 'A folding bench, anvil, and alchemy kit. Lets you open the full crafting workshop anywhere.',
   materials: [
     { materialId: 'iron_ore', quantity: 4 },
     { materialId: 'wood_log', quantity: 4 },
     { materialId: 'silk', quantity: 2 },
   ],
+};
+
+// ----- Portable single-discipline stations -----
+// Cheaper than the full Portable Workstation but only opens one tab of the
+// crafting workshop. Wire the UI to gate its tabs on these flags.
+export type PortableStationKind = 'forge' | 'workbench' | 'brewing' | 'enchanting';
+
+export interface PortableStationData {
+  kind: PortableStationKind;
+  name: string;
+  icon: string;
+  description: string;
+  materials: { materialId: string; quantity: number }[];
+  // Which PlayerTools flag this station toggles.
+  toolFlag: 'portableForge' | 'portableWorkbench' | 'portableBrewing' | 'portableEnchanting';
+}
+
+export const PORTABLE_STATIONS: Record<PortableStationKind, PortableStationData> = {
+  forge: {
+    kind: 'forge',
+    name: 'Portable Forge',
+    icon: '🔥',
+    description: 'A folding bellows and mini-anvil. Smelt and smith on the go.',
+    materials: [
+      { materialId: 'iron_ore', quantity: 3 },
+      { materialId: 'cavestone', quantity: 6 },
+      { materialId: 'leather', quantity: 1 },
+    ],
+    toolFlag: 'portableForge',
+  },
+  workbench: {
+    kind: 'workbench',
+    name: 'Portable Workbench',
+    icon: '🪚',
+    description: 'A collapsible bench with hand tools. Shape wood and hide anywhere.',
+    materials: [
+      { materialId: 'wood_log', quantity: 6 },
+      { materialId: 'leather', quantity: 2 },
+    ],
+    toolFlag: 'portableWorkbench',
+  },
+  brewing: {
+    kind: 'brewing',
+    name: 'Portable Brewing Kit',
+    icon: '⚗️',
+    description: 'A travel alchemy kit. Brew potions from herbs and essences.',
+    materials: [
+      { materialId: 'wood_log', quantity: 2 },
+      { materialId: 'herb_bundle', quantity: 3 },
+      { materialId: 'linen', quantity: 2 },
+    ],
+    toolFlag: 'portableBrewing',
+  },
+  enchanting: {
+    kind: 'enchanting',
+    name: 'Portable Enchanting Kit',
+    icon: '🔮',
+    description: 'A pocket ritual circle. Etch runes and infuse gear on the fly.',
+    materials: [
+      { materialId: 'normal_essence', quantity: 3 },
+      { materialId: 'silk', quantity: 2 },
+      { materialId: 'wood_log', quantity: 2 },
+    ],
+    toolFlag: 'portableEnchanting',
+  },
 };
 
 // What tier of mineable wall does this dungeon floor produce?

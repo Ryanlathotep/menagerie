@@ -281,6 +281,70 @@ export const DEFAULT_BLUEPRINTS: ItemBlueprint[] = [
       { dx: 0, dy: 0, role: 'catalyst', acceptTypes: ['essence', 'gem', 'rune'] },
       { dx: 0, dy: 1, role: 'binder',   acceptTypes: ['fabric'] },
     ],
+  // ---------------- BUILDING KITS (Town Hall only) ----------------
+  // Crafted output is a placeable "Building Kit" — currently surfaces as an
+  // inventory item whose crafted stats represent the bonuses the built
+  // structure will inherit once world placement is wired up.
+  {
+    id: 'kit_wall',
+    name: 'Wall Kit',
+    icon: '🧱',
+    slot: 'consumable',
+    category: 'building',
+    minGrid: 3,
+    baseStats: { defense: 20, maxHp: 40 },
+    effectId: 'place_building_wall',
+    pattern: [
+      { dx: 0, dy: 0, role: 'guard',  acceptTypes: ['metal', 'ore', 'soil'] },
+      { dx: 1, dy: 0, role: 'guard',  acceptTypes: ['metal', 'ore', 'soil'] },
+      { dx: 0, dy: 1, role: 'binder', acceptTypes: ['wood', 'hide'] },
+    ],
+  },
+  {
+    id: 'kit_watchtower',
+    name: 'Watchtower Kit',
+    icon: '🗼',
+    slot: 'consumable',
+    category: 'building',
+    minGrid: 3,
+    baseStats: { attack: 8, defense: 12, maxHp: 60 },
+    effectId: 'place_building_watchtower',
+    pattern: [
+      { dx: 0, dy: 0, role: 'guard',  acceptTypes: ['metal', 'ore'] },
+      { dx: 0, dy: 1, role: 'handle', acceptTypes: ['wood'] },
+      { dx: 0, dy: 2, role: 'handle', acceptTypes: ['wood'] },
+    ],
+  },
+  {
+    id: 'kit_farm',
+    name: 'Farm Kit',
+    icon: '🌾',
+    slot: 'consumable',
+    category: 'building',
+    minGrid: 3,
+    baseStats: { stamina: 10, maxHp: 30 },
+    effectId: 'place_building_farm',
+    pattern: [
+      { dx: 0, dy: 0, role: 'base',   acceptTypes: ['soil', 'seed'] },
+      { dx: 1, dy: 0, role: 'base',   acceptTypes: ['soil', 'seed'] },
+      { dx: 0, dy: 1, role: 'binder', acceptTypes: ['wood'] },
+    ],
+  },
+  {
+    id: 'kit_storehouse',
+    name: 'Storehouse Kit',
+    icon: '🏚️',
+    slot: 'consumable',
+    category: 'building',
+    minGrid: 3,
+    baseStats: { defense: 8, maxHp: 50 },
+    effectId: 'place_building_storehouse',
+    pattern: [
+      { dx: 0, dy: 0, role: 'binder', acceptTypes: ['wood'] },
+      { dx: 1, dy: 0, role: 'binder', acceptTypes: ['wood'] },
+      { dx: 0, dy: 1, role: 'binder', acceptTypes: ['wood'] },
+      { dx: 1, dy: 1, role: 'guard',  acceptTypes: ['metal', 'ore'] },
+    ],
   },
 ];
 

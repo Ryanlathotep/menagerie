@@ -3175,14 +3175,7 @@ export function DungeonView({
         };
         const go = (k: Kind, label: string) => {
           setDungeonAutoSearchOpen(false);
-          const pos = findNearest(k);
-          if (!pos) {
-            addLog(`🔎 Auto-Search: no explored ${label.toLowerCase()} found.`, 'info');
-            toast.info(`No known ${label.toLowerCase()}`);
-            return;
-          }
-          addLog(`🧭 Auto-Search: pathing to ${label.toLowerCase()} at (${pos.x}, ${pos.y}).`, 'info');
-          handleTileClick(pos.x, pos.y);
+          runDungeonAutoSearchRef.current(k, label);
         };
         return (
           <div

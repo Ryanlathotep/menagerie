@@ -18,9 +18,9 @@ interface ArenaBoardProps {
   height?: number;
 }
 
-const CELL = 48;
+const CELL = 22;
 
-export function ArenaBoard({ replay, currentEventIndex, width = 6, height = 6 }: ArenaBoardProps) {
+export function ArenaBoard({ replay, currentEventIndex, width = 24, height = 24 }: ArenaBoardProps) {
   const room = getRoom(replay.roomId);
 
   const state = useMemo(

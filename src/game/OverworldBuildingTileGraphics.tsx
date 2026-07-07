@@ -1,9 +1,11 @@
 // Overworld Building Tile Graphics - SVG tiles for player-placed structures
 // Matches the hand-drawn ink & watercolor aesthetic
 
-import { PlayerBuildingType } from './buildings';
+import { PlayerBuildingType, BUILDING_DEFINITIONS } from './buildings';
 import { PlayerWallTile, GateTile } from './PlayerWallTileGraphics';
 import type { AutoTileFit } from './autoTiling';
+import { getAssetOverride } from './assetOverrides';
+
 
 interface BuildingTileProps {
   size: number;

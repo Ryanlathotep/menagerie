@@ -3878,6 +3878,8 @@ export function DungeonView({
                 hint: 'Pick a target type (stairs, treasure, plant, shop, wall, nest)',
                 onClick: () => { close(); setDungeonAutoSearchOpen(true); },
               });
+
+              const existing = dungeon.compassWaypoints || [];
               const pinnedWp = existing.find(p => p.x === x && p.y === y);
               const isPinned = !!pinnedWp;
               actions.push({

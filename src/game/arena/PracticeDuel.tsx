@@ -165,7 +165,7 @@ function hydratePlayer(team: ArenaTeam, unlocked: UnlockedMonster[]) {
   for (const combo of team.memberCombos) {
     const um = unlocked.find(u => u.comboId === combo);
     if (!um) continue;
-    out.push(createMonster(um.species, um.element, um.classType, um.level, um.experience ?? 0));
+    out.push(createMonster(um.species, um.classType, um.element, um.level, undefined, um.experience ?? 0));
   }
   return out;
 }

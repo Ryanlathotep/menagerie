@@ -59,6 +59,7 @@ function isTraversable(
     case 'water':
     case 'tree':
     case 'rock':
+    case 'plant':
     case 'enemy':
     case 'nest':
     case 'cliff':

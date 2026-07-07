@@ -18,7 +18,9 @@ export type PlayerBuildingType =
   // Elevation connectors — let the player climb onto wall-tops & cliffs.
   // Both are functionally identical; cost & art differ.
   | 'stone_staircase'
-  | 'ladder';
+  | 'ladder'
+  // Arena — right-click to open the Arena Hub (tournaments, bets, replays).
+  | 'arena';
 
 // Which crafting discipline a station provides. Consumed by the workshop UI
 // to filter recipes; portable tools in tools.ts share this taxonomy.

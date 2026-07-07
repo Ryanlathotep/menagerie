@@ -281,7 +281,20 @@ function TeamsTab({ arena, setArena }: { arena: ArenaState; setArena: React.Disp
       <Card className="p-3 space-y-2">
         <div className="text-sm font-semibold">Create a team (up to 6)</div>
         <Input value={name} onChange={e => setName(e.target.value)} placeholder="Team name" />
-        <div className="text-xs text-muted-foreground">Selected: {selected.length}/6</div>
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">Selected: {selected.length}/6</span>
+          <Button size="sm" variant="outline"
+            onClick={() => {
+              const ids = loadPartyMenuComboIds()
+                .filter(id => unlocked.some(u => u.comboId === id))
+                .slice(0, 6);
+              if (ids.length === 0) { toast({ title: 'No saved party found', description: 'Build a party from the main menu first.' }); return; }
+              setSelected(ids);
+              toast({ title: `Loaded ${ids.length} monsters from your saved party` });
+            }}>
+            📥 Load from Party Menu
+          </Button>
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-64 overflow-auto p-1">
           {unlocked.map(m => {
             const active = selected.includes(m.comboId);

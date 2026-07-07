@@ -1425,6 +1425,21 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
       
       switch (e.key) {
+        case ' ': case 'Spacebar': {
+          // Space halts every automatic action (auto-walk, auto-mine,
+          // targeting) but only when the player isn't typing — isTypingTarget
+          // above already returned early for inputs/textareas/contenteditable.
+          const walking = !!autoWalkPathRef.current;
+          const mining = !!autoMineTargetRef.current;
+          if (walking || mining || targetingMove) {
+            e.preventDefault();
+            if (walking) cancelAutoWalk();
+            if (mining) cancelAutoMine('⏸ Auto-Harvest halted.');
+            if (targetingMove) cancelTargeting();
+            if (walking && !mining) addLog('⏸ Auto-walk halted.', 'info');
+          }
+          break;
+        }
         case 'ArrowUp': case 'w': case 'W':
           e.preventDefault(); cancelAutoWalk(); handleMove(0, -1); break;
         case 'ArrowDown': case 's': case 'S':

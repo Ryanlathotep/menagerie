@@ -994,7 +994,7 @@ export function DungeonView({
           const nextY = currentDungeon.playerPosition.y + dy;
           
           // Check if we should stop before moving
-          if (shouldStopAutoRun(currentDungeon.tiles, nextX, nextY, currentDungeon.width, currentDungeon.height)) {
+          if (shouldStopAutoRun(currentDungeon.tiles, nextX, nextY, currentDungeon.width, currentDungeon.height, { allowMineable: !!settings.autoMine })) {
             setIsAutoRunning(false);
             autoRunDirection.current = null;
             return;

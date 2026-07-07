@@ -326,10 +326,21 @@ function TeamsTab({ arena, setArena }: { arena: ArenaState; setArena: React.Disp
         <div className="text-sm font-semibold">Saved teams</div>
         {arena.playerTeams.length === 0 && <p className="text-xs text-muted-foreground">No teams yet.</p>}
         {arena.playerTeams.map(t => (
-          <Card key={t.id} className="p-2 flex items-center justify-between">
-            <div>
+          <Card key={t.id} className="p-2 flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
               <div className="text-sm font-medium">{t.banner} {t.name} <span className="text-xs text-muted-foreground">(avg L{t.level})</span></div>
-              <div className="text-[11px] text-muted-foreground">{t.memberCombos.join(', ')}</div>
+              <div className="text-[11px] text-muted-foreground truncate">{t.memberCombos.join(', ')}</div>
+              <div className="text-[11px] mt-0.5">
+                AI:{' '}
+                <select className="border rounded px-1 py-0.5 bg-background text-[11px]"
+                  value={t.strategyId ?? 'balanced'}
+                  onChange={e => {
+                    const newId = e.target.value;
+                    setArena(s => ({ ...s, playerTeams: s.playerTeams.map(x => x.id === t.id ? { ...x, strategyId: newId } : x) }));
+                  }}>
+                  {STRATEGY_PRESETS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                </select>
+              </div>
             </div>
             <Button size="sm" variant="destructive" onClick={() => setArena(s => ({ ...s, playerTeams: s.playerTeams.filter(x => x.id !== t.id) }))}>Delete</Button>
           </Card>

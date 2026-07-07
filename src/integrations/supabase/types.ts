@@ -293,6 +293,33 @@ export type Database = {
         }
         Relationships: []
       }
+      game_save_snapshots: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          label: string | null
+          save_data: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string
+          label?: string | null
+          save_data: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          label?: string | null
+          save_data?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       game_saves: {
         Row: {
           created_at: string

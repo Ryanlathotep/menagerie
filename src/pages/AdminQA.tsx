@@ -298,6 +298,8 @@ function buildSuggestions(results: InvariantResult[]) {
     'mastery-merge-max': 'persistRunPartyProgress mastery merge regressed. Verify the max-uses comparison at state.ts ~line 95.',
     'unified-inventory-live': 'Find the most recent ADD_ITEM / USE_ITEM / DROP_ITEM change. Both run.inventory and saveData.storedItems must be mirrored in the same case.',
     'corrupt-save-tolerance': 'Helper threw or returned empty on missing moveMastery. Add a guard like (existing.moveMastery || {}) where it iterates mastery entries.',
+    'town-build-and-refund': 'Check src/game/buildings.ts canPlaceBuilding — MAX_BUILD_RADIUS chain, tile-occupancy, and cost gating. If refund count regressed, verify getDisassembleRefund + DISASSEMBLE_REFUND_RATIO.',
+    'autobattle-deterministic': 'Autobattle non-determinism — inspect src/game/autobattle/seeded.ts (Math.random swap) and src/game/autobattle/resolver.ts (make sure ALL rng consumers run inside withSeededRandom).',
   };
   return results.filter(r => !r.pass).map(r => ({ id: r.id, suggestion: map[r.id] || r.detail }));
 }

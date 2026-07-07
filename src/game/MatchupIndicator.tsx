@@ -29,6 +29,49 @@ export function getMatchup(
   };
 }
 
+// Numeric matchup score for picking the best swap-in against an enemy.
+// +1 per player advantage (element / class), -1 per enemy advantage.
+// Range: [-2, +2]. Higher is better.
+export function matchupScore(
+  playerElement: ElementType | undefined,
+  playerClass: ClassType | undefined,
+  enemyElement: ElementType,
+  enemyClass: ClassType,
+): number {
+  if (!playerElement || !playerClass) return 0;
+  const pe = ELEMENT_ADVANTAGES[playerElement]?.includes(enemyElement) ? 1 : 0;
+  const ee = ELEMENT_ADVANTAGES[enemyElement]?.includes(playerElement) ? 1 : 0;
+  const pc = CLASS_ADVANTAGES_CORRECTED[playerClass]?.includes(enemyClass) ? 1 : 0;
+  const ec = CLASS_ADVANTAGES_CORRECTED[enemyClass]?.includes(playerClass) ? 1 : 0;
+  return pe + pc - ee - ec;
+}
+
+// Find the party member with the best matchup score vs an enemy. Skips the
+// current active monster and any fainted party members. Returns null when no
+// conscious alternative is strictly better than what's already out.
+export function findBestMatchupSwap<T extends { element: ElementType; class: ClassType; stats: { currentHp: number } }>(
+  party: T[] | undefined,
+  activeIndex: number,
+  enemyElement: ElementType,
+  enemyClass: ClassType,
+): { index: number; member: T; score: number; currentScore: number } | null {
+  if (!party || party.length === 0) return null;
+  const active = party[activeIndex];
+  const currentScore = active ? matchupScore(active.element, active.class, enemyElement, enemyClass) : -Infinity;
+  let best: { index: number; member: T; score: number } | null = null;
+  for (let i = 0; i < party.length; i++) {
+    if (i === activeIndex) continue;
+    const m = party[i];
+    if (!m || m.stats.currentHp <= 0) continue;
+    const s = matchupScore(m.element, m.class, enemyElement, enemyClass);
+    if (!best || s > best.score) best = { index: i, member: m, score: s };
+  }
+  if (!best) return null;
+  if (best.score <= currentScore) return null;
+  return { ...best, currentScore };
+}
+
+
 export function MatchupIndicator({
   playerElement,
   playerClass,

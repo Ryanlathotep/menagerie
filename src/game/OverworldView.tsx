@@ -43,7 +43,8 @@ import { findOverworldPath } from './overworldPathfinding';
 import { playParticleEffectForMove } from './particles/api';
 import { OverworldDirectionArrows } from './OverworldDirectionArrows';
 import { UnifiedTileMenu, UnifiedTileAction, UnifiedTileInfo, UnifiedTileCreature } from './UnifiedTileMenu';
-import { Flag, FlagOff, DoorOpen, Hammer, Footprints, Swords, Shovel, Droplet, Trash2, Settings as SettingsIcon, Pickaxe, TreePine, Wheat, Wrench, Users, Sparkles, Home, FlaskConical, Wand2 } from 'lucide-react';
+import { Flag, FlagOff, DoorOpen, Hammer, Footprints, Swords, Shovel, Droplet, Trash2, Settings as SettingsIcon, Pickaxe, TreePine, Wheat, Wrench, Users, Sparkles, Home, FlaskConical, Wand2, Repeat } from 'lucide-react';
+import { findBestMatchupSwap } from './MatchupIndicator';
 import { useSettings } from './Settings';
 import { GameSidebar } from './GameSidebar';
 import { CraftingWorkshop } from './CraftingWorkshop';
@@ -2563,6 +2564,28 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
                 setAttackMenuTarget({ enemy, enemyPos: { x: unifiedMenu.x, y: unifiedMenu.y }, playerPos: overworld.playerPosition });
               },
             });
+            const enemyClass = (enemy as any).class;
+            if (enemyClass && state.run?.party) {
+              const swap = findBestMatchupSwap(
+                state.run.party,
+                state.run.activePartyIndex ?? 0,
+                enemy.element,
+                enemyClass,
+              );
+              if (swap) {
+                actions.push({
+                  id: 'switch-best-matchup',
+                  label: `Switch to ${swap.member.species} (best matchup)`,
+                  hint: `Lv ${swap.member.level} ${swap.member.element}/${swap.member.class} · score ${swap.currentScore > 0 ? '+' : ''}${swap.currentScore} → ${swap.score > 0 ? '+' : ''}${swap.score}`,
+                  icon: Repeat,
+                  variant: 'outline',
+                  onClick: () => {
+                    close();
+                    handlePartySwitch(swap.index);
+                  },
+                });
+              }
+            }
           }
         }
       } else if (tile.type === 'nest' && tile.nestId) {

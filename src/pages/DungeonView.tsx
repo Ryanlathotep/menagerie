@@ -11,7 +11,8 @@ import { expandDungeonIfNeeded, findStairsPosition } from '@/game/dungeonExpansi
 import { PICKAXE_TIERS, hitsToBreak } from '@/game/tools';
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScrollText, Flag, FlagOff, Swords, Footprints, Pickaxe, Hammer, DoorOpen, ChevronDown, ChevronUp, ShoppingBag, Trees, Shovel, FlaskConical, Wand2 } from 'lucide-react';
+import { ScrollText, Flag, FlagOff, Swords, Footprints, Pickaxe, Hammer, DoorOpen, ChevronDown, ChevronUp, ShoppingBag, Trees, Shovel, FlaskConical, Wand2, Repeat } from 'lucide-react';
+import { findBestMatchupSwap } from '@/game/MatchupIndicator';
 import { UnifiedTileMenu, UnifiedTileAction, UnifiedTileInfo, UnifiedTileCreature } from '@/game/UnifiedTileMenu';
 import { MonsterSprite } from '@/game/sprites';
 import { DungeonRenderer } from '@/game/DungeonRenderer';
@@ -3438,6 +3439,31 @@ export function DungeonView({
                       disabled: true,
                       disabledReason: 'Out of range — move closer or pick a move with longer reach',
                       onClick: () => { /* noop */ },
+                    });
+                  }
+
+                  // Suggest switching to a party member with a strictly better
+                  // elemental+class matchup. Skips the active monster and any
+                  // fainted party members; only shown when a better option
+                  // exists. Note: SWITCH_ACTIVE_MONSTER consumes a turn and
+                  // grants the enemy a free attack (see switching mechanics).
+                  const swap = findBestMatchupSwap(
+                    state.run.party,
+                    state.run.activePartyIndex ?? 0,
+                    enemy.element,
+                    enemy.class,
+                  );
+                  if (swap) {
+                    actions.push({
+                      id: 'switch-best-matchup',
+                      label: `Switch to ${swap.member.species} (best matchup)`,
+                      hint: `Lv ${swap.member.level} ${swap.member.element}/${swap.member.class} · score ${swap.currentScore > 0 ? '+' : ''}${swap.currentScore} → ${swap.score > 0 ? '+' : ''}${swap.score}`,
+                      icon: Repeat,
+                      variant: 'outline',
+                      onClick: () => {
+                        close();
+                        handlePartySwitch(swap.index);
+                      },
                     });
                   }
 

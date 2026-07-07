@@ -158,7 +158,7 @@ export function MoveSortFilter({
             </span>
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-44 p-1" align="start">
+        <PopoverContent className="w-44 p-1 z-[70]" align="start">
           {sortOptions.map(option => (
             <Button
               key={option.value}
@@ -197,7 +197,7 @@ export function MoveSortFilter({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-48 p-1" align="start">
+        <PopoverContent className="w-48 p-1 z-[70]" align="start">
           {filterOptions.map(option => {
             const isActive = option.value === 'all' 
               ? filters.includes('all') 

@@ -13,14 +13,16 @@ Format:
 
 ---
 
-## 2026-06-18 — Tower of the Infinite tooltip empty on mobile long-press
-- **Source**: bug `ffcffd41` — tower-infinite-tooltip-empty
-- **Root cause**: `DungeonListPanel.tsx` rendered the row info as inline text but had **no** tooltip/popover at all. On desktop a hover did nothing; on mobile a long-press fell through to the browser's native context menu, which appeared empty (iOS Safari shows only image-related actions, and the row has no image). The previous priority note referenced a `getDungeonTooltip()` payload that did not exist in the codebase.
-- **Fix**:
-  - `src/game/DungeonListPanel.tsx`: added `getDungeonTooltip(d)` helper returning a structured payload (title, theme, start floor, deepest floor, location, seed, notes incl. Town Portal Scroll requirement + Item World 50-floor recipe rule).
-  - Added a small `ⓘ` Popover trigger inside each row's title block. Same shadcn `Popover` body fires identically on desktop click and mobile tap — Cross-Platform Menu Parity preserved (only the trigger gesture differs, the menu body is identical everywhere).
-  - `stopPropagation` on the trigger so opening the info popover never accidentally launches the dungeon.
-- **Verified by**: clean build, preview healthy. Popover content draws from a single source-of-truth helper so the Tower of the Infinite row now shows the full payload on every platform.
+## 2026-06-18 — Tooltips/HoverCards unusable on mobile (no hover, no long-press)
+- **Source**: bug `ffcffd41` — originally filed as "Tower of the Infinite tooltip empty on mobile long-press" but the real scope is app-wide: every Radix `Tooltip` and `HoverCard` was suppressed on touch devices via `if (isTouch) return null`, so mobile users had no way to read them.
+- **First attempt (rejected by user)**: Added an ⓘ Popover to dungeon rows only. User feedback: not helpful — they want the actual mobile equivalent of desktop hover (long-press) working across the whole app.
+- **Real fix**:
+  - `src/components/ui/tooltip.tsx`: Stopped null-returning `TooltipContent` on touch. Made `Tooltip` root controlled on touch devices via a `TouchTooltipContext`. `TooltipTrigger` now attaches touch handlers — a ~400ms long-press opens the tooltip, tap-move cancels, and the trigger's synthetic click is swallowed if long-press fired so the underlying button doesn't also activate. `contextmenu` is suppressed on touch so the OS's native long-press menu doesn't win.
+  - `src/components/ui/hover-card.tsx`: Same treatment for `HoverCard` / `HoverCardTrigger`.
+  - Existing `useDismissTooltipsOnTap` global handler already closes them on tap-elsewhere, so no new dismiss code needed.
+  - Left the ⓘ Popover in `DungeonListPanel.tsx` in place — it's redundant now that tooltips work, but it doesn't hurt and gives an explicit affordance.
+- **Verified by**: TS build clean, preview healthy. Behavior: on desktop nothing changes (hover/focus still triggers); on mobile long-press summons the tooltip/hover-card, tap anywhere else dismisses.
+- **Cross-Platform Menu Parity preserved**: menu bodies remain identical across viewports — only the trigger gesture (hover vs long-press) differs, per Core memory.
 
 
 

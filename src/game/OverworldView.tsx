@@ -1582,7 +1582,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       // dungeon (non-walkable goal types), try pathing to its closest adjacent
       // walkable tile so the player can step up and interact.
       const interactable = tile && (
-        tile.type === 'tree' || tile.type === 'rock' || tile.type === 'enemy' ||
+        tile.type === 'tree' || tile.type === 'rock' || tile.type === 'plant' || tile.type === 'enemy' ||
         tile.type === 'nest' || tile.type === 'building' || tile.type === 'dungeon_entrance' ||
         tile.type === 'water'
       );

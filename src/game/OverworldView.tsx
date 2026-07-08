@@ -899,6 +899,22 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
 
   useEffect(() => () => cancelAutoMine(), [cancelAutoMine]);
 
+  // ─── Auto-Harvest-All ────────────────────────────────────────────────────
+  // Global sweep: repeatedly finds the nearest tree / rock / plant on the
+  // loaded overworld and drives startAutoMine on it. When one cluster is
+  // exhausted the outer timer picks the next one, so the player only clicks
+  // once to strip-mine a whole visible region.
+  const autoHarvestAllTimerRef = useRef<number | null>(null);
+  const cancelAutoHarvestAll = useCallback((reason?: string) => {
+    if (autoHarvestAllTimerRef.current !== null) {
+      window.clearInterval(autoHarvestAllTimerRef.current);
+      autoHarvestAllTimerRef.current = null;
+      if (reason) addLog(reason, 'info');
+    }
+  }, [addLog]);
+  useEffect(() => () => cancelAutoHarvestAll(), [cancelAutoHarvestAll]);
+
+
   // ─── Auto-Hunt & Auto-Search ────────────────────────────────────────────
   // Auto-Hunt: seeks the nearest visible enemy and walks adjacent, then opens
   // attack targeting with the monster's first melee/ranged move so the player

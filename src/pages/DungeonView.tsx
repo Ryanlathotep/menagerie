@@ -1643,7 +1643,10 @@ export function DungeonView({
         // planner will either restart pathwalking or clear the mode itself.
         if (huntingModeRef.current) {
           setTimeout(() => planNextHuntStepRef.current(), 0);
+        } else if (harvestAllModeRef.current) {
+          setTimeout(() => planNextHarvestStepRef.current(), 60);
         }
+
         return;
       }
 

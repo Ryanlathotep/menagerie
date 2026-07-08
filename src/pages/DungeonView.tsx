@@ -1307,8 +1307,10 @@ export function DungeonView({
      pathWalkRef.current = [];
      pathGoalRef.current = null;
    }
-   // A manual click always overrides any active Auto-Hunt.
-   huntingModeRef.current = false;
+    // A manual click always overrides any active Auto-Hunt / Auto-Harvest.
+    huntingModeRef.current = false;
+    harvestAllModeRef.current = false;
+
     
     // Don't path to current position
     if (dungeon.playerPosition.x === x && dungeon.playerPosition.y === y) return;

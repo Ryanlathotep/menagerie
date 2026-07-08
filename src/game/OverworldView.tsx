@@ -950,41 +950,52 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       const ow = overworldRef.current;
       if (!ow) { cancelAutoHunt(); return; }
       const px = ow.playerPosition.x, py = ow.playerPosition.y;
-      // If any visible enemy already has us in attack range, stop advancing
-      // and let the player pick their move.
-      if (anyOverworldEnemyThreatensPlayer(ow)) {
-        cancelAutoHunt('🏹 Auto-Hunt: enemy in attack range — pick a move!');
-        return;
-      }
       const enemies = getVisibleOverworldEnemies(ow, 30);
 
-      // ── Enemy in sight: pursue the nearest one ──
+      // ── Hand off to the attack menu the moment ANY visible enemy is
+      //    reachable by a currently-affordable move (melee or ranged AoE),
+      //    not just when adjacent. Cheapest reachable move wins.
+      if (monster && enemies.length > 0) {
+        const allMoves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
+        const stam = monster.stats.currentStamina ?? monster.stats.stamina ?? 50;
+        const affordable = allMoves
+          .filter((m) => (m.staminaCost || 0) <= stam && (m.type === 'melee' || m.type === 'ranged' || (m.power || 0) > 0))
+          .sort((a, b) => (a.staminaCost || 0) - (b.staminaCost || 0));
+        let handoff: { move: Move; enemy: Position; validTargets: Position[] } | null = null;
+        outer: for (const mv of affordable) {
+          const cfg = getAttackConfig(mv);
+          const valid = getOverworldValidTargets(ow.playerPosition, cfg, ow);
+          for (const e of enemies) {
+            if (valid.some(v => v.x === e.pos.x && v.y === e.pos.y)) {
+              handoff = { move: mv, enemy: e.pos, validTargets: valid };
+              break outer;
+            }
+          }
+        }
+        if (handoff) {
+          cancelAutoHunt();
+          setTargetingMove(handoff.move);
+          setTargetingTiles(handoff.validTargets);
+          addLog('🏹 Auto-Hunt: enemy in range — opening attack menu.', 'info');
+          setTimeout(() => handleTargetingClick(handoff!.enemy.x, handoff!.enemy.y), 0);
+          return;
+        }
+      }
+
+      // If any visible enemy already has US in attack range (but nothing we
+      // have reaches them yet), stop advancing so we don't eat a free hit.
+      if (anyOverworldEnemyThreatensPlayer(ow)) {
+        cancelAutoHunt('🏹 Auto-Hunt: enemy threatens you — pick a move!');
+        return;
+      }
+
+      // ── Enemy in sight but out of our reach: walk toward nearest one ──
       if (enemies.length > 0) {
         enemies.sort((a, b) =>
           (Math.abs(a.pos.x - px) + Math.abs(a.pos.y - py)) -
           (Math.abs(b.pos.x - px) + Math.abs(b.pos.y - py)),
         );
         const target = enemies[0].pos;
-        const dist = Math.abs(target.x - px) + Math.abs(target.y - py);
-        // Adjacent — stop and open targeting for the best attack move.
-        if (dist <= 1) {
-          cancelAutoHunt();
-          const move = pickHuntAttackMove();
-          if (!move) {
-            addLog('🏹 In range! Pick a move to attack.', 'info');
-            return;
-          }
-          const config = getAttackConfig(move);
-          const validTargets = getOverworldValidTargets(ow.playerPosition, config, ow);
-          if (validTargets.some(t => t.x === target.x && t.y === target.y)) {
-            setTargetingMove(move);
-            setTargetingTiles(validTargets);
-            setTimeout(() => handleTargetingClick(target.x, target.y), 0);
-          } else {
-            addLog(`🏹 In range! Pick a move to attack.`, 'info');
-          }
-          return;
-        }
         // Walk toward an adjacent tile of the enemy (avoid structures).
         const offsets: Array<[number, number]> = [[0, -1], [0, 1], [-1, 0], [1, 0]];
         let bestPath: Position[] | null = null;
@@ -1005,6 +1016,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           return;
         }
       }
+
 
       // ── No enemy in sight (or unreachable): spiral outward through fog ──
       // Collect every explored, walkable tile that borders an unexplored (or

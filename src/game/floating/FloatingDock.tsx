@@ -220,16 +220,29 @@ export function FloatingDockProvider({ children }: { children: ReactNode }) {
   );
 }
 
+const DOCK_POS_KEY = 'ui.dock.pos.v2';
+type DockPos = { x: number; y: number };
+
+function loadDockPos(): DockPos | null {
+  try {
+    const raw = localStorage.getItem(DOCK_POS_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (typeof p?.x === 'number' && typeof p?.y === 'number') return p;
+  } catch { /* ignore */ }
+  return null;
+}
+function saveDockPos(p: DockPos) {
+  try { localStorage.setItem(DOCK_POS_KEY, JSON.stringify(p)); } catch { /* ignore */ }
+}
+
 function FloatingDockRoot() {
   const ctx = useContext(Ctx)!;
   const dockRef = useRef<HTMLDivElement | null>(null);
-  // Stable ref callbacks per id — inline `(el) => registerSlot(id, el)` would
-  // create a new function each render and cause React to null/re-set the ref
-  // every commit, which combined with a version-bump inside registerSlot
-  // triggers an infinite update loop.
-  const slotRefCbs = useRef<Map<string, (el: HTMLDivElement | null) => void>>(
-    new Map(),
-  );
+  const [dockPos, setDockPos] = useState<DockPos | null>(() => loadDockPos());
+  const [dragging, setDragging] = useState(false);
+  const dragRef = useRef<{ pointerId: number; offX: number; offY: number; moved: boolean; sx: number; sy: number } | null>(null);
+  const slotRefCbs = useRef<Map<string, (el: HTMLDivElement | null) => void>>(new Map());
   const getSlotRef = (id: string) => {
     let cb = slotRefCbs.current.get(id);
     if (!cb) {
@@ -256,6 +269,18 @@ function FloatingDockRoot() {
     };
   }, [ctx]);
 
+  // Clamp saved dock position to current viewport (handles rotate/resize).
+  const clampDock = (p: DockPos): DockPos => {
+    if (typeof window === 'undefined') return p;
+    const rect = dockRef.current?.getBoundingClientRect();
+    const w = rect?.width ?? 120;
+    const h = rect?.height ?? 56;
+    return {
+      x: Math.min(Math.max(4, p.x), Math.max(4, window.innerWidth - w - 4)),
+      y: Math.min(Math.max(4, p.y), Math.max(4, window.innerHeight - h - 4)),
+    };
+  };
+
   const dockedIds = ctx.order.filter((id) => ctx.states[id]?.docked);
 
   const setDockRef = (el: HTMLDivElement | null) => {
@@ -263,15 +288,71 @@ function FloatingDockRoot() {
     if (el) ctx.dockRectRef.current = el.getBoundingClientRect();
   };
 
+  const onHandleDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dockRef.current) return;
+    e.stopPropagation();
+    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+    const rect = dockRef.current.getBoundingClientRect();
+    dragRef.current = {
+      pointerId: e.pointerId,
+      offX: e.clientX - rect.left,
+      offY: e.clientY - rect.top,
+      moved: false,
+      sx: e.clientX,
+      sy: e.clientY,
+    };
+  };
+  const onHandleMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = dragRef.current;
+    if (!d || d.pointerId !== e.pointerId) return;
+    if (!d.moved && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 4) {
+      d.moved = true;
+      setDragging(true);
+    }
+    if (d.moved) {
+      setDockPos(clampDock({ x: e.clientX - d.offX, y: e.clientY - d.offY }));
+    }
+  };
+  const onHandleUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = dragRef.current;
+    if (!d || d.pointerId !== e.pointerId) return;
+    dragRef.current = null;
+    if (d.moved) {
+      const p = clampDock({ x: e.clientX - d.offX, y: e.clientY - d.offY });
+      setDockPos(p);
+      saveDockPos(p);
+    }
+    setDragging(false);
+  };
+
+  const positionStyle: React.CSSProperties = dockPos
+    ? { left: dockPos.x, top: dockPos.y, right: 'auto', bottom: 'auto' }
+    : { right: 12, bottom: 12 };
+
   return (
     <>
       {/* Dock strip */}
       <div
         ref={setDockRef}
-        className="fixed bottom-3 right-3 z-[9998] flex items-center gap-2 p-2 rounded-2xl border border-border bg-card/85 backdrop-blur shadow-md max-w-[75vw] overflow-x-auto overflow-y-hidden"
+        className={`fixed z-[9998] flex items-center gap-1 p-1.5 rounded-2xl border border-border bg-card/85 backdrop-blur shadow-md max-w-[75vw] overflow-x-auto overflow-y-hidden ${dragging ? 'ring-2 ring-primary' : ''}`}
         aria-label="Floating action dock"
-        style={{ scrollbarGutter: 'stable' }}
+        style={{ scrollbarGutter: 'stable', ...positionStyle }}
       >
+        {/* Drag handle — grip the whole dock and drop it anywhere */}
+        <div
+          role="button"
+          aria-label="Drag dock"
+          title="Drag to move dock"
+          onPointerDown={onHandleDown}
+          onPointerMove={onHandleMove}
+          onPointerUp={onHandleUp}
+          onPointerCancel={onHandleUp}
+          onDoubleClick={() => { setDockPos(null); try { localStorage.removeItem(DOCK_POS_KEY); } catch { /* ignore */ } }}
+          className="shrink-0 flex flex-col items-center justify-center px-1 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/40 cursor-grab active:cursor-grabbing select-none"
+          style={{ touchAction: 'none' }}
+        >
+          <span className="text-[10px] leading-none">⋮⋮</span>
+        </div>
         {dockedIds.length === 0 ? (
           <span className="text-[10px] text-muted-foreground px-2 py-1 select-none whitespace-nowrap">
             drop buttons here
@@ -287,6 +368,7 @@ function FloatingDockRoot() {
           ))
         )}
       </div>
+
 
 
       {/* Render each button. Docked ones portal into their dock slot;

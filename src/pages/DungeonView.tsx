@@ -1694,7 +1694,10 @@ export function DungeonView({
           pathGoalRef.current = null;
           if (huntingModeRef.current) {
             setTimeout(() => planNextHuntStepRef.current(), 0);
+          } else if (harvestAllModeRef.current) {
+            setTimeout(() => planNextHarvestStepRef.current(), 60);
           }
+
           return;
         }
       }

@@ -4499,6 +4499,19 @@ export function DungeonView({
                 hint: 'Pick a target type (stairs, treasure, plant, shop, wall, nest)',
                 onClick: () => { close(); setDungeonAutoSearchOpen(true); },
               });
+              actions.push({
+                id: 'auto-harvest-all',
+                label: 'Auto-Harvest All',
+                icon: FlaskConical,
+                hint: 'Walks to every known chest, plant, nest' + (settings.autoMine ? ', and mineable wall' : '') + ' on this floor',
+                onClick: () => {
+                  close();
+                  addLog('🧺 Auto-Harvest started — sweeping this floor.', 'info');
+                  harvestAllModeRef.current = true;
+                  planNextHarvestStepRef.current();
+                },
+              });
+
 
               const existing = dungeon.compassWaypoints || [];
               const pinnedWp = existing.find(p => p.x === x && p.y === y);

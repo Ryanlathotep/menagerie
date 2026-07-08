@@ -1877,8 +1877,10 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           const mining = !!autoMineTargetRef.current;
           const hunting = autoHuntTimerRef.current !== null;
           const searching = autoSearchTimerRef.current !== null;
-          if (walking || mining || hunting || searching || targetingMove) {
+          const harvestingAll = autoHarvestAllTimerRef.current !== null;
+          if (walking || mining || hunting || searching || harvestingAll || targetingMove) {
             e.preventDefault();
+            if (harvestingAll) cancelAutoHarvestAll('⏸ Auto-Harvest All halted.');
             if (walking) cancelAutoWalk();
             if (mining) cancelAutoMine('⏸ Auto-Harvest halted.');
             if (hunting) cancelAutoHunt('⏸ Auto-Hunt halted.');
@@ -1888,6 +1890,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           }
           break;
         }
+
         case 'ArrowUp': case 'w': case 'W':
           e.preventDefault(); cancelAutoWalk(); handleMove(0, -1); break;
         case 'ArrowDown': case 's': case 'S':

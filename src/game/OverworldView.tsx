@@ -1088,7 +1088,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
       handleMoveRef.current(stepDx, stepDy);
     }, stepDelay);
-  }, [addLog, cancelAutoHunt, cancelAutoMine, cancelAutoSearch, cancelAutoWalk, pickHuntAttackMove, settings.autoRunSpeed]);
+  }, [addLog, cancelAutoHunt, cancelAutoMine, cancelAutoSearch, cancelAutoWalk, monster, settings.autoRunSpeed]);
 
   type SearchKind = 'dungeon_entrance' | 'enemy' | 'nest' | 'tree' | 'rock' | 'plant' | 'building';
   const SEARCH_RADIUS = 40;

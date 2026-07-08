@@ -1137,13 +1137,18 @@ export function DungeonView({
       // auto-run/path-walk" branches below don't cover) and so the browser
       // doesn't scroll the page on space.
       if (e.key === ' ' || e.key === 'Spacebar') {
-        const halted = isAutoRunning || isPathWalking || !!autoHarvestTargetRef.current || huntingModeRef.current;
+        const halted = isAutoRunning || isPathWalking || !!autoHarvestTargetRef.current || huntingModeRef.current || harvestAllModeRef.current;
         if (halted) {
           e.preventDefault();
           if (huntingModeRef.current) {
             huntingModeRef.current = false;
             addLog('⏸ Auto-Hunt halted.', 'info');
           }
+          if (harvestAllModeRef.current) {
+            harvestAllModeRef.current = false;
+            addLog('⏸ Auto-Harvest halted.', 'info');
+          }
+
           if (isAutoRunning) {
             stopAutoRun.current = true;
             setIsAutoRunning(false);
@@ -1180,8 +1185,10 @@ export function DungeonView({
         setTargetPath([]);
         pathWalkRef.current = [];
         huntingModeRef.current = false;
+        harvestAllModeRef.current = false;
         return;
       }
+
       
       
       let direction: 'up' | 'down' | 'left' | 'right' | null = null;
@@ -1300,8 +1307,10 @@ export function DungeonView({
      pathWalkRef.current = [];
      pathGoalRef.current = null;
    }
-   // A manual click always overrides any active Auto-Hunt.
-   huntingModeRef.current = false;
+    // A manual click always overrides any active Auto-Hunt / Auto-Harvest.
+    huntingModeRef.current = false;
+    harvestAllModeRef.current = false;
+
     
     // Don't path to current position
     if (dungeon.playerPosition.x === x && dungeon.playerPosition.y === y) return;
@@ -1375,11 +1384,37 @@ export function DungeonView({
     }
     const px = d.playerPosition.x, py = d.playerPosition.y;
     const t = d.tiles[target.y]?.[target.x];
-    // Adjacent enemy → arrived. Stop hunting so the player picks their move.
-    if (t?.type === 'enemy' && Math.abs(target.x - px) + Math.abs(target.y - py) <= 1) {
-      huntingModeRef.current = false;
-      addLog('🏹 Auto-Hunt: enemy in range — pick a move to attack.', 'info');
-      return;
+    // Enemy target: if ANY move on the active monster can currently reach
+    // this enemy from the player's tile, hand off to the attack menu with
+    // the enemy preselected instead of just halting silently.
+    if (t?.type === 'enemy' && t.enemyId) {
+      const monster = state.run?.currentMonster;
+      const enemy = d.enemies.find(e => e.id === t.enemyId);
+      if (monster && enemy) {
+        const moves = getMonsterMoves(
+          monster.species, monster.element, monster.class, monster.level,
+          `${monster.species}_${monster.element}_${monster.class}`,
+        );
+        const canReach = moves.some((mv) => {
+          if ((mv.staminaCost || 0) > (monster.stats.currentStamina ?? monster.stats.stamina ?? 50)) return false;
+          if (mv.type !== 'melee' && mv.type !== 'ranged' && !(mv.power > 0)) return false;
+          const cfg = getAttackConfig(mv);
+          const valid = getValidTargets(d.playerPosition, cfg, d.tiles, d.width, d.height, true);
+          return valid.some(v => v.x === target.x && v.y === target.y);
+        });
+        if (canReach) {
+          huntingModeRef.current = false;
+          addLog('🏹 Auto-Hunt: enemy in range — opening attack menu.', 'info');
+          setAttackMenuTarget({ enemy, enemyPos: { x: target.x, y: target.y }, playerPos: d.playerPosition });
+          return;
+        }
+      }
+      // Fallback: adjacent-only stop (no monster or no reaching moves).
+      if (Math.abs(target.x - px) + Math.abs(target.y - py) <= 1) {
+        huntingModeRef.current = false;
+        addLog('🏹 Auto-Hunt: enemy adjacent — pick a move to attack.', 'info');
+        return;
+      }
     }
     const path = findPath(d, d.playerPosition, target, { allowMineable: !!settings.autoMine });
     if (!path || path.length === 0) {
@@ -1391,12 +1426,57 @@ export function DungeonView({
     pathWalkRef.current = path;
     pathGoalRef.current = target;
     setIsPathWalking(true);
-  }, [findHuntTarget, addLog, settings.autoMine]);
+  }, [findHuntTarget, addLog, settings.autoMine, state.run]);
+
 
   // Keep a ref so the path-walk effect can invoke the latest planner without
   // adding it as a dependency (which would re-create the animation loop).
   const planNextHuntStepRef = useRef(planNextHuntStep);
   useEffect(() => { planNextHuntStepRef.current = planNextHuntStep; }, [planNextHuntStep]);
+
+  // ─── Auto-Harvest-All ───────────────────────────────────────────────────
+  // Same rhythm as Auto-Hunt but pursues resources: treasure chests, plants
+  // (herbs), nests, and (when Auto-Mine is on) mineable walls. Halts on the
+  // same threat-check as everything else.
+  const harvestAllModeRef = useRef(false);
+  const planNextHarvestStep = useCallback(() => {
+    if (!harvestAllModeRef.current) return;
+    const d = dungeonRef.current;
+    if (!d) { harvestAllModeRef.current = false; return; }
+    const allowMineable = !!settings.autoMine;
+    const targets: Array<'treasure' | 'plant' | 'nest' | 'mineable_wall'> = ['treasure', 'plant', 'nest'];
+    if (allowMineable) targets.push('mineable_wall');
+    const px = d.playerPosition.x, py = d.playerPosition.y;
+    let best: { x: number; y: number; d: number } | null = null;
+    for (let yy = 0; yy < d.tiles.length; yy++) {
+      const row = d.tiles[yy]; if (!row) continue;
+      for (let xx = 0; xx < row.length; xx++) {
+        const t = row[xx]; if (!t || !t.explored) continue;
+        if (!(targets as string[]).includes(t.type)) continue;
+        if (xx === px && yy === py) continue;
+        const dist = Math.abs(xx - px) + Math.abs(yy - py);
+        if (!best || dist < best.d) best = { x: xx, y: yy, d: dist };
+      }
+    }
+    if (!best) {
+      harvestAllModeRef.current = false;
+      addLog('🧺 Auto-Harvest: nothing left to collect on this floor.', 'info');
+      return;
+    }
+    const path = findPath(d, d.playerPosition, { x: best.x, y: best.y }, { allowMineable });
+    if (!path || path.length === 0) {
+      harvestAllModeRef.current = false;
+      addLog('🧺 Auto-Harvest: no path to remaining resources.', 'info');
+      return;
+    }
+    setTargetPath(path);
+    pathWalkRef.current = path;
+    pathGoalRef.current = { x: best.x, y: best.y };
+    setIsPathWalking(true);
+  }, [addLog, settings.autoMine]);
+  const planNextHarvestStepRef = useRef(planNextHarvestStep);
+  useEffect(() => { planNextHarvestStepRef.current = planNextHarvestStep; }, [planNextHarvestStep]);
+
 
   // ─── Dungeon Auto-Search runner ───────────────────────────────────────────
   // Extracted from the picker modal so the "continue at stairs" prompt can
@@ -1572,7 +1652,10 @@ export function DungeonView({
         // planner will either restart pathwalking or clear the mode itself.
         if (huntingModeRef.current) {
           setTimeout(() => planNextHuntStepRef.current(), 0);
+        } else if (harvestAllModeRef.current) {
+          setTimeout(() => planNextHarvestStepRef.current(), 60);
         }
+
         return;
       }
 
@@ -1620,7 +1703,10 @@ export function DungeonView({
           pathGoalRef.current = null;
           if (huntingModeRef.current) {
             setTimeout(() => planNextHuntStepRef.current(), 0);
+          } else if (harvestAllModeRef.current) {
+            setTimeout(() => planNextHarvestStepRef.current(), 60);
           }
+
           return;
         }
       }
@@ -4422,6 +4508,19 @@ export function DungeonView({
                 hint: 'Pick a target type (stairs, treasure, plant, shop, wall, nest)',
                 onClick: () => { close(); setDungeonAutoSearchOpen(true); },
               });
+              actions.push({
+                id: 'auto-harvest-all',
+                label: 'Auto-Harvest All',
+                icon: FlaskConical,
+                hint: 'Walks to every known chest, plant, nest' + (settings.autoMine ? ', and mineable wall' : '') + ' on this floor',
+                onClick: () => {
+                  close();
+                  addLog('🧺 Auto-Harvest started — sweeping this floor.', 'info');
+                  harvestAllModeRef.current = true;
+                  planNextHarvestStepRef.current();
+                },
+              });
+
 
               const existing = dungeon.compassWaypoints || [];
               const pinnedWp = existing.find(p => p.x === x && p.y === y);

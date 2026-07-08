@@ -914,6 +914,48 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   }, [addLog]);
   useEffect(() => () => cancelAutoHarvestAll(), [cancelAutoHarvestAll]);
 
+  const startAutoHarvestAll = useCallback(() => {
+    cancelAutoWalk();
+    cancelAutoMine();
+    cancelAutoHarvestAll();
+    automationRunningRef.current = true;
+    addLog('🧺 Auto-Harvest All started — sweeping every visible resource.', 'info');
+    const RADIUS = 40;
+    const KINDS = new Set(['tree', 'rock', 'plant']);
+    const tick = () => {
+      const ow = overworldRef.current;
+      if (!ow) { cancelAutoHarvestAll(); return; }
+      if (anyOverworldEnemyThreatensPlayer(ow)) {
+        cancelAutoHarvestAll('⚠️ Auto-Harvest All stopped — enemy in attack range!');
+        return;
+      }
+      // Still chopping? Let the inner auto-mine timer finish this cluster.
+      if (autoMineTargetRef.current) return;
+      // Find nearest harvestable of any kind.
+      const px = ow.playerPosition.x, py = ow.playerPosition.y;
+      let best: { x: number; y: number; d: number } | null = null;
+      for (let dy = -RADIUS; dy <= RADIUS; dy++) {
+        const rem = RADIUS - Math.abs(dy);
+        for (let dx = -rem; dx <= rem; dx++) {
+          const x = px + dx, y = py + dy;
+          const t = getOverworldTile(ow, x, y);
+          if (!t || !KINDS.has(t.type)) continue;
+          const d = Math.abs(dx) + Math.abs(dy);
+          if (!best || d < best.d) best = { x, y, d };
+        }
+      }
+      if (!best) {
+        cancelAutoHarvestAll('✅ Auto-Harvest All finished — no resources visible.');
+        return;
+      }
+      startAutoMine(best.x, best.y);
+    };
+    tick();
+    autoHarvestAllTimerRef.current = window.setInterval(tick, 400);
+  }, [addLog, cancelAutoHarvestAll, cancelAutoMine, cancelAutoWalk, startAutoMine]);
+
+
+
 
   // ─── Auto-Hunt & Auto-Search ────────────────────────────────────────────
   // Auto-Hunt: seeks the nearest visible enemy and walks adjacent, then opens

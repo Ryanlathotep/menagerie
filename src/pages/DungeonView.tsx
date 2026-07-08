@@ -1137,13 +1137,18 @@ export function DungeonView({
       // auto-run/path-walk" branches below don't cover) and so the browser
       // doesn't scroll the page on space.
       if (e.key === ' ' || e.key === 'Spacebar') {
-        const halted = isAutoRunning || isPathWalking || !!autoHarvestTargetRef.current || huntingModeRef.current;
+        const halted = isAutoRunning || isPathWalking || !!autoHarvestTargetRef.current || huntingModeRef.current || harvestAllModeRef.current;
         if (halted) {
           e.preventDefault();
           if (huntingModeRef.current) {
             huntingModeRef.current = false;
             addLog('⏸ Auto-Hunt halted.', 'info');
           }
+          if (harvestAllModeRef.current) {
+            harvestAllModeRef.current = false;
+            addLog('⏸ Auto-Harvest halted.', 'info');
+          }
+
           if (isAutoRunning) {
             stopAutoRun.current = true;
             setIsAutoRunning(false);

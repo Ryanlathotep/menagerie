@@ -1375,11 +1375,37 @@ export function DungeonView({
     }
     const px = d.playerPosition.x, py = d.playerPosition.y;
     const t = d.tiles[target.y]?.[target.x];
-    // Adjacent enemy → arrived. Stop hunting so the player picks their move.
-    if (t?.type === 'enemy' && Math.abs(target.x - px) + Math.abs(target.y - py) <= 1) {
-      huntingModeRef.current = false;
-      addLog('🏹 Auto-Hunt: enemy in range — pick a move to attack.', 'info');
-      return;
+    // Enemy target: if ANY move on the active monster can currently reach
+    // this enemy from the player's tile, hand off to the attack menu with
+    // the enemy preselected instead of just halting silently.
+    if (t?.type === 'enemy' && t.enemyId) {
+      const monster = state.run?.currentMonster;
+      const enemy = d.enemies.find(e => e.id === t.enemyId);
+      if (monster && enemy) {
+        const moves = getMonsterMoves(
+          monster.species, monster.element, monster.class, monster.level,
+          `${monster.species}_${monster.element}_${monster.class}`,
+        );
+        const canReach = moves.some((mv) => {
+          if ((mv.staminaCost || 0) > (monster.stats.currentStamina ?? monster.stats.stamina ?? 50)) return false;
+          if (mv.type !== 'melee' && mv.type !== 'ranged' && !(mv.power > 0)) return false;
+          const cfg = getAttackConfig(mv);
+          const valid = getValidTargets(d.playerPosition, cfg, d.tiles, d.width, d.height, true);
+          return valid.some(v => v.x === target.x && v.y === target.y);
+        });
+        if (canReach) {
+          huntingModeRef.current = false;
+          addLog('🏹 Auto-Hunt: enemy in range — opening attack menu.', 'info');
+          setAttackMenuTarget({ enemy, enemyPos: { x: target.x, y: target.y }, playerPos: d.playerPosition });
+          return;
+        }
+      }
+      // Fallback: adjacent-only stop (no monster or no reaching moves).
+      if (Math.abs(target.x - px) + Math.abs(target.y - py) <= 1) {
+        huntingModeRef.current = false;
+        addLog('🏹 Auto-Hunt: enemy adjacent — pick a move to attack.', 'info');
+        return;
+      }
     }
     const path = findPath(d, d.playerPosition, target, { allowMineable: !!settings.autoMine });
     if (!path || path.length === 0) {
@@ -1391,7 +1417,8 @@ export function DungeonView({
     pathWalkRef.current = path;
     pathGoalRef.current = target;
     setIsPathWalking(true);
-  }, [findHuntTarget, addLog, settings.autoMine]);
+  }, [findHuntTarget, addLog, settings.autoMine, state.run]);
+
 
   // Keep a ref so the path-walk effect can invoke the latest planner without
   // adding it as a dependency (which would re-create the animation loop).

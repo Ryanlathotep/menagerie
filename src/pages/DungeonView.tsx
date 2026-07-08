@@ -1185,8 +1185,10 @@ export function DungeonView({
         setTargetPath([]);
         pathWalkRef.current = [];
         huntingModeRef.current = false;
+        harvestAllModeRef.current = false;
         return;
       }
+
       
       
       let direction: 'up' | 'down' | 'left' | 'right' | null = null;

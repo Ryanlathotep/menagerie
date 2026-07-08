@@ -1425,6 +1425,50 @@ export function DungeonView({
   const planNextHuntStepRef = useRef(planNextHuntStep);
   useEffect(() => { planNextHuntStepRef.current = planNextHuntStep; }, [planNextHuntStep]);
 
+  // ─── Auto-Harvest-All ───────────────────────────────────────────────────
+  // Same rhythm as Auto-Hunt but pursues resources: treasure chests, plants
+  // (herbs), nests, and (when Auto-Mine is on) mineable walls. Halts on the
+  // same threat-check as everything else.
+  const harvestAllModeRef = useRef(false);
+  const planNextHarvestStep = useCallback(() => {
+    if (!harvestAllModeRef.current) return;
+    const d = dungeonRef.current;
+    if (!d) { harvestAllModeRef.current = false; return; }
+    const allowMineable = !!settings.autoMine;
+    const targets: Array<'treasure' | 'plant' | 'nest' | 'mineable_wall'> = ['treasure', 'plant', 'nest'];
+    if (allowMineable) targets.push('mineable_wall');
+    const px = d.playerPosition.x, py = d.playerPosition.y;
+    let best: { x: number; y: number; d: number } | null = null;
+    for (let yy = 0; yy < d.tiles.length; yy++) {
+      const row = d.tiles[yy]; if (!row) continue;
+      for (let xx = 0; xx < row.length; xx++) {
+        const t = row[xx]; if (!t || !t.explored) continue;
+        if (!(targets as string[]).includes(t.type)) continue;
+        if (xx === px && yy === py) continue;
+        const dist = Math.abs(xx - px) + Math.abs(yy - py);
+        if (!best || dist < best.d) best = { x: xx, y: yy, d: dist };
+      }
+    }
+    if (!best) {
+      harvestAllModeRef.current = false;
+      addLog('🧺 Auto-Harvest: nothing left to collect on this floor.', 'info');
+      return;
+    }
+    const path = findPath(d, d.playerPosition, { x: best.x, y: best.y }, { allowMineable });
+    if (!path || path.length === 0) {
+      harvestAllModeRef.current = false;
+      addLog('🧺 Auto-Harvest: no path to remaining resources.', 'info');
+      return;
+    }
+    setTargetPath(path);
+    pathWalkRef.current = path;
+    pathGoalRef.current = { x: best.x, y: best.y };
+    setIsPathWalking(true);
+  }, [addLog, settings.autoMine]);
+  const planNextHarvestStepRef = useRef(planNextHarvestStep);
+  useEffect(() => { planNextHarvestStepRef.current = planNextHarvestStep; }, [planNextHarvestStep]);
+
+
   // ─── Dungeon Auto-Search runner ───────────────────────────────────────────
   // Extracted from the picker modal so the "continue at stairs" prompt can
   // re-invoke the same logic on a fresh floor without re-opening the picker.

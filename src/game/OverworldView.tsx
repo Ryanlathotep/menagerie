@@ -3613,6 +3613,14 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         hint: 'Pick a target type (dungeon, enemy, nest, tree, rock, building) (F)',
         onClick: () => { close(); setAutoSearchPickerOpen(true); },
       });
+      actions.push({
+        id: 'auto-harvest-all',
+        label: 'Auto-Harvest All',
+        icon: Search,
+        hint: 'Chops every visible tree, rock, and plant until the area is clear',
+        onClick: () => { close(); startAutoHarvestAll(); },
+      });
+
 
 
       return (

@@ -36,13 +36,31 @@ jobs:
 
       - name: Install Butler
         run: |
+          set -euo pipefail
           curl -L -o butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default
           unzip butler.zip
           chmod +x butler
           ./butler -V
 
+      - name: Verify Butler credentials
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BUTLER_API_KEY:-}" ]; then
+            echo "::error::BUTLER_API_KEY secret is missing. Add it in GitHub → Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          ./butler status maligore/menagerie:html5 || {
+            echo "::error::Butler could not talk to itch.io. Key is likely invalid or lacks upload permission."
+            exit 1
+          }
+
       - name: Push build to itch.io
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
         run: |
-          ./butler push actual_dist maligore/menagerie:html5
+          set -euo pipefail
+          ./butler push actual_dist maligore/menagerie:html5 \
+            --userversion "${GITHUB_SHA::7}-$(date -u +%Y%m%d-%H%M)"
+

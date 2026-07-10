@@ -7,10 +7,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4.2.2
+        uses: actions/setup-node@v4.3.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4.2.0
+        uses: actions/setup-node@v4.3.0
         with:
           node-version: 24
           cache: 'npm'
@@ -29,7 +29,7 @@ jobs:
           npx vite build --outDir actual_dist --base ./
 
       - name: Upload zip artifact
-        uses: actions/upload-artifact@v4.6.1
+        uses: actions/upload-artifact@v4.7.0
         with:
           name: lovable-itch-build
           path: actual_dist/

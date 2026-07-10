@@ -271,30 +271,57 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const handleImportSave = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     const reader = new FileReader();
+    reader.onerror = () => {
+      console.error('[Import] FileReader error', reader.error);
+      toast({ title: 'Import failed', description: `Could not read file: ${reader.error?.message ?? 'unknown error'}`, variant: 'destructive' });
+    };
     reader.onload = (event) => {
+      const raw = event.target?.result;
+      if (typeof raw !== 'string' || raw.length === 0) {
+        console.error('[Import] Empty file contents');
+        toast({ title: 'Import failed', description: 'Backup file was empty.', variant: 'destructive' });
+        return;
+      }
+
+      // Parse JSON
+      let parsed: any;
       try {
-        const backup = JSON.parse(event.target?.result as string);
-        
-         if (!backup.version || !backup.saveData) {
-          throw new Error('Invalid backup file');
-        }
-        
+        parsed = JSON.parse(raw);
+      } catch (err) {
+        console.error('[Import] JSON.parse failed', err, raw.slice(0, 200));
+        toast({ title: 'Import failed', description: 'File is not valid JSON.', variant: 'destructive' });
+        return;
+      }
+
+      // Accept both wrapped backups ({ version, saveData, settings }) and
+      // bare SaveData exports (older builds / manual copies).
+      const backup = parsed && typeof parsed === 'object' && parsed.saveData
+        ? parsed
+        : { version: 1, saveData: parsed, settings: undefined };
+
+      if (!backup.saveData || typeof backup.saveData !== 'object') {
+        console.error('[Import] Missing saveData field', Object.keys(parsed ?? {}));
+        toast({ title: 'Import failed', description: 'Backup is missing save data.', variant: 'destructive' });
+        return;
+      }
+
+      try {
         localStorage.setItem('monster-roguelike-save', JSON.stringify(backup.saveData));
-         dispatch({ type: 'LOAD_SAVE', saveData: backup.saveData });
+        dispatch({ type: 'LOAD_SAVE', saveData: backup.saveData });
         if (backup.settings) {
           localStorage.setItem('monster-roguelike-settings', JSON.stringify(backup.settings));
-           window.dispatchEvent(new CustomEvent('menagerie-import-settings', { detail: backup.settings }));
+          window.dispatchEvent(new CustomEvent('menagerie-import-settings', { detail: backup.settings }));
         }
-        
-         toast({ title: 'Backup restored!', description: 'Save and settings were restored immediately.' });
-      } catch (e) {
-        toast({ title: 'Import failed', description: 'Invalid or corrupted backup file.', variant: 'destructive' });
+        toast({ title: 'Backup restored!', description: 'Save and settings were restored immediately.' });
+      } catch (err) {
+        console.error('[Import] Applying backup failed', err);
+        toast({ title: 'Import failed', description: err instanceof Error ? err.message : 'Could not apply backup.', variant: 'destructive' });
       }
     };
     reader.readAsText(file);
-    
+
     // Reset input so same file can be selected again
     if (fileInputRef.current) fileInputRef.current.value = '';
   };

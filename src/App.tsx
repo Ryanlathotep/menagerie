@@ -36,11 +36,24 @@ function normalizeHashRouteFromPath() {
 
   const base = import.meta.env.BASE_URL || '/';
   const basePath = base.replace(/\/$/, '');
-  const routePath = basePath && window.location.pathname.startsWith(basePath)
+  let routePath = basePath && window.location.pathname.startsWith(basePath)
     ? window.location.pathname.slice(basePath.length) || '/'
     : window.location.pathname;
 
-  if (routePath === '/') return;
+  // Strip trailing index.html (itch.io, file://, static hosts serve at /index.html)
+  routePath = routePath.replace(/\/?index\.html?$/i, '/') || '/';
+
+  // Any path that doesn't look like a real app route (e.g. deep itch iframe paths)
+  // should fall back to root instead of forcing a 404.
+  const knownRoutes = ['/', '/auth', '/reset-password', '/admin/qa', '/admin/tiles', '/admin/rooms'];
+  if (!knownRoutes.some((r) => routePath === r || routePath.startsWith(`${r}/`))) {
+    routePath = '/';
+  }
+
+  if (routePath === '/') {
+    window.history.replaceState(null, '', `${base}${window.location.search}`);
+    return;
+  }
   window.history.replaceState(null, '', `${base}${window.location.search}#${routePath}`);
 }
 

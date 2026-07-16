@@ -199,6 +199,10 @@ export function DungeonView({
   const [pendingComboMove, setPendingComboMove] = useState<Move | null>(null);
   const [hoveredTile, setHoveredTile] = useState<Position | null>(null);
   const [targetingTiles, setTargetingTiles] = useState<Position[]>([]);
+  // Aliases used inside handleTargetingClick to read the *latest* state values
+  // when the caller didn't pass explicit overrides.
+  const targetingMoveState = targetingMove;
+  const targetingTilesState = targetingTiles;
   const [affectedTiles, setAffectedTiles] = useState<Position[]>([]);
   // On touch devices, AoE moves require two taps on the same tile: first tap
   // previews the affected area, second tap (within window) commits the attack.
@@ -2352,10 +2356,21 @@ export function DungeonView({
     setAffectedTiles(tiles);
   }, [targetingMove, dungeon]);
   
-  // Execute attack on tile click during targeting mode
-  const handleTargetingClick = useCallback((x: number, y: number) => {
+  // Execute attack on tile click during targeting mode.
+  // Optional `opts` lets callers (e.g. EnemyAttackMenu) invoke this synchronously
+  // with a chosen move + precomputed valid tiles, bypassing the two-tap AoE
+  // confirm gate — the player already picked their target explicitly.
+  const handleTargetingClick = useCallback((
+    x: number,
+    y: number,
+    opts?: { move?: Move; tiles?: Position[]; skipAoeConfirm?: boolean },
+  ) => {
+    // Shadow the state values with the overrides so the rest of the function
+    // body reads them transparently.
+    const targetingMove = opts?.move ?? targetingMoveState;
+    const targetingTiles = opts?.tiles ?? targetingTilesState;
     if (!targetingMove || !state.run || !dungeon) return;
-    
+
     // Check if it's a valid target
     const isValid = targetingTiles.some(t => t.x === x && t.y === y);
     if (!isValid) {
@@ -2481,7 +2496,7 @@ export function DungeonView({
       && window.matchMedia?.('(hover: none), (pointer: coarse)').matches;
     const isAoE = (targetingMove.targeting && targetingMove.targeting !== 'single')
       || (targetingMove.aoeRadius ?? 0) > 0;
-    if (isTouchDevice && isAoE) {
+    if (isTouchDevice && isAoE && !opts?.skipAoeConfirm) {
       const pending = aoePendingConfirmRef.current;
       const now = Date.now();
       const sameTile = pending && pending.x === x && pending.y === y && now - pending.time < 4000;
@@ -2783,7 +2798,7 @@ export function DungeonView({
 
     // Process enemy turns after player attacks
     processEnemyTurnsRef.current?.(newDungeon);
-  }, [targetingMove, targetingTiles, state.run, dungeon, dispatch, cancelTargeting, pendingComboMove, enterTargetingFor]);
+  }, [targetingMoveState, targetingTilesState, state.run, dungeon, dispatch, cancelTargeting, pendingComboMove, enterTargetingFor]);
   
   // Process all visible enemy turns
   const processEnemyTurns = useCallback((currentDungeon: typeof dungeon) => {
@@ -3908,9 +3923,17 @@ export function DungeonView({
                     dungeon.height,
                     true,
                   );
+                  // Reflect the selection in UI state so the range overlay/info
+                  // panel show up, then fire immediately with explicit
+                  // overrides — no waiting on a stale setState closure and no
+                  // AoE two-tap gate since the player already chose the target.
                   setTargetingMove(move);
                   setTargetingTiles(validTargets);
-                  setTimeout(() => handleTargetingClick(tgt.enemyPos.x, tgt.enemyPos.y), 0);
+                  handleTargetingClick(tgt.enemyPos.x, tgt.enemyPos.y, {
+                    move,
+                    tiles: validTargets,
+                    skipAoeConfirm: true,
+                  });
                 }}
               />
             )}

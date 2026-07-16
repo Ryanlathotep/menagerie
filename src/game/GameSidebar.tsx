@@ -127,8 +127,6 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   const [activePanel, setActivePanel] = useState<PanelName | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const { settings } = useSettings();
-  const levelLabel = formatLevel(monster.level, settings.levelDisplayMode);
-  const enemyLevelLabel = enemyMonster ? formatLevel(enemyMonster.level, settings.levelDisplayMode) : '';
   const [panelHost, setPanelHost] = useState<HTMLElement | null>(null);
 
   // Resolve the portal host after the parent has rendered the slot for the
@@ -153,6 +151,8 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   };
   
   if (!monster) return null;
+  const levelLabel = formatLevel(monster.level, settings.levelDisplayMode);
+  const enemyLevelLabel = enemyMonster ? formatLevel(enemyMonster.level, settings.levelDisplayMode) : '';
   const moves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
 
   // Use expanded stats if provided, otherwise fall back to basic stats

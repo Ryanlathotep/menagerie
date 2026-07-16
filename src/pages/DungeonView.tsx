@@ -199,6 +199,10 @@ export function DungeonView({
   const [pendingComboMove, setPendingComboMove] = useState<Move | null>(null);
   const [hoveredTile, setHoveredTile] = useState<Position | null>(null);
   const [targetingTiles, setTargetingTiles] = useState<Position[]>([]);
+  // Aliases used inside handleTargetingClick to read the *latest* state values
+  // when the caller didn't pass explicit overrides.
+  const targetingMoveState = targetingMove;
+  const targetingTilesState = targetingTiles;
   const [affectedTiles, setAffectedTiles] = useState<Position[]>([]);
   // On touch devices, AoE moves require two taps on the same tile: first tap
   // previews the affected area, second tap (within window) commits the attack.

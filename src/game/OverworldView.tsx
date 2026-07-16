@@ -48,7 +48,7 @@ import { findBestMatchupSwap } from './MatchupIndicator';
 import { useSettings } from './Settings';
 import { GameSidebar } from './GameSidebar';
 import { CraftingWorkshop } from './CraftingWorkshop';
-import { getMonsterMoves, Move, getNewMovesAtLevel } from './moves';
+import { getMonsterMoves, Move } from './moves';
 import { getAttackConfig } from './dungeonCombat';
 import { rollEnemyMoveDamage } from './enemyAI';
 import { xpToNextLevel, calculateXpReward } from './combat';

@@ -17,7 +17,7 @@ import { UnifiedTileMenu, UnifiedTileAction, UnifiedTileInfo, UnifiedTileCreatur
 import { MonsterSprite } from '@/game/sprites';
 import { DungeonRenderer } from '@/game/DungeonRenderer';
 import { GameSidebar } from '@/game/GameSidebar';
-import { getMonsterMoves, Move, STRUGGLE_MOVE, getNewMovesAtLevel } from '@/game/moves';
+import { getMonsterMoves, Move, STRUGGLE_MOVE } from '@/game/moves';
 import { MoveTooltip } from '@/game/BattleTooltip';
 import { MoveTierSelector } from '@/game/MoveTierSelector';
 import { UnifiedMovePanel } from '@/game/UnifiedMovePanel';

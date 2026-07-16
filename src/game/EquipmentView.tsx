@@ -18,6 +18,7 @@ import { EquippedSlotDisplay, DraggableEquipmentItem, DragData } from './Draggab
 import { EquipmentSortControls } from './EquipmentSortControls';
 import { sortEquipment, autoEquip, SortConfig } from './equipmentUtils';
 import { useSettings } from './Settings';
+import { formatLevel } from './levelDisplay';
 
 import { SetBonusDisplay, SetBonusSummary } from './SetBonusDisplay';
 import { toast } from '@/hooks/use-toast';
@@ -31,6 +32,7 @@ interface PartyMemberSelectorProps {
 }
 
 function PartyMemberSelector({ party, partyEquipment, selectedIndex, onSelect }: PartyMemberSelectorProps) {
+  const { settings } = useSettings();
   return (
     <div className="flex gap-2 p-2 bg-muted/30 rounded-lg mb-4">
       {party.map((monster, index) => {
@@ -70,7 +72,7 @@ function PartyMemberSelector({ party, partyEquipment, selectedIndex, onSelect }:
               )}
             </div>
             <span className="text-[10px] font-medium capitalize mt-1">{monster.species}</span>
-            <span className="text-[8px] text-muted-foreground">Lv.{monster.level}</span>
+            <span className="text-[8px] text-muted-foreground">{formatLevel(monster.level, settings.levelDisplayMode)}</span>
           </button>
         );
       })}

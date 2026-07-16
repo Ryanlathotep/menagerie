@@ -17,6 +17,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useSettings } from './Settings';
+import { formatLevel } from './levelDisplay';
 
 const AUTO_SKIP_KEY = 'menagerie-auto-skip-useless-recruits';
 
@@ -70,6 +72,7 @@ export function RecruitmentModal({
   unlockedMonsters = [],
 }: RecruitmentModalProps) {
   const speciesData = SPECIES_DATA[enemy.species];
+  const { settings } = useSettings();
   const [step, setStep] = useState<Step>('intro');
 
   // Persisted "auto-skip useless recruits" toggle.
@@ -144,7 +147,7 @@ export function RecruitmentModal({
           animated
         />
         <p className="font-bold mt-2 capitalize">{enemy.name}</p>
-        <p className="text-xs text-muted-foreground">Lv.{enemy.level}</p>
+        <p className="text-xs text-muted-foreground">{formatLevel(enemy.level, settings.levelDisplayMode)}</p>
         <div className="flex gap-1 justify-center mt-1">
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary capitalize">
             {enemy.element}

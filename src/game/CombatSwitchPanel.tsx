@@ -11,6 +11,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useSettings } from './Settings';
+import { formatLevel } from './levelDisplay';
 
 interface CombatSwitchPanelProps {
   party: Monster[];
@@ -27,6 +29,7 @@ export function CombatSwitchPanel({
   onCancel,
   disabled = false 
 }: CombatSwitchPanelProps) {
+  const { settings } = useSettings();
   return (
     <Card className="p-3 bg-card/95 backdrop-blur-sm border-2 border-primary/30">
       <div className="flex items-center justify-between mb-2">
@@ -96,7 +99,7 @@ export function CombatSwitchPanel({
                 <TooltipContent side="top" className="z-[100]">
                   <p className="font-semibold capitalize">{monster.species}</p>
                   <p className="text-xs text-muted-foreground">
-                    Lv.{monster.level} • {monster.element} • {monster.class}
+                    {formatLevel(monster.level, settings.levelDisplayMode)} • {monster.element} • {monster.class}
                   </p>
                   <div className="text-xs mt-1">
                     <span className="text-stat-hp">HP: {monster.stats.currentHp}/{monster.stats.maxHp}</span>

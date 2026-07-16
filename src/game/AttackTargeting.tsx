@@ -175,10 +175,17 @@ export function MoveInfoPanel({ move, onCancel }: MoveInfoPanelProps) {
           )}
         </div>
       
-      <p className="text-xs mt-2 text-primary">
-        <span className="hidden sm:inline">Click a tile to attack • Right-click to cancel</span>
-        <span className="sm:hidden">Tap a tile to attack • Tap Cancel above</span>
-      </p>
+      <div className="text-xs mt-2 space-y-0.5">
+        <p className="text-primary hidden sm:block">
+          🖱️ Click a tile to attack • Right-click to cancel
+        </p>
+        <p className="text-primary sm:hidden">
+          👆 <b>Tap once</b> to aim (highlights target &amp; area) • <b>Tap same tile again</b> to fire
+        </p>
+        <p className="text-muted-foreground sm:hidden">
+          Tap a different tile to re-aim • Tap Cancel above to exit
+        </p>
+      </div>
     </div>
   );
 }

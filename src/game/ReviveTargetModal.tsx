@@ -11,6 +11,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useSettings } from './Settings';
+import { formatLevel } from './levelDisplay';
 
 interface ReviveTargetModalProps {
   open: boolean;
@@ -29,6 +31,7 @@ export function ReviveTargetModal({
   itemName,
   onRevive,
 }: ReviveTargetModalProps) {
+  const { settings } = useSettings();
   // Get fainted party members
   const faintedMembers = party
     .map((monster, index) => ({ monster, index }))
@@ -84,7 +87,7 @@ export function ReviveTargetModal({
                       {/* Info */}
                       <div className="flex-1 text-left">
                         <p className="font-medium capitalize">{monster.species}</p>
-                        <p className="text-xs text-muted-foreground">Lv.{monster.level}</p>
+                        <p className="text-xs text-muted-foreground">{formatLevel(monster.level, settings.levelDisplayMode)}</p>
                         <div className="flex gap-1 mt-1">
                           <span className="text-[10px] px-1 py-0.5 rounded bg-secondary capitalize">
                             {monster.element}

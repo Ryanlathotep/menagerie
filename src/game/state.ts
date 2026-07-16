@@ -20,9 +20,8 @@ import {
 import { createAllItemWorldTowerEntrances, isItemWorldTower, hashAssetSeed, ItemWorldTowerState, ItemWorldTowerType, getItemWorldTowerIdForType } from './itemWorldTowers';
 import { createEmptyEquipment, EquipmentItem, MonsterEquipment, EquipmentSlot, dismantleEquipment, getRecipeFromEquipment, getConsumableRecipeFromItem } from './equipment';
 import type { PickaxeTier, ShovelTier } from './tools';
-import { xpToNextLevel } from './combat';
 import { setTaughtMovesProvider } from './moves';
-import { calculateStats } from './utils';
+import { applyXpProgress } from './leveling';
 import { findNearestEmptyOverworldTile, slimOverworldForSave } from './overworld';
 import { handleStartRun, handleEndRun, handleFleeDungeon } from './reducers/runHandlers';
 import { inventoryReducer } from './reducers/inventoryReducer';
@@ -657,40 +656,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         if (index === action.excludeActiveIndex) return monster; // Skip active monster
         if (monster.stats.currentHp <= 0) return monster; // Skip fainted monsters
         
-        // Calculate new XP total for this monster
-        const currentXp = monster.experience || 0;
-        let newXp = currentXp + passiveXp;
-        let newLevel = monster.level;
-        let updatedStats = monster.stats;
-        
-        // Check for level up(s)
-        let xpNeeded = xpToNextLevel(newLevel);
-        while (newXp >= xpNeeded) {
-          newXp -= xpNeeded;
-          newLevel += 1;
-          
-          // Calculate new stats for the level
-          const newBaseStats = calculateStats(monster.species, monster.class, newLevel);
-          
-          // Preserve HP/Stamina percentages when leveling
-          const hpPercent = updatedStats.currentHp / updatedStats.maxHp;
-          const staminaPercent = updatedStats.currentStamina / updatedStats.stamina;
-          
-          updatedStats = {
-            ...newBaseStats,
-            currentHp: Math.ceil(newBaseStats.maxHp * hpPercent),
-            currentStamina: Math.ceil(newBaseStats.stamina * staminaPercent),
-          };
-          
-          xpNeeded = xpToNextLevel(newLevel);
-        }
-        
-        return {
-          ...monster,
-          level: newLevel,
-          stats: updatedStats,
-          experience: newXp,
-        };
+        return applyXpProgress(monster, monster.experience || 0, passiveXp).monster;
       });
       
       return {

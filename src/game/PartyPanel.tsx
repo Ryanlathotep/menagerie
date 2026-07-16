@@ -6,6 +6,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { xpToNextLevel } from './combat';
 import { CombatEffects, EMPTY_COMBAT_EFFECTS } from './statusEffects';
 import { StatusIcons } from './StatusEffectDisplay';
+import { useSettings } from './Settings';
+import { formatLevel } from './levelDisplay';
 import {
   Tooltip,
   TooltipContent,
@@ -31,6 +33,7 @@ export function PartyPanel({
   maxPartySize = 6,
   partyEffects = [],
 }: PartyPanelProps) {
+  const { settings } = useSettings();
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -90,7 +93,7 @@ export function PartyPanel({
                           {monster.species}
                         </p>
                         <p className="text-[10px] text-muted-foreground">
-                          Lv.{monster.level}
+                          {formatLevel(monster.level, settings.levelDisplayMode)}
                         </p>
                       </div>
                       

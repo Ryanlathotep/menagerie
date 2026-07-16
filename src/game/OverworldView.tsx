@@ -48,10 +48,11 @@ import { findBestMatchupSwap } from './MatchupIndicator';
 import { useSettings } from './Settings';
 import { GameSidebar } from './GameSidebar';
 import { CraftingWorkshop } from './CraftingWorkshop';
-import { getMonsterMoves, Move, getNewMovesAtLevel } from './moves';
+import { getMonsterMoves, Move } from './moves';
 import { getAttackConfig } from './dungeonCombat';
 import { rollEnemyMoveDamage } from './enemyAI';
 import { xpToNextLevel, calculateXpReward } from './combat';
+import { applyXpProgress } from './leveling';
 import {
   getOverworldValidTargets,
   getOverworldAffectedTiles,
@@ -1473,15 +1474,13 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
               dispatch({ type: 'ADD_XP', amount: xpGained });
               
               const currentXp = state.run!.experience || 0;
-              const newTotalXp = currentXp + xpGained;
-              const xpNeeded = xpToNextLevel(monster.level);
-              if (newTotalXp >= xpNeeded) {
-                const newMoves = getNewMovesAtLevel(monster.species, monster.element, monster.class, monster.level + 1);
+              const activeProgress = applyXpProgress(monster, currentXp, xpGained);
+              if (activeProgress.leveled) {
                 setLevelUpQueue(q => [...q, {
-                  previousStats: { ...monster.stats },
-                  previousLevel: monster.level,
-                  newMoves,
-                  monster: { ...monster, level: monster.level + 1 },
+                  previousStats: activeProgress.previousStats,
+                  previousLevel: activeProgress.previousLevel,
+                  newMoves: activeProgress.newMoves,
+                  monster: activeProgress.monster,
                   isPassive: false,
                 }]);
               }
@@ -1491,7 +1490,17 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
                 if (index === state.run!.activePartyIndex) return;
                 if (member.stats.currentHp <= 0) return;
                 const passiveXp = Math.floor(xpGained * 0.5);
-                dispatch({ type: 'UPDATE_PARTY_MONSTER', index, monster: { ...member, experience: (member.experience || 0) + passiveXp } });
+                const memberProgress = applyXpProgress(member, member.experience || 0, passiveXp);
+                if (memberProgress.leveled) {
+                  setLevelUpQueue(q => [...q, {
+                    previousStats: memberProgress.previousStats,
+                    previousLevel: memberProgress.previousLevel,
+                    newMoves: memberProgress.newMoves,
+                    monster: memberProgress.monster,
+                    isPassive: true,
+                  }]);
+                }
+                dispatch({ type: 'UPDATE_PARTY_MONSTER', index, monster: memberProgress.monster });
               });
               
               addLog(`💥 ${targetingMove.name} defeated ${enemy.name}! (+${damage} dmg, +${xpGained} XP)`, 'damage');
@@ -2573,7 +2582,48 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         previousLevel={levelUpQueue[0].previousLevel}
         newMoves={levelUpQueue[0].newMoves}
         isPassive={levelUpQueue[0].isPassive}
-        onContinue={() => setLevelUpQueue(q => q.slice(1))}
+        onContinue={() => {
+          const entry = levelUpQueue[0];
+          const liveMonster = entry.isPassive
+            ? state.run?.party.find(m =>
+                m.species === entry.monster.species &&
+                m.element === entry.monster.element &&
+                m.class === entry.monster.class
+              )
+            : state.run?.currentMonster;
+          const updatedMonster = liveMonster
+            ? {
+                ...liveMonster,
+                level: entry.monster.level,
+                stats: {
+                  ...entry.monster.stats,
+                  currentStamina: Math.min(
+                    entry.monster.stats.currentStamina ?? entry.monster.stats.stamina,
+                    liveMonster.stats.currentStamina ?? liveMonster.stats.stamina,
+                  ),
+                },
+                experience: entry.monster.experience,
+              }
+            : entry.monster;
+
+          if (entry.isPassive) {
+            const partyIndex = state.run?.party.findIndex(m =>
+              m.species === entry.monster.species &&
+              m.element === entry.monster.element &&
+              m.class === entry.monster.class
+            );
+            if (partyIndex !== undefined && partyIndex >= 0) {
+              dispatch({ type: 'UPDATE_PARTY_MONSTER', index: partyIndex, monster: updatedMonster });
+            }
+          } else {
+            dispatch({ type: 'UPDATE_PLAYER_MONSTER', monster: updatedMonster });
+            if (state.run) {
+              dispatch({ type: 'ADD_XP', amount: (updatedMonster.experience || 0) - state.run.experience });
+            }
+          }
+
+          setLevelUpQueue(q => q.slice(1));
+        }}
       />
     )}
     

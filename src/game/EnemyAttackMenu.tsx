@@ -15,6 +15,8 @@ import { getAttackConfig } from './dungeonCombat';
 import { MoveSortFilter, MoveSortOption, MoveFilterOption, sortMoves, filterMoves } from './MoveSortFilter';
 import { loadMoveFilters, saveMoveFilters } from './persistedFilters';
 import { getEffectiveness } from './combat';
+import { useSettings } from './Settings';
+import { formatLevel } from './levelDisplay';
 
 export interface EnemyAttackTarget {
   enemy: Monster;
@@ -38,6 +40,7 @@ export function EnemyAttackMenu({
   onClose,
 }: EnemyAttackMenuProps) {
   const { enemy, enemyPos, playerPos } = target;
+  const { settings } = useSettings();
   const distance =
     Math.abs(enemyPos.x - playerPos.x) + Math.abs(enemyPos.y - playerPos.y);
 
@@ -103,7 +106,7 @@ export function EnemyAttackMenu({
               ⚔️ Attack {enemy.name}
             </h2>
             <p className="text-[11px] text-muted-foreground">
-              Lv.{enemy.level} {enemy.element}/{enemy.class} • HP{' '}
+              {formatLevel(enemy.level, settings.levelDisplayMode)} {enemy.element}/{enemy.class} • HP{' '}
               {enemy.stats.currentHp}/{enemy.stats.maxHp} •{' '}
               <span className={distance > 1 ? 'text-amber-600 dark:text-amber-400' : ''}>
                 {distance} tile{distance === 1 ? '' : 's'} away

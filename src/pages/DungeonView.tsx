@@ -3923,9 +3923,17 @@ export function DungeonView({
                     dungeon.height,
                     true,
                   );
+                  // Reflect the selection in UI state so the range overlay/info
+                  // panel show up, then fire immediately with explicit
+                  // overrides — no waiting on a stale setState closure and no
+                  // AoE two-tap gate since the player already chose the target.
                   setTargetingMove(move);
                   setTargetingTiles(validTargets);
-                  setTimeout(() => handleTargetingClick(tgt.enemyPos.x, tgt.enemyPos.y), 0);
+                  handleTargetingClick(tgt.enemyPos.x, tgt.enemyPos.y, {
+                    move,
+                    tiles: validTargets,
+                    skipAoeConfirm: true,
+                  });
                 }}
               />
             )}

@@ -2798,7 +2798,7 @@ export function DungeonView({
 
     // Process enemy turns after player attacks
     processEnemyTurnsRef.current?.(newDungeon);
-  }, [targetingMove, targetingTiles, state.run, dungeon, dispatch, cancelTargeting, pendingComboMove, enterTargetingFor]);
+  }, [targetingMoveState, targetingTilesState, state.run, dungeon, dispatch, cancelTargeting, pendingComboMove, enterTargetingFor]);
   
   // Process all visible enemy turns
   const processEnemyTurns = useCallback((currentDungeon: typeof dungeon) => {

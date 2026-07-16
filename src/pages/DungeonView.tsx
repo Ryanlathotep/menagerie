@@ -2352,10 +2352,21 @@ export function DungeonView({
     setAffectedTiles(tiles);
   }, [targetingMove, dungeon]);
   
-  // Execute attack on tile click during targeting mode
-  const handleTargetingClick = useCallback((x: number, y: number) => {
+  // Execute attack on tile click during targeting mode.
+  // Optional `opts` lets callers (e.g. EnemyAttackMenu) invoke this synchronously
+  // with a chosen move + precomputed valid tiles, bypassing the two-tap AoE
+  // confirm gate — the player already picked their target explicitly.
+  const handleTargetingClick = useCallback((
+    x: number,
+    y: number,
+    opts?: { move?: Move; tiles?: Position[]; skipAoeConfirm?: boolean },
+  ) => {
+    // Shadow the state values with the overrides so the rest of the function
+    // body reads them transparently.
+    const targetingMove = opts?.move ?? targetingMoveState;
+    const targetingTiles = opts?.tiles ?? targetingTilesState;
     if (!targetingMove || !state.run || !dungeon) return;
-    
+
     // Check if it's a valid target
     const isValid = targetingTiles.some(t => t.x === x && t.y === y);
     if (!isValid) {

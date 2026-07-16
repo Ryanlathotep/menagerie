@@ -17,7 +17,8 @@ import { getMonsterMoves, Move } from './moves';
 import { ExpandedStats } from './CharacterSheet';
 
 import { UnifiedMovePanel } from './UnifiedMovePanel';
-import { SettingsPanel } from './Settings';
+import { SettingsPanel, useSettings } from './Settings';
+import { formatLevel } from './levelDisplay';
 import { MonsterEquipment, EquipmentItem, RARITY_COLORS, CRAFTING_MATERIALS, calculateEquipmentBonuses, calculateSetBonusStats, getRecipesUsingMaterial } from './equipment';
 import { PartyPanel } from './PartyPanel';
 import { EvolvedMove } from './moveMastery';
@@ -125,6 +126,9 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   const isMobileView = typeof window !== 'undefined' && window.innerWidth < 640;
   const [activePanel, setActivePanel] = useState<PanelName | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const { settings } = useSettings();
+  const levelLabel = formatLevel(monster.level, settings.levelDisplayMode);
+  const enemyLevelLabel = enemyMonster ? formatLevel(enemyMonster.level, settings.levelDisplayMode) : '';
   const [panelHost, setPanelHost] = useState<HTMLElement | null>(null);
 
   // Resolve the portal host after the parent has rendered the slot for the
@@ -185,7 +189,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 <div className="relative flex-shrink-0">
                   <MonsterSprite species={monster.species} element={monster.element} classType={monster.class} size={40} animated={false} equipment={equipment} />
                   <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                    {monster.level}
+                    {levelLabel.replace(/^Lv\s*/, '')}
                   </div>
                 </div>
 
@@ -325,7 +329,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
               <div className="relative flex-shrink-0">
                 <MonsterSprite species={monster.species} element={monster.element} classType={monster.class} size={64} animated={false} equipment={equipment} />
                 <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 rounded-full">
-                  {monster.level}
+                  {levelLabel.replace(/^Lv\s*/, '')}
                 </div>
               </div>
 
@@ -359,7 +363,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 <div className="relative flex-shrink-0">
                   <MonsterSprite species={enemyMonster.species} element={enemyMonster.element} classType={enemyMonster.class} size={36} animated={false} />
                   <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 rounded-full">
-                    {enemyMonster.level}
+                    {enemyLevelLabel.replace(/^Lv\s*/, '')}
                   </div>
                 </div>
                 <div className="flex flex-col gap-1 min-w-[80px]">
@@ -568,7 +572,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                     <MonsterSprite species={monster.species} element={monster.element} classType={monster.class} size={40} />
                     <div className="min-w-0 flex-1">
                       <p className="font-bold text-xs truncate">{monster.name}</p>
-                      <p className="text-[10px] text-muted-foreground">Lv.{monster.level} {speciesData.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{levelLabel} {speciesData.name}</p>
                       <div className="flex gap-1 flex-wrap mt-0.5">
                         <span className={`element-badge element-${monster.element} text-[8px] px-1 py-0`}>{monster.element}</span>
                         <span className="text-[8px] px-1 py-0 rounded-full bg-muted">{monster.class}</span>

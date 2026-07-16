@@ -4,6 +4,8 @@ import { Monster, SPECIES_DATA, ElementType, ClassType } from './types';
 import { MonsterSprite, generateMonsterName } from './sprites';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { useSettings } from './Settings';
+import { formatLevel } from './levelDisplay';
 
 // Corrected stat interface based on gameplay mechanics:
 // - Stamina: consumed by attacks (based on power + accuracy)
@@ -143,6 +145,8 @@ interface CharacterSheetProps {
 export function CharacterSheet({ monster, compact = false }: CharacterSheetProps) {
   const speciesData = SPECIES_DATA[monster.species];
   const displayName = generateMonsterName(monster.species, monster.element, monster.class);
+  const { settings } = useSettings();
+  const levelLabel = formatLevel(monster.level, settings.levelDisplayMode);
   
   if (compact) {
     return (
@@ -158,7 +162,7 @@ export function CharacterSheet({ monster, compact = false }: CharacterSheetProps
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-sm truncate">{displayName}</h3>
             <p className="text-xs text-muted-foreground">
-              Lv.{monster.level} {speciesData.name}
+              {levelLabel} {speciesData.name}
             </p>
           </div>
           <span className={`element-badge element-${monster.element} text-[10px]`}>
@@ -206,7 +210,7 @@ export function CharacterSheet({ monster, compact = false }: CharacterSheetProps
         <div className="flex-1">
           <h2 className="text-lg font-bold">{displayName}</h2>
           <p className="text-sm text-muted-foreground mb-1">
-            Level {monster.level} {speciesData.name}
+            {levelLabel} {speciesData.name}
           </p>
           <div className="flex gap-2">
             <span className={`element-badge element-${monster.element} text-xs`}>

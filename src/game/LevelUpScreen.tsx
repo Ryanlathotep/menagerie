@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getMonsterMoves, Move } from './moves';
 import { useEffect, useState } from 'react';
+import { useSettings } from './Settings';
+import { formatLevel, formatLevelValue } from './levelDisplay';
 
 interface StatChange {
   stat: string;
@@ -35,6 +37,7 @@ export function LevelUpScreen({
   const [showStats, setShowStats] = useState(false);
   const [showMoves, setShowMoves] = useState(false);
   const speciesData = SPECIES_DATA[monster.species];
+  const { settings } = useSettings();
 
   // Animate in the stats
   useEffect(() => {
@@ -70,7 +73,7 @@ export function LevelUpScreen({
               animated={true}
             />
             <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground rounded-full w-10 h-10 flex items-center justify-center font-bold text-lg animate-bounce">
-              {monster.level}
+              {formatLevelValue(monster.level, settings.levelDisplayMode)}
             </div>
           </div>
           
@@ -79,7 +82,7 @@ export function LevelUpScreen({
               LEVEL UP!
             </h1>
             <p className="text-lg text-muted-foreground">
-              {speciesData.name} reached Level {monster.level}!
+              {speciesData.name} reached {formatLevel(monster.level, settings.levelDisplayMode)}!
             </p>
             {isPassive && (
               <p className="text-xs text-secondary mt-1">

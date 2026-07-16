@@ -3,7 +3,7 @@ import { DebugBridgeMount } from '@/dev/DebugBridgeMount';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getComboId, UnlockedMonster, InventoryItem, MonsterStats, Monster, Position, DungeonState, hydrateDungeonFromSnapshot } from '@/game/types';
-import { createMonster, calculateStats } from '@/game/utils';
+import { createMonster } from '@/game/utils';
 import { generateDungeon, movePlayer, removeEnemy, LootItem, shouldStopAutoRun, hasVisibleEnemy, LOOT_TABLE, mineWall, mineableWallName, digRune, damageDungeonNest, tickDungeonNests, prepareDungeonForEntry, findNearestWalkableTile, updateVisibility, getDungeonTowerVisionSources } from '@/game/dungeon';
 import { getItemWorldTowerType, ITEM_WORLD_REWARD_FLOOR_DELTA } from '@/game/itemWorldTowers';
 import { spawnNestMonster, getNestDestroyRewards } from '@/game/nests';
@@ -23,7 +23,8 @@ import { MoveTierSelector } from '@/game/MoveTierSelector';
 import { UnifiedMovePanel } from '@/game/UnifiedMovePanel';
 import { getAvailableTiers, hasAoEUnlocked, createEvolvedMove, getHighestTier, EvolvedMove } from '@/game/moveMastery';
 import { ShopView } from '@/game/ShopView';
-import { executeCombat, calculateXpReward, xpToNextLevel, checkLevelUp, getEffectiveness, hasPassive, checkSkeletonSurvival, applyMushroomRegen, checkImpSteal } from '@/game/combat';
+import { executeCombat, calculateXpReward, xpToNextLevel, getEffectiveness, hasPassive, checkSkeletonSurvival, applyMushroomRegen, checkImpSteal } from '@/game/combat';
+import { applyXpProgress } from '@/game/leveling';
 import { toast } from 'sonner';
 import { SettingsProvider, SettingsButton, useSettings } from '@/game/Settings';
 import { submitTowerFloor, submitDiscoveryCount, submitExplorationCount } from '@/hooks/useUsername';
@@ -2629,20 +2630,15 @@ export function DungeonView({
             // Calculate and award XP
             const xpGained = calculateXpReward(enemy.level, monster.level);
             const currentXp = state.run.experience || 0;
-            const newTotalXp = currentXp + xpGained;
-            const xpNeeded = xpToNextLevel(monster.level);
+            const activeProgress = applyXpProgress(monster, currentXp, xpGained);
             
             // Check for level up
-            if (newTotalXp >= xpNeeded) {
-              const previousStats = { ...monster.stats };
-              const previousLevel = monster.level;
-              const newMoves = getNewMovesAtLevel(monster.species, monster.element, monster.class, monster.level + 1);
-              
+            if (activeProgress.leveled) {
               setLevelUpQueue(prev => [...prev, {
-                previousStats,
-                previousLevel,
-                newMoves,
-                monster: { ...monster, level: monster.level + 1 },
+                previousStats: activeProgress.previousStats,
+                previousLevel: activeProgress.previousLevel,
+                newMoves: activeProgress.newMoves,
+                monster: activeProgress.monster,
                 isPassive: false,
               }]);
             }
@@ -2656,21 +2652,15 @@ export function DungeonView({
               if (member.stats.currentHp <= 0) return;
               
               const passiveXp = Math.floor(xpGained * 0.5);
-              const memberCurrentXp = member.experience || 0;
-              const memberNewXp = memberCurrentXp + passiveXp;
-              const memberXpNeeded = xpToNextLevel(member.level);
+              const memberProgress = applyXpProgress(member, member.experience || 0, passiveXp);
               
               // Check for passive level up
-              if (memberNewXp >= memberXpNeeded) {
-                const previousStats = { ...member.stats };
-                const previousLevel = member.level;
-                const newMoves = getNewMovesAtLevel(member.species, member.element, member.class, member.level + 1);
-                
+              if (memberProgress.leveled) {
                 setLevelUpQueue(prev => [...prev, {
-                  previousStats,
-                  previousLevel,
-                  newMoves,
-                  monster: { ...member, level: member.level + 1 },
+                  previousStats: memberProgress.previousStats,
+                  previousLevel: memberProgress.previousLevel,
+                  newMoves: memberProgress.newMoves,
+                  monster: memberProgress.monster,
                   isPassive: true,
                 }]);
               }
@@ -2678,7 +2668,7 @@ export function DungeonView({
               dispatch({
                 type: 'UPDATE_PARTY_MONSTER',
                 index,
-                monster: { ...member, experience: memberNewXp }
+                monster: memberProgress.monster
               });
             });
             
@@ -3582,19 +3572,27 @@ export function DungeonView({
           onContinue={() => {
             // Apply the level up
             const entry = levelUpQueue[0];
-            const newStats = calculateStats(entry.monster.species, entry.monster.class, entry.monster.level + 1);
-            const hpPercent = entry.previousStats.currentHp / entry.previousStats.maxHp;
-            const staminaPercent = (entry.previousStats.currentStamina || entry.previousStats.stamina || 50) / (entry.previousStats.stamina || 50);
-            
-            const updatedMonster = {
-              ...entry.monster,
-              level: entry.previousLevel + 1,
-              stats: {
-                ...newStats,
-                currentHp: Math.ceil(newStats.maxHp * hpPercent),
-                currentStamina: Math.ceil((newStats.stamina || 50) * staminaPercent),
-              },
-            };
+            const liveMonster = entry.isPassive
+              ? state.run?.party.find(m =>
+                  m.species === entry.monster.species &&
+                  m.element === entry.monster.element &&
+                  m.class === entry.monster.class
+                )
+              : state.run?.currentMonster;
+            const updatedMonster = liveMonster
+              ? {
+                  ...liveMonster,
+                  level: entry.monster.level,
+                  stats: {
+                    ...entry.monster.stats,
+                    currentStamina: Math.min(
+                      entry.monster.stats.currentStamina ?? entry.monster.stats.stamina,
+                      liveMonster.stats.currentStamina ?? liveMonster.stats.stamina,
+                    ),
+                  },
+                  experience: entry.monster.experience,
+                }
+              : entry.monster;
             
             if (entry.isPassive) {
               // Find the party index for this passive monster
@@ -3608,6 +3606,9 @@ export function DungeonView({
               }
             } else {
               dispatch({ type: 'UPDATE_PLAYER_MONSTER', monster: updatedMonster });
+              if (state.run) {
+                dispatch({ type: 'ADD_XP', amount: (updatedMonster.experience || 0) - state.run.experience });
+              }
             }
             
             // Remove from queue

@@ -23,6 +23,7 @@ import { toast as sonnerToast } from 'sonner';
 import { UsernameEditor } from './UsernameEditor';
 import { DiscoveryLeaderboard } from './DiscoveryLeaderboard';
 import { ExplorationLeaderboard } from './ExplorationLeaderboard';
+import type { LevelDisplayMode } from './levelDisplay';
 
 // Settings interface
 export type ThemeMode = 'system' | 'light' | 'dark';
@@ -34,6 +35,7 @@ export interface GameSettings {
   showDamageNumbers: boolean;
   soundEnabled: boolean;
   theme: ThemeMode;          // light / dark / follow browser
+  levelDisplayMode: LevelDisplayMode;
   // Overworld direction arrow overlays
   showHomeArrow: boolean;
   showHomeTowerArrow: boolean;
@@ -65,6 +67,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   showDamageNumbers: true,
   soundEnabled: true,
   theme: 'system',
+  levelDisplayMode: 'letters',
   showHomeArrow: true,
   showHomeTowerArrow: true,
   showMajorDungeonArrows: true,
@@ -419,6 +422,23 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             </div>
             <p className="text-xs text-muted-foreground">
               "Browser" follows your OS / browser preference.
+            </p>
+          </div>
+
+          {/* Level Display */}
+          <div className="space-y-2 pt-4 border-t">
+            <Label htmlFor="level-display-mode" className="text-base">Level Display</Label>
+            <select
+              id="level-display-mode"
+              value={settings.levelDisplayMode}
+              onChange={(e) => updateSetting('levelDisplayMode', e.target.value as LevelDisplayMode)}
+              className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="letters">Letters — Lv 1.99 aa</option>
+              <option value="exponent">Exponent — Lv 1.99^6</option>
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Compact notation is used automatically for very high monster levels.
             </p>
           </div>
 

@@ -2490,13 +2490,15 @@ export function DungeonView({
     }
 
 
-    // Mobile/touch tap-to-preview, tap-again-to-confirm for AoE moves.
-    // Skip on hover-capable devices (mouse) and for single-target moves.
+    // Mobile/touch tap-to-preview, tap-again-to-confirm for ANY attack.
+    // Two SEPARATE taps (not a double-click) — first highlights the target
+    // and shows affected tiles, second commits. Prevents fat-finger misfires
+    // on small screens. Skipped when the caller already confirmed the target
+    // (e.g. picked a specific enemy from the EnemyAttackMenu) and on
+    // hover-capable devices (mouse).
     const isTouchDevice = typeof window !== 'undefined'
       && window.matchMedia?.('(hover: none), (pointer: coarse)').matches;
-    const isAoE = (targetingMove.targeting && targetingMove.targeting !== 'single')
-      || (targetingMove.aoeRadius ?? 0) > 0;
-    if (isTouchDevice && isAoE && !opts?.skipAoeConfirm) {
+    if (isTouchDevice && !opts?.skipAoeConfirm) {
       const pending = aoePendingConfirmRef.current;
       const now = Date.now();
       const sameTile = pending && pending.x === x && pending.y === y && now - pending.time < 4000;

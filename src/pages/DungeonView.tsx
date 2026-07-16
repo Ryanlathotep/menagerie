@@ -2496,7 +2496,7 @@ export function DungeonView({
       && window.matchMedia?.('(hover: none), (pointer: coarse)').matches;
     const isAoE = (targetingMove.targeting && targetingMove.targeting !== 'single')
       || (targetingMove.aoeRadius ?? 0) > 0;
-    if (isTouchDevice && isAoE) {
+    if (isTouchDevice && isAoE && !opts?.skipAoeConfirm) {
       const pending = aoePendingConfirmRef.current;
       const now = Date.now();
       const sameTile = pending && pending.x === x && pending.y === y && now - pending.time < 4000;

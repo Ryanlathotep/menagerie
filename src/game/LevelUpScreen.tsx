@@ -61,9 +61,17 @@ export function LevelUpScreen({
   ];
 
   return (
-    <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center">
-      <Card className="max-w-md w-full mx-4 p-6 space-y-6 animate-scale-in">
+    <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-start sm:items-center justify-center overflow-y-auto p-4">
+      <Card className="max-w-md w-full my-4 p-6 space-y-6 animate-scale-in relative max-h-[calc(100vh-2rem)] overflow-y-auto">
+        <button
+          onClick={onContinue}
+          aria-label="Close"
+          className="absolute top-2 right-2 z-10 rounded-full p-1.5 bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
         {/* Header with monster sprite */}
+        <div className="text-center space-y-4">
         <div className="text-center space-y-4">
           <div className="relative inline-block">
             <MonsterSprite

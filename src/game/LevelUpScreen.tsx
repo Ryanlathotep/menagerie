@@ -4,6 +4,7 @@ import { Monster, MonsterStats, SPECIES_DATA } from './types';
 import { MonsterSprite } from './sprites';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { X } from 'lucide-react';
 import { getMonsterMoves, Move } from './moves';
 import { useEffect, useState } from 'react';
 import { useSettings } from './Settings';

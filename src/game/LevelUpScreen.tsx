@@ -72,7 +72,6 @@ export function LevelUpScreen({
         </button>
         {/* Header with monster sprite */}
         <div className="text-center space-y-4">
-        <div className="text-center space-y-4">
           <div className="relative inline-block">
             <MonsterSprite
               species={monster.species}

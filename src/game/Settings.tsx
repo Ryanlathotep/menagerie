@@ -335,7 +335,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     <>
     <div className={`fixed inset-0 bg-black/50 flex items-center justify-center z-[100] ${adminOpen ? 'hidden' : ''}`}>
 
-      <Card className="w-full max-w-md p-6 m-4 animate-scale-in max-h-[90vh] overflow-y-auto">
+      <Card className="w-full max-w-md p-6 m-4 animate-scale-in max-h-[calc(100dvh-1.5rem)] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <SettingsIcon className="w-5 h-5" />

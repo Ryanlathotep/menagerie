@@ -127,7 +127,7 @@ export function TownShop({
   
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl p-6 space-y-4 max-h-[90vh] flex flex-col">
+      <Card className="w-full max-w-2xl p-6 space-y-4 max-h-[calc(100dvh-1.5rem)] flex flex-col">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-yellow-500 bg-clip-text text-transparent">
             🏪 Town Shop

@@ -58,7 +58,7 @@ export function ShopView({ gold, floor, onBuy, onBuyEquipment, onClose }: ShopVi
   
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-      <Card className="w-full max-w-lg p-3 sm:p-6 space-y-2 sm:space-y-4 max-h-[90vh] flex flex-col">
+      <Card className="w-full max-w-lg p-3 sm:p-6 space-y-2 sm:space-y-4 max-h-[calc(100dvh-1.5rem)] flex flex-col">
         <div className="flex items-center justify-between">
           <h2 className="text-base sm:text-2xl font-bold bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent">
             🏪 Shop

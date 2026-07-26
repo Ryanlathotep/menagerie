@@ -87,7 +87,7 @@ export function StationConfigModal({
       onClick={onClose}
     >
       <Card
-        className="p-4 max-w-md w-full space-y-3 max-h-[85vh] overflow-auto"
+        className="p-4 max-w-md w-full space-y-3 max-h-[calc(100dvh-1.5rem)] overflow-auto"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-2">

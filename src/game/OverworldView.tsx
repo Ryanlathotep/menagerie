@@ -2905,7 +2905,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         onClick={() => { setShowBuildPanel(false); setBuildMode(false); setSelectedBuildType(null); setRoadBuildMode(false); setSelectedRoadType(null); }}
       >
         <Card
-          className="p-6 max-w-lg w-full space-y-4 max-h-[80vh] overflow-y-auto"
+          className="p-6 max-w-lg w-full space-y-4 max-h-[calc(100dvh-1.5rem)] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex justify-between items-center gap-2">

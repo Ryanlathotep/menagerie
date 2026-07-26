@@ -108,7 +108,7 @@ export function WaypointManager({ isOpen, onClose }: WaypointManagerProps) {
       onClick={onClose}
     >
       <Card
-        className="w-full max-w-lg max-h-[85vh] flex flex-col animate-scale-in"
+        className="w-full max-w-lg max-h-[calc(100dvh-1.5rem)] flex flex-col animate-scale-in"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b">

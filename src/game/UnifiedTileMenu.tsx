@@ -9,6 +9,7 @@
 // movement (handled upstream).
 
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { X, type LucideIcon } from 'lucide-react';

@@ -68,7 +68,7 @@ export function ArenaHub({ onClose }: ArenaHubProps) {
 
   return (
     <div className="fixed inset-0 bg-background/70 backdrop-blur-sm z-50 flex items-center justify-center p-2">
-      <Card className="w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
+      <Card className="w-full max-w-5xl h-[calc(100dvh-1.5rem)] max-h-[calc(100dvh-1.5rem)] flex flex-col overflow-hidden min-h-0">
         <div className="p-3 border-b flex items-center justify-between bg-gradient-to-r from-amber-500/10 to-red-500/10">
           <div>
             <h2 className="text-lg font-bold flex items-center gap-2">

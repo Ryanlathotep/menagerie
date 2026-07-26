@@ -40,7 +40,7 @@ export function BuildingAssignModal({
 
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="p-6 max-w-md w-full space-y-4">
+      <Card className="p-6 max-w-md w-full space-y-4 max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain">
         <div className="text-center">
           <h2 className="text-lg font-bold">{def.emoji} {def.name}</h2>
           <p className="text-xs text-muted-foreground mt-1">

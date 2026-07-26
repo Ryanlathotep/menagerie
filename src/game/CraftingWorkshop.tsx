@@ -199,7 +199,7 @@ export function CraftingWorkshop({
   
   return (
     <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 flex items-center justify-center p-2">
-      <Card className="w-full max-w-4xl h-[95vh] sm:h-[90vh] overflow-hidden flex flex-col">
+      <Card className="w-full max-w-4xl h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] overflow-hidden flex flex-col min-h-0">
         {/* Header */}
         <div className="p-2 border-b shrink-0 flex items-center gap-2">
           <h2 className="text-sm sm:text-base font-bold bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent shrink-0">

@@ -96,7 +96,7 @@ export function EnemyAttackMenu({
       onClick={onClose}
     >
       <Card
-        className="p-3 sm:p-4 w-full max-w-md space-y-3 flex flex-col max-h-full sm:max-h-[80vh] min-h-0"
+        className="p-3 sm:p-4 w-full max-w-md space-y-3 flex flex-col max-h-full sm:max-h-[calc(100dvh-1.5rem)] min-h-0"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

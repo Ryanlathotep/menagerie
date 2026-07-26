@@ -93,7 +93,7 @@ export function FeatureRequestDialog({ isOpen, onClose, context }: Props) {
       className="fixed inset-0 z-[200] bg-black/60 flex items-center justify-center p-4"
       onClick={onClose}
     >
-      <Card className="w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <Card className="w-full max-w-lg p-5 space-y-4 max-h-[calc(100dvh-1.5rem)] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold flex items-center gap-2">
             <Lightbulb className="w-5 h-5 text-primary" />

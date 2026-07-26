@@ -28,7 +28,7 @@ export function ElevatorModal({
   if (party.length <= 1) {
     return (
       <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <Card className="p-4 max-w-md text-center space-y-4">
+        <Card className="p-4 max-w-md text-center space-y-4 max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain">
           <h2 className="text-lg font-bold text-violet-500">🛗 Elevator</h2>
           <p className="text-sm text-muted-foreground">
             You need at least 2 party members to use the elevator. 
@@ -61,7 +61,7 @@ export function ElevatorModal({
   
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="p-4 max-w-lg w-full space-y-4">
+      <Card className="p-4 max-w-lg w-full space-y-4 max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain">
         <div className="text-center">
           <h2 className="text-lg font-bold bg-gradient-to-r from-indigo-500 to-violet-500 bg-clip-text text-transparent">
             🛗 Town Elevator

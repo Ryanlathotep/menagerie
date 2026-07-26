@@ -98,7 +98,7 @@ export function UnifiedTileMenu({
       onContextMenu={(e) => { e.preventDefault(); tryClose(); }}
     >
       <Card
-        className="p-4 max-w-sm w-full space-y-3 max-h-[85vh] overflow-y-auto"
+        className="p-4 max-w-sm w-full space-y-3 max-h-[calc(100dvh-1.5rem)] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
         onContextMenu={(e) => e.stopPropagation()}

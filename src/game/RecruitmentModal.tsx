@@ -15,6 +15,7 @@ import { Monster, SPECIES_DATA, ELEMENT_COLORS, UnlockedMonster } from './types'
 import { MonsterSprite } from './sprites';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { PanelCloseButton } from '@/components/ui/full-screen-panel';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useSettings } from './Settings';

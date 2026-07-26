@@ -57,13 +57,16 @@ export function ShopView({ gold, floor, onBuy, onBuyEquipment, onClose }: ShopVi
   };
   
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-      <Card className="w-full max-w-lg p-3 sm:p-6 space-y-2 sm:space-y-4 max-h-[calc(100dvh-1.5rem)] flex flex-col">
-        <div className="flex items-center justify-between">
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-start sm:items-center justify-center p-2 overflow-y-auto">
+      <Card className="w-full max-w-lg p-3 sm:p-6 space-y-2 sm:space-y-4 max-h-[calc(100dvh-1.5rem)] flex flex-col min-h-0">
+        <div className="flex items-center justify-between gap-2">
           <h2 className="text-base sm:text-2xl font-bold bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent">
             🏪 Shop
           </h2>
-          <span className="text-sm sm:text-lg font-bold text-primary">💰 {gold}</span>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-sm sm:text-lg font-bold text-primary">💰 {gold}</span>
+            <PanelCloseButton onClose={onClose} label="Leave shop" />
+          </div>
         </div>
         
         <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">

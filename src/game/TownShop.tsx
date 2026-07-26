@@ -126,15 +126,16 @@ export function TownShop({
   const displayedStoredEquipment = storedEquipment.filter(item => !soldEquipment.includes(item.id));
   
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl p-6 space-y-4 max-h-[calc(100dvh-1.5rem)] flex flex-col">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-yellow-500 bg-clip-text text-transparent">
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-start sm:items-center justify-center p-2 sm:p-4 overflow-y-auto">
+      <Card className="w-full max-w-2xl p-4 sm:p-6 space-y-4 max-h-[calc(100dvh-1.5rem)] flex flex-col min-h-0">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-amber-400 to-yellow-500 bg-clip-text text-transparent">
             🏪 Town Shop
           </h2>
-          <div className="flex items-center gap-2 text-lg font-bold text-primary">
+          <div className="flex items-center gap-2 text-lg font-bold text-primary flex-shrink-0">
             <Coins className="w-5 h-5 text-amber-400" />
             <span>{gold}</span>
+            <PanelCloseButton onClose={onClose} label="Leave shop" />
           </div>
         </div>
         

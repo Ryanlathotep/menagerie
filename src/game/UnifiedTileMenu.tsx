@@ -85,9 +85,14 @@ export function UnifiedTileMenu({
     onClose();
   };
 
-  return (
+  // The menu is rendered from inside the map container, which is scaled
+  // (CSS transform) and `overflow-hidden`. A transformed ancestor makes
+  // `position: fixed` resolve against that ancestor, so the overlay gets
+  // clipped to the map viewport and its scroll area is cut off. Portal to
+  // <body> so the overlay is always full-viewport and fully scrollable.
+  return createPortal(
     <div
-      className="fixed inset-0 bg-background/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-background/60 backdrop-blur-sm z-50 flex items-start sm:items-center justify-center p-3 overflow-y-auto overscroll-contain"
       onPointerDown={(e) => { overlayPressRef.current = e.target === e.currentTarget; }}
       onClick={(e) => {
         if (e.target !== e.currentTarget) return;
@@ -98,11 +103,11 @@ export function UnifiedTileMenu({
       onContextMenu={(e) => { e.preventDefault(); tryClose(); }}
     >
       <Card
-        className="p-4 max-w-sm w-full space-y-3 max-h-[calc(100dvh-1.5rem)] overflow-y-auto"
+        className="p-4 max-w-sm w-full space-y-3 my-auto max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain [touch-action:pan-y]"
         onClick={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
         onContextMenu={(e) => e.stopPropagation()}
       >
+
 
         {/* Header */}
         <div className="flex items-start justify-between gap-2">

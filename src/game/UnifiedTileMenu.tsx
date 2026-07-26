@@ -209,6 +209,7 @@ export function UnifiedTileMenu({
           </p>
         )}
       </Card>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -342,6 +342,22 @@ export function CharacterSelect() {
             <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={saveCurrentParty}>
               💾 Save Layout
             </Button>
+            <label className="inline-flex items-center h-6 px-2 text-xs rounded-md hover:bg-accent cursor-pointer">
+              📂 Load Layout File
+              <input
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (file) importLayoutsFromFile(file);
+                  e.currentTarget.value = '';
+                }}
+              />
+            </label>
+            <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={exportLayouts}>
+              ⬇️ Export Layouts
+            </Button>
             <div className="ml-auto">
               <Button
                 size="sm"

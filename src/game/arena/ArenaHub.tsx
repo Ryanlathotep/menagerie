@@ -73,7 +73,7 @@ export function ArenaHub({ onClose }: ArenaHubProps) {
     for (const cadence of ['daily', 'weekly', 'monthly'] as Cadence[]) {
       const t = s.tournaments[cadence];
       if (!t.resolved && t.startsAt <= now) {
-        const filled = fillTournamentWithNpcs(t);
+        const filled = commitTournamentBracket(t);
         s = { ...s, tournaments: { ...s.tournaments, [cadence]: filled } };
         const result = resolveTournament(s, cadence, state.saveData.unlockedMonsters);
         s = result.state;
@@ -269,7 +269,7 @@ function TournamentCard({
           )}
           <Button size="sm" variant="outline"
             onClick={() => {
-              const filled = fillTournamentWithNpcs(t);
+              const filled = commitTournamentBracket(t);
               let s: ArenaState = { ...arena, tournaments: { ...arena.tournaments, [cadence]: filled } };
               const r = resolveTournament(s, cadence, state.saveData.unlockedMonsters);
               s = ensureFutureTournament(r.state, cadence, Date.now() + 1000);

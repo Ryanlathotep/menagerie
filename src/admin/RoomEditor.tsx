@@ -219,23 +219,23 @@ export function RoomEditor() {
                 {Array.from({ length: current.height }).map((_, y) =>
                   Array.from({ length: current.width }).map((__, x) => {
                     const cell = cellAt(current, x, y);
-                    const p = cell ? PALETTE.find(pp => pp.kind === cell.kind) : PALETTE.find(pp => pp.kind === 'floor');
                     return (
                       <button
                         key={`${x},${y}`}
                         onClick={() => setCurrent(paintCell(current, x, y, selectedKind))}
                         onMouseEnter={e => { if (e.buttons === 1) setCurrent(paintCell(current, x, y, selectedKind)); }}
-                        className="border border-black/5 flex items-center justify-center text-[9px]"
-                        style={{ width: cellPx, height: cellPx, background: p?.color, color: 'rgba(0,0,0,0.5)' }}
+                        className="relative border border-black/5"
+                        style={{ width: cellPx, height: cellPx }}
                         title={cell ? cell.kind : 'floor'}
                       >
-                        {cell && p?.glyph}
+                        <CellTile kind={cell?.kind} size={cellPx} seed={x * 31 + y * 17} />
                       </button>
                     );
                   })
                 )}
               </div>
             </div>
+
           </>
         )}
       </Card>

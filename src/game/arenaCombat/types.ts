@@ -43,9 +43,11 @@ export type TeamStrategy = (input: TacticInput) => TacticDecision;
 
 export interface ArenaCombatOptions {
   seed?: number;
-  gridWidth?: number;   // default 6
-  gridHeight?: number;  // default 6
-  maxTurns?: number;    // default 60 total combatant actions
+  gridWidth?: number;   // default 24
+  gridHeight?: number;  // default 24
+  maxTurns?: number;    // default 480 total combatant actions
+  /** Impassable tiles (walls from a room prefab). */
+  blockedCells?: Position[];
 }
 
 export interface ArenaCombatResult {

@@ -170,20 +170,32 @@ export function FloatingDockProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Slot mount/unmount notifications arrive during React's commit phase (ref
+  // callbacks). Bumping state synchronously there can re-enter the same commit
+  // and trip "Maximum update depth exceeded", so coalesce into one rAF tick.
+  const bumpHandle = useRef<number | null>(null);
+  const scheduleSlotBump = useCallback(() => {
+    if (bumpHandle.current != null) return;
+    bumpHandle.current = requestAnimationFrame(() => {
+      bumpHandle.current = null;
+      setSlotVersion((v) => v + 1);
+    });
+  }, []);
+
   const registerSlot = useCallback((id: string, el: HTMLDivElement | null) => {
     if (el) {
       const prev = slotsRef.current.get(id);
       if (prev !== el) {
         slotsRef.current.set(id, el);
-        setSlotVersion((v) => v + 1);
+        scheduleSlotBump();
       }
     } else {
       if (slotsRef.current.has(id)) {
         slotsRef.current.delete(id);
-        setSlotVersion((v) => v + 1);
+        scheduleSlotBump();
       }
     }
-  }, []);
+  }, [scheduleSlotBump]);
 
   const value = useMemo<CtxVal>(
     () => ({

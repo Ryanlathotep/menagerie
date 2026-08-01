@@ -11,10 +11,12 @@
 //    completely missing class/element buckets.
 // Suggestions are sorted by level descending (per the todo).
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { MonsterSprite } from '@/game/sprites';
+
 import {
   UnlockedMonster,
   DungeonEntrance,

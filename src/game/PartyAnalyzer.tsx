@@ -25,6 +25,7 @@ import {
   ClassType,
   ELEMENT_ADVANTAGES,
   CLASS_ADVANTAGES_CORRECTED,
+  SPECIES_DATA,
 } from '@/game/types';
 
 interface PartyAnalyzerProps {
@@ -134,7 +135,7 @@ export function PartyAnalyzer({ party, pool, entrance, onSuggest }: PartyAnalyze
         : 30;
       const growth = Math.pow(1.1, Math.max(0, m.level - 1));
       let gear = 0;
-      const eq = m.equipment as Record<string, { stats?: Record<string, number> }> | undefined;
+      const eq = m.equipment as unknown as Record<string, { stats?: Record<string, number> }> | undefined;
       if (eq) {
         for (const item of Object.values(eq)) {
           if (!item || typeof item !== 'object') continue;

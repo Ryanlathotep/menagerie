@@ -143,22 +143,39 @@ export function PartyAnalyzer({ party, pool, entrance, onSuggest }: PartyAnalyze
     const usedElements = new Set(partyElements);
     const usedClasses = new Set(partyClasses);
 
+    const TARGET = 6;
     const suggestions: UnlockedMonster[] = [];
-    for (const { m, score } of scored) {
-      if (score <= 0) continue;
-      if (dedupe.species && usedSpecies.has(m.species)) continue;
-      if (dedupe.element && usedElements.has(m.element)) continue;
-      if (dedupe.classType && usedClasses.has(m.classType)) continue;
-      suggestions.push(m);
-      usedSpecies.add(m.species);
-      usedElements.add(m.element);
-      usedClasses.add(m.classType);
-      if (suggestions.length >= 6) break;
+    const chosen = new Set<string>();
+
+    // Pass 1: scoring picks honoring the active diversity filters.
+    // Pass 2: zero-score picks honoring filters. Pass 3: ignore filters so the
+    // list always shows 6 options when the pool is big enough.
+    const passes: Array<{ minScore: number; respectDedupe: boolean }> = [
+      { minScore: 1, respectDedupe: true },
+      { minScore: 0, respectDedupe: true },
+      { minScore: 0, respectDedupe: false },
+    ];
+    for (const pass of passes) {
+      for (const { m, score } of scored) {
+        if (suggestions.length >= TARGET) break;
+        if (chosen.has(m.comboId)) continue;
+        if (score < pass.minScore) continue;
+        if (pass.respectDedupe) {
+          if (dedupe.species && usedSpecies.has(m.species)) continue;
+          if (dedupe.element && usedElements.has(m.element)) continue;
+          if (dedupe.classType && usedClasses.has(m.classType)) continue;
+        }
+        suggestions.push(m);
+        chosen.add(m.comboId);
+        usedSpecies.add(m.species);
+        usedElements.add(m.element);
+        usedClasses.add(m.classType);
+      }
+      if (suggestions.length >= TARGET) break;
     }
 
-    const filteredOut = dedupe.species || dedupe.element || dedupe.classType
-      ? scored.filter(s => s.score > 0).length - suggestions.length
-      : 0;
+    const filteredOut = 0;
+
 
     return { warnings, suggestions, counterElements, counterClasses, filteredOut };
   }, [party, pool, theme, dedupe]);

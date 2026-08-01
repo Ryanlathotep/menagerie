@@ -24,13 +24,23 @@ function cloneMonster(m: Monster): Monster {
   };
 }
 
-function initialPositions(count: number, side: 'A' | 'B', width: number, height: number): Position[] {
-  // Team A on the left column (x=0), Team B on the right column (x=width-1).
+function initialPositions(
+  count: number, side: 'A' | 'B', width: number, height: number, blocked: Set<string>,
+): Position[] {
+  // Team A on the left edge, Team B on the right edge. Slide inward past walls.
   const positions: Position[] = [];
   const usable = Math.min(count, height);
   const yStart = Math.floor((height - usable) / 2);
-  const x = side === 'A' ? 0 : width - 1;
-  for (let i = 0; i < usable; i++) positions.push({ x, y: yStart + i });
+  for (let i = 0; i < usable; i++) {
+    const y = yStart + i;
+    let x = side === 'A' ? 0 : width - 1;
+    let guard = 0;
+    while (blocked.has(`${x},${y}`) && guard < width) {
+      x += side === 'A' ? 1 : -1;
+      guard++;
+    }
+    positions.push({ x: Math.max(0, Math.min(width - 1, x)), y });
+  }
   return positions;
 }
 
@@ -46,11 +56,12 @@ export function runArenaCombat(
   const height = opts.gridHeight ?? 24;
   const maxActions = opts.maxTurns ?? 480;
   const rng = mulberry32(seed);
+  const blocked = new Set((opts.blockedCells ?? []).map(c => `${c.x},${c.y}`));
 
   const membersA = teamA.members.slice(0, 6).map(cloneMonster);
   const membersB = teamB.members.slice(0, 6).map(cloneMonster);
-  const posA = initialPositions(membersA.length, 'A', width, height);
-  const posB = initialPositions(membersB.length, 'B', width, height);
+  const posA = initialPositions(membersA.length, 'A', width, height, blocked);
+  const posB = initialPositions(membersB.length, 'B', width, height, blocked);
 
   const combatants: Combatant[] = [
     ...membersA.map((m, i) => ({ monster: m, team: 'A' as const, pos: posA[i] ?? { x: 0, y: i } })),

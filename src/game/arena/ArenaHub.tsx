@@ -12,7 +12,9 @@ import { X, Trophy, Coins, Users, ClipboardList, Store, Ticket, Swords } from 'l
 import { toast } from '@/hooks/use-toast';
 import {
   loadArenaState, saveArenaState, ensureFutureTournament, fillTournamentWithNpcs,
+  commitTournamentBracket,
 } from './state';
+import { fetchRooms } from '@/game/rooms/store';
 import type { ArenaBet, ArenaState, ArenaTeam, ArenaTournament, Cadence } from './types';
 import { CADENCE_MS } from './types';
 import { resolveTournament } from './tournament';
@@ -35,11 +37,34 @@ export function ArenaHub({ onClose }: ArenaHubProps) {
   const [arena, setArena] = useState<ArenaState>(() => loadArenaState());
   const [now, setNow] = useState(Date.now());
   const [openReplay, setOpenReplay] = useState<string | null>(null);
+  const [tab, setTab] = useState('tournaments');
 
   // Persist arena state on every change
   useEffect(() => { saveArenaState(arena); }, [arena]);
   // Tick clock every second for countdowns
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, []);
+
+  // Pull admin-painted room prefabs so tournament matches can use real layouts
+  useEffect(() => { fetchRooms().catch(() => {}); }, []);
+
+  // Lock in the bracket (NPC fill + stable match ids) so bets attach to the
+  // SAME matches the resolver will run later.
+  useEffect(() => {
+    setArena(s => {
+      let next = s;
+      let changed = false;
+      for (const cadence of ['daily', 'weekly', 'monthly'] as Cadence[]) {
+        const t = s.tournaments[cadence];
+        if (t.resolved) continue;
+        const committed = commitTournamentBracket(t);
+        if (committed.teams.length !== t.teams.length || committed.matches.length !== t.matches.length) {
+          next = { ...next, tournaments: { ...next.tournaments, [cadence]: committed } };
+          changed = true;
+        }
+      }
+      return changed ? next : s;
+    });
+  }, [arena.playerTeams.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-resolve any tournament whose time has passed
   useEffect(() => {
@@ -85,7 +110,7 @@ export function ArenaHub({ onClose }: ArenaHubProps) {
           </div>
         </div>
 
-        <Tabs defaultValue="tournaments" className="flex-1 flex flex-col overflow-hidden">
+        <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col overflow-hidden">
           <TabsList className="mx-3 mt-2 justify-start">
             <TabsTrigger value="tournaments"><Trophy className="h-4 w-4 mr-1"/>Tournaments</TabsTrigger>
             <TabsTrigger value="teams"><Users className="h-4 w-4 mr-1"/>My Teams</TabsTrigger>
@@ -104,6 +129,7 @@ export function ArenaHub({ onClose }: ArenaHubProps) {
                   now={now}
                   arena={arena}
                   setArena={setArena}
+                  onWatchReplay={(id) => { setOpenReplay(id); setTab('replays'); }}
                 />
               ))}
             </TabsContent>
@@ -193,8 +219,8 @@ export function ArenaHub({ onClose }: ArenaHubProps) {
 // ─── Tournament card ─────────────────────────────────────────
 
 function TournamentCard({
-  cadence, now, arena, setArena,
-}: { cadence: Cadence; now: number; arena: ArenaState; setArena: React.Dispatch<React.SetStateAction<ArenaState>> }) {
+  cadence, now, arena, setArena, onWatchReplay,
+}: { cadence: Cadence; now: number; arena: ArenaState; setArena: React.Dispatch<React.SetStateAction<ArenaState>>; onWatchReplay: (replayId: string) => void }) {
   const { state } = useGame();
   const t = arena.tournaments[cadence];
   const remaining = Math.max(0, t.startsAt - now);
@@ -225,13 +251,12 @@ function TournamentCard({
                   toast({ title: 'Team failed legitimacy check', description: check.issues.map(i => i.message).join(' · '), variant: 'destructive' as any });
                   return;
                 }
-                setArena(s => ({
-                  ...s,
-                  tournaments: {
-                    ...s.tournaments,
-                    [cadence]: { ...s.tournaments[cadence], teams: [...s.tournaments[cadence].teams, team].slice(0, 8) },
-                  },
-                }));
+                setArena(s => {
+                  const cur = s.tournaments[cadence];
+                  const teams = [team, ...cur.teams.filter(x => x.ownerId !== 'player')].slice(0, 8);
+                  const committed = commitTournamentBracket({ ...cur, teams });
+                  return { ...s, tournaments: { ...s.tournaments, [cadence]: committed } };
+                });
                 toast({ title: `Entered ${team.name} in ${cadence} tournament` });
               }}
               defaultValue="">
@@ -270,6 +295,36 @@ function TournamentCard({
               </span>
             );
           })}
+        </div>
+      )}
+      {t.matches.length > 0 && (
+        <div className="pt-1 space-y-1">
+          <div className="text-[11px] font-semibold text-muted-foreground">Bracket</div>
+          {[...new Set(t.matches.map(m => m.round))].sort((a, b) => a - b).map(round => (
+            <div key={round} className="space-y-0.5">
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Round {round}</div>
+              {t.matches.filter(m => m.round === round).map(m => {
+                const a = t.teams.find(x => x.id === m.teamAId);
+                const b = t.teams.find(x => x.id === m.teamBId);
+                return (
+                  <div key={m.id} className="flex items-center justify-between gap-2 text-[11px] border rounded px-1.5 py-0.5">
+                    <span className="truncate">
+                      <b className={m.winnerId === m.teamAId ? 'text-emerald-600 dark:text-emerald-400' : ''}>
+                        {a?.ownerId === 'player' ? '⭐ ' : ''}{a?.name ?? '—'}
+                      </b>
+                      <span className="mx-1 text-muted-foreground">vs</span>
+                      <b className={m.winnerId === m.teamBId ? 'text-emerald-600 dark:text-emerald-400' : ''}>
+                        {b?.ownerId === 'player' ? '⭐ ' : ''}{b?.name ?? '—'}
+                      </b>
+                    </span>
+                    {m.replayId
+                      ? <Button size="sm" variant="ghost" className="h-5 px-1.5 text-[10px]" onClick={() => onWatchReplay(m.replayId!)}>Watch</Button>
+                      : <span className="text-muted-foreground">pending</span>}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </div>
       )}
       <ArenaChampionsLeaderboard cadence={cadence} />
@@ -443,13 +498,9 @@ function BetsTab({
   return (
     <div className="space-y-4">
       {open.map(({ cadence, t }) => {
-        const filled = fillTournamentWithNpcs(t);
-        // Preview R1 matches so bettors always have something to bet on
-        const previewMatches = t.matches.length > 0 ? t.matches.filter(m => m.round === 1) :
-          Array.from({ length: filled.teams.length / 2 }).map((_, i) => ({
-            id: `preview_${cadence}_r1_${i}`,
-            round: 1, teamAId: filled.teams[i * 2].id, teamBId: filled.teams[i * 2 + 1].id,
-          }));
+        // Bet on the COMMITTED bracket so wagers survive until resolution.
+        const filled = t.matches.length > 0 ? t : commitTournamentBracket(t);
+        const previewMatches = filled.matches.filter(m => m.round === 1);
         return (
           <Card key={cadence} className="p-3 space-y-2">
             <div className="text-sm font-semibold capitalize">{cadence} — R1 matches</div>

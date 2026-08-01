@@ -130,6 +130,59 @@ export function CharacterSelect() {
     toast.success(`Deleted "${name}"`);
   };
 
+  const exportLayouts = () => {
+    const payload = savedParties.length > 0
+      ? savedParties
+      : [{ name: 'Current Party', ids: selectedParty.map(m => m.comboId) }];
+    if (payload.length === 0 || payload.every(p => p.ids.length === 0)) {
+      toast.error('Nothing to export');
+      return;
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `menagerie-party-layouts-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Exported party layouts');
+  };
+
+  const importLayoutsFromFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result));
+        const raw = Array.isArray(parsed) ? parsed : [parsed];
+        const incoming: SavedParty[] = raw
+          .map((p: any) => ({
+            name: typeof p?.name === 'string' && p.name.trim() ? p.name.trim() : 'Imported Party',
+            ids: Array.isArray(p?.ids) ? p.ids.filter((id: unknown) => typeof id === 'string') : [],
+          }))
+          .filter(p => p.ids.length > 0);
+        if (incoming.length === 0) {
+          toast.error('No party layouts found in that file');
+          return;
+        }
+        setSavedParties(prev => {
+          const next = [...prev];
+          for (const entry of incoming) {
+            let name = entry.name;
+            let n = 2;
+            while (next.some(p => p.name === name)) name = `${entry.name} (${n++})`;
+            next.push({ name, ids: entry.ids });
+          }
+          return next;
+        });
+        loadSavedParty(incoming[0]);
+        toast.success(`Imported ${incoming.length} layout${incoming.length > 1 ? 's' : ''}`);
+      } catch {
+        toast.error('Could not read that file — expected party layout JSON');
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const MAX_PARTY_SIZE = 6;
 
   const sortedMonsters = [...unlockedMonsters].sort((a, b) => {

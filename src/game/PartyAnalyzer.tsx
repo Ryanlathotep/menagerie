@@ -166,13 +166,14 @@ export function PartyAnalyzer({ party, pool, entrance, onSuggest }: PartyAnalyze
     });
     scored.sort((a, b) => (b.score - a.score) || (b.power - a.power) || (b.m.level - a.m.level));
 
-    // Diversity filters. Two levels of strictness: "party" also excludes traits
-    // already on the field, "list" only guarantees the six shown picks differ
-    // from each other. Species uniqueness inside the list is never relaxed
-    // while the checkbox is on.
-    const usedSpecies = new Set(party.map(m => m.species));
-    const usedElements = new Set(partyElements);
-    const usedClasses = new Set(partyClasses);
+    // Diversity filters have two distinct jobs:
+    //  • Checked traits must not duplicate a trait already in the party.
+    //  • Suggestions should be distinct from each other where possible.
+    //
+    // List-level element/class uniqueness is relaxed when necessary because,
+    // for example, a party containing all five non-Normal elements/classes
+    // should correctly produce six Normal/Normal picks. Species uniqueness is
+    // never relaxed while its checkbox is checked.
     const listSpecies = new Set<string>();
     const listElements = new Set<string>();
     const listClasses = new Set<string>();
@@ -181,31 +182,31 @@ export function PartyAnalyzer({ party, pool, entrance, onSuggest }: PartyAnalyze
     const suggestions: UnlockedMonster[] = [];
     const chosen = new Set<string>();
 
-    const passes: Array<{ minMatchup: number; scope: 'party' | 'list' | 'none' }> = [
-      { minMatchup: 1, scope: 'party' },
-      { minMatchup: 0, scope: 'party' },
-      { minMatchup: 0, scope: 'list' },
-      { minMatchup: 0, scope: 'none' },
+    const passes: Array<{ minMatchup: number; uniqueListTraits: boolean }> = [
+      { minMatchup: 1, uniqueListTraits: true },
+      { minMatchup: 0, uniqueListTraits: true },
+      { minMatchup: 0, uniqueListTraits: false },
     ];
     for (const pass of passes) {
       for (const { m, matchup } of scored) {
         if (suggestions.length >= TARGET) break;
         if (chosen.has(m.comboId)) continue;
         if (matchup < pass.minMatchup) continue;
-        if (pass.scope !== 'none') {
-          const strict = pass.scope === 'party';
-          if (dedupe.species && (listSpecies.has(m.species) || (strict && usedSpecies.has(m.species)))) continue;
-          if (dedupe.element && (listElements.has(m.element) || (strict && usedElements.has(m.element)))) continue;
-          if (dedupe.classType && (listClasses.has(m.classType) || (strict && usedClasses.has(m.classType)))) continue;
-        }
+        // Party exclusions are absolute while their checkbox is enabled.
+        if (dedupe.species && party.some(p => p.species === m.species)) continue;
+        if (dedupe.element && partyElements.has(m.element)) continue;
+        if (dedupe.classType && partyClasses.has(m.classType)) continue;
+
+        // Keep species varied across the result list. Element/class uniqueness
+        // is best-effort so six picks can all use the sole uncovered matchup.
+        if (dedupe.species && listSpecies.has(m.species)) continue;
+        if (pass.uniqueListTraits && dedupe.element && listElements.has(m.element)) continue;
+        if (pass.uniqueListTraits && dedupe.classType && listClasses.has(m.classType)) continue;
         suggestions.push(m);
         chosen.add(m.comboId);
         listSpecies.add(m.species);
         listElements.add(m.element);
         listClasses.add(m.classType);
-        usedSpecies.add(m.species);
-        usedElements.add(m.element);
-        usedClasses.add(m.classType);
       }
       if (suggestions.length >= TARGET) break;
     }

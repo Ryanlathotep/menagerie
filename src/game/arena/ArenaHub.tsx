@@ -238,8 +238,49 @@ function TournamentCard({
             Starts in <b>{formatDuration(remaining)}</b> · seed {t.seed} · {t.teams.length}/8 teams
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           {!playerHasEntry && (
+            <Button size="sm"
+              onClick={() => {
+                const unlocked = state.saveData.unlockedMonsters ?? [];
+                const ids = currentPartyComboIds(state)
+                  .filter(id => unlocked.some(u => u.comboId === id))
+                  .slice(0, 6);
+                if (ids.length === 0) {
+                  toast({ title: 'No current party found', description: 'Pick a party in the pre-run screen first.', variant: 'destructive' as any });
+                  return;
+                }
+                const avgLevel = ids.reduce((sum, id) => sum + (unlocked.find(u => u.comboId === id)?.level ?? 1), 0) / ids.length;
+                const team: ArenaTeam = {
+                  id: `player_${Date.now()}`,
+                  name: 'Current Party',
+                  ownerId: 'player',
+                  memberCombos: ids,
+                  level: Math.round(avgLevel),
+                  banner: '⭐',
+                  strategyId: 'balanced',
+                };
+                const check = validateArenaTeam(team, state.saveData);
+                if (!check.valid) {
+                  toast({ title: 'Team failed legitimacy check', description: check.issues.map(i => i.message).join(' · '), variant: 'destructive' as any });
+                  return;
+                }
+                setArena(s => {
+                  const cur = s.tournaments[cadence];
+                  const teams = [team, ...cur.teams.filter(x => x.ownerId !== 'player')].slice(0, 8);
+                  return {
+                    ...s,
+                    playerTeams: [...s.playerTeams.filter(x => x.name !== 'Current Party'), team],
+                    tournaments: { ...s.tournaments, [cadence]: commitTournamentBracket({ ...cur, teams }) },
+                  };
+                });
+                toast({ title: `Entered your current party (${ids.length}) in the ${cadence} tournament` });
+              }}>
+              ⚡ Enter current party
+            </Button>
+          )}
+          {!playerHasEntry && arena.playerTeams.length > 0 && (
+
             <select className="border rounded px-2 py-1 text-xs bg-background"
               onChange={e => {
                 const teamId = e.target.value;

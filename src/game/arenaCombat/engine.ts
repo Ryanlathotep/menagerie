@@ -110,9 +110,21 @@ export function runArenaCombat(
         // Movement branch
         if (!decision.move && decision.moveTo) {
           const target = decision.moveTo;
-          if (!occupied(target, combatants, actor)) {
+          const free = (p: Position) =>
+            p.x >= 0 && p.y >= 0 && p.x < width && p.y < height &&
+            !blocked.has(`${p.x},${p.y}`) && !occupied(p, combatants, actor);
+          if (free(target)) {
             actor.pos = target;
+          } else {
+            // Wall or ally in the way — try sliding along one axis instead.
+            const alts: Position[] = [
+              { x: target.x, y: fromY },
+              { x: fromX, y: target.y },
+            ];
+            const alt = alts.find(free);
+            if (alt) actor.pos = alt;
           }
+
           log.push({
             turn: turnCounter, actorId: actor.monster.id, actorTeam: actor.team,
             fromX, fromY, toX: actor.pos.x, toY: actor.pos.y,

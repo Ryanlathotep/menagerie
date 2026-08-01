@@ -332,7 +332,18 @@ function TournamentCard({
   );
 }
 
+/** Combo ids of the team the player is currently using: active run party first,
+ *  falling back to the last party saved in the pre-run party menu. */
+function currentPartyComboIds(state: any): string[] {
+  const runParty = state?.run?.party;
+  if (Array.isArray(runParty) && runParty.length > 0) {
+    return runParty.map((m: any) => `${m.species}_${m.element}_${m.class}`);
+  }
+  return loadPartyMenuComboIds();
+}
+
 function formatDuration(ms: number): string {
+
   if (ms <= 0) return 'now!';
   const s = Math.floor(ms / 1000);
   const d = Math.floor(s / 86400);

@@ -51,12 +51,35 @@ function themeLabel(theme?: DungeonTheme): string {
   return `${theme.kind}: ${theme.value}`;
 }
 
+const DEDUPE_STORAGE_KEY = 'partyAnalyzerDedupe';
+
+interface DedupeOptions {
+  species: boolean;
+  element: boolean;
+  classType: boolean;
+}
+
+const DEFAULT_DEDUPE: DedupeOptions = { species: true, element: false, classType: false };
+
 export function PartyAnalyzer({ party, pool, entrance, onSuggest }: PartyAnalyzerProps) {
   const theme = entrance?.theme;
+
+  // Player-controlled diversity filters — persisted so the preference sticks.
+  const [dedupe, setDedupe] = useState<DedupeOptions>(() => {
+    try {
+      const raw = localStorage.getItem(DEDUPE_STORAGE_KEY);
+      if (raw) return { ...DEFAULT_DEDUPE, ...JSON.parse(raw) };
+    } catch { /* ignore */ }
+    return DEFAULT_DEDUPE;
+  });
+  useEffect(() => {
+    try { localStorage.setItem(DEDUPE_STORAGE_KEY, JSON.stringify(dedupe)); } catch { /* ignore */ }
+  }, [dedupe]);
 
   const analysis = useMemo(() => {
     const partyIds = new Set(party.map(m => m.comboId));
     const available = pool.filter(m => !partyIds.has(m.comboId));
+
 
     const partyElements = new Set(party.map(m => m.element));
     const partyClasses = new Set(party.map(m => m.classType));

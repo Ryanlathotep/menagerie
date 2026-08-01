@@ -322,7 +322,7 @@ function TournamentCard({
         </div>
       </div>
       <div className="text-xs text-muted-foreground">
-        {canEnter ? '✅ You can enter — bracket fills with NPCs on resolve.' : playerHasEntry ? '🏳️ Your team is queued.' : '⚠️ Save a team on the "My Teams" tab first.'}
+        {playerHasEntry ? '🏳️ Your team is queued.' : canEnter ? '✅ You can enter a saved team, or use ⚡ Enter current party.' : '⚡ Use "Enter current party" to enter the team you\'re playing with, or save one on the "My Teams" tab.'}
       </div>
       {t.teams.length > 0 && (
         <div className="flex flex-wrap gap-1.5 pt-1">

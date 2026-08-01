@@ -1,6 +1,9 @@
 // Attack Targeting Overlay - Shows attack patterns when aiming on the dungeon map
 
+import { useRef, useState } from 'react';
+import { GripHorizontal } from 'lucide-react';
 import { Position } from './types';
+
 import { Move } from './moves';
 import { EvolvedMove } from './moveMastery';
 import { 
@@ -133,7 +136,37 @@ interface MoveInfoPanelProps {
 
 export function MoveInfoPanel({ move, onCancel }: MoveInfoPanelProps) {
   const config = getAttackConfig(move);
-  
+
+  // Draggable so the panel can never block the tile you're trying to hit.
+  // Offset is persisted so the player only repositions it once.
+  const [offset, setOffset] = useState<{ x: number; y: number }>(() => {
+    try {
+      const raw = localStorage.getItem('moveInfoPanelOffset');
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (typeof p?.x === 'number' && typeof p?.y === 'number') return p;
+      }
+    } catch { /* ignore */ }
+    return { x: 0, y: 0 };
+  });
+  const dragRef = useRef<{ startX: number; startY: number; baseX: number; baseY: number } | null>(null);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    dragRef.current = { startX: e.clientX, startY: e.clientY, baseX: offset.x, baseY: offset.y };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!d) return;
+    e.preventDefault();
+    setOffset({ x: d.baseX + (e.clientX - d.startX), y: d.baseY + (e.clientY - d.startY) });
+  };
+  const onPointerUp = () => {
+    if (!dragRef.current) return;
+    dragRef.current = null;
+    try { localStorage.setItem('moveInfoPanelOffset', JSON.stringify(offset)); } catch { /* ignore */ }
+  };
+
   const patternLabels: Record<string, string> = {
     single: '🎯 Single Target',
     line: '➡️ Line Attack (Piercing)',
@@ -149,7 +182,21 @@ export function MoveInfoPanel({ move, onCancel }: MoveInfoPanelProps) {
   const wallPen = 'wallPenetrate' in move ? (move as import('./moves').Move).wallPenetrate : false;
   
   return (
-    <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 bg-card border-2 border-primary rounded-lg shadow-xl p-3 min-w-[200px]">
+    <div
+      className="fixed bottom-28 left-1/2 z-50 bg-card border-2 border-primary rounded-lg shadow-xl p-3 min-w-[200px] touch-none"
+      style={{ transform: `translate(calc(-50% + ${offset.x}px), ${offset.y}px)` }}
+    >
+      <div
+        className="flex items-center justify-center -mt-1 mb-1 cursor-grab active:cursor-grabbing"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        title="Drag to move this panel"
+      >
+        <GripHorizontal className="h-4 w-4 text-muted-foreground" />
+      </div>
+
       <div className="flex items-center justify-between mb-2">
         <h3 className="font-bold text-sm">{move.name}</h3>
         <button 

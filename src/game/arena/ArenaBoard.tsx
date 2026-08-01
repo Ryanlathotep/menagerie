@@ -193,7 +193,7 @@ function FeatureTile({ kind, size, seed }: { kind: ArenaReplayFeature['kind']; s
     case 'stairs_down': return <StairsTile size={size} seed={seed} />;
     case 'stairs_up': return <StairsUpTile size={size} seed={seed} />;
     case 'trap_spike': return <TrapTile size={size} seed={seed} trapType="spike" />;
-    case 'trap_dart': return <TrapTile size={size} seed={seed} trapType="dart" />;
+    case 'trap_dart': return <TrapTile size={size} seed={seed} trapType="alarm" />;
     case 'box':
     case 'lever':
     default:

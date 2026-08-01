@@ -197,36 +197,66 @@ export function PartyAnalyzer({ party, pool, entrance, onSuggest }: PartyAnalyze
           )}
         </div>
 
-        {analysis.suggestions.length > 0 && (
-          <div className="flex-1 min-w-[220px]">
-            <p className="text-[11px] text-muted-foreground mb-1">Suggested picks (click to add):</p>
-            <div className="flex gap-1.5 flex-wrap">
-              {analysis.suggestions.map(m => (
-                <Button
-                  key={m.comboId}
-                  variant="outline"
-                  size="sm"
-                  className="h-auto py-1 px-2 flex items-center gap-1.5"
-                  onClick={() => onSuggest(m)}
-                  title={`${m.species} · ${m.element} · ${m.classType} · Lv.${m.level}`}
-                >
-                  <MonsterSprite
-                    species={m.species}
-                    element={m.element}
-                    classType={m.classType}
-                    size={22}
-                    animated={false}
-                  />
-                  <span className="text-[10px] leading-tight text-left">
-                    <span className="block capitalize font-medium">{m.species}</span>
-                    <span className="block text-muted-foreground">Lv.{m.level}</span>
-                  </span>
-                </Button>
-              ))}
-            </div>
+        <div className="flex-1 min-w-[220px]">
+          <p className="text-[11px] text-muted-foreground mb-1">Avoid duplicates in suggestions:</p>
+          <div className="flex gap-3 flex-wrap mb-2">
+            {([
+              ['species', 'Species'],
+              ['element', 'Elements'],
+              ['classType', 'Classes'],
+            ] as [keyof DedupeOptions, string][]).map(([key, label]) => (
+              <label key={key} className="flex items-center gap-1.5 text-[11px] cursor-pointer select-none">
+                <Checkbox
+                  checked={dedupe[key]}
+                  onCheckedChange={(v) => setDedupe(prev => ({ ...prev, [key]: v === true }))}
+                  aria-label={`Avoid duplicate ${label.toLowerCase()}`}
+                />
+                {label}
+              </label>
+            ))}
           </div>
-        )}
+
+          {analysis.suggestions.length > 0 ? (
+            <>
+              <p className="text-[11px] text-muted-foreground mb-1">Suggested picks (click to add):</p>
+              <div className="flex gap-1.5 flex-wrap">
+                {analysis.suggestions.map(m => (
+                  <Button
+                    key={m.comboId}
+                    variant="outline"
+                    size="sm"
+                    className="h-auto py-1 px-2 flex items-center gap-1.5"
+                    onClick={() => onSuggest(m)}
+                    title={`${m.species} · ${m.element} · ${m.classType} · Lv.${m.level}`}
+                  >
+                    <MonsterSprite
+                      species={m.species}
+                      element={m.element}
+                      classType={m.classType}
+                      size={22}
+                      animated={false}
+                    />
+                    <span className="text-[10px] leading-tight text-left">
+                      <span className="block capitalize font-medium">{m.species}</span>
+                      <span className="block text-muted-foreground">Lv.{m.level}</span>
+                    </span>
+                  </Button>
+                ))}
+              </div>
+              {analysis.filteredOut > 0 && (
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {analysis.filteredOut} duplicate pick{analysis.filteredOut === 1 ? '' : 's'} hidden by these filters.
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              No suggestions match these filters — uncheck one to widen the search.
+            </p>
+          )}
+        </div>
       </div>
+
     </Card>
   );
 }

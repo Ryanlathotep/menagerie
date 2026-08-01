@@ -447,7 +447,18 @@ function TeamsTab({ arena, setArena }: { arena: ArenaState; setArena: React.Disp
                 <option key={s.name} value={s.name}>{s.name} ({s.ids.length})</option>
               ))}
             </select>
+            <Button size="sm" variant="secondary"
+              onClick={() => {
+                const ids = currentPartyComboIds(state).filter(id => unlocked.some(u => u.comboId === id)).slice(0, 6);
+                if (ids.length === 0) { toast({ title: 'No current party found' }); return; }
+                setSelected(ids);
+                if (!name || name === 'My Team') setName('Current Party');
+                toast({ title: `Loaded current party (${ids.length})` });
+              }}>
+              ⚡ Use current party
+            </Button>
             <Button size="sm" variant="ghost" onClick={() => { setSelected([]); }}>Clear</Button>
+
           </div>
         </div>
 

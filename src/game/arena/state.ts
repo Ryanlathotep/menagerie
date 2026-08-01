@@ -5,7 +5,7 @@
 import {
   ARENA_STATE_KEY, ANALYTICS_CAP, REPLAY_CAP,
   type ArenaState, type ArenaAnalyticsRow, type ArenaReplay,
-  type Cadence, type ArenaTournament, nextCadenceBoundary,
+  type Cadence, type ArenaTournament, type ArenaBracketMatch, nextCadenceBoundary,
 } from './types';
 import { getNpcTeams } from './npcTeams';
 
@@ -82,6 +82,27 @@ export function ensureFutureTournament(s: ArenaState, cadence: Cadence, now: num
     ...s,
     tournaments: { ...s.tournaments, [cadence]: emptyTournament(cadence, now) },
   };
+}
+
+/** Fill NPC slots and lock in stable round-1 match ids so bets placed before
+ *  resolution attach to the SAME matches the resolver will run. */
+export function commitTournamentBracket(t: ArenaTournament): ArenaTournament {
+  if (t.resolved) return t;
+  const filled = fillTournamentWithNpcs(t);
+  const laterRounds = filled.matches.filter(m => m.round > 1);
+  const r1: ArenaBracketMatch[] = [];
+  for (let i = 0; i + 1 < filled.teams.length; i += 2) {
+    const existing = filled.matches.find(m => m.round === 1 && m.id === `m${t.seed}_r1_${i / 2}`);
+    r1.push({
+      id: `m${t.seed}_r1_${i / 2}`,
+      round: 1,
+      teamAId: filled.teams[i].id,
+      teamBId: filled.teams[i + 1].id,
+      winnerId: existing?.winnerId,
+      replayId: existing?.replayId,
+    });
+  }
+  return { ...filled, matches: [...r1, ...laterRounds] };
 }
 
 export function addAnalytics(s: ArenaState, row: ArenaAnalyticsRow): ArenaState {

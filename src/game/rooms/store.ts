@@ -4,6 +4,22 @@ import type { Room } from './types';
 
 const LOCAL_KEY = 'menagerie_rooms_v1_local';
 
+/** Synchronous cache so sync code paths (arena resolution, dungeon stamping)
+ *  can read room prefabs without awaiting. Populated by fetchRooms(). */
+let roomCache: Room[] = [];
+export function getCachedRooms(): Room[] {
+  if (roomCache.length) return roomCache;
+  try { roomCache = JSON.parse(localStorage.getItem(LOCAL_KEY) ?? '[]') as Room[]; } catch { roomCache = []; }
+  return roomCache;
+}
+export function getCachedRoomsByTag(tag: string): Room[] {
+  return getCachedRooms().filter(r => r.tags?.includes(tag));
+}
+function primeCache(rooms: Room[]) {
+  roomCache = rooms;
+  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(rooms)); } catch { /* ignore */ }
+}
+
 export async function fetchRooms(): Promise<Room[]> {
   try {
     const { data, error } = await supabase
@@ -12,10 +28,11 @@ export async function fetchRooms(): Promise<Room[]> {
       .eq('data_type', 'room');
     if (error) throw error;
     const remote = (data ?? []).map(r => r.data_value as unknown as Room).filter(Boolean);
+    primeCache(remote);
     return remote;
   } catch (e) {
     console.warn('[rooms] fetch failed, using local', e);
-    try { return JSON.parse(localStorage.getItem(LOCAL_KEY) ?? '[]') as Room[]; } catch { return []; }
+    return getCachedRooms();
   }
 }
 
@@ -44,7 +61,7 @@ export async function saveRoom(room: Room): Promise<boolean> {
       const arr = JSON.parse(localStorage.getItem(LOCAL_KEY) ?? '[]') as Room[];
       const idx = arr.findIndex(r => r.id === room.id);
       if (idx >= 0) arr[idx] = value; else arr.push(value);
-      localStorage.setItem(LOCAL_KEY, JSON.stringify(arr));
+      primeCache(arr);
       return true;
     } catch { return false; }
   }

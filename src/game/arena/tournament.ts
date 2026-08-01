@@ -5,13 +5,15 @@
  */
 import type { Monster, UnlockedMonster } from '@/game/types';
 import type {
-  ArenaBracketMatch, ArenaReplay, ArenaState, ArenaTeam, ArenaTournament,
+  ArenaBracketMatch, ArenaReplay, ArenaReplayFeature, ArenaState, ArenaTeam, ArenaTournament,
   ArenaAnalyticsRow, ArenaBet, Cadence, SerializedMonster,
 } from './types';
 import { hydrateNpcTeam, isNpcTeam } from './npcTeams';
 import { computePool, payoutFor, seedNpcBets } from './betting';
 import { runArenaCombat } from '@/game/arenaCombat';
 import { getRoom, getAllRooms } from './arenaRooms';
+import { getCachedRoomsByTag } from '@/game/rooms/store';
+import type { Room } from '@/game/rooms/types';
 import { createMonster } from '@/game/utils';
 import { resolveStrategy } from './strategyPresets';
 import { submitArenaChampion } from './ArenaChampionsLeaderboard';
@@ -47,6 +49,40 @@ function serialize(m: Monster): SerializedMonster {
     id: m.id, name: m.name,
     species: m.species, classType: m.class, element: m.element,
     level: m.level, maxHp: m.stats.maxHp, speed: m.stats.speed,
+  };
+}
+
+
+const ARENA_GRID = 24;
+const FEATURE_KINDS = new Set<ArenaReplayFeature['kind']>([
+  'wall', 'door', 'chest', 'box', 'lever', 'trap_spike', 'trap_dart', 'stairs_up', 'stairs_down',
+]);
+
+interface ArenaLayout {
+  width: number;
+  height: number;
+  features: ArenaReplayFeature[];
+  name?: string;
+}
+
+/** Prefer an admin-painted room prefab tagged `arena`; otherwise an open 24×24 floor. */
+function pickLayout(matchId: string, seed: number): ArenaLayout {
+  const prefabs = getCachedRoomsByTag('arena');
+  if (prefabs.length === 0) {
+    return { width: ARENA_GRID, height: ARENA_GRID, features: [] };
+  }
+  const room: Room = prefabs[Math.abs((hashId(matchId) ^ seed) % prefabs.length)];
+  const features: ArenaReplayFeature[] = [];
+  for (const c of room.cells ?? []) {
+    if (FEATURE_KINDS.has(c.kind as ArenaReplayFeature['kind'])) {
+      features.push({ x: c.x, y: c.y, kind: c.kind as ArenaReplayFeature['kind'] });
+    }
+  }
+  return {
+    width: Math.max(8, Math.min(48, room.width)),
+    height: Math.max(8, Math.min(48, room.height)),
+    features,
+    name: room.name,
   };
 }
 
@@ -102,12 +138,22 @@ export function resolveTournament(
       const membersA = isNpcTeam(aTeam.id.replace(/_dup\d+$/, '')) ? hydrateNpcTeam({ ...aTeam, id: aTeam.id.replace(/_dup\d+$/, '') }, targetLevel) : hydratePlayerTeam(aTeam, unlocked);
       const membersB = isNpcTeam(bTeam.id.replace(/_dup\d+$/, '')) ? hydrateNpcTeam({ ...bTeam, id: bTeam.id.replace(/_dup\d+$/, '') }, targetLevel) : hydratePlayerTeam(bTeam, unlocked);
 
+      const layout = pickLayout(match.id, t.seed);
+      const blockedCells = layout.features
+        .filter(f => f.kind === 'wall')
+        .map(f => ({ x: f.x, y: f.y }));
+
       const stratA = resolveStrategy(aTeam.strategyId as any);
       const stratB = resolveStrategy(bTeam.strategyId as any);
       const result = runArenaCombat(
         { id: aTeam.id, name: aTeam.name, members: membersA, strategy: stratA },
         { id: bTeam.id, name: bTeam.name, members: membersB, strategy: stratB },
-        { seed: (t.seed ^ hashId(match.id)) >>> 0, gridWidth: 6, gridHeight: 6 },
+        {
+          seed: (t.seed ^ hashId(match.id)) >>> 0,
+          gridWidth: layout.width,
+          gridHeight: layout.height,
+          blockedCells,
+        },
       );
       const winnerTeam = result.winner === 'A' ? aTeam : result.winner === 'B' ? bTeam : aTeam; // draw → default to A
       match.winnerId = winnerTeam.id;
@@ -124,6 +170,10 @@ export function resolveTournament(
         winner: result.winner,
         turns: result.turns,
         roomId: pickRoom(match.id).id,
+        gridWidth: layout.width,
+        gridHeight: layout.height,
+        features: layout.features,
+        layoutName: layout.name,
       };
       match.replayId = replay.id;
       replays.push(replay);

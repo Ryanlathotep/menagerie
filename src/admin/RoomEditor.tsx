@@ -15,6 +15,33 @@ import { Save, Copy, Trash2, Plus, Eraser, RefreshCw } from 'lucide-react';
 import { fetchRooms, saveRoom, deleteRoom, newBlankRoom, duplicateRoom } from '@/game/rooms/store';
 import type { Room, RoomCell, RoomCellKind } from '@/game/rooms/types';
 import { ROOM_TAGS, KNOWN_TOWER_IDS } from '@/game/rooms/types';
+import {
+  FloorTile, WallTile, DoorTile, TrapTile, TreasureTile, StairsTile, StairsUpTile,
+} from '@/game/TileGraphics';
+
+/** Paints one editor cell with the SAME art the dungeon/arena renderers use. */
+function CellTile({ kind, size, seed }: { kind?: RoomCellKind; size: number; seed: number }) {
+  const glyph = (g: string, tint?: string) => (
+    <div className="absolute inset-0 flex items-center justify-center"
+      style={{ fontSize: Math.max(8, size * 0.55), background: tint }}>{g}</div>
+  );
+  return (
+    <div className="absolute inset-0">
+      <FloorTile size={size} seed={seed} />
+      {kind === 'wall' && <div className="absolute inset-0"><WallTile size={size} seed={seed} /></div>}
+      {kind === 'door' && <div className="absolute inset-0"><DoorTile size={size} seed={seed} /></div>}
+      {kind === 'chest' && <div className="absolute inset-0"><TreasureTile size={size} seed={seed} /></div>}
+      {kind === 'stairs_down' && <div className="absolute inset-0"><StairsTile size={size} seed={seed} /></div>}
+      {kind === 'stairs_up' && <div className="absolute inset-0"><StairsUpTile size={size} seed={seed} /></div>}
+      {kind === 'trap_spike' && <div className="absolute inset-0"><TrapTile size={size} seed={seed} trapType="spike" /></div>}
+      {kind === 'trap_dart' && <div className="absolute inset-0"><TrapTile size={size} seed={seed} trapType="alarm" /></div>}
+      {kind === 'box' && glyph('📦')}
+      {kind === 'lever' && glyph('🎚️')}
+      {kind === 'entry' && glyph('A', 'hsl(120 45% 50% / 0.35)')}
+      {kind === 'exit' && glyph('B', 'hsl(280 45% 55% / 0.35)')}
+    </div>
+  );
+}
 
 const PALETTE: Array<{ kind: RoomCellKind | 'erase'; label: string; color: string; glyph: string }> = [
   { kind: 'erase',       label: 'Erase',       color: 'transparent',        glyph: '⌫' },
@@ -219,23 +246,23 @@ export function RoomEditor() {
                 {Array.from({ length: current.height }).map((_, y) =>
                   Array.from({ length: current.width }).map((__, x) => {
                     const cell = cellAt(current, x, y);
-                    const p = cell ? PALETTE.find(pp => pp.kind === cell.kind) : PALETTE.find(pp => pp.kind === 'floor');
                     return (
                       <button
                         key={`${x},${y}`}
                         onClick={() => setCurrent(paintCell(current, x, y, selectedKind))}
                         onMouseEnter={e => { if (e.buttons === 1) setCurrent(paintCell(current, x, y, selectedKind)); }}
-                        className="border border-black/5 flex items-center justify-center text-[9px]"
-                        style={{ width: cellPx, height: cellPx, background: p?.color, color: 'rgba(0,0,0,0.5)' }}
+                        className="relative border border-black/5"
+                        style={{ width: cellPx, height: cellPx }}
                         title={cell ? cell.kind : 'floor'}
                       >
-                        {cell && p?.glyph}
+                        <CellTile kind={cell?.kind} size={cellPx} seed={x * 31 + y * 17} />
                       </button>
                     );
                   })
                 )}
               </div>
             </div>
+
           </>
         )}
       </Card>

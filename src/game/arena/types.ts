@@ -69,6 +69,12 @@ export interface ArenaAnalyticsRow {
   }>;
 }
 
+export interface ArenaReplayFeature {
+  x: number;
+  y: number;
+  kind: 'wall' | 'door' | 'chest' | 'box' | 'lever' | 'trap_spike' | 'trap_dart' | 'stairs_up' | 'stairs_down';
+}
+
 export interface ArenaReplay {
   id: string;
   matchId: string;
@@ -81,6 +87,13 @@ export interface ArenaReplay {
   winner: 'A' | 'B' | 'draw';
   turns: number;
   roomId: string;
+  /** Battlefield dimensions (defaults to 24×24 for legacy replays). */
+  gridWidth?: number;
+  gridHeight?: number;
+  /** Prefab room name used for the floor layout, if any. */
+  layoutName?: string;
+  /** Prefab-derived tiles rendered with the regular dungeon tile art. */
+  features?: ArenaReplayFeature[];
 }
 
 export interface SerializedMonster {

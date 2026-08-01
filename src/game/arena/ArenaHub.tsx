@@ -238,8 +238,49 @@ function TournamentCard({
             Starts in <b>{formatDuration(remaining)}</b> · seed {t.seed} · {t.teams.length}/8 teams
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           {!playerHasEntry && (
+            <Button size="sm"
+              onClick={() => {
+                const unlocked = state.saveData.unlockedMonsters ?? [];
+                const ids = currentPartyComboIds(state)
+                  .filter(id => unlocked.some(u => u.comboId === id))
+                  .slice(0, 6);
+                if (ids.length === 0) {
+                  toast({ title: 'No current party found', description: 'Pick a party in the pre-run screen first.', variant: 'destructive' as any });
+                  return;
+                }
+                const avgLevel = ids.reduce((sum, id) => sum + (unlocked.find(u => u.comboId === id)?.level ?? 1), 0) / ids.length;
+                const team: ArenaTeam = {
+                  id: `player_${Date.now()}`,
+                  name: 'Current Party',
+                  ownerId: 'player',
+                  memberCombos: ids,
+                  level: Math.round(avgLevel),
+                  banner: '⭐',
+                  strategyId: 'balanced',
+                };
+                const check = validateArenaTeam(team, state.saveData);
+                if (!check.valid) {
+                  toast({ title: 'Team failed legitimacy check', description: check.issues.map(i => i.message).join(' · '), variant: 'destructive' as any });
+                  return;
+                }
+                setArena(s => {
+                  const cur = s.tournaments[cadence];
+                  const teams = [team, ...cur.teams.filter(x => x.ownerId !== 'player')].slice(0, 8);
+                  return {
+                    ...s,
+                    playerTeams: [...s.playerTeams.filter(x => x.name !== 'Current Party'), team],
+                    tournaments: { ...s.tournaments, [cadence]: commitTournamentBracket({ ...cur, teams }) },
+                  };
+                });
+                toast({ title: `Entered your current party (${ids.length}) in the ${cadence} tournament` });
+              }}>
+              ⚡ Enter current party
+            </Button>
+          )}
+          {!playerHasEntry && arena.playerTeams.length > 0 && (
+
             <select className="border rounded px-2 py-1 text-xs bg-background"
               onChange={e => {
                 const teamId = e.target.value;
@@ -281,7 +322,7 @@ function TournamentCard({
         </div>
       </div>
       <div className="text-xs text-muted-foreground">
-        {canEnter ? '✅ You can enter — bracket fills with NPCs on resolve.' : playerHasEntry ? '🏳️ Your team is queued.' : '⚠️ Save a team on the "My Teams" tab first.'}
+        {playerHasEntry ? '🏳️ Your team is queued.' : canEnter ? '✅ You can enter a saved team, or use ⚡ Enter current party.' : '⚡ Use "Enter current party" to enter the team you\'re playing with, or save one on the "My Teams" tab.'}
       </div>
       {t.teams.length > 0 && (
         <div className="flex flex-wrap gap-1.5 pt-1">
@@ -332,7 +373,18 @@ function TournamentCard({
   );
 }
 
+/** Combo ids of the team the player is currently using: active run party first,
+ *  falling back to the last party saved in the pre-run party menu. */
+function currentPartyComboIds(state: any): string[] {
+  const runParty = state?.run?.party;
+  if (Array.isArray(runParty) && runParty.length > 0) {
+    return runParty.map((m: any) => `${m.species}_${m.element}_${m.class}`);
+  }
+  return loadPartyMenuComboIds();
+}
+
 function formatDuration(ms: number): string {
+
   if (ms <= 0) return 'now!';
   const s = Math.floor(ms / 1000);
   const d = Math.floor(s / 86400);
@@ -395,7 +447,18 @@ function TeamsTab({ arena, setArena }: { arena: ArenaState; setArena: React.Disp
                 <option key={s.name} value={s.name}>{s.name} ({s.ids.length})</option>
               ))}
             </select>
+            <Button size="sm" variant="secondary"
+              onClick={() => {
+                const ids = currentPartyComboIds(state).filter(id => unlocked.some(u => u.comboId === id)).slice(0, 6);
+                if (ids.length === 0) { toast({ title: 'No current party found' }); return; }
+                setSelected(ids);
+                if (!name || name === 'My Team') setName('Current Party');
+                toast({ title: `Loaded current party (${ids.length})` });
+              }}>
+              ⚡ Use current party
+            </Button>
             <Button size="sm" variant="ghost" onClick={() => { setSelected([]); }}>Clear</Button>
+
           </div>
         </div>
 

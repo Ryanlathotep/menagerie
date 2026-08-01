@@ -3,7 +3,7 @@
  * future dungeon stamping. Supports variable size (4..48), tile painting,
  * enemy/trap placement, tags, tower assignment, save/duplicate/rename/delete.
  */
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { Save, Copy, Trash2, Plus, Eraser, RefreshCw } from 'lucide-react';
+import { Save, Copy, Trash2, Plus, Eraser, RefreshCw, Download, Upload } from 'lucide-react';
 import { fetchRooms, saveRoom, deleteRoom, newBlankRoom, duplicateRoom } from '@/game/rooms/store';
 import type { Room, RoomCell, RoomCellKind } from '@/game/rooms/types';
 import { ROOM_TAGS, KNOWN_TOWER_IDS } from '@/game/rooms/types';
@@ -125,6 +125,47 @@ export function RoomEditor() {
     await refresh();
   };
 
+  /** Export the whole library (or just the open room) to a .json file on disk. */
+  const exportJson = (scope: 'current' | 'all') => {
+    const payload = scope === 'current' ? (current ? [current] : []) : rooms;
+    if (payload.length === 0) { toast.error('Nothing to export'); return; }
+    const blob = new Blob([JSON.stringify({ kind: 'menagerie_rooms', version: 1, rooms: payload }, null, 2)],
+      { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = scope === 'current' ? `room_${current!.name.replace(/\W+/g, '_')}.json` : `menagerie_rooms_${rooms.length}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  /** Load layouts from a local .json file (single room, array, or export wrapper). */
+  const importJson = async (file: File) => {
+    try {
+      const raw = JSON.parse(await file.text());
+      const list: Room[] = Array.isArray(raw) ? raw : Array.isArray(raw?.rooms) ? raw.rooms : [raw];
+      const valid = list.filter(r => r && typeof r.width === 'number' && typeof r.height === 'number' && Array.isArray(r.cells));
+      if (valid.length === 0) { toast.error('No valid rooms in that file'); return; }
+      let saved = 0;
+      for (const r of valid) {
+        const room: Room = {
+          ...r,
+          id: rooms.some(x => x.id === r.id) ? `room_${Date.now()}_${saved}` : (r.id || `room_${Date.now()}_${saved}`),
+          name: rooms.some(x => x.name === r.name) ? `${r.name} (imported)` : (r.name || 'Imported room'),
+          tags: Array.isArray(r.tags) ? r.tags : [],
+          towerIds: Array.isArray(r.towerIds) ? r.towerIds : [],
+          createdAt: r.createdAt ?? Date.now(),
+          updatedAt: Date.now(),
+        };
+        if (await saveRoom(room)) { saved++; setCurrent(room); }
+      }
+      await refresh();
+      toast.success(`Imported ${saved} room${saved === 1 ? '' : 's'}`);
+    } catch (e) {
+      toast.error(`Import failed: ${e instanceof Error ? e.message : 'invalid JSON'}`);
+    }
+  };
+
   const toggleTag = (tag: string) => {
     if (!current) return;
     const has = current.tags.includes(tag);
@@ -156,6 +197,7 @@ export function RoomEditor() {
 
   // Custom tower id input
   const [customTowerId, setCustomTowerId] = useState('');
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_320px] gap-4">
@@ -185,6 +227,19 @@ export function RoomEditor() {
           </div>
           <Input placeholder="Search…" value={filter} onChange={e => setFilter(e.target.value)} className="h-7 text-xs"/>
           <Button size="sm" className="w-full" onClick={startNew}><Plus className="w-3 h-3 mr-1"/>New room</Button>
+          <div className="grid grid-cols-2 gap-1">
+            <Button size="sm" variant="outline" className="text-xs" onClick={() => fileRef.current?.click()}>
+              <Upload className="w-3 h-3 mr-1"/>Load file
+            </Button>
+            <Button size="sm" variant="outline" className="text-xs" onClick={() => exportJson('all')}>
+              <Download className="w-3 h-3 mr-1"/>Export all
+            </Button>
+          </div>
+          <Button size="sm" variant="ghost" className="w-full text-xs" disabled={!current} onClick={() => exportJson('current')}>
+            <Download className="w-3 h-3 mr-1"/>Export open room
+          </Button>
+          <input ref={fileRef} type="file" accept="application/json,.json" className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) importJson(f); e.target.value = ''; }}/>
           <ScrollArea className="h-[380px]">
             <div className="space-y-1 pr-1">
               {loading && <div className="text-xs text-muted-foreground">Loading…</div>}

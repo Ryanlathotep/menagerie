@@ -135,10 +135,34 @@ export function PartyAnalyzer({ party, pool, entrance, onSuggest }: PartyAnalyze
       return { m, score };
     });
     scored.sort((a, b) => (b.score - a.score) || (b.m.level - a.m.level));
-    const suggestions = scored.filter(s => s.score > 0).slice(0, 6).map(s => s.m);
 
-    return { warnings, suggestions, counterElements, counterClasses };
-  }, [party, pool, theme]);
+    // Diversity filters: skip candidates that repeat a species / element /
+    // class already in the party, and don't repeat within the suggestion list.
+    const partySpecies = new Set(party.map(m => m.species));
+    const usedSpecies = new Set(partySpecies);
+    const usedElements = new Set(partyElements);
+    const usedClasses = new Set(partyClasses);
+
+    const suggestions: UnlockedMonster[] = [];
+    for (const { m, score } of scored) {
+      if (score <= 0) continue;
+      if (dedupe.species && usedSpecies.has(m.species)) continue;
+      if (dedupe.element && usedElements.has(m.element)) continue;
+      if (dedupe.classType && usedClasses.has(m.classType)) continue;
+      suggestions.push(m);
+      usedSpecies.add(m.species);
+      usedElements.add(m.element);
+      usedClasses.add(m.classType);
+      if (suggestions.length >= 6) break;
+    }
+
+    const filteredOut = dedupe.species || dedupe.element || dedupe.classType
+      ? scored.filter(s => s.score > 0).length - suggestions.length
+      : 0;
+
+    return { warnings, suggestions, counterElements, counterClasses, filteredOut };
+  }, [party, pool, theme, dedupe]);
+
 
   if (pool.length === 0) return null;
 

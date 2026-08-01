@@ -174,9 +174,6 @@ export function PartyAnalyzer({ party, pool, entrance, onSuggest }: PartyAnalyze
     // for example, a party containing all five non-Normal elements/classes
     // should correctly produce six Normal/Normal picks. Species uniqueness is
     // never relaxed while its checkbox is checked.
-    const usedSpecies = new Set(party.map(m => m.species));
-    const usedElements = new Set(partyElements);
-    const usedClasses = new Set(partyClasses);
     const listSpecies = new Set<string>();
     const listElements = new Set<string>();
     const listClasses = new Set<string>();

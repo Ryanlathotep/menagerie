@@ -11,10 +11,12 @@
 //    completely missing class/element buckets.
 // Suggestions are sorted by level descending (per the todo).
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { MonsterSprite } from '@/game/sprites';
+
 import {
   UnlockedMonster,
   DungeonEntrance,
@@ -49,12 +51,35 @@ function themeLabel(theme?: DungeonTheme): string {
   return `${theme.kind}: ${theme.value}`;
 }
 
+const DEDUPE_STORAGE_KEY = 'partyAnalyzerDedupe';
+
+interface DedupeOptions {
+  species: boolean;
+  element: boolean;
+  classType: boolean;
+}
+
+const DEFAULT_DEDUPE: DedupeOptions = { species: true, element: false, classType: false };
+
 export function PartyAnalyzer({ party, pool, entrance, onSuggest }: PartyAnalyzerProps) {
   const theme = entrance?.theme;
+
+  // Player-controlled diversity filters — persisted so the preference sticks.
+  const [dedupe, setDedupe] = useState<DedupeOptions>(() => {
+    try {
+      const raw = localStorage.getItem(DEDUPE_STORAGE_KEY);
+      if (raw) return { ...DEFAULT_DEDUPE, ...JSON.parse(raw) };
+    } catch { /* ignore */ }
+    return DEFAULT_DEDUPE;
+  });
+  useEffect(() => {
+    try { localStorage.setItem(DEDUPE_STORAGE_KEY, JSON.stringify(dedupe)); } catch { /* ignore */ }
+  }, [dedupe]);
 
   const analysis = useMemo(() => {
     const partyIds = new Set(party.map(m => m.comboId));
     const available = pool.filter(m => !partyIds.has(m.comboId));
+
 
     const partyElements = new Set(party.map(m => m.element));
     const partyClasses = new Set(party.map(m => m.classType));
@@ -110,10 +135,34 @@ export function PartyAnalyzer({ party, pool, entrance, onSuggest }: PartyAnalyze
       return { m, score };
     });
     scored.sort((a, b) => (b.score - a.score) || (b.m.level - a.m.level));
-    const suggestions = scored.filter(s => s.score > 0).slice(0, 6).map(s => s.m);
 
-    return { warnings, suggestions, counterElements, counterClasses };
-  }, [party, pool, theme]);
+    // Diversity filters: skip candidates that repeat a species / element /
+    // class already in the party, and don't repeat within the suggestion list.
+    const partySpecies = new Set(party.map(m => m.species));
+    const usedSpecies = new Set(partySpecies);
+    const usedElements = new Set(partyElements);
+    const usedClasses = new Set(partyClasses);
+
+    const suggestions: UnlockedMonster[] = [];
+    for (const { m, score } of scored) {
+      if (score <= 0) continue;
+      if (dedupe.species && usedSpecies.has(m.species)) continue;
+      if (dedupe.element && usedElements.has(m.element)) continue;
+      if (dedupe.classType && usedClasses.has(m.classType)) continue;
+      suggestions.push(m);
+      usedSpecies.add(m.species);
+      usedElements.add(m.element);
+      usedClasses.add(m.classType);
+      if (suggestions.length >= 6) break;
+    }
+
+    const filteredOut = dedupe.species || dedupe.element || dedupe.classType
+      ? scored.filter(s => s.score > 0).length - suggestions.length
+      : 0;
+
+    return { warnings, suggestions, counterElements, counterClasses, filteredOut };
+  }, [party, pool, theme, dedupe]);
+
 
   if (pool.length === 0) return null;
 
@@ -148,36 +197,66 @@ export function PartyAnalyzer({ party, pool, entrance, onSuggest }: PartyAnalyze
           )}
         </div>
 
-        {analysis.suggestions.length > 0 && (
-          <div className="flex-1 min-w-[220px]">
-            <p className="text-[11px] text-muted-foreground mb-1">Suggested picks (click to add):</p>
-            <div className="flex gap-1.5 flex-wrap">
-              {analysis.suggestions.map(m => (
-                <Button
-                  key={m.comboId}
-                  variant="outline"
-                  size="sm"
-                  className="h-auto py-1 px-2 flex items-center gap-1.5"
-                  onClick={() => onSuggest(m)}
-                  title={`${m.species} · ${m.element} · ${m.classType} · Lv.${m.level}`}
-                >
-                  <MonsterSprite
-                    species={m.species}
-                    element={m.element}
-                    classType={m.classType}
-                    size={22}
-                    animated={false}
-                  />
-                  <span className="text-[10px] leading-tight text-left">
-                    <span className="block capitalize font-medium">{m.species}</span>
-                    <span className="block text-muted-foreground">Lv.{m.level}</span>
-                  </span>
-                </Button>
-              ))}
-            </div>
+        <div className="flex-1 min-w-[220px]">
+          <p className="text-[11px] text-muted-foreground mb-1">Avoid duplicates in suggestions:</p>
+          <div className="flex gap-3 flex-wrap mb-2">
+            {([
+              ['species', 'Species'],
+              ['element', 'Elements'],
+              ['classType', 'Classes'],
+            ] as [keyof DedupeOptions, string][]).map(([key, label]) => (
+              <label key={key} className="flex items-center gap-1.5 text-[11px] cursor-pointer select-none">
+                <Checkbox
+                  checked={dedupe[key]}
+                  onCheckedChange={(v) => setDedupe(prev => ({ ...prev, [key]: v === true }))}
+                  aria-label={`Avoid duplicate ${label.toLowerCase()}`}
+                />
+                {label}
+              </label>
+            ))}
           </div>
-        )}
+
+          {analysis.suggestions.length > 0 ? (
+            <>
+              <p className="text-[11px] text-muted-foreground mb-1">Suggested picks (click to add):</p>
+              <div className="flex gap-1.5 flex-wrap">
+                {analysis.suggestions.map(m => (
+                  <Button
+                    key={m.comboId}
+                    variant="outline"
+                    size="sm"
+                    className="h-auto py-1 px-2 flex items-center gap-1.5"
+                    onClick={() => onSuggest(m)}
+                    title={`${m.species} · ${m.element} · ${m.classType} · Lv.${m.level}`}
+                  >
+                    <MonsterSprite
+                      species={m.species}
+                      element={m.element}
+                      classType={m.classType}
+                      size={22}
+                      animated={false}
+                    />
+                    <span className="text-[10px] leading-tight text-left">
+                      <span className="block capitalize font-medium">{m.species}</span>
+                      <span className="block text-muted-foreground">Lv.{m.level}</span>
+                    </span>
+                  </Button>
+                ))}
+              </div>
+              {analysis.filteredOut > 0 && (
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {analysis.filteredOut} duplicate pick{analysis.filteredOut === 1 ? '' : 's'} hidden by these filters.
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              No suggestions match these filters — uncheck one to widen the search.
+            </p>
+          )}
+        </div>
       </div>
+
     </Card>
   );
 }

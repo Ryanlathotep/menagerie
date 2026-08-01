@@ -63,7 +63,7 @@ export function PracticeDuel({ arena, unlocked }: Props) {
     const result = runArenaCombat(
       { id: teamA.id, name: teamA.name, members: membersA, strategy: resolveStrategy(strategyA as any) },
       { id: bTeam.id, name: bTeam.name, members: membersB, strategy: resolveStrategy(strategyB as any) },
-      { seed, gridWidth: 6, gridHeight: 6 },
+      { seed, gridWidth: 24, gridHeight: 24 },
     );
 
     const rooms = getAllRooms();
@@ -81,6 +81,8 @@ export function PracticeDuel({ arena, unlocked }: Props) {
       winner: result.winner,
       turns: result.turns,
       roomId: room.id,
+      gridWidth: 24,
+      gridHeight: 24,
     };
     setReplay(r);
   };
@@ -92,7 +94,7 @@ export function PracticeDuel({ arena, unlocked }: Props) {
       <Card className="p-3 space-y-3">
         <div className="text-sm font-semibold">🥊 Practice Duel</div>
         <p className="text-xs text-muted-foreground">
-          Run any saved team through the 6x6 engine against an NPC or another saved team. No tokens awarded, no persistence — pure balance testing.
+          Run any saved team through the 24x24 arena engine against an NPC or another saved team. No tokens awarded, no persistence — pure balance testing.
         </p>
 
         <div className="grid grid-cols-2 gap-2">

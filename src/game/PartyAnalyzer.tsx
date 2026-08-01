@@ -25,6 +25,7 @@ import {
   ClassType,
   ELEMENT_ADVANTAGES,
   CLASS_ADVANTAGES_CORRECTED,
+  SPECIES_DATA,
 } from '@/game/types';
 
 interface PartyAnalyzerProps {
@@ -124,49 +125,84 @@ export function PartyAnalyzer({ party, pool, entrance, onSuggest }: PartyAnalyze
       }
     }
 
-    // Score candidates: counter-element +3, counter-class +3, fills missing
-    // element/class bucket +1 each, then break ties by level (desc).
-    const scored = available.map(m => {
-      let score = 0;
-      if (counterElements.includes(m.element)) score += 3;
-      if (counterClasses.includes(m.classType)) score += 3;
-      if (!partyElements.has(m.element)) score += 1;
-      if (!partyClasses.has(m.classType)) score += 1;
-      return { m, score };
-    });
-    scored.sort((a, b) => (b.score - a.score) || (b.m.level - a.m.level));
+    // Raw combat power: species base stats grown by the standard 1.1x/level
+    // curve, plus a rough contribution from persisted equipment. Logged so a
+    // hyper-levelled pick can't completely drown out matchup value.
+    const powerOf = (m: UnlockedMonster) => {
+      const base = SPECIES_DATA[m.species]?.baseStats;
+      const statSum = base
+        ? base.hp * 0.5 + base.attack + base.defense + base.speed + base.special
+        : 30;
+      const growth = Math.pow(1.1, Math.max(0, m.level - 1));
+      let gear = 0;
+      const eq = m.equipment as unknown as Record<string, { stats?: Record<string, number> }> | undefined;
+      if (eq) {
+        for (const item of Object.values(eq)) {
+          if (!item || typeof item !== 'object') continue;
+          for (const v of Object.values(item.stats ?? {})) {
+            if (typeof v === 'number') gear += v;
+          }
+        }
+      }
+      return statSum * growth + gear;
+    };
 
-    // Diversity filters: skip candidates that repeat a species / element /
-    // class already in the party, and don't repeat within the suggestion list.
-    const partySpecies = new Set(party.map(m => m.species));
-    const usedSpecies = new Set(partySpecies);
+    // Normalize power into a 0..6 bonus relative to the strongest candidate so
+    // it competes with matchup bonuses instead of dominating or being ignored.
+    const powers = new Map(available.map(m => [m.comboId, powerOf(m)]));
+    const maxPower = Math.max(1, ...powers.values());
+
+    // Score candidates: counter-element +3, counter-class +3, fills missing
+    // element/class bucket +1 each, plus up to +6 for raw strength.
+    const scored = available.map(m => {
+      let matchup = 0;
+      if (counterElements.includes(m.element)) matchup += 3;
+      if (counterClasses.includes(m.classType)) matchup += 3;
+      if (!partyElements.has(m.element)) matchup += 1;
+      if (!partyClasses.has(m.classType)) matchup += 1;
+      const power = powers.get(m.comboId) ?? 0;
+      const powerScore = 6 * (Math.log10(1 + power) / Math.log10(1 + maxPower));
+      return { m, matchup, power, score: matchup + powerScore };
+    });
+    scored.sort((a, b) => (b.score - a.score) || (b.power - a.power) || (b.m.level - a.m.level));
+
+    // Diversity filters. Two levels of strictness: "party" also excludes traits
+    // already on the field, "list" only guarantees the six shown picks differ
+    // from each other. Species uniqueness inside the list is never relaxed
+    // while the checkbox is on.
+    const usedSpecies = new Set(party.map(m => m.species));
     const usedElements = new Set(partyElements);
     const usedClasses = new Set(partyClasses);
+    const listSpecies = new Set<string>();
+    const listElements = new Set<string>();
+    const listClasses = new Set<string>();
 
     const TARGET = 6;
     const suggestions: UnlockedMonster[] = [];
     const chosen = new Set<string>();
 
-    // Pass 1: scoring picks honoring the active diversity filters.
-    // Pass 2: zero-score picks honoring filters. Pass 3: ignore filters so the
-    // list always shows 6 options when the pool is big enough.
-    const passes: Array<{ minScore: number; respectDedupe: boolean }> = [
-      { minScore: 1, respectDedupe: true },
-      { minScore: 0, respectDedupe: true },
-      { minScore: 0, respectDedupe: false },
+    const passes: Array<{ minMatchup: number; scope: 'party' | 'list' | 'none' }> = [
+      { minMatchup: 1, scope: 'party' },
+      { minMatchup: 0, scope: 'party' },
+      { minMatchup: 0, scope: 'list' },
+      { minMatchup: 0, scope: 'none' },
     ];
     for (const pass of passes) {
-      for (const { m, score } of scored) {
+      for (const { m, matchup } of scored) {
         if (suggestions.length >= TARGET) break;
         if (chosen.has(m.comboId)) continue;
-        if (score < pass.minScore) continue;
-        if (pass.respectDedupe) {
-          if (dedupe.species && usedSpecies.has(m.species)) continue;
-          if (dedupe.element && usedElements.has(m.element)) continue;
-          if (dedupe.classType && usedClasses.has(m.classType)) continue;
+        if (matchup < pass.minMatchup) continue;
+        if (pass.scope !== 'none') {
+          const strict = pass.scope === 'party';
+          if (dedupe.species && (listSpecies.has(m.species) || (strict && usedSpecies.has(m.species)))) continue;
+          if (dedupe.element && (listElements.has(m.element) || (strict && usedElements.has(m.element)))) continue;
+          if (dedupe.classType && (listClasses.has(m.classType) || (strict && usedClasses.has(m.classType)))) continue;
         }
         suggestions.push(m);
         chosen.add(m.comboId);
+        listSpecies.add(m.species);
+        listElements.add(m.element);
+        listClasses.add(m.classType);
         usedSpecies.add(m.species);
         usedElements.add(m.element);
         usedClasses.add(m.classType);
@@ -175,6 +211,7 @@ export function PartyAnalyzer({ party, pool, entrance, onSuggest }: PartyAnalyze
     }
 
     const filteredOut = 0;
+
 
 
     return { warnings, suggestions, counterElements, counterClasses, filteredOut };

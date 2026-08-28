@@ -30,6 +30,7 @@ import { UsernameEditor } from './UsernameEditor';
 import { DiscoveryLeaderboard } from './DiscoveryLeaderboard';
 import { ExplorationLeaderboard } from './ExplorationLeaderboard';
 import type { LevelDisplayMode } from './levelDisplay';
+import { AutoplayRulesPanel } from './autoplay/AutoplayRulesPanel';
 
 // Settings interface
 export type ThemeMode = 'system' | 'light' | 'dark';

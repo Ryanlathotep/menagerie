@@ -261,11 +261,20 @@ export function MovesEditor() {
       };
       toast.info('Auto-attached a default 4-step dash pattern. Edit it in the Shapes tab.');
     }
-    const ok = await saveOverride('moves', base.id, merged as unknown as Record<string, unknown>);
+    // Auto-refresh derived tags (AoE pattern, radius, piercing, movement type)
+    // so an edited move is always tagged consistently with its own data.
+    const tagged = normalizeMoveTags(merged);
+    const retagged =
+      tagged.targeting !== merged.targeting ||
+      tagged.aoeRadius !== merged.aoeRadius ||
+      tagged.piercing !== merged.piercing ||
+      tagged.type !== merged.type;
+    const ok = await saveOverride('moves', base.id, tagged as unknown as Record<string, unknown>);
     if (ok) {
-      setSingleMoveOverride(base.id, merged);
-      setEditedMove(merged);
-      toast.success(`Saved ${merged.name}`);
+      setSingleMoveOverride(base.id, tagged);
+      setEditedMove(tagged);
+      toast.success(`Saved ${tagged.name}`);
+      if (retagged) toast.info(`Tags auto-updated: ${tagged.type}/${tagged.targeting ?? 'single'}${tagged.aoeRadius ? ` r${tagged.aoeRadius}` : ''}`);
     }
   };
 

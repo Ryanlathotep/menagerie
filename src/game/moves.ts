@@ -227,7 +227,7 @@ export const SPECIES_MOVES: Record<SpeciesType, Move[]> = {
   golem: [
     { id: 'rock_smash', name: 'Rock Smash', description: 'Devastating punch', type: 'melee', power: 45, accuracy: 75, staminaCost: 10, speedMod: -2, aspects: ['species'], unlockLevel: 1 },
     { id: 'fortify', name: 'Fortify', description: 'Harden defenses', type: 'status', power: 0, accuracy: 100, staminaCost: 6, speedMod: 0, aspects: ['species'], effect: 'raise_defense', unlockLevel: 1 },
-    { id: 'tremor', name: 'Tremor', description: 'Shake the ground', type: 'melee', power: 30, accuracy: 90, staminaCost: 7, speedMod: -1, aspects: ['species'], effect: 'lower_speed', unlockLevel: 4 },
+    { id: 'tremor', name: 'Tremor', description: 'Shake the ground', type: 'melee', power: 30, accuracy: 90, staminaCost: 7, speedMod: -1, aspects: ['species'], effect: 'lower_speed', unlockLevel: 4, targeting: 'aura', aoeRadius: 1 },
     { id: 'boulder_throw', name: 'Boulder Throw', description: 'Hurl a massive rock in a straight line', type: 'ranged', power: 55, accuracy: 70, staminaCost: 13, speedMod: -2, aspects: ['species'], unlockLevel: 8, targeting: 'single' },
     { id: 'tectonic_slam', name: 'Tectonic Slam', description: 'Earth-shattering blow that quakes adjacent tiles', type: 'melee', power: 70, accuracy: 65, staminaCost: 18, speedMod: -3, aspects: ['species'], unlockLevel: 14, targeting: 'aura', aoeRadius: 1 },
     { id: 'shockwave', name: 'Shockwave', description: 'Pound the ground — hits all adjacent foes', type: 'melee', power: 32, accuracy: 90, staminaCost: 10, speedMod: -1, aspects: ['species'], unlockLevel: 6, targeting: 'aura', aoeRadius: 1 },
@@ -332,7 +332,7 @@ export const SPECIES_MOVES: Record<SpeciesType, Move[]> = {
     { id: 'tentacle_wrap', name: 'Tentacle Wrap', description: 'Constricting tentacles', type: 'melee', power: 30, accuracy: 88, staminaCost: 7, speedMod: -1, aspects: ['species'], effect: 'paralyze', unlockLevel: 4 },
     { id: 'bioluminescence', name: 'Bioluminescence', description: 'Confusing light display', type: 'status', power: 0, accuracy: 85, staminaCost: 6, speedMod: 0, aspects: ['species'], effect: 'confuse', unlockLevel: 6 },
     { id: 'venom_cloud', name: 'Venom Cloud', description: 'Toxic cloud around you', type: 'ranged', power: 35, accuracy: 85, staminaCost: 10, speedMod: -1, aspects: ['species'], effect: 'poison', unlockLevel: 9, targeting: 'aura', aoeRadius: 2 },
-    { id: 'tentacle_storm', name: 'Tentacle Storm', description: 'Flurry of stinging attacks', type: 'melee', power: 50, accuracy: 82, staminaCost: 14, speedMod: -1, aspects: ['species'], effect: 'paralyze', unlockLevel: 13 },
+    { id: 'tentacle_storm', name: 'Tentacle Storm', description: 'Flurry of stinging attacks', type: 'melee', power: 50, accuracy: 82, staminaCost: 14, speedMod: -1, aspects: ['species'], effect: 'paralyze', unlockLevel: 13, targeting: 'aura', aoeRadius: 1 },
   ],
 };
 
@@ -401,15 +401,15 @@ export const CLASS_MOVES: Record<ClassType, Move[]> = {
     { id: 'second_wind', name: 'Second Wind', description: 'Recover 25 stamina', type: 'status', power: 0, accuracy: 100, staminaCost: 0, speedMod: -1, aspects: ['class'], classBonus: 'kinetic', effect: 'restore_stamina_25', unlockLevel: 1 },
     { id: 'heavy_blow', name: 'Heavy Blow', description: 'Powerful but slow', type: 'melee', power: 55, accuracy: 82, staminaCost: 12, speedMod: -1, aspects: ['class'], classBonus: 'kinetic', unlockLevel: 5 },
     { id: 'full_force', name: 'Full Force', description: 'Maximum physical power', type: 'melee', power: 70, accuracy: 75, staminaCost: 16, speedMod: -2, aspects: ['class'], classBonus: 'kinetic', unlockLevel: 9 },
-    { id: 'meteor_strike', name: 'Meteor Strike', description: 'Devastating physical attack', type: 'melee', power: 85, accuracy: 68, staminaCost: 20, speedMod: -2, aspects: ['class'], classBonus: 'kinetic', unlockLevel: 14 },
+    { id: 'meteor_strike', name: 'Meteor Strike', description: 'Devastating physical attack', type: 'melee', power: 85, accuracy: 68, staminaCost: 20, speedMod: -2, aspects: ['class'], classBonus: 'kinetic', unlockLevel: 14, targeting: 'aura', aoeRadius: 1 },
   ],
   energy: [
-    { id: 'energy_blast', name: 'Energy Blast', description: 'Pure energy attack', type: 'ranged', power: 35, accuracy: 95, staminaCost: 7, speedMod: 1, aspects: ['class'], classBonus: 'energy', unlockLevel: 1 },
+    { id: 'energy_blast', name: 'Energy Blast', description: 'Pure energy attack', type: 'ranged', power: 35, accuracy: 95, staminaCost: 7, speedMod: 1, aspects: ['class'], classBonus: 'energy', unlockLevel: 1, targeting: 'single' },
     { id: 'overcharge', name: 'Overcharge', description: 'Boost special power', type: 'status', power: 0, accuracy: 100, staminaCost: 6, speedMod: 0, aspects: ['class'], classBonus: 'energy', effect: 'raise_special', unlockLevel: 1 },
     { id: 'energy_siphon', name: 'Energy Siphon', description: 'Drain stamina from enemy', type: 'status', power: 0, accuracy: 85, staminaCost: 0, speedMod: 0, aspects: ['class'], classBonus: 'energy', effect: 'drain_enemy_stamina', unlockLevel: 1 },
-    { id: 'power_surge', name: 'Power Surge', description: 'Surge of energy', type: 'ranged', power: 45, accuracy: 92, staminaCost: 10, speedMod: 1, aspects: ['class'], classBonus: 'energy', unlockLevel: 5 },
-    { id: 'plasma_bolt', name: 'Plasma Bolt', description: 'Superheated energy', type: 'ranged', power: 60, accuracy: 85, staminaCost: 14, speedMod: 1, aspects: ['class'], classBonus: 'energy', unlockLevel: 9 },
-    { id: 'nova_burst', name: 'Nova Burst', description: 'Explosive energy release', type: 'ranged', power: 75, accuracy: 78, staminaCost: 18, speedMod: 0, aspects: ['class'], classBonus: 'energy', unlockLevel: 13 },
+    { id: 'power_surge', name: 'Power Surge', description: 'Surge of energy', type: 'ranged', power: 45, accuracy: 92, staminaCost: 10, speedMod: 1, aspects: ['class'], classBonus: 'energy', unlockLevel: 5, targeting: 'single' },
+    { id: 'plasma_bolt', name: 'Plasma Bolt', description: 'Superheated energy', type: 'ranged', power: 60, accuracy: 85, staminaCost: 14, speedMod: 1, aspects: ['class'], classBonus: 'energy', unlockLevel: 9, targeting: 'single' },
+    { id: 'nova_burst', name: 'Nova Burst', description: 'Explosive energy release', type: 'ranged', power: 75, accuracy: 78, staminaCost: 18, speedMod: 0, aspects: ['class'], classBonus: 'energy', unlockLevel: 13, targeting: 'aura', aoeRadius: 2 },
   ],
   biological: [
     { id: 'bio_strike', name: 'Bio Strike', description: 'Nature-infused attack', type: 'melee', power: 30, accuracy: 90, staminaCost: 6, speedMod: 0, aspects: ['class'], classBonus: 'biological', unlockLevel: 1 },
@@ -420,20 +420,20 @@ export const CLASS_MOVES: Record<ClassType, Move[]> = {
     { id: 'full_restore', name: 'Full Restore', description: 'Heal 60 HP', type: 'heal', power: 60, accuracy: 100, staminaCost: 18, speedMod: -2, aspects: ['class'], classBonus: 'biological', unlockLevel: 12 },
   ],
   chemical: [
-    { id: 'acid_spray', name: 'Acid Spray', description: 'Corrosive attack', type: 'ranged', power: 30, accuracy: 90, staminaCost: 7, speedMod: 0, aspects: ['class'], classBonus: 'chemical', effect: 'lower_defense', unlockLevel: 1 },
+    { id: 'acid_spray', name: 'Acid Spray', description: 'Corrosive attack', type: 'ranged', power: 30, accuracy: 90, staminaCost: 7, speedMod: 0, aspects: ['class'], classBonus: 'chemical', effect: 'lower_defense', unlockLevel: 1, targeting: 'cone', aoeRadius: 2 },
     { id: 'catalyst', name: 'Catalyst', description: 'Boost next attack', type: 'status', power: 0, accuracy: 100, staminaCost: 5, speedMod: 0, aspects: ['class'], classBonus: 'chemical', effect: 'double_next', unlockLevel: 1 },
     { id: 'adrenaline', name: 'Adrenaline', description: 'Recover 15 stamina', type: 'status', power: 0, accuracy: 100, staminaCost: 0, speedMod: 1, aspects: ['class'], classBonus: 'chemical', effect: 'restore_stamina_15', unlockLevel: 1 },
-    { id: 'corrosive_bomb', name: 'Corrosive Bomb', description: 'Explosive acid', type: 'ranged', power: 45, accuracy: 85, staminaCost: 11, speedMod: 0, aspects: ['class'], classBonus: 'chemical', effect: 'lower_defense', unlockLevel: 5 },
+    { id: 'corrosive_bomb', name: 'Corrosive Bomb', description: 'Explosive acid', type: 'ranged', power: 45, accuracy: 85, staminaCost: 11, speedMod: 0, aspects: ['class'], classBonus: 'chemical', effect: 'lower_defense', unlockLevel: 5, targeting: 'area', aoeRadius: 1 },
     { id: 'toxic_injection', name: 'Toxic Injection', description: 'Inject deadly toxins', type: 'melee', power: 40, accuracy: 92, staminaCost: 10, speedMod: 0, aspects: ['class'], classBonus: 'chemical', effect: 'poison', unlockLevel: 8 },
-    { id: 'chemical_warfare', name: 'Chemical Warfare', description: 'Devastating chemical attack', type: 'ranged', power: 65, accuracy: 78, staminaCost: 17, speedMod: -1, aspects: ['class'], classBonus: 'chemical', effect: 'poison', unlockLevel: 13 },
+    { id: 'chemical_warfare', name: 'Chemical Warfare', description: 'Devastating chemical attack', type: 'ranged', power: 65, accuracy: 78, staminaCost: 17, speedMod: -1, aspects: ['class'], classBonus: 'chemical', effect: 'poison', unlockLevel: 13, targeting: 'area', aoeRadius: 2 },
   ],
   political: [
-    { id: 'decree', name: 'Decree', description: 'Commanding strike', type: 'ranged', power: 25, accuracy: 100, staminaCost: 6, speedMod: 1, aspects: ['class'], classBonus: 'political', unlockLevel: 1 },
+    { id: 'decree', name: 'Decree', description: 'Commanding strike', type: 'ranged', power: 25, accuracy: 100, staminaCost: 6, speedMod: 1, aspects: ['class'], classBonus: 'political', unlockLevel: 1, targeting: 'single' },
     { id: 'inspire', name: 'Inspire', description: 'Boost all stats', type: 'status', power: 0, accuracy: 100, staminaCost: 12, speedMod: 0, aspects: ['class'], classBonus: 'political', effect: 'raise_all_stats', unlockLevel: 1 },
     { id: 'rally', name: 'Rally', description: 'Recover 30 stamina', type: 'status', power: 0, accuracy: 100, staminaCost: 0, speedMod: -1, aspects: ['class'], classBonus: 'political', effect: 'restore_stamina_30', unlockLevel: 1 },
     { id: 'diplomacy', name: 'Diplomacy', description: 'Lower enemy attack', type: 'status', power: 0, accuracy: 90, staminaCost: 6, speedMod: 1, aspects: ['class'], classBonus: 'political', effect: 'lower_attack', unlockLevel: 4 },
-    { id: 'royal_command', name: 'Royal Command', description: 'Authoritative attack', type: 'ranged', power: 45, accuracy: 95, staminaCost: 11, speedMod: 1, aspects: ['class'], classBonus: 'political', unlockLevel: 8 },
-    { id: 'absolute_authority', name: 'Absolute Authority', description: 'Overwhelming command', type: 'ranged', power: 60, accuracy: 92, staminaCost: 15, speedMod: 0, aspects: ['class'], classBonus: 'political', effect: 'lower_all_stats', unlockLevel: 12 },
+    { id: 'royal_command', name: 'Royal Command', description: 'Authoritative attack', type: 'ranged', power: 45, accuracy: 95, staminaCost: 11, speedMod: 1, aspects: ['class'], classBonus: 'political', unlockLevel: 8, targeting: 'single' },
+    { id: 'absolute_authority', name: 'Absolute Authority', description: 'Overwhelming command', type: 'ranged', power: 60, accuracy: 92, staminaCost: 15, speedMod: 0, aspects: ['class'], classBonus: 'political', effect: 'lower_all_stats', unlockLevel: 12, targeting: 'aura', aoeRadius: 2 },
   ],
 };
 

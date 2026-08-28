@@ -112,9 +112,10 @@ function loadState(cfg: FabConfig): FabState {
   } catch {
     /* ignore */
   }
+  const startsHome = cfg.hasHome === true && cfg.defaultHome !== false;
   return {
-    docked: cfg.hasHome ? false : defaultDocked,
-    home: cfg.hasHome ? cfg.defaultHome !== false : false,
+    docked: startsHome ? false : defaultDocked,
+    home: startsHome,
     x: defPos.x,
     y: defPos.y,
   };

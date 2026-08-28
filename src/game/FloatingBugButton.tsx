@@ -20,6 +20,7 @@ export function FloatingBugButton() {
           x: w - size - 12,
           y: h - size - 12,
         })}
+        hasHome
         onTap={() => setOpen(true)}
         title="Report a bug (drag to reposition)"
         ariaLabel="Report a bug"

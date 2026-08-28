@@ -23,6 +23,7 @@ import {
   CLASS_ADVANTAGES_CORRECTED,
 } from './types';
 import type { Move } from './moves';
+import { MoveTagBadges } from './MoveTagBadges';
 import { calculateEquipmentBonuses, calculateSetBonusStats } from './equipment';
 import { isCreativeMode } from './creativeMode';
 import {
@@ -409,7 +410,6 @@ export function CharacterMenu({
                       {move.power > 0 && `⚔${move.power} `}
                       {`🎯${move.accuracy}% `}
                       {`⚡${move.staminaCost}`}
-                      {move.range != null && move.range > 1 && ` 📏${move.range}`}
                     </span>
                   </div>
                   <MoveTagBadges move={move} max={5} className="mt-0.5" />

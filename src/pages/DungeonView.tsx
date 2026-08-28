@@ -1031,6 +1031,7 @@ export function DungeonView({
           : '✅ Auto-Harvest finished — resource depleted.');
         // Auto-Harvest-All keeps rolling to the next resource on the floor.
         if (harvestAllModeRef.current) setTimeout(() => planNextHarvestStepRef.current(), 200);
+        else if (autoplayModeRef.current) setTimeout(() => planNextAutoplayStepRef.current(), 200);
         return;
       }
       const direction = getDirection(liveDungeon.playerPosition, { x: target.x, y: target.y });
@@ -1160,7 +1161,7 @@ export function DungeonView({
       // auto-run/path-walk" branches below don't cover) and so the browser
       // doesn't scroll the page on space.
       if (e.key === ' ' || e.key === 'Spacebar') {
-        const halted = isAutoRunning || isPathWalking || !!autoHarvestTargetRef.current || huntingModeRef.current || harvestAllModeRef.current;
+        const halted = isAutoRunning || isPathWalking || !!autoHarvestTargetRef.current || huntingModeRef.current || harvestAllModeRef.current || autoplayModeRef.current;
         if (halted) {
           e.preventDefault();
           if (huntingModeRef.current) {
@@ -1170,6 +1171,10 @@ export function DungeonView({
           if (harvestAllModeRef.current) {
             harvestAllModeRef.current = false;
             addLog('⏸ Auto-Harvest halted.', 'info');
+          }
+          if (autoplayModeRef.current) {
+            autoplayModeRef.current = false;
+            addLog('⏸ Autoplay halted.', 'info');
           }
 
           if (isAutoRunning) {
@@ -1904,6 +1909,8 @@ export function DungeonView({
           setTimeout(() => planNextHuntStepRef.current(), 0);
         } else if (harvestAllModeRef.current) {
           setTimeout(() => planNextHarvestStepRef.current(), 60);
+         else if (autoplayModeRef.current) {
+          setTimeout(() => planNextAutoplayStepRef.current(), 60);
         }
 
         return;
@@ -1931,7 +1938,7 @@ export function DungeonView({
         // Check if we should stop (enemy, trap, etc.). In Auto-Hunt mode we
         // allow stepping through treasure/traps so pickups & disarms don't
         // break the chase.
-        const shouldStop = shouldStopAutoRun(currentDungeon.tiles, nextPos.x, nextPos.y, currentDungeon.width, currentDungeon.height, { allowMineable: !!settings.autoMine, allowInteract: huntingModeRef.current });
+        const shouldStop = shouldStopAutoRun(currentDungeon.tiles, nextPos.x, nextPos.y, currentDungeon.width, currentDungeon.height, { allowMineable: !!settings.autoMine, allowInteract: huntingModeRef.current || autoplayModeRef.current });
 
         isMovingRef.current = true;
         handleMoveRef.current(direction);
@@ -1955,6 +1962,8 @@ export function DungeonView({
             setTimeout(() => planNextHuntStepRef.current(), 0);
           } else if (harvestAllModeRef.current) {
             setTimeout(() => planNextHarvestStepRef.current(), 60);
+           else if (autoplayModeRef.current) {
+            setTimeout(() => planNextAutoplayStepRef.current(), 60);
           }
 
           return;
@@ -4862,6 +4871,20 @@ export function DungeonView({
               // ── Global auto-action shortcuts (available from every tile menu) ──
               // Mirror the overworld menu so Auto-Hunt / Auto-Search are always
               // one right-click away, even inside dungeons.
+              actions.push({
+                id: 'autoplay',
+                label: 'Autoplay (play for me)',
+                icon: Bot,
+                hint: 'Loots, disarms, harvests and takes the stairs on its own — fights with your attack rules when an enemy gets in range, then carries on',
+                onClick: () => {
+                  close();
+                  addLog('🤖 Autoplay engaged — working through this floor.', 'info');
+                  huntingModeRef.current = false;
+                  harvestAllModeRef.current = false;
+                  autoplayModeRef.current = true;
+                  planNextAutoplayStepRef.current();
+                },
+              });
               actions.push({
                 id: 'auto-hunt',
                 label: 'Auto-Hunt (spiral outward)',

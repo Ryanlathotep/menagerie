@@ -367,10 +367,11 @@ function FloatingDockRoot() {
     if (!d || d.pointerId !== e.pointerId) return;
     dragRef.current = null;
     if (d.moved) {
-      const p = clampDock({ x: e.clientX - d.offX, y: e.clientY - d.offY });
+      const p = snapDock(clampDock({ x: e.clientX - d.offX, y: e.clientY - d.offY }));
       setDockPos(p);
       saveDockPos(p);
     }
+
     setDragging(false);
   };
 

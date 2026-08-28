@@ -1019,7 +1019,11 @@ export function DungeonView({
       }
       const liveTile = liveDungeon.tiles[target.y]?.[target.x];
       if (!liveTile || liveTile.type !== target.tileType) {
-        cancelAutoHarvest('✅ Auto-Harvest finished — resource depleted.');
+        cancelAutoHarvest(target.tileType === 'nest'
+          ? '✅ Nest destroyed.'
+          : '✅ Auto-Harvest finished — resource depleted.');
+        // Auto-Harvest-All keeps rolling to the next resource on the floor.
+        if (harvestAllModeRef.current) setTimeout(() => planNextHarvestStepRef.current(), 200);
         return;
       }
       const direction = getDirection(liveDungeon.playerPosition, { x: target.x, y: target.y });
@@ -1036,6 +1040,9 @@ export function DungeonView({
       setTimeout(() => { isMovingRef.current = false; }, 250);
     }, stepDelay);
   }, [cancelAutoHarvest, settings.autoRunSpeed]);
+
+  const startDungeonAutoHarvestRef = useRef(startDungeonAutoHarvest);
+  useEffect(() => { startDungeonAutoHarvestRef.current = startDungeonAutoHarvest; }, [startDungeonAutoHarvest]);
 
   useEffect(() => () => cancelAutoHarvest(), [cancelAutoHarvest]);
 
@@ -1531,6 +1538,9 @@ export function DungeonView({
     }
     return best?.pos ?? null;
   }, [settings.autoMine]);
+
+  const findApproachTileRef = useRef(findApproachTile);
+  useEffect(() => { findApproachTileRef.current = findApproachTile; }, [findApproachTile]);
 
   // ─── Dungeon Auto-Search runner ───────────────────────────────────────────
   // Extracted from the picker modal so the "continue at stairs" prompt can

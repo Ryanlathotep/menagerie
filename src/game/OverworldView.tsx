@@ -2388,6 +2388,11 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       experienceToNext={xpToNextLevel(state.run?.currentMonster?.level || 1)} 
       onFlee={handleReturnToTown}
       onOpenWorkshop={effectiveTools(state.saveData.tools).workstation ? () => setShowWorkshop(true) : undefined}
+      onOpenBuild={() => setShowBuildPanel(true)}
+      buildActive={buildMode || roadBuildMode || showBuildPanel}
+      onSave={handleManualSave}
+      saving={syncing}
+      saveTitle={isAuthenticated ? 'Save progress to cloud' : 'Save progress locally'}
       fleeTitle="Return to town"
       fleeVariant="home"
       onMainMenu={handleReturnToMainMenu}

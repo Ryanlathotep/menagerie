@@ -154,16 +154,21 @@ export function UnifiedMovePanel({
     const filtered = filterMoves(moves, filters, searchQuery, filterMode);
     return sortMoves(filtered, sortOption, monster, moveOrder);
   }, [moves, filters, filterMode, searchQuery, sortOption, monster, moveOrder]);
-  
+
+  const filtersActive = !filters.includes('all') && filters.length > 0;
+
+  // When a filter is active, temporarily surface hidden matching moves in the
+  // main grid so the player can actually find them. Filtering should hide the
+  // non-matching moves entirely, not leave them greyed out in the Hidden bin.
   const visibleMoves = processedMoves.filter(m => !hiddenMoves.includes(m.id));
-  const hiddenMovesList = processedMoves.filter(m => hiddenMoves.includes(m.id));
-  
+  const hiddenMovesList = filtersActive ? [] : processedMoves.filter(m => hiddenMoves.includes(m.id));
+
   // Check if player can afford any visible move (for struggle)
   const canAffordAnyVisibleMove = visibleMoves.some(m => (m.staminaCost || 0) <= currentStamina);
-  
+
   // Add struggle if needed
-  const displayMoves = autoAddStruggle && !canAffordAnyVisibleMove 
-    ? [...visibleMoves, STRUGGLE_MOVE] 
+  const displayMoves = autoAddStruggle && !canAffordAnyVisibleMove
+    ? [...visibleMoves, STRUGGLE_MOVE]
     : visibleMoves;
   
   // Drag handlers

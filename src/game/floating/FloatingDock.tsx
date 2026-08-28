@@ -555,14 +555,28 @@ function FabInstance({ cfgRef, state }: { cfgRef: React.MutableRefObject<FabConf
       e.clientX <= dockRect.right &&
       e.clientY >= dockRect.top &&
       e.clientY <= dockRect.bottom;
+    const homeRect =
+      cfg.hasHome && ctx.homeZoneRef.current
+        ? ctx.homeZoneRef.current.getBoundingClientRect()
+        : null;
+    const inHome =
+      !inDock &&
+      homeRect &&
+      e.clientX >= homeRect.left &&
+      e.clientX <= homeRect.right &&
+      e.clientY >= homeRect.top &&
+      e.clientY <= homeRect.bottom;
     setDragging(false);
     setDragPos(null);
     if (inDock) {
       ctx.setDocked(cfg.id, true, finalPos);
+    } else if (inHome) {
+      ctx.setHome(cfg.id, true);
     } else {
       ctx.setDocked(cfg.id, false, finalPos);
     }
   };
+
 
   const button = (
     <button

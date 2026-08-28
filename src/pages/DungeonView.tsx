@@ -4004,29 +4004,13 @@ export function DungeonView({
               }}
             />
 
-            {/* Build button (top-right of dungeon viewport) */}
-            <div className="absolute top-2 right-2 z-30 flex flex-col gap-1 items-end">
-              <Button
-                size="sm"
-                variant={dungeonBuildMode ? 'destructive' : 'secondary'}
-                onClick={() => {
-                  if (dungeonBuildMode) {
-                    setDungeonBuildMode(false);
-                    setSelectedDungeonBuildType(null);
-                  } else {
-                    setDungeonBuildPanelOpen(true);
-                  }
-                }}
-                title="Build structures on this floor (persists across runs)"
-              >
-                🏗️ {dungeonBuildMode ? 'Cancel' : 'Build'}
-              </Button>
-              {dungeonBuildMode && selectedDungeonBuildType && (
-                <div className="bg-card/90 backdrop-blur border rounded px-2 py-1 text-xs">
-                  Placing: {BUILDING_DEFINITIONS[selectedDungeonBuildType].name} — click an open floor tile.
-                </div>
-              )}
-            </div>
+            {/* Build placement hint (the Build button lives on the HUD bar) */}
+            {dungeonBuildMode && selectedDungeonBuildType && (
+              <div className="absolute top-2 right-2 z-30 bg-card/90 backdrop-blur border rounded px-2 py-1 text-xs">
+                Placing: {BUILDING_DEFINITIONS[selectedDungeonBuildType].name} — click an open floor tile.
+              </div>
+            )}
+
 
             <DungeonBuildPanel
               open={dungeonBuildPanelOpen}

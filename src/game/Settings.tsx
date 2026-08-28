@@ -578,6 +578,48 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 onCheckedChange={(v) => updateSetting('autoMine', v)}
               />
             </div>
+            <div className="space-y-2">
+              <Label className="cursor-default">Automation attack</Label>
+              <span className="block text-xs text-muted-foreground">
+                What Auto-Hunt / Auto-Search / Auto-Harvest does when an enemy gets in range.
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { key: 'ask', label: 'Ask me' },
+                  { key: 'strongest', label: 'Strongest move' },
+                  { key: 'cheapest', label: 'Cheapest move' },
+                  { key: 'pinned', label: 'Pinned move' },
+                ] as const).map((opt) => (
+                  <Button
+                    key={opt.key}
+                    type="button"
+                    size="sm"
+                    variant={settings.autoAttackMode === opt.key ? 'default' : 'outline'}
+                    onClick={() => updateSetting('autoAttackMode', opt.key)}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Pinned move:{' '}
+                <span className="font-semibold">{settings.autoAttackMoveName || 'none yet'}</span>
+                {settings.autoAttackMoveName && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 ml-1 text-xs"
+                    onClick={() => updateSetting('autoAttackMoveName', '')}
+                  >
+                    Clear
+                  </Button>
+                )}
+                <br />
+                Pin one by ticking “Auto-use during automation” in the enemy attack menu.
+              </p>
+            </div>
+
             <div className="flex items-center justify-between">
               <div className="flex flex-col">
                 <Label htmlFor="iw-greed-risk" className="cursor-pointer">Item World greed risk</Label>

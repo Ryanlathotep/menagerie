@@ -974,7 +974,10 @@ export function DungeonView({
   // Use refs to always have fresh state for auto-run (avoids stale closures)
   const dungeonRef = useRef(dungeon);
   const handleMoveRef = useRef(handleMove);
-  const autoHarvestTargetRef = useRef<(Position & { tileType: 'mineable_wall' | 'terrain' }) | null>(null);
+  const autoHarvestTargetRef = useRef<(Position & { tileType: 'mineable_wall' | 'terrain' | 'nest' }) | null>(null);
+  /** Set when an automation leg is walking to a tile it must *bump* (nest,
+   *  mineable wall) rather than stand on. On arrival we start the bump loop. */
+  const pendingBumpRef = useRef<Position | null>(null);
   const autoHarvestTimerRef = useRef<number | null>(null);
   
   useEffect(() => {
@@ -999,7 +1002,7 @@ export function DungeonView({
     cancelAutoHarvest();
     const currentDungeon = dungeonRef.current;
     const tile = currentDungeon?.tiles[targetY]?.[targetX];
-    if (!currentDungeon || !tile || (tile.type !== 'mineable_wall' && tile.type !== 'terrain')) return;
+    if (!currentDungeon || !tile || (tile.type !== 'mineable_wall' && tile.type !== 'terrain' && tile.type !== 'nest')) return;
     autoHarvestTargetRef.current = { x: targetX, y: targetY, tileType: tile.type };
     const stepDelay = Math.max(120, settings.autoRunSpeed || 100);
     autoHarvestTimerRef.current = window.setInterval(() => {

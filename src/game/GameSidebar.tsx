@@ -378,6 +378,39 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 </DockableHudButton>
               )}
 
+              {onOpenBuild && (
+                <DockableHudButton id="hud.build" ariaLabel="Build and Roads" title="Build & Roads" onTap={onOpenBuild} icon={<HardHat className="w-5 h-5" />}>
+                  <Button
+                    variant={buildActive ? 'default' : 'ghost'}
+                    size="icon"
+                    className={hudBtnClass}
+                    onClick={onOpenBuild}
+                    title="Build & Roads"
+                    aria-label="Build and Roads"
+                  >
+                    <HardHat className="w-5 h-5" />
+                  </Button>
+                </DockableHudButton>
+              )}
+
+              {onSave && (
+                <DockableHudButton id="hud.save" ariaLabel="Save progress" title={saveTitle ?? 'Save progress'} onTap={onSave} icon={<Save className="w-5 h-5" />}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={hudBtnClass}
+                    onClick={onSave}
+                    disabled={saving}
+                    title={saveTitle ?? 'Save progress'}
+                    aria-label="Save progress"
+                  >
+                    {saving ? <span className="text-sm">⏳</span> : <Save className="w-5 h-5" />}
+                  </Button>
+                </DockableHudButton>
+              )}
+
+
+
             </div>
           </>
         ) : (

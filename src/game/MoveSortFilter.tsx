@@ -346,6 +346,7 @@ export function filterMoves(
   moves: Move[],
   filters: MoveFilterOption[],
   searchQuery: string = '',
+  filterMode: MoveFilterMode = 'or',
 ): Move[] {
   const q = searchQuery.trim().toLowerCase();
   const searched = q
@@ -370,46 +371,27 @@ export function filterMoves(
     !!move.effect && ['poison', 'burn', 'bleed'].some((s) => move.effect?.includes(s));
   const isMovement = (move: Move) => move.type === 'movement' || !!move.movement;
 
-  return searched.filter((move) => {
-    for (const filter of filters) {
-      switch (filter) {
-        case 'melee':
-          if (move.type === 'melee') return true;
-          break;
-        case 'ranged':
-          if (move.type === 'ranged') return true;
-          break;
-        case 'status':
-          if (move.type === 'status') return true;
-          break;
-        case 'heal':
-          if (move.type === 'heal') return true;
-          break;
-        case 'damage':
-          if (move.power > 0) return true;
-          break;
-        case 'buff':
-          if (move.effect?.includes('raise_')) return true;
-          break;
-        case 'debuff':
-          if (move.effect?.includes('lower_')) return true;
-          break;
-        case 'status-effect':
-          if (move.effect && ['poison', 'burn', 'freeze', 'paralyze', 'confuse'].some(s => move.effect?.includes(s))) {
-            return true;
-          }
-          break;
-        case 'aoe':
-          if (isAoe(move)) return true;
-          break;
-        case 'dot':
-          if (isDot(move)) return true;
-          break;
-        case 'movement':
-          if (isMovement(move)) return true;
-          break;
-      }
+  const matchesFilter = (move: Move, filter: MoveFilterOption): boolean => {
+    switch (filter) {
+      case 'melee': return move.type === 'melee';
+      case 'ranged': return move.type === 'ranged';
+      case 'status': return move.type === 'status';
+      case 'heal': return move.type === 'heal';
+      case 'damage': return move.power > 0;
+      case 'buff': return !!move.effect?.includes('raise_');
+      case 'debuff': return !!move.effect?.includes('lower_');
+      case 'status-effect':
+        return !!move.effect && ['poison', 'burn', 'freeze', 'paralyze', 'confuse'].some(s => move.effect?.includes(s));
+      case 'aoe': return isAoe(move);
+      case 'dot': return isDot(move);
+      case 'movement': return isMovement(move);
+      default: return false;
     }
-    return false;
-  });
+  };
+
+  return searched.filter((move) =>
+    filterMode === 'and'
+      ? filters.every((f) => matchesFilter(move, f))
+      : filters.some((f) => matchesFilter(move, f)),
+  );
 }

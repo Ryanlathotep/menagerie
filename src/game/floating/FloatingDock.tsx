@@ -100,13 +100,19 @@ function loadState(cfg: FabConfig): FabState {
         typeof p.x === 'number' &&
         typeof p.y === 'number'
       ) {
-        return p;
+        return { ...p, home: cfg.hasHome ? p.home === true : false };
       }
     }
   } catch {
     /* ignore */
   }
-  return { docked: defaultDocked, x: defPos.x, y: defPos.y };
+  return {
+    docked: cfg.hasHome ? false : defaultDocked,
+    home: cfg.hasHome ? cfg.defaultHome !== false : false,
+    x: defPos.x,
+    y: defPos.y,
+  };
+
 }
 
 function saveState(id: string, s: FabState) {

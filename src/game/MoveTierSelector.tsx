@@ -22,6 +22,8 @@ import {
 } from './moveMastery';
 import { calculateExpectedDamage, calculateHitChance, getEffectiveness } from './combat';
 import { ChevronLeft, Zap, Target, Users } from 'lucide-react';
+import { MoveTagBadges } from './MoveTagBadges';
+
 
 interface MoveTierSelectorProps {
   move: Move;

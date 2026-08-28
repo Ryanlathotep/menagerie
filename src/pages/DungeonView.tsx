@@ -2804,6 +2804,65 @@ export function DungeonView({
     // Process enemy turns after player attacks
     processEnemyTurnsRef.current?.(newDungeon);
   }, [targetingMoveState, targetingTilesState, state.run, dungeon, dispatch, cancelTargeting, pendingComboMove, enterTargetingFor]);
+
+  // ─── Automation auto-attack ──────────────────────────────────────────────
+  // Settings → "Automation attack" lets the player pick what happens when
+  // Auto-Hunt / Auto-Search / Auto-Harvest bumps into an enemy in range:
+  // ask (open the menu), strongest, cheapest, or a pinned move. Returns true
+  // when a move was actually fired so the caller can keep automating.
+  const tryAutoAttack = useCallback((d: DungeonState): boolean => {
+    const mode = settings.autoAttackMode;
+    if (mode === 'ask') return false;
+    const monster = state.run?.currentMonster;
+    if (!monster || !d) return false;
+    const stamina = monster.stats.currentStamina ?? monster.stats.stamina ?? 0;
+    const moves = getMonsterMoves(
+      monster.species, monster.element, monster.class, monster.level,
+      `${monster.species}_${monster.element}_${monster.class}`,
+    ).filter((mv) => (mv.type === 'melee' || mv.type === 'ranged' || mv.power > 0)
+      && (mv.staminaCost || 0) <= stamina);
+    if (moves.length === 0) return false;
+
+    const pinned = settings.autoAttackMoveName;
+    const ordered = mode === 'pinned'
+      ? moves.filter((mv) => mv.name === pinned)
+      : [...moves].sort((a, b) => mode === 'cheapest'
+        ? (a.staminaCost || 0) - (b.staminaCost || 0)
+        : (b.power || 0) - (a.power || 0));
+
+    // Nearest visible living enemy first.
+    const px = d.playerPosition.x, py = d.playerPosition.y;
+    const enemies: Array<{ pos: Position; dist: number }> = [];
+    for (let y = 0; y < d.tiles.length; y++) {
+      const row = d.tiles[y]; if (!row) continue;
+      for (let x = 0; x < row.length; x++) {
+        const t = row[x];
+        if (!t || t.type !== 'enemy' || !t.visible || !t.enemyId) continue;
+        const e = d.enemies.find(en => en.id === t.enemyId);
+        if (!e || (e.stats.currentHp ?? 0) <= 0) continue;
+        enemies.push({ pos: { x, y }, dist: Math.abs(x - px) + Math.abs(y - py) });
+      }
+    }
+    enemies.sort((a, b) => a.dist - b.dist);
+
+    for (const { pos } of enemies) {
+      for (const mv of ordered) {
+        const cfg = getAttackConfig(mv);
+        const valid = getValidTargets(d.playerPosition, cfg, d.tiles, d.width, d.height, true);
+        if (!valid.some(v => v.x === pos.x && v.y === pos.y)) continue;
+        addLog(`⚡ Auto-attack: ${mv.name}!`, 'info');
+        setTargetingMove(mv);
+        setTargetingTiles(valid);
+        handleTargetingClick(pos.x, pos.y, { move: mv, tiles: valid, skipAoeConfirm: true });
+        return true;
+      }
+    }
+    return false;
+  }, [settings.autoAttackMode, settings.autoAttackMoveName, state.run, addLog, handleTargetingClick]);
+  const tryAutoAttackRef = useRef(tryAutoAttack);
+  useEffect(() => { tryAutoAttackRef.current = tryAutoAttack; }, [tryAutoAttack]);
+
+
   
   // Process all visible enemy turns
   const processEnemyTurns = useCallback((currentDungeon: typeof dungeon) => {

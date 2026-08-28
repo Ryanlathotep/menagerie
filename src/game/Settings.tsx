@@ -720,9 +720,60 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 className="hidden"
               />
             </div>
+            <Button variant="default" size="sm" onClick={handleExportEverything} className="w-full">
+              <Download className="w-4 h-4 mr-1" />
+              Export Everything (one file)
+            </Button>
             <p className="text-xs text-muted-foreground">
               Export to a local file, share to apps like Google Drive on supported devices, or restore from a backup.
+              “Export Everything” bundles progress, settings, party layouts and your room library into a single file —
+              importing it restores all of them at once.
             </p>
+
+            {/* Save location — remembered folder for every export (where supported) */}
+            <div className="rounded-md border p-2 space-y-2">
+              <Label className="text-sm cursor-default">Save location</Label>
+              {supportsFolderPicker() ? (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    {exportFolder
+                      ? <>Exports are written to <span className="font-semibold">{exportFolder}</span>.</>
+                      : 'Not set — exports download to your browser’s Downloads folder.'}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={handlePickFolder}>
+                      {exportFolder ? 'Change folder' : 'Choose folder'}
+                    </Button>
+                    {exportFolder && (
+                      <Button variant="ghost" size="sm" onClick={handleForgetFolder}>Clear</Button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  This browser can’t pick a folder — exports go to your Downloads folder. Use “Share Backup” to send
+                  them to Drive or Files instead.
+                </p>
+              )}
+            </div>
+
+            {/* Default file-name reminders */}
+            <div className="rounded-md border p-2 space-y-1">
+              <Label className="text-sm cursor-default">Default file names</Label>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                {(['bundle', 'save', 'partyLayouts', 'rooms', 'room'] as const).map((kind) => (
+                  <li key={kind}>
+                    <span className="font-semibold text-foreground">{EXPORT_KINDS[kind].label}:</span>{' '}
+                    <code className="font-mono">{defaultFileName(kind, kind === 'room' ? 'My Room' : '3')}</code>
+                    <br />
+                    <span>{EXPORT_KINDS[kind].describe}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-muted-foreground">
+                Look for these names when importing — the date is the day you exported.
+              </p>
+            </div>
           </div>
 
           {/* Report a Bug */}

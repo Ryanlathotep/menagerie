@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { MonsterSprite } from './sprites';
 import {
   Monster,
-  Item,
+  InventoryItem,
   MonsterEquipment,
   SPECIES_DATA,
   ELEMENT_ADVANTAGES,
@@ -66,7 +66,7 @@ interface CharacterMenuProps {
   experience: number;
   experienceToNext: number;
   moves: Move[];
-  inventory: Item[];
+  inventory: InventoryItem[];
 }
 
 const NONE = '__none__';

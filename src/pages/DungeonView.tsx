@@ -1811,6 +1811,13 @@ export function DungeonView({
         if (fired) {
           if (huntingModeRef.current) setTimeout(() => planNextHuntStepRef.current(), 400);
           else if (harvestAllModeRef.current) setTimeout(() => planNextHarvestStepRef.current(), 400);
+          else if (autoplayModeRef.current) setTimeout(() => planNextAutoplayStepRef.current(), 400);
+          return;
+        }
+        if (autoplayModeRef.current) {
+          // Autoplay hands the turn to the player when its rules can't act.
+          setTimeout(() => planNextAutoplayStepRef.current(), 0);
+          pendingBumpRef.current = null;
           return;
         }
         if (huntingModeRef.current) {
@@ -1822,6 +1829,7 @@ export function DungeonView({
         }
         pendingBumpRef.current = null;
         autoSearchStairsKindRef.current = null;
+
         return;
       }
 

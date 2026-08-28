@@ -150,6 +150,7 @@ export function useFabIsHome(id: string, fallback = true) {
   return st ? st.home === true : fallback;
 }
 
+export function FloatingDockProvider({ children }: { children: ReactNode }) {
 
   const [configs, setConfigs] = useState<Record<string, React.MutableRefObject<FabConfig>>>({});
   const [order, setOrder] = useState<string[]>([]);

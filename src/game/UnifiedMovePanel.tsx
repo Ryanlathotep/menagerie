@@ -478,7 +478,9 @@ export function UnifiedMovePanel({
         )}
       </div>
       
-      {/* Hidden Moves */}
+      {/* Hidden Moves — hidden while filtering so non-matching moves are gone and
+          matching moves surface in the main grid instead of being greyed out. */}
+      {!filtersActive && (
       <Collapsible open={moreOpen} onOpenChange={setMoreOpen}>
         <CollapsibleTrigger asChild>
           <Button 

@@ -4,7 +4,6 @@
 
 import { Play, Pause, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Toggle } from '@/components/ui/toggle';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -85,15 +84,15 @@ export function AutomationBar({
 
       <Tooltip>
         <TooltipTrigger asChild>
-          <Toggle
+          <Button
             size="sm"
-            pressed={uninterrupted}
-            onPressedChange={onUninterruptedChange}
+            variant={uninterrupted ? 'default' : 'outline'}
             className="h-8 px-2 text-xs"
+            onClick={() => onUninterruptedChange(!uninterrupted)}
             aria-label="Run uninterrupted"
           >
             ♾️
-          </Toggle>
+          </Button>
         </TooltipTrigger>
         <TooltipContent side="top">
           Run uninterrupted: keeps going through stair prompts and cleared fights

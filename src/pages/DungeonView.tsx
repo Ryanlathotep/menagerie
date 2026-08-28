@@ -2905,34 +2905,21 @@ export function DungeonView({
     processEnemyTurnsRef.current?.(newDungeon);
   }, [targetingMoveState, targetingTilesState, state.run, dungeon, dispatch, cancelTargeting, pendingComboMove, enterTargetingFor]);
 
-  // ─── Automation auto-attack ──────────────────────────────────────────────
-  // Settings → "Automation attack" lets the player pick what happens when
-  // Auto-Hunt / Auto-Search / Auto-Harvest bumps into an enemy in range:
-  // ask (open the menu), strongest, cheapest, or a pinned move. Returns true
-  // when a move was actually fired so the caller can keep automating.
+  // ─── Automation auto-attack (autoplay rules) ─────────────────────────────
+  // Driven by the autoplay profile (Settings → Autoplay behaviour): engage
+  // mode, HP halt threshold, best-matchup switching and the if/then rule list.
+  // Returns true when the automation acted (attacked / switched / healed) so
+  // the caller keeps its loop running; false means "halt automation".
   const tryAutoAttack = useCallback((d: DungeonState): boolean => {
-    const mode = settings.autoAttackMode;
-    if (mode === 'ask') return false;
     const monster = state.run?.currentMonster;
     if (!monster || !d) return false;
-    const stamina = monster.stats.currentStamina ?? monster.stats.stamina ?? 0;
-    const moves = getMonsterMoves(
-      monster.species, monster.element, monster.class, monster.level,
-      `${monster.species}_${monster.element}_${monster.class}`,
-    ).filter((mv) => (mv.type === 'melee' || mv.type === 'ranged' || mv.power > 0)
-      && (mv.staminaCost || 0) <= stamina);
-    if (moves.length === 0) return false;
-
-    const pinned = settings.autoAttackMoveName;
-    const ordered = mode === 'pinned'
-      ? moves.filter((mv) => mv.name === pinned)
-      : [...moves].sort((a, b) => mode === 'cheapest'
-        ? (a.staminaCost || 0) - (b.staminaCost || 0)
-        : (b.power || 0) - (a.power || 0));
+    const comboId = `${monster.species}_${monster.element}_${monster.class}`;
+    const profile = getAutoplayProfile(comboId);
+    if (profile.engage !== 'fight') return false; // 'ask' opens the menu, 'stop' halts
 
     // Nearest visible living enemy first.
     const px = d.playerPosition.x, py = d.playerPosition.y;
-    const enemies: Array<{ pos: Position; dist: number }> = [];
+    const enemies: Array<{ enemy: Monster; pos: Position; dist: number }> = [];
     for (let y = 0; y < d.tiles.length; y++) {
       const row = d.tiles[y]; if (!row) continue;
       for (let x = 0; x < row.length; x++) {
@@ -2940,10 +2927,70 @@ export function DungeonView({
         if (!t || t.type !== 'enemy' || !t.visible || !t.enemyId) continue;
         const e = d.enemies.find(en => en.id === t.enemyId);
         if (!e || (e.stats.currentHp ?? 0) <= 0) continue;
-        enemies.push({ pos: { x, y }, dist: Math.abs(x - px) + Math.abs(y - py) });
+        enemies.push({ enemy: e, pos: { x, y }, dist: Math.abs(x - px) + Math.abs(y - py) });
       }
     }
+    if (enemies.length === 0) return false;
     enemies.sort((a, b) => a.dist - b.dist);
+    const nearest = enemies[0];
+
+    const hpPercent = (monster.stats.currentHp / Math.max(1, monster.stats.maxHp)) * 100;
+    if (hpPercent < profile.stopHpPercent) {
+      addLog(`🛑 Automation halted — HP below ${profile.stopHpPercent}%.`, 'info');
+      return false;
+    }
+
+    const stamina = monster.stats.currentStamina ?? monster.stats.stamina ?? 0;
+    const staminaPercent = (stamina / Math.max(1, monster.stats.stamina ?? 1)) * 100;
+    const party = state.run?.party ?? [];
+    const activeIdx = state.run?.activePartyIndex ?? 0;
+    const switchIdx = profile.switchBestMatchup
+      ? bestMatchupIndex(party, activeIdx, nearest.enemy)
+      : null;
+    const healItem = (state.run?.inventory ?? []).find(
+      it => it.effect === 'heal_hp' || it.effect === 'heal_full',
+    );
+
+    const rule = evaluateAutoplay(profile, {
+      hpPercent,
+      staminaPercent,
+      distance: nearest.dist,
+      myElement: monster.element,
+      myClass: monster.class,
+      myLevel: monster.level,
+      enemyElement: nearest.enemy.element,
+      enemyClass: nearest.enemy.class,
+      enemyLevel: nearest.enemy.level,
+      hasHealItem: !!healItem,
+      canSwitch: switchIdx !== null,
+    });
+    if (!rule) return false;
+
+    if (rule.action === 'stop_automation' || rule.action === 'retreat') {
+      addLog('🛑 Autoplay: backing off.', 'info');
+      return false;
+    }
+
+    if (rule.action === 'switch_best_matchup' && switchIdx !== null) {
+      handlePartySwitch(switchIdx);
+      addLog('🔄 Autoplay: switched to the better matchup.', 'info');
+      return true; // switching consumes the turn; the loop resumes after
+    }
+
+    if (rule.action === 'heal_item' && healItem) {
+      addLog(`🧪 Autoplay: using ${healItem.name}.`, 'info');
+      handleUseItemOutOfCombat(healItem);
+      return true;
+    }
+
+    const affordable = getMonsterMoves(
+      monster.species, monster.element, monster.class, monster.level, comboId,
+    ).filter(mv => (mv.staminaCost || 0) <= stamina);
+    const ordered = orderMovesForAction(
+      affordable,
+      rule.action,
+      rule.moveName || settings.autoAttackMoveName,
+    );
 
     for (const { pos } of enemies) {
       for (const mv of ordered) {
@@ -2958,7 +3005,7 @@ export function DungeonView({
       }
     }
     return false;
-  }, [settings.autoAttackMode, settings.autoAttackMoveName, state.run, addLog, handleTargetingClick]);
+  }, [settings.autoAttackMoveName, state.run, addLog, handleTargetingClick, handlePartySwitch, handleUseItemOutOfCombat]);
   const tryAutoAttackRef = useRef(tryAutoAttack);
   useEffect(() => { tryAutoAttackRef.current = tryAutoAttack; }, [tryAutoAttack]);
 

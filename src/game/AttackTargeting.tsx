@@ -5,7 +5,9 @@ import { GripHorizontal } from 'lucide-react';
 import { Position } from './types';
 
 import { Move } from './moves';
+import { MoveTagBadges } from './MoveTagBadges';
 import { EvolvedMove } from './moveMastery';
+
 import { 
   AttackConfig, 
   getAttackConfig, 
@@ -214,13 +216,10 @@ export function MoveInfoPanel({ move, onCancel }: MoveInfoPanelProps) {
             {move.power > 0 && <span>⚔️ {move.power}</span>}
             <span>⚡ {move.staminaCost}</span>
           </div>
-          {wallPen && (
-            <p className="text-purple-400">✨ Ignores walls</p>
-          )}
-          {moveTargeting === 'piercing' && (
-            <p className="text-cyan-400">↣ Pierces through enemies</p>
-          )}
+          {/* Every tag this move carries, so nothing is hidden while aiming */}
+          <MoveTagBadges move={move as import('./moves').Move} className="pt-0.5" />
         </div>
+
       
       <div className="text-xs mt-2 space-y-0.5">
         <p className="text-primary hidden sm:block">

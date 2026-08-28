@@ -18,6 +18,8 @@ import { loadMoveFilters, saveMoveFilters } from './persistedFilters';
 import { getEffectiveness } from './combat';
 import { useSettings } from './Settings';
 import { formatLevel } from './levelDisplay';
+import { MoveTagBadges } from './MoveTagBadges';
+
 
 export interface EnemyAttackTarget {
   enemy: Monster;
@@ -191,24 +193,9 @@ export function EnemyAttackMenu({
                       {effIcon && <span>{effIcon}</span>}
                       {move.name}
                     </span>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      {move.type === 'melee' && (
-                        <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">
-                          melee
-                        </Badge>
-                      )}
-                      {move.type === 'ranged' && (
-                        <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">
-                          ranged
-                        </Badge>
-                      )}
-                      {move.type === 'status' && (
-                        <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">
-                          status
-                        </Badge>
-                      )}
-                    </div>
                   </div>
+                  <MoveTagBadges move={move} className="mb-1" />
+
                   <div className="grid grid-cols-4 gap-1 text-[10px] text-muted-foreground">
                     <span className="flex items-center gap-0.5">
                       <Zap className="w-3 h-3" />

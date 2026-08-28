@@ -35,6 +35,8 @@ import {
 } from './MoveSortFilter';
 import { loadMoveFilters, saveMoveFilters } from './persistedFilters';
 import { MoveShapeThumbnail } from './MoveShapeThumbnail';
+import { MoveTagBadges } from './MoveTagBadges';
+
 import { 
   loadKeybinds, saveKeybinds, getMonsterKeybinds, setMoveKeybind, 
   removeMoveKeybind, VALID_KEYBIND_KEYS 
@@ -314,6 +316,9 @@ export function UnifiedMovePanel({
           <p className="text-xs text-muted-foreground flex-1">{move.description}</p>
           <MoveShapeThumbnail move={move} />
         </div>
+
+        <MoveTagBadges move={move} size="sm" />
+
         
         {/* Single Target Versions */}
         <div className="space-y-2">
@@ -736,6 +741,10 @@ function UnifiedMoveCard({
                 <span>🎯{displayMove.accuracy}%</span>
                 <span className={!canAfford ? 'text-destructive' : ''}>⚡{displayMove.staminaCost}</span>
               </div>
+
+              {/* Compact tag row — hover the tooltip for the full list */}
+              <MoveTagBadges move={displayMove} max={4} className="mt-1" />
+
               
               {/* Inline tier pills - click to use that specific tier/variant directly */}
               {hasTierOptions && onUseTier && (
@@ -830,6 +839,10 @@ function UnifiedMoveCard({
           <p className="text-xs text-muted-foreground flex-1">{move.description}</p>
           <MoveShapeThumbnail move={move} />
         </div>
+
+        {/* Full tag list — every property this move carries */}
+        <MoveTagBadges move={displayMove} />
+
         
         {/* Combat Stats - shown when enemy is present */}
         {enemyMonster && (

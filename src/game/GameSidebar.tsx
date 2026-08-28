@@ -22,6 +22,9 @@ import { formatLevel } from './levelDisplay';
 import { MonsterEquipment, EquipmentItem, RARITY_COLORS, CRAFTING_MATERIALS, calculateEquipmentBonuses, calculateSetBonusStats, getRecipesUsingMaterial } from './equipment';
 import { PartyPanel } from './PartyPanel';
 import { EvolvedMove } from './moveMastery';
+import { DockableHudButton } from './floating/HudDock';
+import { useDock } from './floating/FloatingDock';
+
 
 
 // Helper functions to get item info when not in ITEMS database

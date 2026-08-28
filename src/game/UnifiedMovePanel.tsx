@@ -579,6 +579,7 @@ function UnifiedMoveCard({
   isDragging,
   isDragOver,
   isHidden,
+  dimWhenHidden = true,
   inBattle,
   canUseOutsideCombat,
   onDragStart,

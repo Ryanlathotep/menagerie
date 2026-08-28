@@ -6,6 +6,7 @@ import { generateEquipment, generateMaterialDrop, CraftingMaterial, EquipmentIte
 import { getRandomTerrainType, TerrainType } from './terrain';
 import { getWallTierForFloor, MineableWallTier, hitsToBreak, rollWallDrop, PickaxeTier, MINEABLE_WALL_TIERS } from './tools';
 import { NestState } from './nests';
+import { mulberry32, withSeededRandom } from './autobattle/seeded';
 
 // Larger dungeons with scrolling viewport
 const DUNGEON_WIDTH = 30;

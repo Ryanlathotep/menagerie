@@ -48,21 +48,28 @@ export type MoveFilterOption =
   | 'dot'         // damage-over-time: poison, burn, bleed
   | 'movement';   // type==='movement' or has movement pattern
 
+/** 'or' = show moves matching ANY selected tag; 'and' = only moves matching ALL selected tags. */
+export type MoveFilterMode = 'or' | 'and';
+
 interface MoveSortFilterProps {
   sortOption: MoveSortOption;
   filters: MoveFilterOption[];
+  filterMode?: MoveFilterMode;
   searchQuery?: string;
   onSortChange: (option: MoveSortOption) => void;
   onFilterChange: (filters: MoveFilterOption[]) => void;
+  onFilterModeChange?: (mode: MoveFilterMode) => void;
   onSearchChange?: (q: string) => void;
 }
 
 export function MoveSortFilter({ 
   sortOption, 
   filters, 
+  filterMode = 'or',
   searchQuery = '',
   onSortChange, 
   onFilterChange,
+  onFilterModeChange,
   onSearchChange,
 }: MoveSortFilterProps) {
   const [sortOpen, setSortOpen] = useState(false);
@@ -198,6 +205,29 @@ export function MoveSortFilter({
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-48 p-1 z-[70]" align="start">
+          {onFilterModeChange && activeFilterCount > 1 && (
+            <div className="flex items-center gap-1 px-1 py-1 mb-1 border-b border-border">
+              <span className="text-[10px] text-muted-foreground mr-auto">Match</span>
+              <Button
+                variant={filterMode === 'or' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-6 px-2 text-[10px]"
+                title="Show moves matching ANY selected tag"
+                onClick={() => onFilterModeChange('or')}
+              >
+                Any (OR)
+              </Button>
+              <Button
+                variant={filterMode === 'and' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-6 px-2 text-[10px]"
+                title="Show only moves matching ALL selected tags"
+                onClick={() => onFilterModeChange('and')}
+              >
+                All (AND)
+              </Button>
+            </div>
+          )}
           {filterOptions.map(option => {
             const isActive = option.value === 'all' 
               ? filters.includes('all') 

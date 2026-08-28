@@ -83,6 +83,7 @@ export function UnifiedMovePanel({
   // Sorting and filtering state - persisted to localStorage
   const [sortOption, setSortOption] = useState<MoveSortOption>(() => loadMoveFilters().sortOption);
   const [filters, setFilters] = useState<MoveFilterOption[]>(() => loadMoveFilters().filters);
+  const [filterMode, setFilterMode] = useState<MoveFilterMode>(() => loadMoveFilters().filterMode ?? 'or');
   const [searchQuery, setSearchQuery] = useState<string>(() => loadMoveFilters().searchQuery ?? '');
 
   
@@ -108,15 +109,19 @@ export function UnifiedMovePanel({
   // Persist sort/filter changes
   const handleSortChange = (option: MoveSortOption) => {
     setSortOption(option);
-    saveMoveFilters({ sortOption: option, filters, searchQuery });
+    saveMoveFilters({ sortOption: option, filters, filterMode, searchQuery });
   };
   const handleFilterChange = (newFilters: MoveFilterOption[]) => {
     setFilters(newFilters);
-    saveMoveFilters({ sortOption, filters: newFilters, searchQuery });
+    saveMoveFilters({ sortOption, filters: newFilters, filterMode, searchQuery });
+  };
+  const handleFilterModeChange = (m: MoveFilterMode) => {
+    setFilterMode(m);
+    saveMoveFilters({ sortOption, filters, filterMode: m, searchQuery });
   };
   const handleSearchChange = (q: string) => {
     setSearchQuery(q);
-    saveMoveFilters({ sortOption, filters, searchQuery: q });
+    saveMoveFilters({ sortOption, filters, filterMode, searchQuery: q });
   };
   
   // Keybind assignment
@@ -143,9 +148,9 @@ export function UnifiedMovePanel({
   
   // Apply sorting and filtering
   const processedMoves = useMemo(() => {
-    const filtered = filterMoves(moves, filters, searchQuery);
+    const filtered = filterMoves(moves, filters, searchQuery, filterMode);
     return sortMoves(filtered, sortOption, monster, moveOrder);
-  }, [moves, filters, searchQuery, sortOption, monster, moveOrder]);
+  }, [moves, filters, filterMode, searchQuery, sortOption, monster, moveOrder]);
   
   const visibleMoves = processedMoves.filter(m => !hiddenMoves.includes(m.id));
   const hiddenMovesList = processedMoves.filter(m => hiddenMoves.includes(m.id));

@@ -160,7 +160,9 @@ export function UnifiedMovePanel({
   // When a filter is active, temporarily surface hidden matching moves in the
   // main grid so the player can actually find them. Filtering should hide the
   // non-matching moves entirely, not leave them greyed out in the Hidden bin.
-  const visibleMoves = processedMoves.filter(m => !hiddenMoves.includes(m.id));
+  const visibleMoves = filtersActive
+    ? processedMoves
+    : processedMoves.filter(m => !hiddenMoves.includes(m.id));
   const hiddenMovesList = filtersActive ? [] : processedMoves.filter(m => hiddenMoves.includes(m.id));
 
   // Check if player can afford any visible move (for struggle)

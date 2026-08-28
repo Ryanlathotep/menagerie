@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-import { User, Backpack, Map, DoorOpen, Home, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, Shirt, Gem, Users, LogOut, Hammer } from 'lucide-react';
+import { User, Backpack, Map, DoorOpen, Home, Swords, Shield, Wind, Target, Footprints, Trash2, Settings, Shirt, Gem, Users, LogOut, Hammer, HardHat, Save } from 'lucide-react';
 import { Monster, InventoryItem, MaterialInventory, SPECIES_DATA, ELEMENT_ADVANTAGES, CLASS_ADVANTAGES_CORRECTED } from './types';
 import { CombatEffects } from './statusEffects';
 import { MonsterSprite } from './sprites';
@@ -134,6 +134,11 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   onPartySwitch,
   partyEffects = [],
   onOpenWorkshop,
+  onOpenBuild,
+  buildActive = false,
+  onSave,
+  saving = false,
+  saveTitle,
 }, ref) => {
   const isMobileView = typeof window !== 'undefined' && window.innerWidth < 640;
   const [activePanel, setActivePanel] = useState<PanelName | null>(null);

@@ -1017,7 +1017,7 @@ export function DungeonView({
     const tile = currentDungeon?.tiles[targetY]?.[targetX];
     if (!currentDungeon || !tile || (tile.type !== 'mineable_wall' && tile.type !== 'terrain' && tile.type !== 'nest')) return;
     autoHarvestTargetRef.current = { x: targetX, y: targetY, tileType: tile.type };
-    const stepDelay = Math.max(120, settings.autoRunSpeed || 100);
+    const stepDelay = Math.max(120, autoStepMs || 100);
     autoHarvestTimerRef.current = window.setInterval(() => {
       const target = autoHarvestTargetRef.current;
       const liveDungeon = dungeonRef.current;
@@ -1053,7 +1053,7 @@ export function DungeonView({
       }));
       setTimeout(() => { isMovingRef.current = false; }, 250);
     }, stepDelay);
-  }, [cancelAutoHarvest, settings.autoRunSpeed]);
+  }, [cancelAutoHarvest, autoStepMs]);
 
   const startDungeonAutoHarvestRef = useRef(startDungeonAutoHarvest);
   useEffect(() => { startDungeonAutoHarvestRef.current = startDungeonAutoHarvest; }, [startDungeonAutoHarvest]);
@@ -1099,7 +1099,7 @@ export function DungeonView({
       }
       
         // Only move after enough time has passed
-        if (timestamp - lastMoveTime >= settings.autoRunSpeed) {
+        if (timestamp - lastMoveTime >= autoStepMs) {
           const direction = autoRunDirection.current;
           const dx = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
           const dy = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
@@ -1154,7 +1154,7 @@ export function DungeonView({
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [isAutoRunning, settings.autoRunSpeed]);
+  }, [isAutoRunning, autoStepMs]);
 
   // Keyboard input with double-tap detection
   useEffect(() => {
@@ -1931,7 +1931,7 @@ export function DungeonView({
       }
 
       // Only move after enough time has passed
-      if (timestamp - lastMoveTime >= settings.autoRunSpeed) {
+      if (timestamp - lastMoveTime >= autoStepMs) {
         const nextPos = currentPath[0];
         const direction = getDirection(playerPos, nextPos);
 
@@ -1991,7 +1991,7 @@ export function DungeonView({
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [isPathWalking, settings.autoRunSpeed]);
+  }, [isPathWalking, autoStepMs]);
   
   // Party switch handler
   const handlePartySwitch = useCallback((index: number) => {

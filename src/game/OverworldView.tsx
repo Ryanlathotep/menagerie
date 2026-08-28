@@ -686,7 +686,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     cancelAutoWalk();
     autoWalkPathRef.current = [...path];
     automationRunningRef.current = true;
-    const stepDelay = Math.max(80, settings.autoRunSpeed || 100);
+    const stepDelay = Math.max(80, autoStepMs || 100);
     // The player must NEVER be fully locked out of moving: nearby enemies only
     // cancel *multi-step* auto-walking. The first step of any deliberate move
     // command always executes, then we halt the rest of the queue with a
@@ -746,7 +746,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         if (onArrive) window.setTimeout(onArrive, stepDelay);
       }
     }, stepDelay);
-  }, [cancelAutoWalk, settings.autoRunSpeed, addLog]);
+  }, [cancelAutoWalk, autoStepMs, addLog]);
 
   // Cancel auto-walk on unmount.
   useEffect(() => () => cancelAutoWalk(), [cancelAutoWalk]);
@@ -815,7 +815,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       tileType: startTile.type,
     };
     automationRunningRef.current = true;
-    const stepDelay = Math.max(120, settings.autoRunSpeed || 100);
+    const stepDelay = Math.max(120, autoStepMs || 100);
     addLog(`⛏️ Auto-Harvest started — clearing nearby ${startTile.type}s.`, 'info');
     autoMineTimerRef.current = window.setInterval(() => {
       const job = autoMineTargetRef.current;
@@ -902,7 +902,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
       handleMoveRef.current(dx, dy);
     }, stepDelay);
-  }, [cancelAutoMine, cancelAutoWalk, settings.autoRunSpeed, addLog, findClusterTargets]);
+  }, [cancelAutoMine, cancelAutoWalk, autoStepMs, addLog, findClusterTargets]);
 
 
   useEffect(() => () => cancelAutoMine(), [cancelAutoMine]);
@@ -1009,7 +1009,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     cancelAutoMine();
     cancelAutoSearch();
     cancelAutoHunt();
-    const stepDelay = Math.max(120, settings.autoRunSpeed || 100);
+    const stepDelay = Math.max(120, autoStepMs || 100);
     addLog('🏹 Auto-Hunt started — seeking nearest enemy.', 'info');
     automationRunningRef.current = true;
     autoHuntTimerRef.current = window.setInterval(() => {
@@ -1224,7 +1224,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
       handleMoveRef.current(stepDx, stepDy);
     }, stepDelay);
-  }, [addLog, cancelAutoHunt, cancelAutoMine, cancelAutoSearch, cancelAutoWalk, monster, settings.autoRunSpeed]);
+  }, [addLog, cancelAutoHunt, cancelAutoMine, cancelAutoSearch, cancelAutoWalk, monster, autoStepMs]);
 
   type SearchKind = 'dungeon_entrance' | 'enemy' | 'nest' | 'tree' | 'rock' | 'plant' | 'building';
   const SEARCH_RADIUS = 40;
@@ -1252,7 +1252,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     cancelAutoHunt();
     cancelAutoSearch();
     autoSearchKindRef.current = kind;
-    const stepDelay = Math.max(120, settings.autoRunSpeed || 100);
+    const stepDelay = Math.max(120, autoStepMs || 100);
     addLog(`🧭 Auto-Search started — looking for nearest ${kind.replace('_', ' ')}.`, 'info');
     automationRunningRef.current = true;
     autoSearchTimerRef.current = window.setInterval(() => {
@@ -1292,7 +1292,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       if (Math.abs(dx) + Math.abs(dy) !== 1) { cancelAutoSearch(); return; }
       handleMoveRef.current(dx, dy);
     }, stepDelay);
-  }, [addLog, cancelAutoHunt, cancelAutoMine, cancelAutoSearch, cancelAutoWalk, findNearestExplored, settings.autoRunSpeed]);
+  }, [addLog, cancelAutoHunt, cancelAutoMine, cancelAutoSearch, cancelAutoWalk, findNearestExplored, autoStepMs]);
 
   useEffect(() => () => { cancelAutoHunt(); cancelAutoSearch(); }, [cancelAutoHunt, cancelAutoSearch]);
 

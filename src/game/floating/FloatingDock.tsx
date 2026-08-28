@@ -40,6 +40,14 @@ export interface FabConfig {
   size?: number;
   /** Whether the button starts docked when nothing is persisted yet. Defaults true. */
   defaultDocked?: boolean;
+  /**
+   * True for buttons that also have a "home" location in the game HUD (the
+   * bottom bar). Those buttons can be dragged between the HUD row, the dock,
+   * and a loose floating position.
+   */
+  hasHome?: boolean;
+  /** Whether the button starts in its HUD home slot (only with hasHome). */
+  defaultHome?: boolean;
   /** Fallback floating position if user detaches and no position is saved. */
   defaultPosition?: (v: { w: number; h: number; size: number }) => Pos;
   zIndex?: number;
@@ -47,6 +55,8 @@ export interface FabConfig {
 
 interface FabState {
   docked: boolean;
+  /** Lives in its HUD home row — rendered by the HUD, not by the dock. */
+  home?: boolean;
   x: number;
   y: number;
 }
@@ -58,12 +68,16 @@ interface CtxVal {
   order: string[];
   states: Record<string, FabState>;
   setDocked: (id: string, docked: boolean, pos?: Pos) => void;
+  setHome: (id: string, home: boolean) => void;
   setPos: (id: string, pos: Pos) => void;
   dockRectRef: React.MutableRefObject<DOMRect | null>;
+  homeZoneRef: React.MutableRefObject<HTMLElement | null>;
+  setHomeZone: (el: HTMLElement | null) => void;
   registerSlot: (id: string, el: HTMLDivElement | null) => void;
   slotVersion: number;
   slotsRef: React.MutableRefObject<Map<string, HTMLDivElement>>;
 }
+
 
 const Ctx = createContext<CtxVal | null>(null);
 

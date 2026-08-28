@@ -92,6 +92,10 @@ const DEFAULT_SETTINGS: GameSettings = {
 
   autoMine: false,
 
+  autoAttackMode: 'ask',
+  autoAttackMoveName: '',
+
+
   itemWorldTowerGreedRisk: false,
 };
 

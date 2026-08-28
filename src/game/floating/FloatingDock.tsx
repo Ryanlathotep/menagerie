@@ -377,7 +377,10 @@ function FloatingDockRoot() {
 
   const positionStyle: React.CSSProperties = dockPos
     ? { left: dockPos.x, top: dockPos.y, right: 'auto', bottom: 'auto' }
-    : { right: 12, bottom: 12 };
+    // Default: hug the right edge but sit well above the bottom-right corner so
+    // the dock never covers the Exit / Flee buttons.
+    : { right: 12, top: '35%' };
+
 
   return (
     <>

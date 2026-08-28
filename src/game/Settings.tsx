@@ -492,7 +492,22 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             <p className="text-xs text-muted-foreground -mt-1">
               Rename or remove individual dungeon-floor and overworld waypoints.
             </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => {
+                resetDockPosition();
+                toast({ title: 'Dock position reset', description: 'The floating dock is back at its default spot.' });
+              }}
+            >
+              ⋮⋮ Reset Dock Position
+            </Button>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Moves the floating button dock back to the right edge if you've dragged it off-screen.
+            </p>
           </div>
+
 
 
           {/* Auto-Equip Preferences */}

@@ -2714,20 +2714,10 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
           <div className="flex-1 min-h-0 px-3 pb-3">
           <div className="flex flex-col h-full gap-2">
             {/* Top row: Controls and info */}
-            <div className="flex justify-center items-center flex-shrink-0">
+            <div className="flex flex-col items-stretch flex-shrink-0 gap-1">
               {/* Mobile info strip — d-pad removed; tap a tile to move */}
               <div className="flex sm:hidden items-center justify-between gap-2 w-full text-[10px] text-muted-foreground">
                 <span className="truncate">🗺️ ({overworld.playerPosition.x}, {overworld.playerPosition.y}, z{overworld.playerPosition.z ?? 0}) • 🪵 {overworld.woodCollected} • 🪨 {overworld.stoneCollected}</span>
-                <div className="flex gap-2 flex-shrink-0">
-                  <button className="text-primary hover:underline" onClick={() => setShowBuildPanel(true)}>🏗️ Build</button>
-                  <button
-                    className="text-primary hover:underline disabled:opacity-50"
-                    onClick={handleManualSave}
-                    disabled={syncing}
-                  >
-                    {syncing ? '⏳' : '💾'}
-                  </button>
-                </div>
               </div>
               <div className="hidden sm:flex flex-col items-center">
                 <p className="text-muted-foreground text-sm text-center mb-1">
@@ -2740,18 +2730,12 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
                   <span>🏠 Building</span>
                   <span>🗼 Dungeon</span>
                   <span>Right-click enemy to attack</span>
-                  <button className="text-primary hover:underline" onClick={() => setShowBuildPanel(true)}>[B] Build</button>
-                  <button
-                    className="text-primary hover:underline disabled:opacity-50"
-                    onClick={handleManualSave}
-                    disabled={syncing}
-                    title={isAuthenticated ? 'Save progress to cloud' : 'Save progress locally'}
-                  >
-                    {syncing ? '⏳ Saving…' : `💾 Save${isAuthenticated ? '' : ' (local)'}`}
-                  </button>
                 </div>
               </div>
+              {/* Keybinding reference */}
+              <KeybindLegend context="overworld" monster={state.run?.currentMonster ?? null} />
             </div>
+
 
             {/* Log + open menu panel sit side-by-side at every breakpoint so
                 mobile players can see the map (above), log, and the open

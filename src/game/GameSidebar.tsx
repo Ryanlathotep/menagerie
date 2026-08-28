@@ -353,7 +353,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
               </div>
             </div>
 
-            <div className="flex items-center gap-1 w-full min-w-0">
+            <div ref={mobileHudRow.ref} className="flex items-center gap-1 w-full min-w-0">
               <DockableHudButton id="hud.character" ariaLabel="Character Sheet" title="Character Sheet" onTap={() => handlePanelChange('character')} icon={<User className="w-5 h-5" />}>
                 <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className={hudBtnClass} onClick={() => handlePanelChange('character')} title="Character Sheet" aria-label="Character Sheet">
                   <User className="w-5 h-5" />
@@ -523,7 +523,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
               </div>
             )}
 
-            <div className="flex gap-0.5 sm:gap-1 ml-auto min-w-0 flex-1 overflow-x-auto no-scrollbar justify-end">
+            <div ref={desktopHudRow.ref} className="flex flex-wrap items-center gap-1 ml-auto min-w-0 flex-1 justify-end">
               <DockableHudButton id="hud.character" ariaLabel="Character Sheet" title="Character Sheet" onTap={() => handlePanelChange('character')} icon={<User className="w-5 h-5" />}>
                 <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className={hudBtnClass} onClick={() => handlePanelChange('character')} title="Character Sheet" aria-label="Character Sheet">
                   <User className={desktopIconClass} />

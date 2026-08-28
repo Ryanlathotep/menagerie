@@ -1525,6 +1525,134 @@ export function DungeonView({
   const planNextHarvestStepRef = useRef(planNextHarvestStep);
   useEffect(() => { planNextHarvestStepRef.current = planNextHarvestStep; }, [planNextHarvestStep]);
 
+  // ─── Autoplay ──────────────────────────────────────────────────────────────
+  // Deliberately separate from Auto-Hunt. Autoplay *plays the floor*: it walks
+  // to the nearest interactive thing (chest, herb, trap to disarm, nest,
+  // mineable wall, and finally stairs), clears fog when nothing is left, and
+  // hands control to this character's autoplay attack rules the moment an
+  // enemy is in range — then resumes playing where it left off.
+  const autoplayModeRef = useRef(false);
+  const planNextAutoplayStep = useCallback(() => {
+    if (!autoplayModeRef.current) return;
+    const d = dungeonRef.current;
+    if (!d) { autoplayModeRef.current = false; return; }
+
+    // 1) Combat first — follow the character's attacking behaviour.
+    if (anyEnemyThreatensPlayer(d)) {
+      if (tryAutoAttackRef.current(d)) {
+        setTimeout(() => planNextAutoplayStepRef.current(), 400);
+        return;
+      }
+      autoplayModeRef.current = false;
+      const px0 = d.playerPosition.x, py0 = d.playerPosition.y;
+      let near: { enemy: Monster; pos: Position; dist: number } | null = null;
+      for (let yy = 0; yy < d.tiles.length; yy++) {
+        const row = d.tiles[yy]; if (!row) continue;
+        for (let xx = 0; xx < row.length; xx++) {
+          const t = row[xx];
+          if (!t || t.type !== 'enemy' || !t.visible || !t.enemyId) continue;
+          const e = d.enemies.find(en => en.id === t.enemyId);
+          if (!e || (e.stats.currentHp ?? 0) <= 0) continue;
+          const dist = Math.abs(xx - px0) + Math.abs(yy - py0);
+          if (!near || dist < near.dist) near = { enemy: e, pos: { x: xx, y: yy }, dist };
+        }
+      }
+      if (near) {
+        addLog('🤖 Autoplay: enemy in range — pick a move.', 'info');
+        setAttackMenuTarget({ enemy: near.enemy, enemyPos: near.pos, playerPos: d.playerPosition });
+      } else {
+        addLog('🤖 Autoplay stopped.', 'info');
+      }
+      return;
+    }
+
+    // 2) Nearest interactive tile.
+    const allowMineable = !!settings.autoMine;
+    const px = d.playerPosition.x, py = d.playerPosition.y;
+    const wanted = new Set<string>(['treasure', 'plant', 'nest', 'trap']);
+    if (allowMineable) wanted.add('mineable_wall');
+    let best: { x: number; y: number; d: number } | null = null;
+    let stairs: { x: number; y: number; d: number } | null = null;
+    for (let yy = 0; yy < d.tiles.length; yy++) {
+      const row = d.tiles[yy]; if (!row) continue;
+      for (let xx = 0; xx < row.length; xx++) {
+        const t = row[xx]; if (!t || !t.explored) continue;
+        if (xx === px && yy === py) continue;
+        const dist = Math.abs(xx - px) + Math.abs(yy - py);
+        if (t.type === 'stairs' || t.type === 'stairs_up' || t.stairsBeneath) {
+          if (!stairs || dist < stairs.d) stairs = { x: xx, y: yy, d: dist };
+          continue;
+        }
+        if (!wanted.has(t.type)) continue;
+        if (t.type === 'trap' && t.triggered) continue;
+        if (!best || dist < best.d) best = { x: xx, y: yy, d: dist };
+      }
+    }
+
+    let goal: Position | null = best ? { x: best.x, y: best.y } : null;
+    let bump = false;
+    if (goal) {
+      const gt = d.tiles[goal.y]?.[goal.x];
+      bump = gt?.type === 'nest' || gt?.type === 'mineable_wall';
+    } else {
+      // 3) Nothing to collect: clear fog / approach a visible enemy, and only
+      // take the stairs once this floor has nothing left to offer.
+      const explore = findHuntTarget(d);
+      if (explore) goal = explore;
+      else if (stairs) goal = { x: stairs.x, y: stairs.y };
+    }
+    if (!goal) {
+      autoplayModeRef.current = false;
+      addLog('🤖 Autoplay: nothing left to do on this floor.', 'info');
+      return;
+    }
+
+    if (bump) {
+      const approach = findApproachTileRef.current(d, goal);
+      if (!approach) {
+        autoplayModeRef.current = false;
+        addLog('🤖 Autoplay: can\u2019t reach the next resource.', 'info');
+        return;
+      }
+      pendingBumpRef.current = { x: goal.x, y: goal.y };
+      if (approach.x === px && approach.y === py) {
+        startDungeonAutoHarvestRef.current(goal.x, goal.y);
+        pendingBumpRef.current = null;
+        return;
+      }
+      goal = approach;
+    }
+
+    const path = findPath(d, d.playerPosition, goal, { allowMineable });
+    if (!path || path.length === 0) {
+      autoplayModeRef.current = false;
+      addLog('🤖 Autoplay: no path to the next objective.', 'info');
+      return;
+    }
+    setTargetPath(path);
+    pathWalkRef.current = path;
+    pathGoalRef.current = goal;
+    setIsPathWalking(true);
+  }, [addLog, settings.autoMine, findHuntTarget]);
+  const planNextAutoplayStepRef = useRef(planNextAutoplayStep);
+  useEffect(() => { planNextAutoplayStepRef.current = planNextAutoplayStep; }, [planNextAutoplayStep]);
+
+  // Autoplay keeps going after a floor transition (it descends on its own once
+  // a floor is picked clean).
+  const autoplayFloorRef = useRef(dungeon?.floor ?? 1);
+  useEffect(() => {
+    const f = dungeon?.floor;
+    if (f === undefined) return;
+    if (f !== autoplayFloorRef.current) {
+      autoplayFloorRef.current = f;
+      if (autoplayModeRef.current) {
+        const t = setTimeout(() => planNextAutoplayStepRef.current(), 600);
+        return () => clearTimeout(t);
+      }
+    }
+  }, [dungeon?.floor]);
+
+
 
   /** Nests (and un-mineable walls) can't be stood on — find the nearest
    *  walkable neighbour we can actually path to, so automation can walk up and

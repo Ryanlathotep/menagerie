@@ -3583,6 +3583,52 @@ export function DungeonView({
     return () => window.removeEventListener('keydown', handleInventoryShortcut);
   }, [state.run?.inventory, handleUseItemOutOfCombat]);
 
+  // ── Automation transport (play / pause / speed / mode) ──────────────────
+  // Mirrors the state of every automation loop so the HUD bar can show whether
+  // something is running, and maps play/pause onto the matching loop.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const running = huntingModeRef.current || harvestAllModeRef.current
+        || autoplayModeRef.current || !!autoHarvestTargetRef.current;
+      setAutomationRunning(prev => (prev === running ? prev : running));
+    }, 250);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const pauseAutomation = useCallback(() => {
+    huntingModeRef.current = false;
+    harvestAllModeRef.current = false;
+    autoplayModeRef.current = false;
+    autoSearchStairsKindRef.current = null;
+    pathWalkRef.current = [];
+    pathGoalRef.current = null;
+    setIsPathWalking(false);
+    setTargetPath([]);
+    cancelAutoHarvest('⏸ Automation paused.');
+    setAutomationRunning(false);
+    addLog('⏸ Automation paused.', 'info');
+  }, [cancelAutoHarvest, addLog]);
+
+  const startAutomation = useCallback(() => {
+    pauseAutomation();
+    const mode = autoControls.mode;
+    if (mode === 'search') { setDungeonAutoSearchOpen(true); return; }
+    if (mode === 'hunt') {
+      addLog('🏹 Auto-Hunt engaged.', 'info');
+      huntingModeRef.current = true;
+      planNextHuntStepRef.current();
+    } else if (mode === 'harvest') {
+      addLog('🧺 Auto-Harvest All started.', 'info');
+      harvestAllModeRef.current = true;
+      planNextHarvestStepRef.current();
+    } else {
+      addLog('🤖 Autoplay engaged.', 'info');
+      autoplayModeRef.current = true;
+      planNextAutoplayStepRef.current();
+    }
+    setAutomationRunning(true);
+  }, [autoControls.mode, pauseAutomation, addLog]);
+
   // Early return for loading state - MUST be after all hooks
   if (!dungeon) return <div className="game-container">Loading...</div>;
 

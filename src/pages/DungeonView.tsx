@@ -41,6 +41,8 @@ import { PreRunEquipment } from '@/game/PreRunEquipment';
 import { BUILDING_DEFINITIONS, createBuilding, PlayerBuildingType, PlayerBuilding, getRepairCost, getDisassembleRefund } from '@/game/buildings';
 import { DungeonBuildPanel } from '@/game/DungeonBuildPanel';
 import { KeybindLegend } from '@/game/KeybindLegend';
+import { AutomationBar } from '@/game/automation/AutomationBar';
+import { useAutomationControls, automationStepMs, AutomationMode } from '@/game/automation/controls';
 import { BuildingAssignModal } from '@/game/BuildingAssignModal';
 import { BuildingContextMenu } from '@/game/BuildingContextMenu';
 import { OverworldView } from '@/game/OverworldView';
@@ -126,6 +128,10 @@ export function DungeonView({
     dispatch
   } = useGame();
   const { settings, updateSetting } = useSettings();
+  // Automation transport controls (mode + play/pause + 1x/2x/4x/8x speed).
+  const { controls: autoControls, setMode: setAutoMode, setSpeed: setAutoSpeed, setUninterrupted: setAutoUninterrupted } = useAutomationControls();
+  const autoStepMs = automationStepMs(settings.autoRunSpeed, autoControls.speed);
+  const [automationRunning, setAutomationRunning] = useState(false);
   const dungeon = state.run?.dungeon;
   const [showShop, setShowShop] = useState(false);
   const [showEquipment, setShowEquipment] = useState(false);

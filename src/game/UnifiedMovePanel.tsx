@@ -686,7 +686,7 @@ function UnifiedMoveCard({
           } ${
             isDragOver ? 'ring-2 ring-primary bg-primary/10' : ''
           } ${
-            isHidden ? 'opacity-70' : ''
+            isHidden && dimWhenHidden ? 'opacity-70' : ''
           } ${
             isUsable ? 'cursor-pointer hover:bg-primary/10 hover:border-primary' : 'cursor-grab active:cursor-grabbing'
           } ${

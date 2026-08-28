@@ -20,6 +20,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { AdminPanel } from '@/admin/AdminPanel';
 import { useGame, buildProgressSnapshot } from './state';
+import {
+  EXPORT_KINDS, defaultFileName, saveJsonExport, buildEverythingBundle, isEverythingBundle,
+  applyBundleExtras, chooseExportFolder, forgetExportFolder, savedFolderName, supportsFolderPicker,
+} from './fileExports';
 import { useCloudSave } from '@/hooks/useCloudSave';
 import { toast as sonnerToast } from 'sonner';
 import { UsernameEditor } from './UsernameEditor';
@@ -220,6 +224,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const [bugOpen, setBugOpen] = useState(false);
   const [featureOpen, setFeatureOpen] = useState(false);
   const [waypointMgrOpen, setWaypointMgrOpen] = useState(false);
+  // Remembered export folder (File System Access API, where supported).
+  const [exportFolder, setExportFolder] = useState<string | null>(() => savedFolderName());
 
 
   // Listen for admin panel open event (dispatched from the Admin Tools button)
@@ -229,31 +235,56 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     return () => window.removeEventListener('open-admin-panel', handleOpenAdmin);
   }, []);
 
-  const handleExportSave = () => {
+  /** Export progress + settings using the shared naming / folder helper. */
+  const handleExportSave = async () => {
     try {
       const liveSave = buildProgressSnapshot(state.saveData, state.run, state.saveData.overworldState);
-      
-      const backup = {
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        saveData: liveSave,
-        settings,
-      };
-      
-      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `monster-roguelike-backup-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      toast({ title: 'Backup exported!', description: 'Save file downloaded to your device.' });
+      const backup = { version: 1, exportedAt: new Date().toISOString(), saveData: liveSave, settings };
+      const res = await saveJsonExport('save', backup);
+      toast({
+        title: 'Backup exported!',
+        description: res.location === 'folder'
+          ? `Saved as ${res.fileName} in ${exportFolder}.`
+          : `Downloaded as ${res.fileName}.`,
+      });
     } catch (e) {
       toast({ title: 'Export failed', description: 'Could not export save data.', variant: 'destructive' });
     }
+  };
+
+  /** One file with everything: save, settings, party layouts and room library. */
+  const handleExportEverything = async () => {
+    try {
+      const liveSave = buildProgressSnapshot(state.saveData, state.run, state.saveData.overworldState);
+      const bundle = buildEverythingBundle(liveSave, settings);
+      const res = await saveJsonExport('bundle', bundle);
+      toast({
+        title: 'Everything exported!',
+        description: res.location === 'folder'
+          ? `Saved as ${res.fileName} in ${exportFolder}.`
+          : `Downloaded as ${res.fileName}.`,
+      });
+    } catch (e) {
+      toast({ title: 'Export failed', description: 'Could not build the combined file.', variant: 'destructive' });
+    }
+  };
+
+  const handlePickFolder = async () => {
+    try {
+      const name = await chooseExportFolder();
+      if (name) {
+        setExportFolder(name);
+        toast({ title: 'Save location set', description: `Exports will be written to “${name}”.` });
+      }
+    } catch {
+      /* user cancelled the picker */
+    }
+  };
+
+  const handleForgetFolder = async () => {
+    await forgetExportFolder();
+    setExportFolder(null);
+    toast({ title: 'Save location cleared', description: 'Exports will download normally again.' });
   };
 
   const handleShareBackup = async () => {
@@ -321,6 +352,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
         ? parsed
         : { version: 1, saveData: parsed, settings: undefined };
 
+      // Combined "everything" files also carry party layouts and rooms.
+      const bundleExtras = isEverythingBundle(parsed) ? applyBundleExtras(parsed) : [];
+
       if (!backup.saveData || typeof backup.saveData !== 'object') {
         console.error('[Import] Missing saveData field', Object.keys(parsed ?? {}));
         toast({ title: 'Import failed', description: 'Backup is missing save data.', variant: 'destructive' });
@@ -334,7 +368,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           localStorage.setItem('monster-roguelike-settings', JSON.stringify(backup.settings));
           window.dispatchEvent(new CustomEvent('menagerie-import-settings', { detail: backup.settings }));
         }
-        toast({ title: 'Backup restored!', description: 'Save and settings were restored immediately.' });
+        toast({
+          title: 'Backup restored!',
+          description: bundleExtras.length
+            ? `Save, settings and ${bundleExtras.join(' + ')} restored.`
+            : 'Save and settings were restored immediately.',
+        });
       } catch (err) {
         console.error('[Import] Applying backup failed', err);
         toast({ title: 'Import failed', description: err instanceof Error ? err.message : 'Could not apply backup.', variant: 'destructive' });

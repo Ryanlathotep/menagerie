@@ -18,6 +18,8 @@ import { loadMoveFilters, saveMoveFilters } from './persistedFilters';
 import { getEffectiveness } from './combat';
 import { useSettings } from './Settings';
 import { formatLevel } from './levelDisplay';
+import { MoveTagBadges } from './MoveTagBadges';
+
 
 export interface EnemyAttackTarget {
   enemy: Monster;

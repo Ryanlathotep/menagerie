@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { X, Zap, Target, Shield, Coins } from 'lucide-react';
 import { Monster } from './types';
@@ -40,7 +41,11 @@ export function EnemyAttackMenu({
   onClose,
 }: EnemyAttackMenuProps) {
   const { enemy, enemyPos, playerPos } = target;
-  const { settings } = useSettings();
+  const { settings, updateSetting } = useSettings();
+  // When ticked, the next move you pick becomes the automation auto-attack.
+  const [pinForAutomation, setPinForAutomation] = useState(
+    settings.autoAttackMode === 'pinned' && !!settings.autoAttackMoveName,
+  );
   const distance =
     Math.abs(enemyPos.x - playerPos.x) + Math.abs(enemyPos.y - playerPos.y);
 
@@ -165,6 +170,10 @@ export function EnemyAttackMenu({
                   disabled={disabled}
                   onClick={() => {
                     if (disabled) return;
+                    if (pinForAutomation) {
+                      updateSetting('autoAttackMoveName', move.name);
+                      updateSetting('autoAttackMode', 'pinned');
+                    }
                     onPickMove(move);
                   }}
                   className={`w-full text-left p-2 rounded-md border bg-card transition-colors ${
@@ -228,6 +237,17 @@ export function EnemyAttackMenu({
             })}
           </div>
         </ScrollArea>
+
+        {/* Pin the picked move so automation fires it without asking */}
+        <label className="flex items-center justify-between gap-2 flex-shrink-0 text-[11px] cursor-pointer">
+          <span className="text-muted-foreground">
+            ⚡ Auto-use during automation
+            {settings.autoAttackMoveName && (
+              <span className="ml-1 font-semibold text-foreground">({settings.autoAttackMoveName})</span>
+            )}
+          </span>
+          <Switch checked={pinForAutomation} onCheckedChange={setPinForAutomation} />
+        </label>
 
         <p className="text-[10px] text-muted-foreground text-center italic flex-shrink-0">
           Sorted by your move-panel preferences. Right-click again or press Esc to close.

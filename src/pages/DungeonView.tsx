@@ -1477,7 +1477,27 @@ export function DungeonView({
       addLog('🧺 Auto-Harvest: nothing left to collect on this floor.', 'info');
       return;
     }
-    const path = findPath(d, d.playerPosition, { x: best.x, y: best.y }, { allowMineable });
+    const isBumpTarget = (() => {
+      const t = d.tiles[best.y]?.[best.x];
+      return t?.type === 'nest' || t?.type === 'mineable_wall';
+    })();
+    let goal: Position = { x: best.x, y: best.y };
+    if (isBumpTarget) {
+      const approach = findApproachTileRef.current(d, goal);
+      if (!approach) {
+        harvestAllModeRef.current = false;
+        addLog('🧺 Auto-Harvest: no path to remaining resources.', 'info');
+        return;
+      }
+      pendingBumpRef.current = { x: best.x, y: best.y };
+      if (approach.x === d.playerPosition.x && approach.y === d.playerPosition.y) {
+        startDungeonAutoHarvestRef.current(best.x, best.y);
+        pendingBumpRef.current = null;
+        return;
+      }
+      goal = approach;
+    }
+    const path = findPath(d, d.playerPosition, goal, { allowMineable });
     if (!path || path.length === 0) {
       harvestAllModeRef.current = false;
       addLog('🧺 Auto-Harvest: no path to remaining resources.', 'info');
@@ -1485,12 +1505,32 @@ export function DungeonView({
     }
     setTargetPath(path);
     pathWalkRef.current = path;
-    pathGoalRef.current = { x: best.x, y: best.y };
+    pathGoalRef.current = goal;
     setIsPathWalking(true);
   }, [addLog, settings.autoMine]);
   const planNextHarvestStepRef = useRef(planNextHarvestStep);
   useEffect(() => { planNextHarvestStepRef.current = planNextHarvestStep; }, [planNextHarvestStep]);
 
+
+  /** Nests (and un-mineable walls) can't be stood on — find the nearest
+   *  walkable neighbour we can actually path to, so automation can walk up and
+   *  bump-attack the tile until it's gone. */
+  const findApproachTile = useCallback((d: DungeonState, target: Position): Position | null => {
+    const neighbours: Position[] = [
+      { x: target.x, y: target.y - 1 }, { x: target.x, y: target.y + 1 },
+      { x: target.x - 1, y: target.y }, { x: target.x + 1, y: target.y },
+    ];
+    let best: { pos: Position; len: number } | null = null;
+    for (const n of neighbours) {
+      const t = d.tiles[n.y]?.[n.x];
+      if (!t || t.type === 'wall' || t.type === 'mineable_wall' || t.type === 'nest') continue;
+      if (n.x === d.playerPosition.x && n.y === d.playerPosition.y) return n; // already there
+      const path = findPath(d, d.playerPosition, n, { allowMineable: !!settings.autoMine });
+      if (!path || path.length === 0) continue;
+      if (!best || path.length < best.len) best = { pos: n, len: path.length };
+    }
+    return best?.pos ?? null;
+  }, [settings.autoMine]);
 
   // ─── Dungeon Auto-Search runner ───────────────────────────────────────────
   // Extracted from the picker modal so the "continue at stairs" prompt can
@@ -1521,9 +1561,32 @@ export function DungeonView({
     // If chasing stairs across floors, remember the kind so the arrival prompt
     // can offer to descend/ascend and keep going. Non-stair searches clear it.
     autoSearchStairsKindRef.current = (kind === 'stairs' || kind === 'stairs_up') ? kind : null;
+
+    // Nests and mineable walls are bump targets: walk to a neighbouring tile
+    // and then keep attacking/mining until the tile is cleared.
+    if (kind === 'nest' || kind === 'mineable_wall') {
+      const approach = findApproachTile(d, { x: best.x, y: best.y });
+      if (!approach) {
+        addLog(`🔎 Auto-Search: can't reach the ${label.toLowerCase()} at (${best.x}, ${best.y}).`, 'info');
+        toast.info(`No path to that ${label.toLowerCase()}`);
+        return;
+      }
+      addLog(`🧭 Auto-Search: heading to the ${label.toLowerCase()} at (${best.x}, ${best.y}).`, 'info');
+      pendingBumpRef.current = { x: best.x, y: best.y };
+      if (approach.x === d.playerPosition.x && approach.y === d.playerPosition.y) {
+        startDungeonAutoHarvestRef.current(best.x, best.y);
+        pendingBumpRef.current = null;
+      } else {
+        handleTileClick(approach.x, approach.y);
+        // handleTileClick clears automation refs, so re-arm the bump goal.
+        pendingBumpRef.current = { x: best.x, y: best.y };
+      }
+      return;
+    }
+
     addLog(`🧭 Auto-Search: pathing to ${label.toLowerCase()} at (${best.x}, ${best.y}).`, 'info');
     handleTileClick(best.x, best.y);
-  }, [addLog, handleTileClick]);
+  }, [addLog, handleTileClick, findApproachTile]);
   const runDungeonAutoSearchRef = useRef(runDungeonAutoSearch);
   useEffect(() => { runDungeonAutoSearchRef.current = runDungeonAutoSearch; }, [runDungeonAutoSearch]);
 
@@ -1672,6 +1735,16 @@ export function DungeonView({
         setIsPathWalking(false);
         setTargetPath([]);
         pathGoalRef.current = null;
+        // Arrived next to a bump target (nest / mineable wall): start hitting it.
+        const bump = pendingBumpRef.current;
+        if (bump) {
+          pendingBumpRef.current = null;
+          const dist = Math.abs(bump.x - playerPos.x) + Math.abs(bump.y - playerPos.y);
+          if (dist === 1) {
+            startDungeonAutoHarvestRef.current(bump.x, bump.y);
+            return;
+          }
+        }
         // Auto-Hunt: leg finished — plan the next enemy or fog waypoint. The
         // planner will either restart pathwalking or clear the mode itself.
         if (huntingModeRef.current) {

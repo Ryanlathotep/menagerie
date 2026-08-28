@@ -88,8 +88,21 @@ export function generateLoot(floor: number): LootItem {
   return LOOT_TABLE[Math.floor(Math.random() * LOOT_TABLE.length)];
 }
 
-// Simple room-based dungeon generation
-export function generateDungeon(floor: number, theme?: DungeonTheme, startingFloor?: number): DungeonState {
+// Simple room-based dungeon generation.
+//
+// Seeded: when a `seed` is provided (from the DungeonEntrance), the entire
+// layout — rooms, enemies, loot, traps, terrain — is deterministic for a
+// given (seed, floor) pair via a mulberry32 RNG. With no seed we fall back
+// to Math.random() (legacy behavior).
+export function generateDungeon(floor: number, theme?: DungeonTheme, startingFloor?: number, seed?: number): DungeonState {
+  if (typeof seed !== 'number') return generateDungeonInternal(floor, theme, startingFloor, seed);
+  // Mix the floor into the seed so every floor of the same tower differs
+  // but remains reproducible.
+  const mixed = (seed >>> 0) ^ Math.imul((floor + 1) >>> 0, 0x9e3779b1);
+  return withSeededRandom(mulberry32(mixed), () => generateDungeonInternal(floor, theme, startingFloor, seed));
+}
+
+function generateDungeonInternal(floor: number, theme?: DungeonTheme, startingFloor?: number, seed?: number): DungeonState {
   // Initialize with walls
   const tiles: DungeonTile[][] = Array(DUNGEON_HEIGHT).fill(null).map(() =>
     Array(DUNGEON_WIDTH).fill(null).map(() => ({

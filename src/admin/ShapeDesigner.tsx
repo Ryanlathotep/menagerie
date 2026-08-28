@@ -231,7 +231,7 @@ export function ShapeDesigner() {
     const stub = { moveMastery: {} } as unknown as Monster;
     list = sortMoves(list, sortOption, stub, list.map((m) => m.id));
     return list;
-  }, [allMoves, search, moveFilters, sortOption]);
+  }, [allMoves, search, moveFilters, moveFilterMode, sortOption]);
 
   const isAnchorOnSelf = originType === 'self';
 

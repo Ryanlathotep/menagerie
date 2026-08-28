@@ -741,6 +741,10 @@ function UnifiedMoveCard({
                 <span>🎯{displayMove.accuracy}%</span>
                 <span className={!canAfford ? 'text-destructive' : ''}>⚡{displayMove.staminaCost}</span>
               </div>
+
+              {/* Compact tag row — hover the tooltip for the full list */}
+              <MoveTagBadges move={displayMove} max={4} className="mt-1" />
+
               
               {/* Inline tier pills - click to use that specific tier/variant directly */}
               {hasTierOptions && onUseTier && (

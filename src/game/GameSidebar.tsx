@@ -180,7 +180,13 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   return <>
       {/* Always visible bottom bar */}
       <div
-        ref={ref}
+        ref={(el) => {
+          // The HUD bar doubles as the drop zone that returns dock buttons home.
+          dock?.setHomeZone(el);
+          if (typeof ref === 'function') ref(el);
+          else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
+        }}
+
         className={isMobileView
           ? 'fixed bottom-0 left-0 right-0 bg-card border-t-2 border-primary/20 flex flex-col px-2 py-1.5 gap-1.5 z-50 shadow-lg h-[108px]'
           : 'fixed bottom-0 left-0 right-0 bg-card border-t-2 border-primary/20 flex items-center px-2 sm:px-3 gap-2 sm:gap-4 z-50 shadow-lg h-16 sm:h-24'}

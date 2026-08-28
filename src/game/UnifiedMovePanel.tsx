@@ -154,16 +154,23 @@ export function UnifiedMovePanel({
     const filtered = filterMoves(moves, filters, searchQuery, filterMode);
     return sortMoves(filtered, sortOption, monster, moveOrder);
   }, [moves, filters, filterMode, searchQuery, sortOption, monster, moveOrder]);
-  
-  const visibleMoves = processedMoves.filter(m => !hiddenMoves.includes(m.id));
-  const hiddenMovesList = processedMoves.filter(m => hiddenMoves.includes(m.id));
-  
+
+  const filtersActive = !filters.includes('all') && filters.length > 0;
+
+  // When a filter is active, temporarily surface hidden matching moves in the
+  // main grid so the player can actually find them. Filtering should hide the
+  // non-matching moves entirely, not leave them greyed out in the Hidden bin.
+  const visibleMoves = filtersActive
+    ? processedMoves
+    : processedMoves.filter(m => !hiddenMoves.includes(m.id));
+  const hiddenMovesList = filtersActive ? [] : processedMoves.filter(m => hiddenMoves.includes(m.id));
+
   // Check if player can afford any visible move (for struggle)
   const canAffordAnyVisibleMove = visibleMoves.some(m => (m.staminaCost || 0) <= currentStamina);
-  
+
   // Add struggle if needed
-  const displayMoves = autoAddStruggle && !canAffordAnyVisibleMove 
-    ? [...visibleMoves, STRUGGLE_MOVE] 
+  const displayMoves = autoAddStruggle && !canAffordAnyVisibleMove
+    ? [...visibleMoves, STRUGGLE_MOVE]
     : visibleMoves;
   
   // Drag handlers
@@ -451,7 +458,8 @@ export function UnifiedMovePanel({
             onDrop={(e) => handleDrop(e, move.id, 'visible')}
             onDragEnd={resetDragState}
             onToggleHide={() => onToggleHide(move.id)}
-            isHidden={false}
+            isHidden={hiddenMoves.includes(move.id)}
+            dimWhenHidden={!filtersActive}
             inBattle={inBattle}
             canUseOutsideCombat={canUseOutsideCombat(move)}
             onUseMove={onUseMove ? () => handleMoveClick(move) : undefined}
@@ -464,12 +472,16 @@ export function UnifiedMovePanel({
         ))}
         {displayMoves.length === 0 && (
           <div className="col-span-full text-center py-4 text-muted-foreground text-xs">
-            Drag moves here to show them
+            {filtersActive
+              ? 'No moves match your current filters.'
+              : 'Drag moves here to show them'}
           </div>
         )}
       </div>
       
-      {/* Hidden Moves */}
+      {/* Hidden Moves — hidden while filtering so non-matching moves are gone and
+          matching moves surface in the main grid instead of being greyed out. */}
+      {!filtersActive && (
       <Collapsible open={moreOpen} onOpenChange={setMoreOpen}>
         <CollapsibleTrigger asChild>
           <Button 
@@ -528,6 +540,7 @@ export function UnifiedMovePanel({
           </div>
         </CollapsibleContent>
       </Collapsible>
+      )}
     </div>
   );
 }
@@ -541,6 +554,7 @@ interface UnifiedMoveCardProps {
   isDragging: boolean;
   isDragOver: boolean;
   isHidden: boolean;
+  dimWhenHidden?: boolean;
   inBattle: boolean;
   canUseOutsideCombat: boolean;
   onDragStart: (e: React.DragEvent) => void;
@@ -566,6 +580,7 @@ function UnifiedMoveCard({
   isDragging,
   isDragOver,
   isHidden,
+  dimWhenHidden = true,
   inBattle,
   canUseOutsideCombat,
   onDragStart,
@@ -672,7 +687,7 @@ function UnifiedMoveCard({
           } ${
             isDragOver ? 'ring-2 ring-primary bg-primary/10' : ''
           } ${
-            isHidden ? 'opacity-70' : ''
+            isHidden && dimWhenHidden ? 'opacity-70' : ''
           } ${
             isUsable ? 'cursor-pointer hover:bg-primary/10 hover:border-primary' : 'cursor-grab active:cursor-grabbing'
           } ${

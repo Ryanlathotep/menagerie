@@ -316,6 +316,9 @@ export function UnifiedMovePanel({
           <p className="text-xs text-muted-foreground flex-1">{move.description}</p>
           <MoveShapeThumbnail move={move} />
         </div>
+
+        <MoveTagBadges move={move} size="sm" />
+
         
         {/* Single Target Versions */}
         <div className="space-y-2">

@@ -1,6 +1,6 @@
 // Game Sidebar - Always visible menu with panels (works in both dungeon and battle)
 
-import { useState, forwardRef, useLayoutEffect } from 'react';
+import { useState, forwardRef, useLayoutEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 type PanelName = 'character' | 'inventory' | 'moves' | 'party';
@@ -99,6 +99,47 @@ interface GameSidebarProps {
   saving?: boolean;
   saveTitle?: string;
 }
+
+/**
+ * Keeps a HUD button row fluid: measures the row and the number of buttons in
+ * it and publishes a `--hud-btn` size so every icon (including ones just
+ * dragged back in from the dock) shares one size and the row never overflows.
+ */
+function useFluidHudRow() {
+  const elRef = useRef<HTMLDivElement | null>(null);
+
+  const measure = useCallback(() => {
+    const el = elRef.current;
+    if (!el) return;
+    const count = el.children.length;
+    if (count === 0) return;
+    const style = getComputedStyle(el);
+    const gap = parseFloat(style.columnGap || style.gap || '4') || 4;
+    const avail = el.clientWidth - gap * (count - 1);
+    const size = Math.max(26, Math.min(40, Math.floor(avail / count)));
+    el.style.setProperty('--hud-btn', `${size}px`);
+  }, []);
+
+  const ref = useCallback(
+    (el: HTMLDivElement | null) => {
+      elRef.current = el;
+      if (!el) return;
+      measure();
+      const ro = new ResizeObserver(measure);
+      ro.observe(el);
+      const mo = new MutationObserver(measure);
+      mo.observe(el, { childList: true });
+      (el as unknown as { __hudCleanup?: () => void }).__hudCleanup = () => {
+        ro.disconnect();
+        mo.disconnect();
+      };
+    },
+    [measure],
+  );
+
+  return { ref, measure };
+}
+
 export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   monster,
   gold,

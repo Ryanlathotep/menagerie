@@ -137,7 +137,20 @@ export function useFloatingButton(cfg: FabConfig) {
   }, [cfg.id]);
 }
 
-export function FloatingDockProvider({ children }: { children: ReactNode }) {
+/** Low-level access to the dock context (null outside the provider). */
+export function useDock() {
+  return useContext(Ctx);
+}
+
+/** True when the given button currently lives in its HUD home row. */
+export function useFabIsHome(id: string, fallback = true) {
+  const ctx = useContext(Ctx);
+  if (!ctx) return fallback;
+  const st = ctx.states[id];
+  return st ? st.home === true : fallback;
+}
+
+
   const [configs, setConfigs] = useState<Record<string, React.MutableRefObject<FabConfig>>>({});
   const [order, setOrder] = useState<string[]>([]);
   const [states, setStates] = useState<Record<string, FabState>>({});

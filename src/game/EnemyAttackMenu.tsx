@@ -13,7 +13,7 @@ import { X, Zap, Target, Shield, Coins } from 'lucide-react';
 import { Monster } from './types';
 import { Move, getMonsterMoves } from './moves';
 import { getAttackConfig } from './dungeonCombat';
-import { MoveSortFilter, MoveSortOption, MoveFilterOption, sortMoves, filterMoves } from './MoveSortFilter';
+import { MoveSortFilter, MoveSortOption, MoveFilterOption, MoveFilterMode, sortMoves, filterMoves } from './MoveSortFilter';
 import { loadMoveFilters, saveMoveFilters } from './persistedFilters';
 import { getEffectiveness } from './combat';
 import { useSettings } from './Settings';
@@ -80,7 +80,7 @@ export function EnemyAttackMenu({
 
   // Apply user filter + sort, then enrich with range / cost info.
   const ordered = useMemo(() => {
-    const filtered = filterMoves(attackMoves, filters, searchQuery);
+    const filtered = filterMoves(attackMoves, filters, searchQuery, filterMode);
     const sorted = sortMoves(filtered, sortOption, attacker, moveOrder);
     return sorted.map((move) => {
       const cfg = getAttackConfig(move);
@@ -89,7 +89,7 @@ export function EnemyAttackMenu({
       const eff = move.power > 0 ? getEffectiveness(move, attacker, enemy) : null;
       return { move, cfg, inRange, canAfford, eff };
     });
-  }, [attackMoves, filters, searchQuery, sortOption, attacker, moveOrder, distance, enemy]);
+  }, [attackMoves, filters, filterMode, searchQuery, sortOption, attacker, moveOrder, distance, enemy]);
 
   const usableCount = ordered.filter((m) => m.inRange && m.canAfford).length;
 
@@ -133,9 +133,11 @@ export function EnemyAttackMenu({
           <MoveSortFilter
             sortOption={sortOption}
             filters={filters}
+            filterMode={filterMode}
             searchQuery={searchQuery}
             onSortChange={updateSort}
             onFilterChange={updateFilters}
+            onFilterModeChange={updateFilterMode}
             onSearchChange={updateSearch}
           />
         </div>

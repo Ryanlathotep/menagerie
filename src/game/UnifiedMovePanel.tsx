@@ -458,7 +458,8 @@ export function UnifiedMovePanel({
             onDrop={(e) => handleDrop(e, move.id, 'visible')}
             onDragEnd={resetDragState}
             onToggleHide={() => onToggleHide(move.id)}
-            isHidden={false}
+            isHidden={hiddenMoves.includes(move.id)}
+            dimWhenHidden={!filtersActive}
             inBattle={inBattle}
             canUseOutsideCombat={canUseOutsideCombat(move)}
             onUseMove={onUseMove ? () => handleMoveClick(move) : undefined}

@@ -315,7 +315,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 <DockableHudButton id="hud.equipment" ariaLabel="Equipment" title="Equipment" onTap={onOpenEquipment} icon={<Shirt className="w-5 h-5" />}>
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon"
                     className={`${hudBtnClass} relative`}
                     onClick={onOpenEquipment}
                     title="Equipment"
@@ -335,7 +335,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 <DockableHudButton id="hud.party" ariaLabel="Party" title="Party" onTap={() => handlePanelChange('party')} icon={<Users className="w-5 h-5" />}>
                   <Button
                     variant={activePanel === 'party' ? 'default' : 'ghost'}
-                    size="sm"
+                    size="icon"
                     className={`${hudBtnClass} relative`}
                     onClick={() => handlePanelChange('party')}
                     title="Party"
@@ -353,7 +353,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 <DockableHudButton id="hud.workshop" ariaLabel="Open Portable Workstation (crafting)" title="Open Portable Workstation (crafting)" onTap={onOpenWorkshop} icon={<Hammer className="w-5 h-5" />}>
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon"
                     className={hudBtnClass}
                     onClick={onOpenWorkshop}
                     title="Open Portable Workstation (crafting)"

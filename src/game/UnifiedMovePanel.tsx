@@ -553,6 +553,7 @@ interface UnifiedMoveCardProps {
   isDragging: boolean;
   isDragOver: boolean;
   isHidden: boolean;
+  dimWhenHidden?: boolean;
   inBattle: boolean;
   canUseOutsideCombat: boolean;
   onDragStart: (e: React.DragEvent) => void;

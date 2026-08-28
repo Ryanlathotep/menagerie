@@ -89,6 +89,12 @@ import {
 } from './nests';
 
 import { useCloudSave } from '@/hooks/useCloudSave';
+import {
+  getAutoplayProfile,
+  evaluateAutoplay,
+  orderMovesForAction,
+  bestMatchupIndex,
+} from './autoplay/rules';
 
 interface OverworldViewProps {
   gameLog: LogMessage[];
@@ -1096,7 +1102,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             return;
           }
           if (rule.action === 'switch_best_matchup' && switchIdx !== null) {
-            handlePartySwitchRef.current?.(switchIdx);
+            handlePartySwitch(switchIdx);
             addLog('🔄 Autoplay: switched to the better matchup.', 'info');
             return; // keep hunting; next tick fights with the new monster
           }

@@ -306,7 +306,7 @@ export function DungeonView({
         localStorage.removeItem('menagerie_selected_start_floor');
       }
 
-      const freshDungeon = generateDungeon(startingFloor, entrance?.theme, startingFloor);
+      const freshDungeon = generateDungeon(startingFloor, entrance?.theme, startingFloor, entrance?.seed);
       // Hydrate from persistent floor snapshot (mined walls, opened tiles,
       // collected chests survive across runs). Enemies stay fresh from gen.
       const hydrated = hydrateDungeonFromSnapshot(freshDungeon, entrance);
@@ -681,7 +681,7 @@ export function DungeonView({
         const activeId = typeof window !== 'undefined' ? localStorage.getItem('menagerie_active_dungeon_id') : null;
         const entrance = activeId ? state.saveData.dungeonEntrances?.[activeId] : undefined;
         const fresh = hydrateDungeonFromSnapshot(
-          generateDungeon(nextFloorNum, dungeon.theme, dungeon.startingFloor),
+          generateDungeon(nextFloorNum, dungeon.theme, dungeon.startingFloor, dungeon.seed ?? entrance?.seed),
           entrance,
         );
         const tiles = fresh.tiles.map(row => row.map(t => ({ ...t })));
@@ -826,7 +826,7 @@ export function DungeonView({
             const activeId = typeof window !== 'undefined' ? localStorage.getItem('menagerie_active_dungeon_id') : null;
             const entrance = activeId ? state.saveData.dungeonEntrances?.[activeId] : undefined;
             const fresh = hydrateDungeonFromSnapshot(
-              generateDungeon(prevFloorNum, dungeon.theme, dungeon.startingFloor),
+              generateDungeon(prevFloorNum, dungeon.theme, dungeon.startingFloor, dungeon.seed ?? entrance?.seed),
               entrance,
             );
             return { ...fresh, visitedFloors: visited };

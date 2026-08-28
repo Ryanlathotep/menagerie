@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { useGameDataOverrides } from '@/hooks/useGameDataOverrides';
 import { SPECIES_MOVES, ELEMENT_MOVES, CLASS_MOVES, Move } from '@/game/moves';
 import { rateAgainst, ratingFor, setSingleMoveOverride } from '@/game/moveOverrides';
+import { normalizeMoveTags } from '@/game/moveTags';
 import { TIER_ORDER, TIER_MULTIPLIERS, TIER_PREFIXES, type MoveTier } from '@/game/moveMastery';
 import { SpeciesType, ElementType, ClassType } from '@/game/types';
 import { Search, Save, RotateCcw, Plus, Trash2, Copy } from 'lucide-react';

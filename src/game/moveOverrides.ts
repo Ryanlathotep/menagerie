@@ -9,6 +9,7 @@
 //     availability arrays match the monster.
 
 import type { Move } from './moves';
+import { normalizeMoveTags } from './moveTags';
 import type { SpeciesType, ElementType, ClassType } from './types';
 
 const overrides = new Map<string, Partial<Move>>();
@@ -21,7 +22,7 @@ export function setMoveOverrides(rows: { data_key: string; data_value: Record<st
   for (const row of rows) {
     const value = row.data_value as Partial<Move>;
     if (value && (value as Move).custom) {
-      customMoves.set(row.data_key, value as Move);
+      customMoves.set(row.data_key, normalizeMoveTags(value as Move));
     } else {
       overrides.set(row.data_key, value);
     }
@@ -36,7 +37,7 @@ export function setSingleMoveOverride(id: string, value: Partial<Move> | null) {
     return;
   }
   if ((value as Move).custom) {
-    customMoves.set(id, value as Move);
+    customMoves.set(id, normalizeMoveTags(value as Move));
     overrides.delete(id);
   } else {
     overrides.set(id, value);
@@ -50,8 +51,10 @@ export function getMoveOverride(id: string): Partial<Move> | undefined {
 
 export function applyMoveOverride<T extends Move>(move: T): T {
   const o = overrides.get(move.id);
-  if (!o) return move;
-  return { ...move, ...o } as T;
+  // Always normalize: this is the single funnel every built-in and overridden
+  // move passes through, so derived tags (AoE pattern, radius, piercing,
+  // movement typing) stay correct even for freshly authored or edited moves.
+  return normalizeMoveTags(o ? ({ ...move, ...o } as T) : move);
 }
 
 export function getCustomMoves(): Move[] {

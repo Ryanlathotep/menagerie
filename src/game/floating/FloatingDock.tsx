@@ -48,6 +48,12 @@ export interface FabConfig {
   hasHome?: boolean;
   /** Whether the button starts in its HUD home slot (only with hasHome). */
   defaultHome?: boolean;
+  /**
+   * True for buttons that have no HUD markup of their own (Bug report, Feature
+   * request, …). When they are dropped into the HUD row, the dock renders them
+   * there itself via <HudHomedFabs />.
+   */
+  hudGuest?: boolean;
   /** Fallback floating position if user detaches and no position is saved. */
   defaultPosition?: (v: { w: number; h: number; size: number }) => Pos;
   zIndex?: number;
@@ -590,8 +596,10 @@ function FabInstance({ cfgRef, state }: { cfgRef: React.MutableRefObject<FabConf
       ctx.setDocked(cfg.id, false, finalPos);
     }
   };
-  // Buttons that live in their HUD home row are rendered by the HUD itself.
-  if (state.home) return null;
+  // Buttons that live in their HUD home row are normally rendered by the HUD
+  // itself. "Guest" buttons have no HUD markup, so the dock portals them into
+  // the slots rendered by <HudHomedFabs /> inside the HUD row.
+  if (state.home && !cfg.hudGuest) return null;
 
   const button = (
 
@@ -632,6 +640,12 @@ function FabInstance({ cfgRef, state }: { cfgRef: React.MutableRefObject<FabConf
     </button>
   );
 
+  if (state.home && cfg.hudGuest) {
+    const slot = ctx.slotsRef.current.get(cfg.id);
+    if (slot) return createPortal(button, slot);
+    return null;
+  }
+
   if (state.docked && !dragging) {
     // Portal into dock slot
     const slot = ctx.slotsRef.current.get(cfg.id);
@@ -652,6 +666,40 @@ function FabInstance({ cfgRef, state }: { cfgRef: React.MutableRefObject<FabConf
 }
 
 /**
+ * Renders slots inside the HUD row for every "guest" floating button the player
+ * has dragged home (Bug report, Feature request, …). Place it at the end of the
+ * HUD button row so guests snap in at the same size as the native buttons.
+ */
+export function HudHomedFabs() {
+  const ctx = useContext(Ctx);
+  const cbs = useRef<Map<string, (el: HTMLDivElement | null) => void>>(new Map());
+  if (!ctx) return null;
+  const ids = ctx.order.filter(
+    (id) => ctx.configs[id]?.current.hudGuest && ctx.states[id]?.home,
+  );
+  if (ids.length === 0) return null;
+  const getRef = (id: string) => {
+    let cb = cbs.current.get(id);
+    if (!cb) {
+      cb = (el: HTMLDivElement | null) => ctx.registerSlot(id, el);
+      cbs.current.set(id, cb);
+    }
+    return cb;
+  };
+  return (
+    <>
+      {ids.map((id) => (
+        <div
+          key={id}
+          ref={getRef(id)}
+          className="shrink-0 aspect-square h-[var(--hud-btn,2.5rem)] w-[var(--hud-btn,2.5rem)] flex items-center justify-center"
+        />
+      ))}
+    </>
+  );
+}
+
+/**
  * Backwards-compatible component wrapper. Existing call sites can keep using
  * `<FloatingActionButton storageKey=… onTap=… children=…/>` but everything
  * now flows through the shared dock.
@@ -667,6 +715,9 @@ export interface FloatingActionButtonCompatProps {
   className?: string;
   zIndex?: number;
   defaultDocked?: boolean;
+  /** Allow dragging the button into the in-game HUD row. */
+  hasHome?: boolean;
+  defaultHome?: boolean;
 }
 
 export function FloatingActionButtonCompat(props: FloatingActionButtonCompatProps) {
@@ -681,6 +732,9 @@ export function FloatingActionButtonCompat(props: FloatingActionButtonCompatProp
     size: props.size,
     zIndex: props.zIndex,
     defaultDocked: props.defaultDocked,
+    hasHome: props.hasHome,
+    hudGuest: props.hasHome,
+    defaultHome: props.defaultHome ?? false,
     defaultPosition:
       typeof defPos === 'function'
         ? defPos

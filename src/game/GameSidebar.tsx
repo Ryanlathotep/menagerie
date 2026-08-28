@@ -131,6 +131,8 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   const [showSettings, setShowSettings] = useState(false);
   const { settings } = useSettings();
   const [panelHost, setPanelHost] = useState<HTMLElement | null>(null);
+  const dock = useDock();
+
 
   // Resolve the portal host after the parent has rendered the slot for the
   // active panel. Without this the first open lands in the fallback fixed

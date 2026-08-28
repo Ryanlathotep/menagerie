@@ -73,6 +73,7 @@ import { toast } from 'sonner';
 import { EvolvedMove } from './moveMastery';
 import { CombatEffects } from './statusEffects';
 import { BuildingAssignModal } from './BuildingAssignModal';
+import { KeybindLegend } from './KeybindLegend';
 import { BuildingContextMenu } from './BuildingContextMenu';
 import { ArenaHub } from './arena/ArenaHub';
 import { StationConfigModal } from './StationConfigModal';

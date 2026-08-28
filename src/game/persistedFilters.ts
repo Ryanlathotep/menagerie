@@ -1,6 +1,6 @@
 // Persisted sort/filter preferences for moves and equipment
 
-import { MoveSortOption, MoveFilterOption } from './MoveSortFilter';
+import { MoveSortOption, MoveFilterOption, MoveFilterMode } from './MoveSortFilter';
 
 const MOVE_FILTERS_KEY = 'monster-roguelike-move-filters';
 const EQUIP_SORT_KEY = 'monster-roguelike-equip-sort';
@@ -8,12 +8,14 @@ const EQUIP_SORT_KEY = 'monster-roguelike-equip-sort';
 export interface PersistedMoveFilters {
   sortOption: MoveSortOption;
   filters: MoveFilterOption[];
+  filterMode: MoveFilterMode;
   searchQuery: string;
 }
 
 const DEFAULT_MOVE_FILTERS: PersistedMoveFilters = {
   sortOption: 'custom',
   filters: ['all'],
+  filterMode: 'or',
   searchQuery: '',
 };
 

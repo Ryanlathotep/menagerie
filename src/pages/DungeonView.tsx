@@ -1013,6 +1013,7 @@ export function DungeonView({
         return;
       }
       if (anyEnemyThreatensPlayer(liveDungeon)) {
+        if (tryAutoAttackRef.current(liveDungeon)) return; // fight and keep harvesting
         cancelAutoHarvest('⚠️ Auto-Harvest stopped — enemy in attack range!');
         return;
       }
@@ -1411,6 +1412,11 @@ export function DungeonView({
           return valid.some(v => v.x === target.x && v.y === target.y);
         });
         if (canReach) {
+          // Configured auto-attack fires without stopping the hunt.
+          if (tryAutoAttackRef.current(d)) {
+            setTimeout(() => planNextHuntStepRef.current(), 400);
+            return;
+          }
           huntingModeRef.current = false;
           addLog('🏹 Auto-Hunt: enemy in range — opening attack menu.', 'info');
           setAttackMenuTarget({ enemy, enemyPos: { x: target.x, y: target.y }, playerPos: d.playerPosition });
@@ -1591,12 +1597,22 @@ export function DungeonView({
         setIsPathWalking(false);
         setTargetPath([]);
         pathGoalRef.current = null;
+        // If the player configured an automation attack, fight instead of
+        // halting, then resume whichever automation mode was running.
+        const fired = tryAutoAttackRef.current(currentDungeon);
+        if (fired) {
+          if (huntingModeRef.current) setTimeout(() => planNextHuntStepRef.current(), 400);
+          else if (harvestAllModeRef.current) setTimeout(() => planNextHarvestStepRef.current(), 400);
+          return;
+        }
         if (huntingModeRef.current) {
           huntingModeRef.current = false;
           addLog('⚠️ Auto-Hunt halted — enemy in attack range!', 'info');
         } else {
+          harvestAllModeRef.current = false;
           addLog('⚠️ Auto-walk halted — enemy in attack range!', 'info');
         }
+        pendingBumpRef.current = null;
         autoSearchStairsKindRef.current = null;
         return;
       }

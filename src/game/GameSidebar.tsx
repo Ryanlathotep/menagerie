@@ -262,64 +262,77 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             </div>
 
             <div className="flex items-center gap-1 w-full min-w-0">
-              <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('character')} title="Character Sheet" aria-label="Character Sheet">
-                <User className="w-5 h-5" />
-              </Button>
+              <DockableHudButton id="hud.character" ariaLabel="Character Sheet" title="Character Sheet" onTap={() => handlePanelChange('character')} icon={<User className="w-5 h-5" />}>
+                <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('character')} title="Character Sheet" aria-label="Character Sheet">
+                  <User className="w-5 h-5" />
+                </Button>
+              </DockableHudButton>
 
-              <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('moves')} title="Moves / Attacks" aria-label="Moves and attacks">
-                <Swords className="w-5 h-5" />
-              </Button>
+              <DockableHudButton id="hud.moves" ariaLabel="Moves and attacks" title="Moves / Attacks" onTap={() => handlePanelChange('moves')} icon={<Swords className="w-5 h-5" />}>
+                <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('moves')} title="Moves / Attacks" aria-label="Moves and attacks">
+                  <Swords className="w-5 h-5" />
+                </Button>
+              </DockableHudButton>
 
-              <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('inventory')} title="Inventory" aria-label="Inventory">
-                <Backpack className="w-5 h-5" />
-              </Button>
+              <DockableHudButton id="hud.inventory" ariaLabel="Inventory" title="Inventory" onTap={() => handlePanelChange('inventory')} icon={<Backpack className="w-5 h-5" />}>
+                <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('inventory')} title="Inventory" aria-label="Inventory">
+                  <Backpack className="w-5 h-5" />
+                </Button>
+              </DockableHudButton>
 
               {onOpenEquipment && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={`${mobileMenuButtonClass} relative`}
-                  onClick={onOpenEquipment}
-                  title="Equipment"
-                  aria-label="Equipment"
-                >
-                  <Shirt className="w-5 h-5" />
-                  {equipmentInventory.length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                      {equipmentInventory.length}
-                    </span>
-                  )}
-                </Button>
+                <DockableHudButton id="hud.equipment" ariaLabel="Equipment" title="Equipment" onTap={onOpenEquipment} icon={<Shirt className="w-5 h-5" />}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`${mobileMenuButtonClass} relative`}
+                    onClick={onOpenEquipment}
+                    title="Equipment"
+                    aria-label="Equipment"
+                  >
+                    <Shirt className="w-5 h-5" />
+                    {equipmentInventory.length > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                        {equipmentInventory.length}
+                      </span>
+                    )}
+                  </Button>
+                </DockableHudButton>
               )}
 
               {party.length > 1 && onPartySwitch && (
-                <Button
-                  variant={activePanel === 'party' ? 'default' : 'ghost'}
-                  size="sm"
-                  className={`${mobileMenuButtonClass} relative`}
-                  onClick={() => handlePanelChange('party')}
-                  title="Party"
-                  aria-label="Party"
-                >
-                  <Users className="w-5 h-5" />
-                  <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                    {party.length}
-                  </span>
-                </Button>
+                <DockableHudButton id="hud.party" ariaLabel="Party" title="Party" onTap={() => handlePanelChange('party')} icon={<Users className="w-5 h-5" />}>
+                  <Button
+                    variant={activePanel === 'party' ? 'default' : 'ghost'}
+                    size="sm"
+                    className={`${mobileMenuButtonClass} relative`}
+                    onClick={() => handlePanelChange('party')}
+                    title="Party"
+                    aria-label="Party"
+                  >
+                    <Users className="w-5 h-5" />
+                    <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                      {party.length}
+                    </span>
+                  </Button>
+                </DockableHudButton>
               )}
 
               {onOpenWorkshop && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={mobileMenuButtonClass}
-                  onClick={onOpenWorkshop}
-                  title="Open Portable Workstation (crafting)"
-                  aria-label="Open Portable Workstation (crafting)"
-                >
-                  <Hammer className="w-5 h-5" />
-                </Button>
+                <DockableHudButton id="hud.workshop" ariaLabel="Open Portable Workstation (crafting)" title="Open Portable Workstation (crafting)" onTap={onOpenWorkshop} icon={<Hammer className="w-5 h-5" />}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={mobileMenuButtonClass}
+                    onClick={onOpenWorkshop}
+                    title="Open Portable Workstation (crafting)"
+                    aria-label="Open Portable Workstation (crafting)"
+                  >
+                    <Hammer className="w-5 h-5" />
+                  </Button>
+                </DockableHudButton>
               )}
+
             </div>
           </>
         ) : (

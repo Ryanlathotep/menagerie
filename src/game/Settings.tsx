@@ -56,6 +56,17 @@ export interface GameSettings {
   // appears. Mirrors the auto-run "halt on enemy spotted" behaviour.
   autoMine: boolean;
 
+  /** What automation (Auto-Hunt / Auto-Search / Auto-Harvest) does when an
+   *  enemy comes into attack range:
+   *   - 'ask'       → halt and open the attack menu (previous behaviour)
+   *   - 'strongest' → auto-fire the highest-damage affordable in-range move
+   *   - 'cheapest'  → auto-fire the cheapest affordable in-range move
+   *   - 'pinned'    → auto-fire `autoAttackMoveName` when it's usable */
+  autoAttackMode: 'ask' | 'strongest' | 'cheapest' | 'pinned';
+  /** Move name pinned from the enemy attack menu, used when mode is 'pinned'. */
+  autoAttackMoveName: string;
+
+
   /** Opt-in: when true, defeats inside an Item World tower wipe the run's
    *  gold/materials/items/equipment (the "greed risk" from the design bible).
    *  Default OFF for beta so testers aren't punished for experimenting. */

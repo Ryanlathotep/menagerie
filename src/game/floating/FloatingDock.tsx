@@ -289,6 +289,13 @@ function FloatingDockRoot() {
     };
   }, [ctx]);
 
+  // Reset to default position when Settings asks for it.
+  useEffect(() => {
+    const onReset = () => setDockPos(null);
+    window.addEventListener(DOCK_RESET_EVENT, onReset);
+    return () => window.removeEventListener(DOCK_RESET_EVENT, onReset);
+  }, []);
+
   // Clamp saved dock position to current viewport (handles rotate/resize).
   const clampDock = (p: DockPos): DockPos => {
     if (typeof window === 'undefined') return p;
@@ -298,6 +305,7 @@ function FloatingDockRoot() {
     return {
       x: Math.min(Math.max(4, p.x), Math.max(4, window.innerWidth - w - 4)),
       y: Math.min(Math.max(4, p.y), Math.max(4, window.innerHeight - h - 4)),
+
     };
   };
 

@@ -3418,6 +3418,18 @@ export function DungeonView({
         onMainMenu={handleMainMenu}
         mainMenuTitle="Save and return to main menu (resume later)"
         onOpenWorkshop={effectiveTools(state.saveData.tools).workstation ? () => setShowWorkshop(true) : undefined}
+        onOpenBuild={() => {
+          if (dungeonBuildMode) {
+            setDungeonBuildMode(false);
+            setSelectedDungeonBuildType(null);
+          } else {
+            setDungeonBuildPanelOpen(true);
+          }
+        }}
+        buildActive={dungeonBuildMode || dungeonBuildPanelOpen}
+        onSave={handleManualSave}
+        saving={cloudSyncing}
+        saveTitle={isAuthenticated ? 'Save progress to cloud' : 'Save progress locally'}
         onDropItem={handleDropItem} 
         onUseItem={handleUseItemOutOfCombat}
         onUseMove={handleUseMoveOutOfCombat}

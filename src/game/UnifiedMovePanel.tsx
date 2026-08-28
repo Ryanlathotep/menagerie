@@ -35,6 +35,8 @@ import {
 } from './MoveSortFilter';
 import { loadMoveFilters, saveMoveFilters } from './persistedFilters';
 import { MoveShapeThumbnail } from './MoveShapeThumbnail';
+import { MoveTagBadges } from './MoveTagBadges';
+
 import { 
   loadKeybinds, saveKeybinds, getMonsterKeybinds, setMoveKeybind, 
   removeMoveKeybind, VALID_KEYBIND_KEYS 

@@ -466,32 +466,49 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             </div>
 
             {onFlee && (
-              <Button
-                variant={fleeVariant === 'home' ? 'secondary' : 'destructive'}
-                size="icon"
-                className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
-                onClick={onFlee}
+              <DockableHudButton
+                id="hud.flee"
+                ariaLabel={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
                 title={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
-                aria-label={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
+                onTap={onFlee}
+                icon={fleeVariant === 'home' ? <Home className="w-5 h-5" /> : <DoorOpen className="w-5 h-5" />}
               >
-                {fleeVariant === 'home'
-                  ? <Home className={desktopIconClass} />
-                  : <DoorOpen className={desktopIconClass} />}
-              </Button>
+                <Button
+                  variant={fleeVariant === 'home' ? 'secondary' : 'destructive'}
+                  size="icon"
+                  className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
+                  onClick={onFlee}
+                  title={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
+                  aria-label={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
+                >
+                  {fleeVariant === 'home'
+                    ? <Home className={desktopIconClass} />
+                    : <DoorOpen className={desktopIconClass} />}
+                </Button>
+              </DockableHudButton>
             )}
 
             {onMainMenu && (
-              <Button
-                variant="destructive"
-                size="icon"
-                className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
-                onClick={onMainMenu}
+              <DockableHudButton
+                id="hud.mainmenu"
+                ariaLabel={mainMenuTitle ?? 'Return to main menu (ends run)'}
                 title={mainMenuTitle ?? 'Return to main menu (ends run)'}
-                aria-label={mainMenuTitle ?? 'Return to main menu (ends run)'}
+                onTap={onMainMenu}
+                icon={<LogOut className="w-5 h-5" />}
               >
-                <LogOut className={desktopIconClass} />
-              </Button>
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
+                  onClick={onMainMenu}
+                  title={mainMenuTitle ?? 'Return to main menu (ends run)'}
+                  aria-label={mainMenuTitle ?? 'Return to main menu (ends run)'}
+                >
+                  <LogOut className={desktopIconClass} />
+                </Button>
+              </DockableHudButton>
             )}
+
           </>
         )}
       </div>

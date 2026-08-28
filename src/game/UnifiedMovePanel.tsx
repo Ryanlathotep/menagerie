@@ -471,7 +471,9 @@ export function UnifiedMovePanel({
         ))}
         {displayMoves.length === 0 && (
           <div className="col-span-full text-center py-4 text-muted-foreground text-xs">
-            Drag moves here to show them
+            {filtersActive
+              ? 'No moves match your current filters.'
+              : 'Drag moves here to show them'}
           </div>
         )}
       </div>

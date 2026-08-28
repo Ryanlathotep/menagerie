@@ -830,6 +830,10 @@ function UnifiedMoveCard({
           <p className="text-xs text-muted-foreground flex-1">{move.description}</p>
           <MoveShapeThumbnail move={move} />
         </div>
+
+        {/* Full tag list — every property this move carries */}
+        <MoveTagBadges move={displayMove} />
+
         
         {/* Combat Stats - shown when enemy is present */}
         {enemyMonster && (

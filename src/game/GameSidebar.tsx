@@ -177,8 +177,9 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   const enemyMaxStamina = enemyExpandedStats?.stamina ?? enemyMonster?.stats.special ?? 1;
   const enemyHpPercent = enemyCurrentHp / enemyMaxHp * 100;
   const enemyStaminaPercent = enemyCurrentStamina / enemyMaxStamina * 100;
-  const desktopIconClass = 'w-5 h-5 sm:w-4 sm:h-4';
-  const mobileMenuButtonClass = 'h-10 flex-1 min-w-0 px-0';
+  // One standard size for every HUD / dock button, on every platform.
+  const desktopIconClass = 'w-5 h-5';
+  const hudBtnClass = 'h-10 w-10 p-0 flex-shrink-0';
 
   return <>
       {/* Always visible bottom bar */}

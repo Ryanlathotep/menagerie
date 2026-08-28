@@ -539,6 +539,7 @@ export function UnifiedMovePanel({
           </div>
         </CollapsibleContent>
       </Collapsible>
+      )}
     </div>
   );
 }

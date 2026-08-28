@@ -191,8 +191,14 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   const enemyHpPercent = enemyCurrentHp / enemyMaxHp * 100;
   const enemyStaminaPercent = enemyCurrentStamina / enemyMaxStamina * 100;
   // One standard size for every HUD / dock button, on every platform.
+  // The row sets `--hud-btn` (see useFluidHudRow) so icons shrink automatically
+  // when more buttons are dragged into the HUD, and buttons dropped back in
+  // snap into the row at exactly the same size as the pre-existing ones.
   const desktopIconClass = 'w-5 h-5';
-  const hudBtnClass = 'h-10 w-10 p-0 flex-shrink-0';
+  const hudBtnClass =
+    'p-0 shrink-0 aspect-square h-[var(--hud-btn,2.5rem)] w-[var(--hud-btn,2.5rem)] [&_svg]:!w-[55%] [&_svg]:!h-[55%]';
+  const mobileHudRow = useFluidHudRow();
+  const desktopHudRow = useFluidHudRow();
 
   return <>
       {/* Always visible bottom bar */}

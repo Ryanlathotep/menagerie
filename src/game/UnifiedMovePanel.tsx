@@ -29,6 +29,7 @@ import {
   MoveSortFilter, 
   MoveSortOption, 
   MoveFilterOption, 
+  MoveFilterMode,
   sortMoves, 
   filterMoves 
 } from './MoveSortFilter';

@@ -90,6 +90,9 @@ export function MoveTierSelector({
       </div>
       
       <p className="text-xs text-muted-foreground">{move.description}</p>
+
+      <MoveTagBadges move={move} size="sm" />
+
       
       {/* Single Target Versions */}
       <div className="space-y-2">

@@ -1017,7 +1017,7 @@ export function DungeonView({
     const tile = currentDungeon?.tiles[targetY]?.[targetX];
     if (!currentDungeon || !tile || (tile.type !== 'mineable_wall' && tile.type !== 'terrain' && tile.type !== 'nest')) return;
     autoHarvestTargetRef.current = { x: targetX, y: targetY, tileType: tile.type };
-    const stepDelay = Math.max(120, autoStepMs || 100);
+    const stepDelay = Math.max(40, autoStepMs || 100);
     autoHarvestTimerRef.current = window.setInterval(() => {
       const target = autoHarvestTargetRef.current;
       const liveDungeon = dungeonRef.current;

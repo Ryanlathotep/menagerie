@@ -46,6 +46,8 @@ import { UnifiedTileMenu, UnifiedTileAction, UnifiedTileInfo, UnifiedTileCreatur
 import { Flag, FlagOff, DoorOpen, Hammer, Footprints, Swords, Shovel, Droplet, Trash2, Settings as SettingsIcon, Pickaxe, TreePine, Wheat, Wrench, Users, Sparkles, Home, FlaskConical, Wand2, Repeat, Search, Crosshair } from 'lucide-react';
 import { findBestMatchupSwap } from './MatchupIndicator';
 import { useSettings } from './Settings';
+import { AutomationBar } from '@/game/automation/AutomationBar';
+import { useAutomationControls, automationStepMs, AutomationMode } from '@/game/automation/controls';
 import { GameSidebar } from './GameSidebar';
 import { CraftingWorkshop } from './CraftingWorkshop';
 import { getMonsterMoves, Move } from './moves';
@@ -112,6 +114,10 @@ interface LevelUpEntry {
 export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const { state, dispatch } = useGame();
   const { settings, updateSetting } = useSettings();
+  // Shared automation transport controls (mode + play/pause + speed multiplier).
+  const { controls: autoControls, setMode: setAutoMode, setSpeed: setAutoSpeed, setUninterrupted: setAutoUninterrupted } = useAutomationControls();
+  const autoStepMs = automationStepMs(settings.autoRunSpeed, autoControls.speed);
+  const [automationRunning, setAutomationRunning] = useState(false);
   const rendererRef = useRef<OverworldRendererHandle>(null);
   const { saveToCloud, syncing, isAuthenticated } = useCloudSave();
   const { username: myUsername } = useMyUsername();
@@ -686,7 +692,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     cancelAutoWalk();
     autoWalkPathRef.current = [...path];
     automationRunningRef.current = true;
-    const stepDelay = Math.max(80, autoStepMs || 100);
+    const stepDelay = Math.max(40, autoStepMs || 100);
     // The player must NEVER be fully locked out of moving: nearby enemies only
     // cancel *multi-step* auto-walking. The first step of any deliberate move
     // command always executes, then we halt the rest of the queue with a
@@ -815,7 +821,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       tileType: startTile.type,
     };
     automationRunningRef.current = true;
-    const stepDelay = Math.max(120, autoStepMs || 100);
+    const stepDelay = Math.max(40, autoStepMs || 100);
     addLog(`⛏️ Auto-Harvest started — clearing nearby ${startTile.type}s.`, 'info');
     autoMineTimerRef.current = window.setInterval(() => {
       const job = autoMineTargetRef.current;
@@ -1009,7 +1015,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     cancelAutoMine();
     cancelAutoSearch();
     cancelAutoHunt();
-    const stepDelay = Math.max(120, autoStepMs || 100);
+    const stepDelay = Math.max(40, autoStepMs || 100);
     addLog('🏹 Auto-Hunt started — seeking nearest enemy.', 'info');
     automationRunningRef.current = true;
     autoHuntTimerRef.current = window.setInterval(() => {
@@ -1252,7 +1258,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     cancelAutoHunt();
     cancelAutoSearch();
     autoSearchKindRef.current = kind;
-    const stepDelay = Math.max(120, autoStepMs || 100);
+    const stepDelay = Math.max(40, autoStepMs || 100);
     addLog(`🧭 Auto-Search started — looking for nearest ${kind.replace('_', ' ')}.`, 'info');
     automationRunningRef.current = true;
     autoSearchTimerRef.current = window.setInterval(() => {

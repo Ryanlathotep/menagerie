@@ -172,12 +172,28 @@ export function FloatingDockProvider({ children }: { children: ReactNode }) {
       if (!cur) return prev;
       const next: FabState = {
         docked,
+        home: false,
         x: pos?.x ?? cur.x,
         y: pos?.y ?? cur.y,
       };
       saveState(id, next);
       return { ...prev, [id]: next };
     });
+  }, []);
+
+  const setHome = useCallback((id: string, home: boolean) => {
+    setStates((prev) => {
+      const cur = prev[id];
+      if (!cur || cur.home === home) return prev;
+      const next: FabState = { ...cur, home, docked: home ? false : cur.docked };
+      saveState(id, next);
+      return { ...prev, [id]: next };
+    });
+  }, []);
+
+  const homeZoneRef = useRef<HTMLElement | null>(null);
+  const setHomeZone = useCallback((el: HTMLElement | null) => {
+    homeZoneRef.current = el;
   }, []);
 
   const setPos = useCallback((id: string, pos: Pos) => {
@@ -189,6 +205,7 @@ export function FloatingDockProvider({ children }: { children: ReactNode }) {
       return { ...prev, [id]: next };
     });
   }, []);
+
 
   // Slot mount/unmount notifications arrive during React's commit phase (ref
   // callbacks). Bumping state synchronously there can re-enter the same commit

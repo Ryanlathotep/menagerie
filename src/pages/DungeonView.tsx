@@ -344,9 +344,9 @@ export function DungeonView({
     }
   }, [dungeon, dispatch, state.saveData.dungeonEntrances, state.saveData.unlockedMonsters]);
   
-  // ─── Manual save for admins: flush in-memory dungeon/run into saveData ───
+  // ─── Manual save: flush in-memory dungeon/run into saveData ───
   const handleManualSave = useCallback(async () => {
-    if (!isAdmin) return; // Only admins can manual save from dungeon
+
     
     // Build snapshot from current run (dungeon state is in state.run)
     const snapshot = buildProgressSnapshot(state.saveData, state.run, null);

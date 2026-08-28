@@ -231,7 +231,7 @@ export function expandDungeonIfNeeded(dungeon: DungeonState): DungeonState {
   let mutated = false;
 
   // West (prepend columns) — player x close to 0.
-  if (playerPosition.x <= EDGE_TRIGGER && width < MAX_DIM) {
+  if (playerPosition.x <= EDGE_TRIGGER) {
     const newTiles: DungeonTile[][] = tiles.map(row => {
       const prefix = Array.from({ length: STRIP_WIDTH }, blankTile);
       return [...prefix, ...row];
@@ -241,25 +241,27 @@ export function expandDungeonIfNeeded(dungeon: DungeonState): DungeonState {
     if (entryPosition) entryPosition = { ...entryPosition, x: entryPosition.x + STRIP_WIDTH };
     if (compassWaypoint) compassWaypoint = { ...compassWaypoint, x: compassWaypoint.x + STRIP_WIDTH };
     if (compassWaypoints) compassWaypoints = compassWaypoints.map(p => ({ ...p, x: p.x + STRIP_WIDTH }));
-    carveStripContent(newTiles, 'west', dungeon.floor, newEnemies, availableSpecies, theme);
+    withSeededRandom(stripRng(dungeon, 'west', width), () =>
+      carveStripContent(newTiles, 'west', dungeon.floor, newEnemies, availableSpecies, theme));
     tiles = newTiles;
     mutated = true;
   }
 
   // East (append columns) — player x close to width-1.
-  if (playerPosition.x >= width - 1 - EDGE_TRIGGER && width < MAX_DIM) {
+  if (playerPosition.x >= width - 1 - EDGE_TRIGGER) {
     const newTiles: DungeonTile[][] = tiles.map(row => {
       const suffix = Array.from({ length: STRIP_WIDTH }, blankTile);
       return [...row, ...suffix];
     });
     width += STRIP_WIDTH;
-    carveStripContent(newTiles, 'east', dungeon.floor, newEnemies, availableSpecies, theme);
+    withSeededRandom(stripRng(dungeon, 'east', width), () =>
+      carveStripContent(newTiles, 'east', dungeon.floor, newEnemies, availableSpecies, theme));
     tiles = newTiles;
     mutated = true;
   }
 
   // North (prepend rows) — player y close to 0.
-  if (playerPosition.y <= EDGE_TRIGGER && height < MAX_DIM) {
+  if (playerPosition.y <= EDGE_TRIGGER) {
     const prefixRows: DungeonTile[][] = Array.from({ length: STRIP_WIDTH }, () => makeStripRow(width));
     const newTiles = [...prefixRows, ...tiles];
     height += STRIP_WIDTH;
@@ -267,17 +269,19 @@ export function expandDungeonIfNeeded(dungeon: DungeonState): DungeonState {
     if (entryPosition) entryPosition = { ...entryPosition, y: entryPosition.y + STRIP_WIDTH };
     if (compassWaypoint) compassWaypoint = { ...compassWaypoint, y: compassWaypoint.y + STRIP_WIDTH };
     if (compassWaypoints) compassWaypoints = compassWaypoints.map(p => ({ ...p, y: p.y + STRIP_WIDTH }));
-    carveStripContent(newTiles, 'north', dungeon.floor, newEnemies, availableSpecies, theme);
+    withSeededRandom(stripRng(dungeon, 'north', height), () =>
+      carveStripContent(newTiles, 'north', dungeon.floor, newEnemies, availableSpecies, theme));
     tiles = newTiles;
     mutated = true;
   }
 
   // South (append rows) — player y close to height-1.
-  if (playerPosition.y >= height - 1 - EDGE_TRIGGER && height < MAX_DIM) {
+  if (playerPosition.y >= height - 1 - EDGE_TRIGGER) {
     const suffixRows: DungeonTile[][] = Array.from({ length: STRIP_WIDTH }, () => makeStripRow(width));
     const newTiles = [...tiles, ...suffixRows];
     height += STRIP_WIDTH;
-    carveStripContent(newTiles, 'south', dungeon.floor, newEnemies, availableSpecies, theme);
+    withSeededRandom(stripRng(dungeon, 'south', height), () =>
+      carveStripContent(newTiles, 'south', dungeon.floor, newEnemies, availableSpecies, theme));
     tiles = newTiles;
     mutated = true;
   }

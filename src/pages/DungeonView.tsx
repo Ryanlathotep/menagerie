@@ -1964,7 +1964,8 @@ export function DungeonView({
             setTimeout(() => planNextHuntStepRef.current(), 0);
           } else if (harvestAllModeRef.current) {
             setTimeout(() => planNextHarvestStepRef.current(), 60);
-           else if (autoplayModeRef.current) {
+          } else if (autoplayModeRef.current) {
+
             setTimeout(() => planNextAutoplayStepRef.current(), 60);
           }
 

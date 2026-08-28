@@ -23,6 +23,7 @@ import {
   CLASS_ADVANTAGES_CORRECTED,
 } from './types';
 import type { Move } from './moves';
+import { MoveTagBadges } from './MoveTagBadges';
 import { calculateEquipmentBonuses, calculateSetBonusStats } from './equipment';
 import { isCreativeMode } from './creativeMode';
 import {
@@ -395,25 +396,43 @@ export function CharacterMenu({
           Keys are saved per character. Assigning a key that is already in use moves it to the new entry.
         </p>
 
-        <div className="bg-muted/30 rounded-lg p-2 space-y-1">
+        <div className="bg-muted/30 rounded-lg p-2 space-y-1.5">
           <p className="text-[9px] text-muted-foreground uppercase mb-1">Moves</p>
           {moves.length === 0 && <p className="text-[10px] text-muted-foreground">No moves learned yet.</p>}
-          {moves.map(move => (
-            <div key={move.id} className="flex items-center gap-2">
-              <span className="text-xs flex-1 min-w-0 truncate">{move.name}</span>
-              <Select value={monsterBinds[move.id] ?? NONE} onValueChange={v => applyMoveKey(move.id, v)}>
-                <SelectTrigger className="h-6 w-20 text-[10px]">
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent className="max-h-60 z-[200]">
-                  <SelectItem value={NONE} className="text-[10px]">None</SelectItem>
-                  {VALID_KEYBIND_KEYS.map(key => (
-                    <SelectItem key={key} value={key} className="text-[10px]">{getKeyLabel(key)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ))}
+          {moves.map(move => {
+            const assignedKey = monsterBinds[move.id];
+            return (
+              <div key={move.id} className="rounded-md bg-background/40 p-1.5 flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-bold truncate">{move.name}</span>
+                    <span className="font-mono text-[9px] text-muted-foreground whitespace-nowrap">
+                      {move.power > 0 && `⚔${move.power} `}
+                      {`🎯${move.accuracy}% `}
+                      {`⚡${move.staminaCost}`}
+                    </span>
+                  </div>
+                  <MoveTagBadges move={move} max={5} className="mt-0.5" />
+                  {move.description && (
+                    <p className="text-[9px] text-muted-foreground leading-snug mt-0.5 truncate" title={move.description}>
+                      {move.description}
+                    </p>
+                  )}
+                </div>
+                <Select value={assignedKey ?? NONE} onValueChange={v => applyMoveKey(move.id, v)}>
+                  <SelectTrigger className={`h-6 w-20 text-[10px] shrink-0 ${assignedKey ? 'border-primary/50 text-primary font-bold' : ''}`}>
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60 z-[200]">
+                    <SelectItem value={NONE} className="text-[10px]">None</SelectItem>
+                    {VALID_KEYBIND_KEYS.map(key => (
+                      <SelectItem key={key} value={key} className="text-[10px]">{getKeyLabel(key)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            );
+          })}
         </div>
 
         <div className="bg-muted/30 rounded-lg p-2 space-y-1">

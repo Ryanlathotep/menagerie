@@ -233,6 +233,8 @@ export function FloatingDockProvider({ children }: { children: ReactNode }) {
 }
 
 const DOCK_POS_KEY = 'ui.dock.pos.v2';
+/** Fired by Settings → "Reset dock position" so the dock snaps back to default. */
+export const DOCK_RESET_EVENT = 'menagerie:dock-reset';
 type DockPos = { x: number; y: number };
 
 function loadDockPos(): DockPos | null {
@@ -247,6 +249,12 @@ function loadDockPos(): DockPos | null {
 function saveDockPos(p: DockPos) {
   try { localStorage.setItem(DOCK_POS_KEY, JSON.stringify(p)); } catch { /* ignore */ }
 }
+/** Clears the saved dock position and tells any mounted dock to reset. */
+export function resetDockPosition() {
+  try { localStorage.removeItem(DOCK_POS_KEY); } catch { /* ignore */ }
+  try { window.dispatchEvent(new Event(DOCK_RESET_EVENT)); } catch { /* ignore */ }
+}
+
 
 function FloatingDockRoot() {
   const ctx = useContext(Ctx)!;
@@ -281,6 +289,13 @@ function FloatingDockRoot() {
     };
   }, [ctx]);
 
+  // Reset to default position when Settings asks for it.
+  useEffect(() => {
+    const onReset = () => setDockPos(null);
+    window.addEventListener(DOCK_RESET_EVENT, onReset);
+    return () => window.removeEventListener(DOCK_RESET_EVENT, onReset);
+  }, []);
+
   // Clamp saved dock position to current viewport (handles rotate/resize).
   const clampDock = (p: DockPos): DockPos => {
     if (typeof window === 'undefined') return p;
@@ -290,8 +305,30 @@ function FloatingDockRoot() {
     return {
       x: Math.min(Math.max(4, p.x), Math.max(4, window.innerWidth - w - 4)),
       y: Math.min(Math.max(4, p.y), Math.max(4, window.innerHeight - h - 4)),
+
     };
   };
+
+  // Snap a dropped dock to whichever screen edge it landed closest to, so it
+  // always sits flush instead of floating in the middle of the play area.
+  const snapDock = (p: DockPos): DockPos => {
+    if (typeof window === 'undefined') return p;
+    const rect = dockRef.current?.getBoundingClientRect();
+    const w = rect?.width ?? 120;
+    const h = rect?.height ?? 56;
+    const maxX = Math.max(4, window.innerWidth - w - 4);
+    const maxY = Math.max(4, window.innerHeight - h - 4);
+    const dLeft = p.x - 4;
+    const dRight = maxX - p.x;
+    const dTop = p.y - 4;
+    const dBottom = maxY - p.y;
+    const min = Math.min(dLeft, dRight, dTop, dBottom);
+    if (min === dLeft) return { x: 4, y: p.y };
+    if (min === dRight) return { x: maxX, y: p.y };
+    if (min === dTop) return { x: p.x, y: 4 };
+    return { x: p.x, y: maxY };
+  };
+
 
   const dockedIds = ctx.order.filter((id) => ctx.states[id]?.docked);
 
@@ -330,16 +367,20 @@ function FloatingDockRoot() {
     if (!d || d.pointerId !== e.pointerId) return;
     dragRef.current = null;
     if (d.moved) {
-      const p = clampDock({ x: e.clientX - d.offX, y: e.clientY - d.offY });
+      const p = snapDock(clampDock({ x: e.clientX - d.offX, y: e.clientY - d.offY }));
       setDockPos(p);
       saveDockPos(p);
     }
+
     setDragging(false);
   };
 
   const positionStyle: React.CSSProperties = dockPos
     ? { left: dockPos.x, top: dockPos.y, right: 'auto', bottom: 'auto' }
-    : { right: 12, bottom: 12 };
+    // Default: hug the right edge but sit well above the bottom-right corner so
+    // the dock never covers the Exit / Flee buttons.
+    : { right: 12, top: '35%' };
+
 
   return (
     <>

@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Settings as SettingsIcon, X, Download, Upload, Shield, Globe2, Dices, Home, Bug, Flag, Lightbulb } from 'lucide-react';
 import { WaypointManager } from './WaypointManager';
+import { resetDockPosition } from './floating/FloatingDock';
+
 
 import { ReportBugDialog } from './ReportBugDialog';
 import { FeatureRequestDialog } from './FeatureRequestDialog';
@@ -492,7 +494,22 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             <p className="text-xs text-muted-foreground -mt-1">
               Rename or remove individual dungeon-floor and overworld waypoints.
             </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => {
+                resetDockPosition();
+                toast({ title: 'Dock position reset', description: 'The floating dock is back at its default spot.' });
+              }}
+            >
+              ⋮⋮ Reset Dock Position
+            </Button>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Moves the floating button dock back to the right edge if you've dragged it off-screen.
+            </p>
           </div>
+
 
 
           {/* Auto-Equip Preferences */}

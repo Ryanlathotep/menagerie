@@ -19,6 +19,7 @@ import { ExpandedStats } from './CharacterSheet';
 import { UnifiedMovePanel } from './UnifiedMovePanel';
 import { SettingsPanel, useSettings } from './Settings';
 import { formatLevel } from './levelDisplay';
+import { CharacterMenu } from './CharacterMenu';
 import { MonsterEquipment, EquipmentItem, RARITY_COLORS, CRAFTING_MATERIALS, calculateEquipmentBonuses, calculateSetBonusStats, getRecipesUsingMaterial } from './equipment';
 import { PartyPanel } from './PartyPanel';
 import { EvolvedMove } from './moveMastery';
@@ -593,152 +594,21 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             </div>
             
             {/* Character Panel - Enhanced with passives & base vs equipped stats */}
-            {activePanel === 'character' && (() => {
-              const speciesData = SPECIES_DATA[monster.species];
-              const equipBonuses = equipment ? calculateEquipmentBonuses(equipment) : null;
-              const setBonuses = equipment ? calculateSetBonusStats(equipment) : null;
-              
-              // Base stats (without equipment)
-              const baseAtk = monster.stats.attack;
-              const baseDef = monster.stats.defense;
-              const baseSpd = monster.stats.speed;
-              const baseDodge = monster.stats.dodge ?? Math.floor(monster.stats.speed * 0.5);
-              const baseSpecial = monster.stats.special;
-              const _baseMaxHp = monster.stats.maxHp;
-              const _baseStamina = monster.stats.stamina ?? 50;
-              
-              // Equipment contributions
-              const eqAtk = (equipBonuses?.attack ?? 0) + (setBonuses?.attack ?? 0);
-              const eqDef = (equipBonuses?.defense ?? 0) + (setBonuses?.defense ?? 0);
-              const eqSpd = (equipBonuses?.speed ?? 0) + (setBonuses?.speed ?? 0);
-              const eqDodge = (equipBonuses?.dodge ?? 0) + (setBonuses?.dodge ?? 0);
-              const eqSpecial = (equipBonuses?.special ?? 0) + (setBonuses?.special ?? 0);
-              const eqHp = (equipBonuses?.maxHp ?? 0) + (setBonuses?.maxHp ?? 0);
-              const eqSta = (equipBonuses?.stamina ?? 0) + (setBonuses?.stamina ?? 0);
-              
-              // Element/class advantages
-              const elementStrong = ELEMENT_ADVANTAGES[monster.element] || [];
-              const elementWeak = (Object.entries(ELEMENT_ADVANTAGES) as [string, string[]][])
-                .filter(([, targets]) => targets.includes(monster.element))
-                .map(([el]) => el);
-              const classStrong = CLASS_ADVANTAGES_CORRECTED[monster.class] || [];
-              const classWeak = (Object.entries(CLASS_ADVANTAGES_CORRECTED) as [string, string[]][])
-                .filter(([, targets]) => targets.includes(monster.class))
-                .map(([cl]) => cl);
-              
-              const StatRow = ({ label, icon, base, bonus, color }: { label: string; icon: React.ReactNode; base: number; bonus: number; color: string }) => (
-                <div className="flex items-center gap-1 text-[10px]">
-                  <span className={`w-3 h-3 ${color}`}>{icon}</span>
-                  <span className="w-8 text-muted-foreground">{label}</span>
-                  <span className="font-mono font-bold w-6 text-right">{base + bonus}</span>
-                  {bonus !== 0 && (
-                    <span className={`font-mono text-[9px] ${bonus > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      ({bonus > 0 ? '+' : ''}{bonus})
-                    </span>
-                  )}
-                </div>
-              );
-              
-              return <div className="space-y-2">
-                {/* Row 1: Identity + Passive */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {/* Identity */}
-                  <div className="bg-muted/30 rounded-lg p-2 flex items-center gap-2">
-                    <MonsterSprite species={monster.species} element={monster.element} classType={monster.class} size={40} />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-bold text-xs truncate">{monster.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{levelLabel} {speciesData.name}</p>
-                      <div className="flex gap-1 flex-wrap mt-0.5">
-                        <span className={`element-badge element-${monster.element} text-[8px] px-1 py-0`}>{monster.element}</span>
-                        <span className="text-[8px] px-1 py-0 rounded-full bg-muted">{monster.class}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Passive Ability - Prominent */}
-                  <div className="bg-primary/10 border border-primary/30 rounded-lg p-2">
-                    <div className="flex items-center gap-1 mb-0.5">
-                      <span className="text-sm">✨</span>
-                      <p className="text-xs font-bold text-primary">{speciesData.passiveAbility}</p>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground leading-snug">{speciesData.passiveDescription}</p>
-                  </div>
-                </div>
-                
-                {/* Row 2: Resource Bars */}
-                <div className="bg-muted/30 rounded-lg p-2 space-y-1">
-                  <div className="flex justify-between text-[10px]">
-                    <span>HP</span>
-                    <span className="font-mono">{currentHp}/{maxHp}{eqHp > 0 ? ` (+${eqHp})` : ''}</span>
-                  </div>
-                  <Progress value={hpPercent} className="h-1.5" />
-                  <div className="flex justify-between text-[10px]">
-                    <span>STA</span>
-                    <span className="font-mono">{currentStamina}/{maxStamina}{eqSta > 0 ? ` (+${eqSta})` : ''}</span>
-                  </div>
-                  <Progress value={staminaPercent} className="h-1.5 [&>div]:bg-stat-special" />
-                  <div className="flex justify-between text-[10px]">
-                    <span>XP</span>
-                    <span className="font-mono">{experience}/{experienceToNext}</span>
-                  </div>
-                  <Progress value={xpPercent} className="h-1.5 [&>div]:bg-secondary" />
-                </div>
-                
-                {/* Row 3: Stats with base vs equipped */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-muted/30 rounded-lg p-2">
-                    <p className="text-[9px] text-muted-foreground uppercase mb-1">Offense</p>
-                    <div className="space-y-0.5">
-                      <StatRow label="ATK" icon={<Swords className="w-3 h-3" />} base={baseAtk} bonus={eqAtk} color="text-orange-500" />
-                      <StatRow label="SPC" icon={<Target className="w-3 h-3" />} base={baseSpecial} bonus={eqSpecial} color="text-yellow-500" />
-                    </div>
-                  </div>
-                  <div className="bg-muted/30 rounded-lg p-2">
-                    <p className="text-[9px] text-muted-foreground uppercase mb-1">Defense / Mobility</p>
-                    <div className="space-y-0.5">
-                      <StatRow label="DEF" icon={<Shield className="w-3 h-3" />} base={baseDef} bonus={eqDef} color="text-stat-defense" />
-                      <StatRow label="DDG" icon={<Footprints className="w-3 h-3" />} base={baseDodge} bonus={eqDodge} color="text-emerald-500" />
-                      <StatRow label="SPD" icon={<Wind className="w-3 h-3" />} base={baseSpd} bonus={eqSpd} color="text-stat-speed" />
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Row 4: Matchup Info */}
-                <div className="bg-muted/30 rounded-lg p-2">
-                  <p className="text-[9px] text-muted-foreground uppercase mb-1">Matchups</p>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
-                    {elementStrong.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        <span className="text-green-400">▲</span>
-                        <span className="text-muted-foreground">Elem:</span>
-                        <span className="capitalize text-green-400">{elementStrong.join(', ')}</span>
-                      </div>
-                    )}
-                    {elementWeak.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        <span className="text-red-400">▼</span>
-                        <span className="text-muted-foreground">Elem:</span>
-                        <span className="capitalize text-red-400">{elementWeak.join(', ')}</span>
-                      </div>
-                    )}
-                    {classStrong.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        <span className="text-green-400">▲</span>
-                        <span className="text-muted-foreground">Class:</span>
-                        <span className="capitalize text-green-400">{classStrong.join(', ')}</span>
-                      </div>
-                    )}
-                    {classWeak.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        <span className="text-red-400">▼</span>
-                        <span className="text-muted-foreground">Class:</span>
-                        <span className="capitalize text-red-400">{classWeak.join(', ')}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>;
-            })()}
+            {activePanel === 'character' && (
+              <CharacterMenu
+                monster={monster}
+                levelLabel={levelLabel}
+                equipment={equipment}
+                currentHp={currentHp}
+                maxHp={maxHp}
+                currentStamina={currentStamina}
+                maxStamina={maxStamina}
+                experience={experience}
+                experienceToNext={experienceToNext}
+                moves={moves}
+                inventory={inventory}
+              />
+            )}
             
             {/* Moves Panel with drag-and-drop and usage */}
             {activePanel === 'moves' && (

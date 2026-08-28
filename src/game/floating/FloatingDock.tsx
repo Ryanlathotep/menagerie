@@ -233,6 +233,8 @@ export function FloatingDockProvider({ children }: { children: ReactNode }) {
 }
 
 const DOCK_POS_KEY = 'ui.dock.pos.v2';
+/** Fired by Settings → "Reset dock position" so the dock snaps back to default. */
+export const DOCK_RESET_EVENT = 'menagerie:dock-reset';
 type DockPos = { x: number; y: number };
 
 function loadDockPos(): DockPos | null {
@@ -247,6 +249,12 @@ function loadDockPos(): DockPos | null {
 function saveDockPos(p: DockPos) {
   try { localStorage.setItem(DOCK_POS_KEY, JSON.stringify(p)); } catch { /* ignore */ }
 }
+/** Clears the saved dock position and tells any mounted dock to reset. */
+export function resetDockPosition() {
+  try { localStorage.removeItem(DOCK_POS_KEY); } catch { /* ignore */ }
+  try { window.dispatchEvent(new Event(DOCK_RESET_EVENT)); } catch { /* ignore */ }
+}
+
 
 function FloatingDockRoot() {
   const ctx = useContext(Ctx)!;

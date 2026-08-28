@@ -576,9 +576,11 @@ function FabInstance({ cfgRef, state }: { cfgRef: React.MutableRefObject<FabConf
       ctx.setDocked(cfg.id, false, finalPos);
     }
   };
-
+  // Buttons that live in their HUD home row are rendered by the HUD itself.
+  if (state.home) return null;
 
   const button = (
+
     <button
       type="button"
       onPointerDown={onPointerDown}

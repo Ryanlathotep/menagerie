@@ -242,8 +242,11 @@ export function FloatingDockProvider({ children }: { children: ReactNode }) {
       order,
       states,
       setDocked,
+      setHome,
       setPos,
       dockRectRef,
+      homeZoneRef,
+      setHomeZone,
       registerSlot,
       slotVersion,
       slotsRef,
@@ -255,11 +258,14 @@ export function FloatingDockProvider({ children }: { children: ReactNode }) {
       order,
       states,
       setDocked,
+      setHome,
+      setHomeZone,
       setPos,
       registerSlot,
       slotVersion,
     ],
   );
+
 
   return (
     <Ctx.Provider value={value}>

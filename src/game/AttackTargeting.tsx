@@ -5,7 +5,9 @@ import { GripHorizontal } from 'lucide-react';
 import { Position } from './types';
 
 import { Move } from './moves';
+import { MoveTagBadges } from './MoveTagBadges';
 import { EvolvedMove } from './moveMastery';
+
 import { 
   AttackConfig, 
   getAttackConfig, 

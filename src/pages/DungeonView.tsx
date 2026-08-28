@@ -95,6 +95,12 @@ import {
   getPathTiles,
   anyEnemyThreatensPlayer,
 } from '@/game/dungeonCombat';
+import {
+  getAutoplayProfile,
+  evaluateAutoplay,
+  orderMovesForAction,
+  bestMatchupIndex,
+} from '@/game/autoplay/rules';
 import { playParticleEffectForMove } from '@/game/particles/api';
 import { MoveInfoPanel } from '@/game/AttackTargeting';
 import { loadKeybinds, getMonsterKeybinds as getMonsterKeybindsImport, isTypingTarget } from '@/game/keybinds';

@@ -177,6 +177,7 @@ export function ShapeDesigner() {
   const [tier, setTier] = useState<TierKey>('base');
   const [sortOption, setSortOption] = useState<MoveSortOption>('custom');
   const [moveFilters, setMoveFilters] = useState<MoveFilterOption[]>(['all']);
+  const [moveFilterMode, setMoveFilterMode] = useState<MoveFilterMode>('or');
 
   // Shape state (for currently selected tier)
   const [originType, setOriginType] = useState<ShapeOriginType>('self');
@@ -591,8 +592,10 @@ export function ShapeDesigner() {
           <MoveSortFilter
             sortOption={sortOption}
             filters={moveFilters}
+            filterMode={moveFilterMode}
             onSortChange={setSortOption}
             onFilterChange={setMoveFilters}
+            onFilterModeChange={setMoveFilterMode}
           />
         </div>
         <ScrollArea className="h-[300px] lg:h-[460px]">

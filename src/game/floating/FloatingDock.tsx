@@ -309,6 +309,27 @@ function FloatingDockRoot() {
     };
   };
 
+  // Snap a dropped dock to whichever screen edge it landed closest to, so it
+  // always sits flush instead of floating in the middle of the play area.
+  const snapDock = (p: DockPos): DockPos => {
+    if (typeof window === 'undefined') return p;
+    const rect = dockRef.current?.getBoundingClientRect();
+    const w = rect?.width ?? 120;
+    const h = rect?.height ?? 56;
+    const maxX = Math.max(4, window.innerWidth - w - 4);
+    const maxY = Math.max(4, window.innerHeight - h - 4);
+    const dLeft = p.x - 4;
+    const dRight = maxX - p.x;
+    const dTop = p.y - 4;
+    const dBottom = maxY - p.y;
+    const min = Math.min(dLeft, dRight, dTop, dBottom);
+    if (min === dLeft) return { x: 4, y: p.y };
+    if (min === dRight) return { x: maxX, y: p.y };
+    if (min === dTop) return { x: p.x, y: 4 };
+    return { x: p.x, y: maxY };
+  };
+
+
   const dockedIds = ctx.order.filter((id) => ctx.states[id]?.docked);
 
   const setDockRef = (el: HTMLDivElement | null) => {

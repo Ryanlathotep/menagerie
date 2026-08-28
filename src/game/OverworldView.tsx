@@ -89,6 +89,12 @@ import {
 } from './nests';
 
 import { useCloudSave } from '@/hooks/useCloudSave';
+import {
+  getAutoplayProfile,
+  evaluateAutoplay,
+  orderMovesForAction,
+  bestMatchupIndex,
+} from './autoplay/rules';
 
 interface OverworldViewProps {
   gameLog: LogMessage[];
@@ -1012,33 +1018,103 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       const px = ow.playerPosition.x, py = ow.playerPosition.y;
       const enemies = getVisibleOverworldEnemies(ow, 30);
 
-      // ── Hand off to the attack menu the moment ANY visible enemy is
-      //    reachable by a currently-affordable move (melee or ranged AoE),
-      //    not just when adjacent. Cheapest reachable move wins.
+      // ── Enemy reachable by an affordable move: let the autoplay profile
+      //    decide (Settings → Autoplay behaviour). In "Fight it out" mode we
+      //    fire without cancelling the hunt, so the hunt resumes on the next
+      //    tick once the target dies. Otherwise we hand off to the menu.
       if (monster && enemies.length > 0) {
-        const allMoves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level);
+        const comboId = `${monster.species}_${monster.element}_${monster.class}`;
+        const profile = getAutoplayProfile(comboId);
         const stam = monster.stats.currentStamina ?? monster.stats.stamina ?? 50;
-        const affordable = allMoves
-          .filter((m) => (m.staminaCost || 0) <= stam && (m.type === 'melee' || m.type === 'ranged' || (m.power || 0) > 0))
-          .sort((a, b) => (a.staminaCost || 0) - (b.staminaCost || 0));
-        let handoff: { move: Move; enemy: Position; validTargets: Position[] } | null = null;
-        outer: for (const mv of affordable) {
-          const cfg = getAttackConfig(mv);
-          const valid = getOverworldValidTargets(ow.playerPosition, cfg, ow);
-          for (const e of enemies) {
-            if (valid.some(v => v.x === e.pos.x && v.y === e.pos.y)) {
-              handoff = { move: mv, enemy: e.pos, validTargets: valid };
-              break outer;
+        const allMoves = getMonsterMoves(monster.species, monster.element, monster.class, monster.level)
+          .filter((m) => (m.staminaCost || 0) <= stam);
+
+        const sorted = [...enemies].sort((a, b) =>
+          (Math.abs(a.pos.x - px) + Math.abs(a.pos.y - py)) -
+          (Math.abs(b.pos.x - px) + Math.abs(b.pos.y - py)));
+        const nearest = sorted[0];
+        const nearestDist = Math.abs(nearest.pos.x - px) + Math.abs(nearest.pos.y - py);
+
+        // Is anything at all reachable right now?
+        const reachable = (moves: Move[]) => {
+          for (const mv of moves) {
+            const cfg = getAttackConfig(mv);
+            const valid = getOverworldValidTargets(ow.playerPosition, cfg, ow);
+            for (const e of sorted) {
+              if (valid.some(v => v.x === e.pos.x && v.y === e.pos.y)) {
+                return { move: mv, enemy: e.pos, validTargets: valid };
+              }
             }
           }
-        }
-        if (handoff) {
-          cancelAutoHunt();
-          setTargetingMove(handoff.move);
-          setTargetingTiles(handoff.validTargets);
-          addLog('🏹 Auto-Hunt: enemy in range — opening attack menu.', 'info');
-          setTimeout(() => handleTargetingClick(handoff!.enemy.x, handoff!.enemy.y), 0);
-          return;
+          return null;
+        };
+
+        const cheapestFirst = [...allMoves]
+          .filter((m) => m.type === 'melee' || m.type === 'ranged' || (m.power || 0) > 0)
+          .sort((a, b) => (a.staminaCost || 0) - (b.staminaCost || 0));
+
+        if (reachable(cheapestFirst)) {
+          if (profile.engage !== 'fight') {
+            const handoff = reachable(cheapestFirst)!;
+            cancelAutoHunt();
+            if (profile.engage === 'stop') {
+              addLog('🏹 Auto-Hunt: enemy in range — stopped.', 'info');
+              return;
+            }
+            setTargetingMove(handoff.move);
+            setTargetingTiles(handoff.validTargets);
+            addLog('🏹 Auto-Hunt: enemy in range — opening attack menu.', 'info');
+            setTimeout(() => handleTargetingClick(handoff.enemy.x, handoff.enemy.y), 0);
+            return;
+          }
+
+          const hpPercent = (monster.stats.currentHp / Math.max(1, monster.stats.maxHp)) * 100;
+          if (hpPercent < profile.stopHpPercent) {
+            cancelAutoHunt(`🛑 Auto-Hunt halted — HP below ${profile.stopHpPercent}%.`);
+            return;
+          }
+
+          const party = state.run?.party ?? [];
+          const activeIdx = state.run?.activePartyIndex ?? 0;
+          const switchIdx = profile.switchBestMatchup
+            ? bestMatchupIndex(party, activeIdx, nearest.enemy)
+            : null;
+          const healItem = (state.run?.inventory ?? []).find(
+            (it) => it.effect === 'heal_hp' || it.effect === 'heal_full',
+          );
+
+          const rule = evaluateAutoplay(profile, {
+            hpPercent,
+            staminaPercent: (stam / Math.max(1, monster.stats.stamina ?? 1)) * 100,
+            distance: nearestDist,
+            myElement: monster.element,
+            myClass: monster.class,
+            myLevel: monster.level,
+            enemyElement: nearest.enemy.element,
+            enemyClass: nearest.enemy.class,
+            enemyLevel: nearest.enemy.level,
+            hasHealItem: !!healItem,
+            canSwitch: switchIdx !== null,
+          });
+
+          if (!rule || rule.action === 'stop_automation' || rule.action === 'retreat') {
+            cancelAutoHunt('🛑 Auto-Hunt: autoplay chose to back off.');
+            return;
+          }
+          if (rule.action === 'switch_best_matchup' && switchIdx !== null) {
+            handlePartySwitch(switchIdx);
+            addLog('🔄 Autoplay: switched to the better matchup.', 'info');
+            return; // keep hunting; next tick fights with the new monster
+          }
+          const ordered = orderMovesForAction(allMoves, rule.action, rule.moveName);
+          const handoff = reachable(ordered) ?? reachable(cheapestFirst);
+          if (handoff) {
+            setTargetingMove(handoff.move);
+            setTargetingTiles(handoff.validTargets);
+            addLog(`⚡ Auto-attack: ${handoff.move.name}!`, 'info');
+            setTimeout(() => handleTargetingClick(handoff.enemy.x, handoff.enemy.y), 0);
+            return;
+          }
         }
       }
 

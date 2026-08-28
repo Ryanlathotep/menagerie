@@ -30,6 +30,7 @@ import { UsernameEditor } from './UsernameEditor';
 import { DiscoveryLeaderboard } from './DiscoveryLeaderboard';
 import { ExplorationLeaderboard } from './ExplorationLeaderboard';
 import type { LevelDisplayMode } from './levelDisplay';
+import { AutoplayRulesPanel } from './autoplay/AutoplayRulesPanel';
 
 // Settings interface
 export type ThemeMode = 'system' | 'light' | 'dark';
@@ -658,6 +659,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 Pin one by ticking “Auto-use during automation” in the enemy attack menu.
               </p>
             </div>
+
+            {/* Autoplay behaviour rules (shared with Arena scripting later) */}
+            <div className="pt-2 border-t">
+              <AutoplayRulesPanel />
+            </div>
+
 
             <div className="flex items-center justify-between">
               <div className="flex flex-col">

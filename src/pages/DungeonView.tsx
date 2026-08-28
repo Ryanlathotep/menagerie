@@ -40,6 +40,7 @@ import { EquipmentView } from '@/game/EquipmentView';
 import { PreRunEquipment } from '@/game/PreRunEquipment';
 import { BUILDING_DEFINITIONS, createBuilding, PlayerBuildingType, PlayerBuilding, getRepairCost, getDisassembleRefund } from '@/game/buildings';
 import { DungeonBuildPanel } from '@/game/DungeonBuildPanel';
+import { KeybindLegend } from '@/game/KeybindLegend';
 import { BuildingAssignModal } from '@/game/BuildingAssignModal';
 import { BuildingContextMenu } from '@/game/BuildingContextMenu';
 import { OverworldView } from '@/game/OverworldView';

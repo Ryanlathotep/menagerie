@@ -244,6 +244,11 @@ export function RoomEditor() {
           <Button size="sm" variant="ghost" className="w-full text-xs" disabled={!current} onClick={() => exportJson('current')}>
             <Download className="w-3 h-3 mr-1"/>Export open room
           </Button>
+          {/* Default file-name reminders (folder set in Settings → Save Data). */}
+          <p className="text-[10px] text-muted-foreground font-mono leading-tight">
+            {defaultFileName('rooms', String(rooms.length))}<br />
+            {defaultFileName('room', current?.name ?? 'untitled')}
+          </p>
           <input ref={fileRef} type="file" accept="application/json,.json" className="hidden"
             onChange={e => { const f = e.target.files?.[0]; if (f) importJson(f); e.target.value = ''; }}/>
           <ScrollArea className="h-[380px]">

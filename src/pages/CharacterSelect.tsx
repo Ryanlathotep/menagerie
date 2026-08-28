@@ -356,9 +356,19 @@ export function CharacterSelect() {
                 }}
               />
             </label>
-            <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={exportLayouts}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-xs"
+              title={`Saves as ${defaultFileName('partyLayouts')}`}
+              onClick={exportLayouts}
+            >
               ⬇️ Export Layouts
             </Button>
+            {/* Reminder of the default file name so players know what to look for. */}
+            <span className="text-[10px] text-muted-foreground font-mono">
+              {defaultFileName('partyLayouts')}
+            </span>
             <div className="ml-auto">
               <Button
                 size="sm"

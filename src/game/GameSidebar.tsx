@@ -386,68 +386,83 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             )}
 
             <div className="flex gap-0.5 sm:gap-1 ml-auto min-w-0 flex-1 overflow-x-auto no-scrollbar justify-end">
-              <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('character')} title="Character Sheet" aria-label="Character Sheet">
-                <User className={desktopIconClass} />
-              </Button>
+              <DockableHudButton id="hud.character" ariaLabel="Character Sheet" title="Character Sheet" onTap={() => handlePanelChange('character')} icon={<User className="w-5 h-5" />}>
+                <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('character')} title="Character Sheet" aria-label="Character Sheet">
+                  <User className={desktopIconClass} />
+                </Button>
+              </DockableHudButton>
 
-              <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('moves')} title="Moves / Attacks" aria-label="Moves and attacks">
-                <Swords className={desktopIconClass} />
-              </Button>
+              <DockableHudButton id="hud.moves" ariaLabel="Moves and attacks" title="Moves / Attacks" onTap={() => handlePanelChange('moves')} icon={<Swords className="w-5 h-5" />}>
+                <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('moves')} title="Moves / Attacks" aria-label="Moves and attacks">
+                  <Swords className={desktopIconClass} />
+                </Button>
+              </DockableHudButton>
 
-              <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('inventory')} title="Inventory" aria-label="Inventory">
-                <Backpack className={desktopIconClass} />
-              </Button>
+              <DockableHudButton id="hud.inventory" ariaLabel="Inventory" title="Inventory" onTap={() => handlePanelChange('inventory')} icon={<Backpack className="w-5 h-5" />}>
+                <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('inventory')} title="Inventory" aria-label="Inventory">
+                  <Backpack className={desktopIconClass} />
+                </Button>
+              </DockableHudButton>
 
               {onOpenEquipment && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-9 h-9 sm:w-8 sm:h-8 relative flex-shrink-0"
-                  onClick={onOpenEquipment}
-                  title="Equipment"
-                  aria-label="Equipment"
-                >
-                  <Shirt className={desktopIconClass} />
-                  {equipmentInventory.length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                      {equipmentInventory.length}
-                    </span>
-                  )}
-                </Button>
+                <DockableHudButton id="hud.equipment" ariaLabel="Equipment" title="Equipment" onTap={onOpenEquipment} icon={<Shirt className="w-5 h-5" />}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-9 h-9 sm:w-8 sm:h-8 relative flex-shrink-0"
+                    onClick={onOpenEquipment}
+                    title="Equipment"
+                    aria-label="Equipment"
+                  >
+                    <Shirt className={desktopIconClass} />
+                    {equipmentInventory.length > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                        {equipmentInventory.length}
+                      </span>
+                    )}
+                  </Button>
+                </DockableHudButton>
               )}
 
               {party.length > 1 && onPartySwitch && (
-                <Button
-                  variant={activePanel === 'party' ? 'default' : 'ghost'}
-                  size="icon"
-                  className="w-9 h-9 sm:w-8 sm:h-8 relative flex-shrink-0"
-                  onClick={() => handlePanelChange('party')}
-                  title="Party"
-                  aria-label="Party"
-                >
-                  <Users className={desktopIconClass} />
-                  <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                    {party.length}
-                  </span>
-                </Button>
+                <DockableHudButton id="hud.party" ariaLabel="Party" title="Party" onTap={() => handlePanelChange('party')} icon={<Users className="w-5 h-5" />}>
+                  <Button
+                    variant={activePanel === 'party' ? 'default' : 'ghost'}
+                    size="icon"
+                    className="w-9 h-9 sm:w-8 sm:h-8 relative flex-shrink-0"
+                    onClick={() => handlePanelChange('party')}
+                    title="Party"
+                    aria-label="Party"
+                  >
+                    <Users className={desktopIconClass} />
+                    <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                      {party.length}
+                    </span>
+                  </Button>
+                </DockableHudButton>
               )}
 
               {onOpenWorkshop && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
-                  onClick={onOpenWorkshop}
-                  title="Open Portable Workstation (crafting)"
-                  aria-label="Open Portable Workstation (crafting)"
-                >
-                  <Hammer className={desktopIconClass} />
-                </Button>
+                <DockableHudButton id="hud.workshop" ariaLabel="Open Portable Workstation (crafting)" title="Open Portable Workstation (crafting)" onTap={onOpenWorkshop} icon={<Hammer className="w-5 h-5" />}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
+                    onClick={onOpenWorkshop}
+                    title="Open Portable Workstation (crafting)"
+                    aria-label="Open Portable Workstation (crafting)"
+                  >
+                    <Hammer className={desktopIconClass} />
+                  </Button>
+                </DockableHudButton>
               )}
 
-              <Button variant="ghost" size="icon" className="w-9 h-9 sm:w-8 sm:h-8 hidden sm:flex flex-shrink-0" onClick={() => setShowSettings(true)} title="Settings" aria-label="Settings">
-                <Settings className={desktopIconClass} />
-              </Button>
+              <DockableHudButton id="hud.settings" ariaLabel="Settings" title="Settings" onTap={() => setShowSettings(true)} icon={<Settings className="w-5 h-5" />}>
+                <Button variant="ghost" size="icon" className="w-9 h-9 sm:w-8 sm:h-8 hidden sm:flex flex-shrink-0" onClick={() => setShowSettings(true)} title="Settings" aria-label="Settings">
+                  <Settings className={desktopIconClass} />
+                </Button>
+              </DockableHudButton>
+
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs flex-shrink-0 min-w-0">

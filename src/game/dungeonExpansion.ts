@@ -4,20 +4,36 @@
 // any code that already uses `dungeon.width` / `dungeon.height` keeps working
 // because the existing tile array is simply extended.
 //
-// We are not paging chunks in / out — we just keep the dungeon growing. A hard
-// cap (MAX_DIM) prevents pathological memory use. When that cap is hit on a
-// given side, edge expansion stops on that side (player can still mine / use
-// stairs to escape).
+// We are not paging chunks in / out — we just keep the dungeon growing. There
+// is NO width/length cap: floors stream new strips forever as the player
+// approaches any edge.
+//
+// Seeded: strip content is generated with a mulberry32 RNG derived from
+// (dungeon.seed, floor, side, current dimension) so the streamed world is
+// reproducible for a given tower seed.
 
 import { DungeonState, DungeonTile, Position, Monster, SpeciesType } from './types';
 import { generateRandomMonster } from './utils';
 import { generateLoot, updateVisibility } from './dungeon';
 import { getRandomTerrainType } from './terrain';
 import { MineableWallTier } from './tools';
+import { mulberry32, withSeededRandom } from './autobattle/seeded';
 
 const EDGE_TRIGGER = 4;       // Expand when player is within this many tiles of an edge.
 const STRIP_WIDTH = 12;       // How many new tiles to append per expansion event.
-const MAX_DIM = 240;          // Soft cap — stop expanding past this in any axis.
+
+// Deterministic RNG for one expansion event. Mixes the tower seed, floor,
+// which side grew, and how big the grid already was (so repeated strips on
+// the same side differ).
+function stripRng(dungeon: DungeonState, side: Side, dim: number): () => number {
+  const sideCode = side === 'north' ? 1 : side === 'south' ? 2 : side === 'west' ? 3 : 4;
+  const base = typeof dungeon.seed === 'number' ? dungeon.seed >>> 0 : 0x51f15e;
+  const mixed = base
+    ^ Math.imul((dungeon.floor + 1) >>> 0, 0x9e3779b1)
+    ^ Math.imul(sideCode, 0x85ebca6b)
+    ^ Math.imul(dim >>> 0, 0xc2b2ae35);
+  return mulberry32(mixed >>> 0);
+}
 
 type Side = 'north' | 'south' | 'east' | 'west';
 
@@ -215,7 +231,7 @@ export function expandDungeonIfNeeded(dungeon: DungeonState): DungeonState {
   let mutated = false;
 
   // West (prepend columns) — player x close to 0.
-  if (playerPosition.x <= EDGE_TRIGGER && width < MAX_DIM) {
+  if (playerPosition.x <= EDGE_TRIGGER) {
     const newTiles: DungeonTile[][] = tiles.map(row => {
       const prefix = Array.from({ length: STRIP_WIDTH }, blankTile);
       return [...prefix, ...row];
@@ -225,25 +241,27 @@ export function expandDungeonIfNeeded(dungeon: DungeonState): DungeonState {
     if (entryPosition) entryPosition = { ...entryPosition, x: entryPosition.x + STRIP_WIDTH };
     if (compassWaypoint) compassWaypoint = { ...compassWaypoint, x: compassWaypoint.x + STRIP_WIDTH };
     if (compassWaypoints) compassWaypoints = compassWaypoints.map(p => ({ ...p, x: p.x + STRIP_WIDTH }));
-    carveStripContent(newTiles, 'west', dungeon.floor, newEnemies, availableSpecies, theme);
+    withSeededRandom(stripRng(dungeon, 'west', width), () =>
+      carveStripContent(newTiles, 'west', dungeon.floor, newEnemies, availableSpecies, theme));
     tiles = newTiles;
     mutated = true;
   }
 
   // East (append columns) — player x close to width-1.
-  if (playerPosition.x >= width - 1 - EDGE_TRIGGER && width < MAX_DIM) {
+  if (playerPosition.x >= width - 1 - EDGE_TRIGGER) {
     const newTiles: DungeonTile[][] = tiles.map(row => {
       const suffix = Array.from({ length: STRIP_WIDTH }, blankTile);
       return [...row, ...suffix];
     });
     width += STRIP_WIDTH;
-    carveStripContent(newTiles, 'east', dungeon.floor, newEnemies, availableSpecies, theme);
+    withSeededRandom(stripRng(dungeon, 'east', width), () =>
+      carveStripContent(newTiles, 'east', dungeon.floor, newEnemies, availableSpecies, theme));
     tiles = newTiles;
     mutated = true;
   }
 
   // North (prepend rows) — player y close to 0.
-  if (playerPosition.y <= EDGE_TRIGGER && height < MAX_DIM) {
+  if (playerPosition.y <= EDGE_TRIGGER) {
     const prefixRows: DungeonTile[][] = Array.from({ length: STRIP_WIDTH }, () => makeStripRow(width));
     const newTiles = [...prefixRows, ...tiles];
     height += STRIP_WIDTH;
@@ -251,17 +269,19 @@ export function expandDungeonIfNeeded(dungeon: DungeonState): DungeonState {
     if (entryPosition) entryPosition = { ...entryPosition, y: entryPosition.y + STRIP_WIDTH };
     if (compassWaypoint) compassWaypoint = { ...compassWaypoint, y: compassWaypoint.y + STRIP_WIDTH };
     if (compassWaypoints) compassWaypoints = compassWaypoints.map(p => ({ ...p, y: p.y + STRIP_WIDTH }));
-    carveStripContent(newTiles, 'north', dungeon.floor, newEnemies, availableSpecies, theme);
+    withSeededRandom(stripRng(dungeon, 'north', height), () =>
+      carveStripContent(newTiles, 'north', dungeon.floor, newEnemies, availableSpecies, theme));
     tiles = newTiles;
     mutated = true;
   }
 
   // South (append rows) — player y close to height-1.
-  if (playerPosition.y >= height - 1 - EDGE_TRIGGER && height < MAX_DIM) {
+  if (playerPosition.y >= height - 1 - EDGE_TRIGGER) {
     const suffixRows: DungeonTile[][] = Array.from({ length: STRIP_WIDTH }, () => makeStripRow(width));
     const newTiles = [...tiles, ...suffixRows];
     height += STRIP_WIDTH;
-    carveStripContent(newTiles, 'south', dungeon.floor, newEnemies, availableSpecies, theme);
+    withSeededRandom(stripRng(dungeon, 'south', height), () =>
+      carveStripContent(newTiles, 'south', dungeon.floor, newEnemies, availableSpecies, theme));
     tiles = newTiles;
     mutated = true;
   }

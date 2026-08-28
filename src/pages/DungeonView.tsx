@@ -11,7 +11,7 @@ import { expandDungeonIfNeeded, findStairsPosition } from '@/game/dungeonExpansi
 import { PICKAXE_TIERS, hitsToBreak } from '@/game/tools';
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScrollText, Flag, FlagOff, Swords, Footprints, Pickaxe, Hammer, DoorOpen, ChevronDown, ChevronUp, ShoppingBag, Trees, Shovel, FlaskConical, Wand2, Repeat, Crosshair, Search } from 'lucide-react';
+import { ScrollText, Flag, FlagOff, Swords, Footprints, Pickaxe, Hammer, DoorOpen, ChevronDown, ChevronUp, ShoppingBag, Trees, Shovel, FlaskConical, Wand2, Repeat, Crosshair, Search, Bot } from 'lucide-react';
 import { findBestMatchupSwap } from '@/game/MatchupIndicator';
 import { UnifiedTileMenu, UnifiedTileAction, UnifiedTileInfo, UnifiedTileCreature } from '@/game/UnifiedTileMenu';
 import { MonsterSprite } from '@/game/sprites';

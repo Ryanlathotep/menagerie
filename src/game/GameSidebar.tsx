@@ -240,7 +240,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 </div>
 
                 <DockableHudButton id="hud.settings" ariaLabel="Settings" title="Settings" onTap={() => setShowSettings(true)} icon={<Settings className="w-5 h-5" />}>
-                  <Button variant="ghost" size="icon" className="${hudBtnClass}" onClick={() => setShowSettings(true)} title="Settings" aria-label="Settings">
+                  <Button variant="ghost" size="icon" className={hudBtnClass} onClick={() => setShowSettings(true)} title="Settings" aria-label="Settings">
                     <Settings className="w-5 h-5" />
                   </Button>
                 </DockableHudButton>
@@ -256,7 +256,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                     <Button
                       variant={fleeVariant === 'home' ? 'secondary' : 'destructive'}
                       size="icon"
-                      className="${hudBtnClass}"
+                      className={hudBtnClass}
                       onClick={onFlee}
                       title={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
                       aria-label={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
@@ -279,7 +279,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                     <Button
                       variant="destructive"
                       size="icon"
-                      className="${hudBtnClass}"
+                      className={hudBtnClass}
                       onClick={onMainMenu}
                       title={mainMenuTitle ?? 'Return to main menu (ends run)'}
                       aria-label={mainMenuTitle ?? 'Return to main menu (ends run)'}
@@ -294,19 +294,19 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
 
             <div className="flex items-center gap-1 w-full min-w-0">
               <DockableHudButton id="hud.character" ariaLabel="Character Sheet" title="Character Sheet" onTap={() => handlePanelChange('character')} icon={<User className="w-5 h-5" />}>
-                <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('character')} title="Character Sheet" aria-label="Character Sheet">
+                <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className={hudBtnClass} onClick={() => handlePanelChange('character')} title="Character Sheet" aria-label="Character Sheet">
                   <User className="w-5 h-5" />
                 </Button>
               </DockableHudButton>
 
               <DockableHudButton id="hud.moves" ariaLabel="Moves and attacks" title="Moves / Attacks" onTap={() => handlePanelChange('moves')} icon={<Swords className="w-5 h-5" />}>
-                <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('moves')} title="Moves / Attacks" aria-label="Moves and attacks">
+                <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className={hudBtnClass} onClick={() => handlePanelChange('moves')} title="Moves / Attacks" aria-label="Moves and attacks">
                   <Swords className="w-5 h-5" />
                 </Button>
               </DockableHudButton>
 
               <DockableHudButton id="hud.inventory" ariaLabel="Inventory" title="Inventory" onTap={() => handlePanelChange('inventory')} icon={<Backpack className="w-5 h-5" />}>
-                <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('inventory')} title="Inventory" aria-label="Inventory">
+                <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className={hudBtnClass} onClick={() => handlePanelChange('inventory')} title="Inventory" aria-label="Inventory">
                   <Backpack className="w-5 h-5" />
                 </Button>
               </DockableHudButton>
@@ -316,7 +316,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className={`${mobileMenuButtonClass} relative`}
+                    className={`${hudBtnClass} relative`}
                     onClick={onOpenEquipment}
                     title="Equipment"
                     aria-label="Equipment"
@@ -336,7 +336,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                   <Button
                     variant={activePanel === 'party' ? 'default' : 'ghost'}
                     size="sm"
-                    className={`${mobileMenuButtonClass} relative`}
+                    className={`${hudBtnClass} relative`}
                     onClick={() => handlePanelChange('party')}
                     title="Party"
                     aria-label="Party"
@@ -354,7 +354,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className={mobileMenuButtonClass}
+                    className={hudBtnClass}
                     onClick={onOpenWorkshop}
                     title="Open Portable Workstation (crafting)"
                     aria-label="Open Portable Workstation (crafting)"
@@ -431,19 +431,19 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
 
             <div className="flex gap-0.5 sm:gap-1 ml-auto min-w-0 flex-1 overflow-x-auto no-scrollbar justify-end">
               <DockableHudButton id="hud.character" ariaLabel="Character Sheet" title="Character Sheet" onTap={() => handlePanelChange('character')} icon={<User className="w-5 h-5" />}>
-                <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="${hudBtnClass}" onClick={() => handlePanelChange('character')} title="Character Sheet" aria-label="Character Sheet">
+                <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className={hudBtnClass} onClick={() => handlePanelChange('character')} title="Character Sheet" aria-label="Character Sheet">
                   <User className={desktopIconClass} />
                 </Button>
               </DockableHudButton>
 
               <DockableHudButton id="hud.moves" ariaLabel="Moves and attacks" title="Moves / Attacks" onTap={() => handlePanelChange('moves')} icon={<Swords className="w-5 h-5" />}>
-                <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="${hudBtnClass}" onClick={() => handlePanelChange('moves')} title="Moves / Attacks" aria-label="Moves and attacks">
+                <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className={hudBtnClass} onClick={() => handlePanelChange('moves')} title="Moves / Attacks" aria-label="Moves and attacks">
                   <Swords className={desktopIconClass} />
                 </Button>
               </DockableHudButton>
 
               <DockableHudButton id="hud.inventory" ariaLabel="Inventory" title="Inventory" onTap={() => handlePanelChange('inventory')} icon={<Backpack className="w-5 h-5" />}>
-                <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className="${hudBtnClass}" onClick={() => handlePanelChange('inventory')} title="Inventory" aria-label="Inventory">
+                <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className={hudBtnClass} onClick={() => handlePanelChange('inventory')} title="Inventory" aria-label="Inventory">
                   <Backpack className={desktopIconClass} />
                 </Button>
               </DockableHudButton>
@@ -453,7 +453,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="${hudBtnClass} relative"
+                    className={`${hudBtnClass} relative`}
                     onClick={onOpenEquipment}
                     title="Equipment"
                     aria-label="Equipment"
@@ -473,7 +473,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                   <Button
                     variant={activePanel === 'party' ? 'default' : 'ghost'}
                     size="icon"
-                    className="${hudBtnClass} relative"
+                    className={`${hudBtnClass} relative`}
                     onClick={() => handlePanelChange('party')}
                     title="Party"
                     aria-label="Party"
@@ -491,7 +491,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="${hudBtnClass}"
+                    className={hudBtnClass}
                     onClick={onOpenWorkshop}
                     title="Open Portable Workstation (crafting)"
                     aria-label="Open Portable Workstation (crafting)"
@@ -502,7 +502,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
               )}
 
               <DockableHudButton id="hud.settings" ariaLabel="Settings" title="Settings" onTap={() => setShowSettings(true)} icon={<Settings className="w-5 h-5" />}>
-                <Button variant="ghost" size="icon" className="${hudBtnClass}" onClick={() => setShowSettings(true)} title="Settings" aria-label="Settings">
+                <Button variant="ghost" size="icon" className={hudBtnClass} onClick={() => setShowSettings(true)} title="Settings" aria-label="Settings">
                   <Settings className={desktopIconClass} />
                 </Button>
               </DockableHudButton>
@@ -535,7 +535,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 <Button
                   variant={fleeVariant === 'home' ? 'secondary' : 'destructive'}
                   size="icon"
-                  className="${hudBtnClass}"
+                  className={hudBtnClass}
                   onClick={onFlee}
                   title={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
                   aria-label={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
@@ -558,7 +558,7 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                 <Button
                   variant="destructive"
                   size="icon"
-                  className="${hudBtnClass}"
+                  className={hudBtnClass}
                   onClick={onMainMenu}
                   title={mainMenuTitle ?? 'Return to main menu (ends run)'}
                   aria-label={mainMenuTitle ?? 'Return to main menu (ends run)'}

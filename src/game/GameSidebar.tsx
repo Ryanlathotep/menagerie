@@ -22,6 +22,9 @@ import { formatLevel } from './levelDisplay';
 import { MonsterEquipment, EquipmentItem, RARITY_COLORS, CRAFTING_MATERIALS, calculateEquipmentBonuses, calculateSetBonusStats, getRecipesUsingMaterial } from './equipment';
 import { PartyPanel } from './PartyPanel';
 import { EvolvedMove } from './moveMastery';
+import { DockableHudButton } from './floating/HudDock';
+import { useDock } from './floating/FloatingDock';
+
 
 
 // Helper functions to get item info when not in ITEMS database
@@ -128,6 +131,8 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   const [showSettings, setShowSettings] = useState(false);
   const { settings } = useSettings();
   const [panelHost, setPanelHost] = useState<HTMLElement | null>(null);
+  const dock = useDock();
+
 
   // Resolve the portal host after the parent has rendered the slot for the
   // active panel. Without this the first open lands in the fallback fixed
@@ -177,7 +182,13 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   return <>
       {/* Always visible bottom bar */}
       <div
-        ref={ref}
+        ref={(el) => {
+          // The HUD bar doubles as the drop zone that returns dock buttons home.
+          dock?.setHomeZone(el);
+          if (typeof ref === 'function') ref(el);
+          else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
+        }}
+
         className={isMobileView
           ? 'fixed bottom-0 left-0 right-0 bg-card border-t-2 border-primary/20 flex flex-col px-2 py-1.5 gap-1.5 z-50 shadow-lg h-[108px]'
           : 'fixed bottom-0 left-0 right-0 bg-card border-t-2 border-primary/20 flex items-center px-2 sm:px-3 gap-2 sm:gap-4 z-50 shadow-lg h-16 sm:h-24'}
@@ -227,99 +238,131 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
                   <span className="text-[10px] text-primary font-bold">💰{gold}</span>
                 </div>
 
-                <Button variant="ghost" size="icon" className="w-9 h-9 flex-shrink-0" onClick={() => setShowSettings(true)} title="Settings" aria-label="Settings">
-                  <Settings className="w-5 h-5" />
-                </Button>
+                <DockableHudButton id="hud.settings" ariaLabel="Settings" title="Settings" onTap={() => setShowSettings(true)} icon={<Settings className="w-5 h-5" />}>
+                  <Button variant="ghost" size="icon" className="w-9 h-9 flex-shrink-0" onClick={() => setShowSettings(true)} title="Settings" aria-label="Settings">
+                    <Settings className="w-5 h-5" />
+                  </Button>
+                </DockableHudButton>
 
                 {onFlee && (
-                  <Button
-                    variant={fleeVariant === 'home' ? 'secondary' : 'destructive'}
-                    size="icon"
-                    className="w-9 h-9 flex-shrink-0"
-                    onClick={onFlee}
+                  <DockableHudButton
+                    id="hud.flee"
+                    ariaLabel={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
                     title={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
-                    aria-label={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
+                    onTap={onFlee}
+                    icon={fleeVariant === 'home' ? <Home className="w-5 h-5" /> : <DoorOpen className="w-5 h-5" />}
                   >
-                    {fleeVariant === 'home'
-                      ? <Home className="w-5 h-5" />
-                      : <DoorOpen className="w-5 h-5" />}
-                  </Button>
+                    <Button
+                      variant={fleeVariant === 'home' ? 'secondary' : 'destructive'}
+                      size="icon"
+                      className="w-9 h-9 flex-shrink-0"
+                      onClick={onFlee}
+                      title={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
+                      aria-label={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
+                    >
+                      {fleeVariant === 'home'
+                        ? <Home className="w-5 h-5" />
+                        : <DoorOpen className="w-5 h-5" />}
+                    </Button>
+                  </DockableHudButton>
                 )}
 
                 {onMainMenu && (
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="w-9 h-9 flex-shrink-0"
-                    onClick={onMainMenu}
+                  <DockableHudButton
+                    id="hud.mainmenu"
+                    ariaLabel={mainMenuTitle ?? 'Return to main menu (ends run)'}
                     title={mainMenuTitle ?? 'Return to main menu (ends run)'}
-                    aria-label={mainMenuTitle ?? 'Return to main menu (ends run)'}
+                    onTap={onMainMenu}
+                    icon={<LogOut className="w-5 h-5" />}
                   >
-                    <LogOut className="w-5 h-5" />
-                  </Button>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="w-9 h-9 flex-shrink-0"
+                      onClick={onMainMenu}
+                      title={mainMenuTitle ?? 'Return to main menu (ends run)'}
+                      aria-label={mainMenuTitle ?? 'Return to main menu (ends run)'}
+                    >
+                      <LogOut className="w-5 h-5" />
+                    </Button>
+                  </DockableHudButton>
                 )}
+
               </div>
             </div>
 
             <div className="flex items-center gap-1 w-full min-w-0">
-              <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('character')} title="Character Sheet" aria-label="Character Sheet">
-                <User className="w-5 h-5" />
-              </Button>
+              <DockableHudButton id="hud.character" ariaLabel="Character Sheet" title="Character Sheet" onTap={() => handlePanelChange('character')} icon={<User className="w-5 h-5" />}>
+                <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('character')} title="Character Sheet" aria-label="Character Sheet">
+                  <User className="w-5 h-5" />
+                </Button>
+              </DockableHudButton>
 
-              <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('moves')} title="Moves / Attacks" aria-label="Moves and attacks">
-                <Swords className="w-5 h-5" />
-              </Button>
+              <DockableHudButton id="hud.moves" ariaLabel="Moves and attacks" title="Moves / Attacks" onTap={() => handlePanelChange('moves')} icon={<Swords className="w-5 h-5" />}>
+                <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('moves')} title="Moves / Attacks" aria-label="Moves and attacks">
+                  <Swords className="w-5 h-5" />
+                </Button>
+              </DockableHudButton>
 
-              <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('inventory')} title="Inventory" aria-label="Inventory">
-                <Backpack className="w-5 h-5" />
-              </Button>
+              <DockableHudButton id="hud.inventory" ariaLabel="Inventory" title="Inventory" onTap={() => handlePanelChange('inventory')} icon={<Backpack className="w-5 h-5" />}>
+                <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="sm" className={mobileMenuButtonClass} onClick={() => handlePanelChange('inventory')} title="Inventory" aria-label="Inventory">
+                  <Backpack className="w-5 h-5" />
+                </Button>
+              </DockableHudButton>
 
               {onOpenEquipment && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={`${mobileMenuButtonClass} relative`}
-                  onClick={onOpenEquipment}
-                  title="Equipment"
-                  aria-label="Equipment"
-                >
-                  <Shirt className="w-5 h-5" />
-                  {equipmentInventory.length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                      {equipmentInventory.length}
-                    </span>
-                  )}
-                </Button>
+                <DockableHudButton id="hud.equipment" ariaLabel="Equipment" title="Equipment" onTap={onOpenEquipment} icon={<Shirt className="w-5 h-5" />}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`${mobileMenuButtonClass} relative`}
+                    onClick={onOpenEquipment}
+                    title="Equipment"
+                    aria-label="Equipment"
+                  >
+                    <Shirt className="w-5 h-5" />
+                    {equipmentInventory.length > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                        {equipmentInventory.length}
+                      </span>
+                    )}
+                  </Button>
+                </DockableHudButton>
               )}
 
               {party.length > 1 && onPartySwitch && (
-                <Button
-                  variant={activePanel === 'party' ? 'default' : 'ghost'}
-                  size="sm"
-                  className={`${mobileMenuButtonClass} relative`}
-                  onClick={() => handlePanelChange('party')}
-                  title="Party"
-                  aria-label="Party"
-                >
-                  <Users className="w-5 h-5" />
-                  <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                    {party.length}
-                  </span>
-                </Button>
+                <DockableHudButton id="hud.party" ariaLabel="Party" title="Party" onTap={() => handlePanelChange('party')} icon={<Users className="w-5 h-5" />}>
+                  <Button
+                    variant={activePanel === 'party' ? 'default' : 'ghost'}
+                    size="sm"
+                    className={`${mobileMenuButtonClass} relative`}
+                    onClick={() => handlePanelChange('party')}
+                    title="Party"
+                    aria-label="Party"
+                  >
+                    <Users className="w-5 h-5" />
+                    <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                      {party.length}
+                    </span>
+                  </Button>
+                </DockableHudButton>
               )}
 
               {onOpenWorkshop && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={mobileMenuButtonClass}
-                  onClick={onOpenWorkshop}
-                  title="Open Portable Workstation (crafting)"
-                  aria-label="Open Portable Workstation (crafting)"
-                >
-                  <Hammer className="w-5 h-5" />
-                </Button>
+                <DockableHudButton id="hud.workshop" ariaLabel="Open Portable Workstation (crafting)" title="Open Portable Workstation (crafting)" onTap={onOpenWorkshop} icon={<Hammer className="w-5 h-5" />}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={mobileMenuButtonClass}
+                    onClick={onOpenWorkshop}
+                    title="Open Portable Workstation (crafting)"
+                    aria-label="Open Portable Workstation (crafting)"
+                  >
+                    <Hammer className="w-5 h-5" />
+                  </Button>
+                </DockableHudButton>
               )}
+
             </div>
           </>
         ) : (
@@ -386,68 +429,83 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             )}
 
             <div className="flex gap-0.5 sm:gap-1 ml-auto min-w-0 flex-1 overflow-x-auto no-scrollbar justify-end">
-              <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('character')} title="Character Sheet" aria-label="Character Sheet">
-                <User className={desktopIconClass} />
-              </Button>
+              <DockableHudButton id="hud.character" ariaLabel="Character Sheet" title="Character Sheet" onTap={() => handlePanelChange('character')} icon={<User className="w-5 h-5" />}>
+                <Button variant={activePanel === 'character' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('character')} title="Character Sheet" aria-label="Character Sheet">
+                  <User className={desktopIconClass} />
+                </Button>
+              </DockableHudButton>
 
-              <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('moves')} title="Moves / Attacks" aria-label="Moves and attacks">
-                <Swords className={desktopIconClass} />
-              </Button>
+              <DockableHudButton id="hud.moves" ariaLabel="Moves and attacks" title="Moves / Attacks" onTap={() => handlePanelChange('moves')} icon={<Swords className="w-5 h-5" />}>
+                <Button variant={activePanel === 'moves' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('moves')} title="Moves / Attacks" aria-label="Moves and attacks">
+                  <Swords className={desktopIconClass} />
+                </Button>
+              </DockableHudButton>
 
-              <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('inventory')} title="Inventory" aria-label="Inventory">
-                <Backpack className={desktopIconClass} />
-              </Button>
+              <DockableHudButton id="hud.inventory" ariaLabel="Inventory" title="Inventory" onTap={() => handlePanelChange('inventory')} icon={<Backpack className="w-5 h-5" />}>
+                <Button variant={activePanel === 'inventory' ? 'default' : 'ghost'} size="icon" className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0" onClick={() => handlePanelChange('inventory')} title="Inventory" aria-label="Inventory">
+                  <Backpack className={desktopIconClass} />
+                </Button>
+              </DockableHudButton>
 
               {onOpenEquipment && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-9 h-9 sm:w-8 sm:h-8 relative flex-shrink-0"
-                  onClick={onOpenEquipment}
-                  title="Equipment"
-                  aria-label="Equipment"
-                >
-                  <Shirt className={desktopIconClass} />
-                  {equipmentInventory.length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                      {equipmentInventory.length}
-                    </span>
-                  )}
-                </Button>
+                <DockableHudButton id="hud.equipment" ariaLabel="Equipment" title="Equipment" onTap={onOpenEquipment} icon={<Shirt className="w-5 h-5" />}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-9 h-9 sm:w-8 sm:h-8 relative flex-shrink-0"
+                    onClick={onOpenEquipment}
+                    title="Equipment"
+                    aria-label="Equipment"
+                  >
+                    <Shirt className={desktopIconClass} />
+                    {equipmentInventory.length > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                        {equipmentInventory.length}
+                      </span>
+                    )}
+                  </Button>
+                </DockableHudButton>
               )}
 
               {party.length > 1 && onPartySwitch && (
-                <Button
-                  variant={activePanel === 'party' ? 'default' : 'ghost'}
-                  size="icon"
-                  className="w-9 h-9 sm:w-8 sm:h-8 relative flex-shrink-0"
-                  onClick={() => handlePanelChange('party')}
-                  title="Party"
-                  aria-label="Party"
-                >
-                  <Users className={desktopIconClass} />
-                  <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                    {party.length}
-                  </span>
-                </Button>
+                <DockableHudButton id="hud.party" ariaLabel="Party" title="Party" onTap={() => handlePanelChange('party')} icon={<Users className="w-5 h-5" />}>
+                  <Button
+                    variant={activePanel === 'party' ? 'default' : 'ghost'}
+                    size="icon"
+                    className="w-9 h-9 sm:w-8 sm:h-8 relative flex-shrink-0"
+                    onClick={() => handlePanelChange('party')}
+                    title="Party"
+                    aria-label="Party"
+                  >
+                    <Users className={desktopIconClass} />
+                    <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                      {party.length}
+                    </span>
+                  </Button>
+                </DockableHudButton>
               )}
 
               {onOpenWorkshop && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
-                  onClick={onOpenWorkshop}
-                  title="Open Portable Workstation (crafting)"
-                  aria-label="Open Portable Workstation (crafting)"
-                >
-                  <Hammer className={desktopIconClass} />
-                </Button>
+                <DockableHudButton id="hud.workshop" ariaLabel="Open Portable Workstation (crafting)" title="Open Portable Workstation (crafting)" onTap={onOpenWorkshop} icon={<Hammer className="w-5 h-5" />}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
+                    onClick={onOpenWorkshop}
+                    title="Open Portable Workstation (crafting)"
+                    aria-label="Open Portable Workstation (crafting)"
+                  >
+                    <Hammer className={desktopIconClass} />
+                  </Button>
+                </DockableHudButton>
               )}
 
-              <Button variant="ghost" size="icon" className="w-9 h-9 sm:w-8 sm:h-8 hidden sm:flex flex-shrink-0" onClick={() => setShowSettings(true)} title="Settings" aria-label="Settings">
-                <Settings className={desktopIconClass} />
-              </Button>
+              <DockableHudButton id="hud.settings" ariaLabel="Settings" title="Settings" onTap={() => setShowSettings(true)} icon={<Settings className="w-5 h-5" />}>
+                <Button variant="ghost" size="icon" className="w-9 h-9 sm:w-8 sm:h-8 hidden sm:flex flex-shrink-0" onClick={() => setShowSettings(true)} title="Settings" aria-label="Settings">
+                  <Settings className={desktopIconClass} />
+                </Button>
+              </DockableHudButton>
+
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs flex-shrink-0 min-w-0">
@@ -466,32 +524,49 @@ export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
             </div>
 
             {onFlee && (
-              <Button
-                variant={fleeVariant === 'home' ? 'secondary' : 'destructive'}
-                size="icon"
-                className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
-                onClick={onFlee}
+              <DockableHudButton
+                id="hud.flee"
+                ariaLabel={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
                 title={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
-                aria-label={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
+                onTap={onFlee}
+                icon={fleeVariant === 'home' ? <Home className="w-5 h-5" /> : <DoorOpen className="w-5 h-5" />}
               >
-                {fleeVariant === 'home'
-                  ? <Home className={desktopIconClass} />
-                  : <DoorOpen className={desktopIconClass} />}
-              </Button>
+                <Button
+                  variant={fleeVariant === 'home' ? 'secondary' : 'destructive'}
+                  size="icon"
+                  className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
+                  onClick={onFlee}
+                  title={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
+                  aria-label={fleeTitle ?? (inBattle ? 'Flee from battle' : 'Flee from dungeon')}
+                >
+                  {fleeVariant === 'home'
+                    ? <Home className={desktopIconClass} />
+                    : <DoorOpen className={desktopIconClass} />}
+                </Button>
+              </DockableHudButton>
             )}
 
             {onMainMenu && (
-              <Button
-                variant="destructive"
-                size="icon"
-                className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
-                onClick={onMainMenu}
+              <DockableHudButton
+                id="hud.mainmenu"
+                ariaLabel={mainMenuTitle ?? 'Return to main menu (ends run)'}
                 title={mainMenuTitle ?? 'Return to main menu (ends run)'}
-                aria-label={mainMenuTitle ?? 'Return to main menu (ends run)'}
+                onTap={onMainMenu}
+                icon={<LogOut className="w-5 h-5" />}
               >
-                <LogOut className={desktopIconClass} />
-              </Button>
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="w-9 h-9 sm:w-8 sm:h-8 flex-shrink-0"
+                  onClick={onMainMenu}
+                  title={mainMenuTitle ?? 'Return to main menu (ends run)'}
+                  aria-label={mainMenuTitle ?? 'Return to main menu (ends run)'}
+                >
+                  <LogOut className={desktopIconClass} />
+                </Button>
+              </DockableHudButton>
             )}
+
           </>
         )}
       </div>

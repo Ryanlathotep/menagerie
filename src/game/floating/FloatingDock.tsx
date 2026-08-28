@@ -40,6 +40,14 @@ export interface FabConfig {
   size?: number;
   /** Whether the button starts docked when nothing is persisted yet. Defaults true. */
   defaultDocked?: boolean;
+  /**
+   * True for buttons that also have a "home" location in the game HUD (the
+   * bottom bar). Those buttons can be dragged between the HUD row, the dock,
+   * and a loose floating position.
+   */
+  hasHome?: boolean;
+  /** Whether the button starts in its HUD home slot (only with hasHome). */
+  defaultHome?: boolean;
   /** Fallback floating position if user detaches and no position is saved. */
   defaultPosition?: (v: { w: number; h: number; size: number }) => Pos;
   zIndex?: number;
@@ -47,6 +55,8 @@ export interface FabConfig {
 
 interface FabState {
   docked: boolean;
+  /** Lives in its HUD home row — rendered by the HUD, not by the dock. */
+  home?: boolean;
   x: number;
   y: number;
 }
@@ -58,12 +68,16 @@ interface CtxVal {
   order: string[];
   states: Record<string, FabState>;
   setDocked: (id: string, docked: boolean, pos?: Pos) => void;
+  setHome: (id: string, home: boolean) => void;
   setPos: (id: string, pos: Pos) => void;
   dockRectRef: React.MutableRefObject<DOMRect | null>;
+  homeZoneRef: React.MutableRefObject<HTMLElement | null>;
+  setHomeZone: (el: HTMLElement | null) => void;
   registerSlot: (id: string, el: HTMLDivElement | null) => void;
   slotVersion: number;
   slotsRef: React.MutableRefObject<Map<string, HTMLDivElement>>;
 }
+
 
 const Ctx = createContext<CtxVal | null>(null);
 
@@ -86,13 +100,19 @@ function loadState(cfg: FabConfig): FabState {
         typeof p.x === 'number' &&
         typeof p.y === 'number'
       ) {
-        return p;
+        return { ...p, home: cfg.hasHome ? p.home === true : false };
       }
     }
   } catch {
     /* ignore */
   }
-  return { docked: defaultDocked, x: defPos.x, y: defPos.y };
+  return {
+    docked: cfg.hasHome ? false : defaultDocked,
+    home: cfg.hasHome ? cfg.defaultHome !== false : false,
+    x: defPos.x,
+    y: defPos.y,
+  };
+
 }
 
 function saveState(id: string, s: FabState) {
@@ -117,7 +137,21 @@ export function useFloatingButton(cfg: FabConfig) {
   }, [cfg.id]);
 }
 
+/** Low-level access to the dock context (null outside the provider). */
+export function useDock() {
+  return useContext(Ctx);
+}
+
+/** True when the given button currently lives in its HUD home row. */
+export function useFabIsHome(id: string, fallback = true) {
+  const ctx = useContext(Ctx);
+  if (!ctx) return fallback;
+  const st = ctx.states[id];
+  return st ? st.home === true : fallback;
+}
+
 export function FloatingDockProvider({ children }: { children: ReactNode }) {
+
   const [configs, setConfigs] = useState<Record<string, React.MutableRefObject<FabConfig>>>({});
   const [order, setOrder] = useState<string[]>([]);
   const [states, setStates] = useState<Record<string, FabState>>({});
@@ -152,12 +186,28 @@ export function FloatingDockProvider({ children }: { children: ReactNode }) {
       if (!cur) return prev;
       const next: FabState = {
         docked,
+        home: false,
         x: pos?.x ?? cur.x,
         y: pos?.y ?? cur.y,
       };
       saveState(id, next);
       return { ...prev, [id]: next };
     });
+  }, []);
+
+  const setHome = useCallback((id: string, home: boolean) => {
+    setStates((prev) => {
+      const cur = prev[id];
+      if (!cur || cur.home === home) return prev;
+      const next: FabState = { ...cur, home, docked: home ? false : cur.docked };
+      saveState(id, next);
+      return { ...prev, [id]: next };
+    });
+  }, []);
+
+  const homeZoneRef = useRef<HTMLElement | null>(null);
+  const setHomeZone = useCallback((el: HTMLElement | null) => {
+    homeZoneRef.current = el;
   }, []);
 
   const setPos = useCallback((id: string, pos: Pos) => {
@@ -169,6 +219,7 @@ export function FloatingDockProvider({ children }: { children: ReactNode }) {
       return { ...prev, [id]: next };
     });
   }, []);
+
 
   // Slot mount/unmount notifications arrive during React's commit phase (ref
   // callbacks). Bumping state synchronously there can re-enter the same commit
@@ -205,8 +256,11 @@ export function FloatingDockProvider({ children }: { children: ReactNode }) {
       order,
       states,
       setDocked,
+      setHome,
       setPos,
       dockRectRef,
+      homeZoneRef,
+      setHomeZone,
       registerSlot,
       slotVersion,
       slotsRef,
@@ -218,11 +272,14 @@ export function FloatingDockProvider({ children }: { children: ReactNode }) {
       order,
       states,
       setDocked,
+      setHome,
+      setHomeZone,
       setPos,
       registerSlot,
       slotVersion,
     ],
   );
+
 
   return (
     <Ctx.Provider value={value}>
@@ -512,16 +569,32 @@ function FabInstance({ cfgRef, state }: { cfgRef: React.MutableRefObject<FabConf
       e.clientX <= dockRect.right &&
       e.clientY >= dockRect.top &&
       e.clientY <= dockRect.bottom;
+    const homeRect =
+      cfg.hasHome && ctx.homeZoneRef.current
+        ? ctx.homeZoneRef.current.getBoundingClientRect()
+        : null;
+    const inHome =
+      !inDock &&
+      homeRect &&
+      e.clientX >= homeRect.left &&
+      e.clientX <= homeRect.right &&
+      e.clientY >= homeRect.top &&
+      e.clientY <= homeRect.bottom;
     setDragging(false);
     setDragPos(null);
     if (inDock) {
       ctx.setDocked(cfg.id, true, finalPos);
+    } else if (inHome) {
+      ctx.setHome(cfg.id, true);
     } else {
       ctx.setDocked(cfg.id, false, finalPos);
     }
   };
+  // Buttons that live in their HUD home row are rendered by the HUD itself.
+  if (state.home) return null;
 
   const button = (
+
     <button
       type="button"
       onPointerDown={onPointerDown}

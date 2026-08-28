@@ -24,7 +24,7 @@ import {
   HarvestableKind,
 } from '@/game/moves';
 import { getCustomMoves } from '@/game/moveOverrides';
-import { MoveSortFilter, sortMoves, filterMoves, MoveSortOption, MoveFilterOption } from '@/game/MoveSortFilter';
+import { MoveSortFilter, sortMoves, filterMoves, MoveSortOption, MoveFilterOption, MoveFilterMode } from '@/game/MoveSortFilter';
 import type { Monster } from '@/game/types';
 import { TERRAIN_CONFIG, TerrainType } from '@/game/terrain';
 import { Search, Save, RotateCcw, Crosshair, Footprints, BookmarkPlus, Bookmark, Trash2 } from 'lucide-react';
@@ -226,7 +226,7 @@ export function ShapeDesigner() {
       const q = search.toLowerCase();
       list = list.filter((m) => m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q));
     }
-    list = filterMoves(list, moveFilters);
+    list = filterMoves(list, moveFilters, '', moveFilterMode);
     // sortMoves needs a monster for usage sorts; pass a stub with empty mastery.
     const stub = { moveMastery: {} } as unknown as Monster;
     list = sortMoves(list, sortOption, stub, list.map((m) => m.id));

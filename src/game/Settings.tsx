@@ -659,6 +659,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               </p>
             </div>
 
+            {/* Autoplay behaviour rules (shared with Arena scripting later) */}
+            <div className="pt-2 border-t">
+              <AutoplayRulesPanel />
+            </div>
+
+
             <div className="flex items-center justify-between">
               <div className="flex flex-col">
                 <Label htmlFor="iw-greed-risk" className="cursor-pointer">Item World greed risk</Label>

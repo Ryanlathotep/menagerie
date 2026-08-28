@@ -13,6 +13,7 @@ import { PreRunEquipment } from '@/game/PreRunEquipment';
 import { PartyAnalyzer } from '@/game/PartyAnalyzer';
 import { isCreativeMode } from '@/game/creativeMode';
 import { toast } from 'sonner';
+import { saveJsonExport, defaultFileName } from '@/game/fileExports';
 
 type SortOption = 'recent' | 'species' | 'element' | 'class' | 'level';
 
@@ -138,14 +139,14 @@ export function CharacterSelect() {
       toast.error('Nothing to export');
       return;
     }
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `menagerie-party-layouts-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('Exported party layouts');
+    // Uses the shared naming + remembered-folder helper (see Settings → Save Data).
+    void saveJsonExport('partyLayouts', payload).then(res => {
+      toast.success(
+        res.location === 'folder'
+          ? `Saved ${res.fileName} to your export folder`
+          : `Exported as ${res.fileName}`,
+      );
+    }).catch(() => toast.error('Export failed'));
   };
 
   const importLayoutsFromFile = (file: File) => {
@@ -355,9 +356,19 @@ export function CharacterSelect() {
                 }}
               />
             </label>
-            <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={exportLayouts}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-xs"
+              title={`Saves as ${defaultFileName('partyLayouts')}`}
+              onClick={exportLayouts}
+            >
               ⬇️ Export Layouts
             </Button>
+            {/* Reminder of the default file name so players know what to look for. */}
+            <span className="text-[10px] text-muted-foreground font-mono">
+              {defaultFileName('partyLayouts')}
+            </span>
             <div className="ml-auto">
               <Button
                 size="sm"

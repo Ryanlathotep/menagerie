@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
+import { saveJsonExport, defaultFileName } from '@/game/fileExports';
 import { Save, Copy, Trash2, Plus, Eraser, RefreshCw, Download, Upload } from 'lucide-react';
 import { fetchRooms, saveRoom, deleteRoom, newBlankRoom, duplicateRoom } from '@/game/rooms/store';
 import type { Room, RoomCell, RoomCellKind } from '@/game/rooms/types';
@@ -129,14 +130,19 @@ export function RoomEditor() {
   const exportJson = (scope: 'current' | 'all') => {
     const payload = scope === 'current' ? (current ? [current] : []) : rooms;
     if (payload.length === 0) { toast.error('Nothing to export'); return; }
-    const blob = new Blob([JSON.stringify({ kind: 'menagerie_rooms', version: 1, rooms: payload }, null, 2)],
-      { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = scope === 'current' ? `room_${current!.name.replace(/\W+/g, '_')}.json` : `menagerie_rooms_${rooms.length}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const body = { kind: 'menagerie_rooms', version: 1, rooms: payload };
+    // Shared naming + remembered folder (Settings → Save Data → Save location).
+    void saveJsonExport(
+      scope === 'current' ? 'room' : 'rooms',
+      body,
+      { extra: scope === 'current' ? current!.name : String(rooms.length) },
+    ).then(res => {
+      toast.success(
+        res.location === 'folder'
+          ? `Saved ${res.fileName} to your export folder`
+          : `Exported as ${res.fileName}`,
+      );
+    }).catch(() => toast.error('Export failed'));
   };
 
   /** Load layouts from a local .json file (single room, array, or export wrapper). */
@@ -238,6 +244,11 @@ export function RoomEditor() {
           <Button size="sm" variant="ghost" className="w-full text-xs" disabled={!current} onClick={() => exportJson('current')}>
             <Download className="w-3 h-3 mr-1"/>Export open room
           </Button>
+          {/* Default file-name reminders (folder set in Settings → Save Data). */}
+          <p className="text-[10px] text-muted-foreground font-mono leading-tight">
+            {defaultFileName('rooms', String(rooms.length))}<br />
+            {defaultFileName('room', current?.name ?? 'untitled')}
+          </p>
           <input ref={fileRef} type="file" accept="application/json,.json" className="hidden"
             onChange={e => { const f = e.target.files?.[0]; if (f) importJson(f); e.target.value = ''; }}/>
           <ScrollArea className="h-[380px]">

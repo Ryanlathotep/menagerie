@@ -4,20 +4,36 @@
 // any code that already uses `dungeon.width` / `dungeon.height` keeps working
 // because the existing tile array is simply extended.
 //
-// We are not paging chunks in / out — we just keep the dungeon growing. A hard
-// cap (MAX_DIM) prevents pathological memory use. When that cap is hit on a
-// given side, edge expansion stops on that side (player can still mine / use
-// stairs to escape).
+// We are not paging chunks in / out — we just keep the dungeon growing. There
+// is NO width/length cap: floors stream new strips forever as the player
+// approaches any edge.
+//
+// Seeded: strip content is generated with a mulberry32 RNG derived from
+// (dungeon.seed, floor, side, current dimension) so the streamed world is
+// reproducible for a given tower seed.
 
 import { DungeonState, DungeonTile, Position, Monster, SpeciesType } from './types';
 import { generateRandomMonster } from './utils';
 import { generateLoot, updateVisibility } from './dungeon';
 import { getRandomTerrainType } from './terrain';
 import { MineableWallTier } from './tools';
+import { mulberry32, withSeededRandom } from './autobattle/seeded';
 
 const EDGE_TRIGGER = 4;       // Expand when player is within this many tiles of an edge.
 const STRIP_WIDTH = 12;       // How many new tiles to append per expansion event.
-const MAX_DIM = 240;          // Soft cap — stop expanding past this in any axis.
+
+// Deterministic RNG for one expansion event. Mixes the tower seed, floor,
+// which side grew, and how big the grid already was (so repeated strips on
+// the same side differ).
+function stripRng(dungeon: DungeonState, side: Side, dim: number): () => number {
+  const sideCode = side === 'north' ? 1 : side === 'south' ? 2 : side === 'west' ? 3 : 4;
+  const base = typeof dungeon.seed === 'number' ? dungeon.seed >>> 0 : 0x51f15e;
+  const mixed = base
+    ^ Math.imul((dungeon.floor + 1) >>> 0, 0x9e3779b1)
+    ^ Math.imul(sideCode, 0x85ebca6b)
+    ^ Math.imul(dim >>> 0, 0xc2b2ae35);
+  return mulberry32(mixed >>> 0);
+}
 
 type Side = 'north' | 'south' | 'east' | 'west';
 

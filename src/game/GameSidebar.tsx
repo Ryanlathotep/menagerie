@@ -90,6 +90,14 @@ interface GameSidebarProps {
   // Portable Workstation: shows a hammer button that opens the crafting modal
   // when the player owns the singleton workstation tool.
   onOpenWorkshop?: () => void;
+  // Build & Roads (overworld + dungeon) — lives on the HUD row so it can be
+  // docked/floated like every other menu button.
+  onOpenBuild?: () => void;
+  buildActive?: boolean;
+  // Save without exiting.
+  onSave?: () => void;
+  saving?: boolean;
+  saveTitle?: string;
 }
 export const GameSidebar = forwardRef<HTMLDivElement, GameSidebarProps>(({
   monster,

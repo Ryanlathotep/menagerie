@@ -48,21 +48,28 @@ export type MoveFilterOption =
   | 'dot'         // damage-over-time: poison, burn, bleed
   | 'movement';   // type==='movement' or has movement pattern
 
+/** 'or' = show moves matching ANY selected tag; 'and' = only moves matching ALL selected tags. */
+export type MoveFilterMode = 'or' | 'and';
+
 interface MoveSortFilterProps {
   sortOption: MoveSortOption;
   filters: MoveFilterOption[];
+  filterMode?: MoveFilterMode;
   searchQuery?: string;
   onSortChange: (option: MoveSortOption) => void;
   onFilterChange: (filters: MoveFilterOption[]) => void;
+  onFilterModeChange?: (mode: MoveFilterMode) => void;
   onSearchChange?: (q: string) => void;
 }
 
 export function MoveSortFilter({ 
   sortOption, 
   filters, 
+  filterMode = 'or',
   searchQuery = '',
   onSortChange, 
   onFilterChange,
+  onFilterModeChange,
   onSearchChange,
 }: MoveSortFilterProps) {
   const [sortOpen, setSortOpen] = useState(false);
@@ -198,6 +205,29 @@ export function MoveSortFilter({
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-48 p-1 z-[70]" align="start">
+          {onFilterModeChange && activeFilterCount > 1 && (
+            <div className="flex items-center gap-1 px-1 py-1 mb-1 border-b border-border">
+              <span className="text-[10px] text-muted-foreground mr-auto">Match</span>
+              <Button
+                variant={filterMode === 'or' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-6 px-2 text-[10px]"
+                title="Show moves matching ANY selected tag"
+                onClick={() => onFilterModeChange('or')}
+              >
+                Any (OR)
+              </Button>
+              <Button
+                variant={filterMode === 'and' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-6 px-2 text-[10px]"
+                title="Show only moves matching ALL selected tags"
+                onClick={() => onFilterModeChange('and')}
+              >
+                All (AND)
+              </Button>
+            </div>
+          )}
           {filterOptions.map(option => {
             const isActive = option.value === 'all' 
               ? filters.includes('all') 
@@ -316,6 +346,7 @@ export function filterMoves(
   moves: Move[],
   filters: MoveFilterOption[],
   searchQuery: string = '',
+  filterMode: MoveFilterMode = 'or',
 ): Move[] {
   const q = searchQuery.trim().toLowerCase();
   const searched = q
@@ -340,46 +371,27 @@ export function filterMoves(
     !!move.effect && ['poison', 'burn', 'bleed'].some((s) => move.effect?.includes(s));
   const isMovement = (move: Move) => move.type === 'movement' || !!move.movement;
 
-  return searched.filter((move) => {
-    for (const filter of filters) {
-      switch (filter) {
-        case 'melee':
-          if (move.type === 'melee') return true;
-          break;
-        case 'ranged':
-          if (move.type === 'ranged') return true;
-          break;
-        case 'status':
-          if (move.type === 'status') return true;
-          break;
-        case 'heal':
-          if (move.type === 'heal') return true;
-          break;
-        case 'damage':
-          if (move.power > 0) return true;
-          break;
-        case 'buff':
-          if (move.effect?.includes('raise_')) return true;
-          break;
-        case 'debuff':
-          if (move.effect?.includes('lower_')) return true;
-          break;
-        case 'status-effect':
-          if (move.effect && ['poison', 'burn', 'freeze', 'paralyze', 'confuse'].some(s => move.effect?.includes(s))) {
-            return true;
-          }
-          break;
-        case 'aoe':
-          if (isAoe(move)) return true;
-          break;
-        case 'dot':
-          if (isDot(move)) return true;
-          break;
-        case 'movement':
-          if (isMovement(move)) return true;
-          break;
-      }
+  const matchesFilter = (move: Move, filter: MoveFilterOption): boolean => {
+    switch (filter) {
+      case 'melee': return move.type === 'melee';
+      case 'ranged': return move.type === 'ranged';
+      case 'status': return move.type === 'status';
+      case 'heal': return move.type === 'heal';
+      case 'damage': return move.power > 0;
+      case 'buff': return !!move.effect?.includes('raise_');
+      case 'debuff': return !!move.effect?.includes('lower_');
+      case 'status-effect':
+        return !!move.effect && ['poison', 'burn', 'freeze', 'paralyze', 'confuse'].some(s => move.effect?.includes(s));
+      case 'aoe': return isAoe(move);
+      case 'dot': return isDot(move);
+      case 'movement': return isMovement(move);
+      default: return false;
     }
-    return false;
-  });
+  };
+
+  return searched.filter((move) =>
+    filterMode === 'and'
+      ? filters.every((f) => matchesFilter(move, f))
+      : filters.some((f) => matchesFilter(move, f)),
+  );
 }

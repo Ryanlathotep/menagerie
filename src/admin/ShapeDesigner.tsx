@@ -24,7 +24,7 @@ import {
   HarvestableKind,
 } from '@/game/moves';
 import { getCustomMoves } from '@/game/moveOverrides';
-import { MoveSortFilter, sortMoves, filterMoves, MoveSortOption, MoveFilterOption } from '@/game/MoveSortFilter';
+import { MoveSortFilter, sortMoves, filterMoves, MoveSortOption, MoveFilterOption, MoveFilterMode } from '@/game/MoveSortFilter';
 import type { Monster } from '@/game/types';
 import { TERRAIN_CONFIG, TerrainType } from '@/game/terrain';
 import { Search, Save, RotateCcw, Crosshair, Footprints, BookmarkPlus, Bookmark, Trash2 } from 'lucide-react';
@@ -177,6 +177,7 @@ export function ShapeDesigner() {
   const [tier, setTier] = useState<TierKey>('base');
   const [sortOption, setSortOption] = useState<MoveSortOption>('custom');
   const [moveFilters, setMoveFilters] = useState<MoveFilterOption[]>(['all']);
+  const [moveFilterMode, setMoveFilterMode] = useState<MoveFilterMode>('or');
 
   // Shape state (for currently selected tier)
   const [originType, setOriginType] = useState<ShapeOriginType>('self');
@@ -225,12 +226,12 @@ export function ShapeDesigner() {
       const q = search.toLowerCase();
       list = list.filter((m) => m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q));
     }
-    list = filterMoves(list, moveFilters);
+    list = filterMoves(list, moveFilters, '', moveFilterMode);
     // sortMoves needs a monster for usage sorts; pass a stub with empty mastery.
     const stub = { moveMastery: {} } as unknown as Monster;
     list = sortMoves(list, sortOption, stub, list.map((m) => m.id));
     return list;
-  }, [allMoves, search, moveFilters, sortOption]);
+  }, [allMoves, search, moveFilters, moveFilterMode, sortOption]);
 
   const isAnchorOnSelf = originType === 'self';
 
@@ -591,8 +592,10 @@ export function ShapeDesigner() {
           <MoveSortFilter
             sortOption={sortOption}
             filters={moveFilters}
+            filterMode={moveFilterMode}
             onSortChange={setSortOption}
             onFilterChange={setMoveFilters}
+            onFilterModeChange={setMoveFilterMode}
           />
         </div>
         <ScrollArea className="h-[300px] lg:h-[460px]">

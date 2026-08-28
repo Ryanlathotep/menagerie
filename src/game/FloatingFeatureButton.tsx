@@ -20,6 +20,7 @@ export function FloatingFeatureButton() {
           x: w - size - 12,
           y: h - size - 12 - (size + 8), // stacked above the bug button by default
         })}
+        hasHome
         onTap={() => setOpen(true)}
         title="Suggest a feature (drag to reposition)"
         ariaLabel="Suggest a feature"

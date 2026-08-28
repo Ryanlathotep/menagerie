@@ -374,6 +374,9 @@ export interface DungeonState {
   height: number;
   theme?: DungeonTheme;       // Inherited from the DungeonEntrance that started this run
   startingFloor?: number;     // The floor the run started on (difficulty offset)
+  // Deterministic generation seed inherited from the DungeonEntrance. Floors
+  // and streamed edge strips are reproducible from (seed, floor).
+  seed?: number;
   // Tile coordinates of the staircase the player entered this floor through
   // (entry stairs = origin (0,0) for displayed coordinates). Shifted when the
   // dungeon expands at the west/north edges.

@@ -528,6 +528,7 @@ function generateDungeonInternal(floor: number, theme?: DungeonTheme, startingFl
     height: DUNGEON_HEIGHT,
     theme,
     startingFloor,
+    seed,
     entryPosition: { ...playerPosition },
   };
 }

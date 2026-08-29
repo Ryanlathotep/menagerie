@@ -16,6 +16,7 @@ import {
   ACTION_LABELS,
   AUTOPLAY_EVENT,
   AutoplayActionKind,
+  AutoplayAoePreference,
   AutoplayConditionKind,
   AutoplayEngageMode,
   AutoplayProfile,

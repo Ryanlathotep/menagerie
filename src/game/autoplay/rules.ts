@@ -292,10 +292,12 @@ export function defaultProfile(): AutoplayProfile {
     engage: 'fight',
     stopHpPercent: 30,
     switchBestMatchup: true,
+    aoePreference: 'aoe',
     rules: [
       newRule({ condition: { kind: 'hp_below', value: 50 }, action: 'heal_item' }),
       newRule({ condition: { kind: 'enemy_resists_me' }, action: 'switch_best_matchup' }),
       newRule({ condition: { kind: 'enemy_beyond', value: 1 }, action: 'attack_ranged' }),
+      newRule({ condition: { kind: 'enemy_within', value: 1 }, action: 'attack_melee' }),
       newRule({ condition: { kind: 'always' }, action: 'attack_strongest' }),
     ],
   };

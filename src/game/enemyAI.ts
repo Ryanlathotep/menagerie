@@ -201,7 +201,7 @@ export function chooseEnemyMove(enemy: Monster, ctx: TacticContext): MoveDecisio
   const noiseAmp = (1 - ctx.iq) * 25;
   const scored = affordable.map((m) => ({ m, s: scoreMove(m, enemy, ctx) + (Math.random() * noiseAmp) }));
   scored.sort((a, b) => b.s - a.s);
-  return { move: scored[0].m, score: scored[0].s };
+  return { move: scored[0].m, score: scored[0].s, isMovement: isMovementMove(scored[0].m) };
 }
 
 // Convenience: compute damage from a chosen enemy move against the player monster.

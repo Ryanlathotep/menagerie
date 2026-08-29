@@ -46,6 +46,10 @@ import { UnifiedTileMenu, UnifiedTileAction, UnifiedTileInfo, UnifiedTileCreatur
 import { Flag, FlagOff, DoorOpen, Hammer, Footprints, Swords, Shovel, Droplet, Trash2, Settings as SettingsIcon, Pickaxe, TreePine, Wheat, Wrench, Users, Sparkles, Home, FlaskConical, Wand2, Repeat, Search, Crosshair } from 'lucide-react';
 import { findBestMatchupSwap } from './MatchupIndicator';
 import { useSettings } from './Settings';
+import { AutomationBar } from '@/game/automation/AutomationBar';
+import { AutoplayRulesPanel } from '@/game/autoplay/AutoplayRulesPanel';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useAutomationControls, automationStepMs, AutomationMode } from '@/game/automation/controls';
 import { GameSidebar } from './GameSidebar';
 import { CraftingWorkshop } from './CraftingWorkshop';
 import { getMonsterMoves, Move } from './moves';
@@ -112,6 +116,11 @@ interface LevelUpEntry {
 export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const { state, dispatch } = useGame();
   const { settings, updateSetting } = useSettings();
+  // Shared automation transport controls (mode + play/pause + speed multiplier).
+  const { controls: autoControls, setMode: setAutoMode, setSpeed: setAutoSpeed, setUninterrupted: setAutoUninterrupted } = useAutomationControls();
+  const autoStepMs = automationStepMs(settings.autoRunSpeed, autoControls.speed);
+  const [automationRunning, setAutomationRunning] = useState(false);
+  const [autoScriptOpen, setAutoScriptOpen] = useState(false);
   const rendererRef = useRef<OverworldRendererHandle>(null);
   const { saveToCloud, syncing, isAuthenticated } = useCloudSave();
   const { username: myUsername } = useMyUsername();
@@ -686,7 +695,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     cancelAutoWalk();
     autoWalkPathRef.current = [...path];
     automationRunningRef.current = true;
-    const stepDelay = Math.max(80, settings.autoRunSpeed || 100);
+    const stepDelay = Math.max(40, autoStepMs || 100);
     // The player must NEVER be fully locked out of moving: nearby enemies only
     // cancel *multi-step* auto-walking. The first step of any deliberate move
     // command always executes, then we halt the rest of the queue with a
@@ -746,7 +755,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         if (onArrive) window.setTimeout(onArrive, stepDelay);
       }
     }, stepDelay);
-  }, [cancelAutoWalk, settings.autoRunSpeed, addLog]);
+  }, [cancelAutoWalk, autoStepMs, addLog]);
 
   // Cancel auto-walk on unmount.
   useEffect(() => () => cancelAutoWalk(), [cancelAutoWalk]);
@@ -815,7 +824,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       tileType: startTile.type,
     };
     automationRunningRef.current = true;
-    const stepDelay = Math.max(120, settings.autoRunSpeed || 100);
+    const stepDelay = Math.max(40, autoStepMs || 100);
     addLog(`⛏️ Auto-Harvest started — clearing nearby ${startTile.type}s.`, 'info');
     autoMineTimerRef.current = window.setInterval(() => {
       const job = autoMineTargetRef.current;
@@ -902,7 +911,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
       handleMoveRef.current(dx, dy);
     }, stepDelay);
-  }, [cancelAutoMine, cancelAutoWalk, settings.autoRunSpeed, addLog, findClusterTargets]);
+  }, [cancelAutoMine, cancelAutoWalk, autoStepMs, addLog, findClusterTargets]);
 
 
   useEffect(() => () => cancelAutoMine(), [cancelAutoMine]);
@@ -1009,7 +1018,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     cancelAutoMine();
     cancelAutoSearch();
     cancelAutoHunt();
-    const stepDelay = Math.max(120, settings.autoRunSpeed || 100);
+    const stepDelay = Math.max(40, autoStepMs || 100);
     addLog('🏹 Auto-Hunt started — seeking nearest enemy.', 'info');
     automationRunningRef.current = true;
     autoHuntTimerRef.current = window.setInterval(() => {
@@ -1224,7 +1233,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       }
       handleMoveRef.current(stepDx, stepDy);
     }, stepDelay);
-  }, [addLog, cancelAutoHunt, cancelAutoMine, cancelAutoSearch, cancelAutoWalk, monster, settings.autoRunSpeed]);
+  }, [addLog, cancelAutoHunt, cancelAutoMine, cancelAutoSearch, cancelAutoWalk, monster, autoStepMs]);
 
   type SearchKind = 'dungeon_entrance' | 'enemy' | 'nest' | 'tree' | 'rock' | 'plant' | 'building';
   const SEARCH_RADIUS = 40;
@@ -1252,7 +1261,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     cancelAutoHunt();
     cancelAutoSearch();
     autoSearchKindRef.current = kind;
-    const stepDelay = Math.max(120, settings.autoRunSpeed || 100);
+    const stepDelay = Math.max(40, autoStepMs || 100);
     addLog(`🧭 Auto-Search started — looking for nearest ${kind.replace('_', ' ')}.`, 'info');
     automationRunningRef.current = true;
     autoSearchTimerRef.current = window.setInterval(() => {
@@ -1292,7 +1301,37 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       if (Math.abs(dx) + Math.abs(dy) !== 1) { cancelAutoSearch(); return; }
       handleMoveRef.current(dx, dy);
     }, stepDelay);
-  }, [addLog, cancelAutoHunt, cancelAutoMine, cancelAutoSearch, cancelAutoWalk, findNearestExplored, settings.autoRunSpeed]);
+  }, [addLog, cancelAutoHunt, cancelAutoMine, cancelAutoSearch, cancelAutoWalk, findNearestExplored, autoStepMs]);
+
+  // ── Automation transport (play / pause / speed / mode) ──────────────────
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const running = automationRunningRef.current;
+      setAutomationRunning(prev => (prev === running ? prev : running));
+    }, 250);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const pauseAutomation = useCallback(() => {
+    cancelAutoHunt();
+    cancelAutoSearch();
+    cancelAutoHarvestAll();
+    cancelAutoMine();
+    cancelAutoWalk();
+    automationRunningRef.current = false;
+    setAutomationRunning(false);
+    addLog('⏸ Automation paused.', 'info');
+  }, [addLog, cancelAutoHunt, cancelAutoSearch, cancelAutoHarvestAll, cancelAutoMine, cancelAutoWalk]);
+
+  const startAutomation = useCallback(() => {
+    pauseAutomation();
+    const mode = autoControls.mode === 'autoplay' ? 'hunt' : autoControls.mode;
+    if (mode === 'search') { setAutoSearchPickerOpen(true); return; }
+    if (mode === 'harvest') startAutoHarvestAll();
+    else startAutoHunt();
+    setAutomationRunning(true);
+  }, [autoControls.mode, pauseAutomation, startAutoHarvestAll, startAutoHunt]);
+
 
   useEffect(() => () => { cancelAutoHunt(); cancelAutoSearch(); }, [cancelAutoHunt, cancelAutoSearch]);
 
@@ -2809,6 +2848,28 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
                   <span>Right-click enemy to attack</span>
                 </div>
               </div>
+              {/* Automation transport: mode + play/pause + 1x/2x/4x/8x */}
+              <div className="flex justify-center">
+                <AutomationBar
+                  modes={['hunt', 'search', 'harvest'] as AutomationMode[]}
+                  mode={autoControls.mode === 'autoplay' ? 'hunt' : autoControls.mode}
+                  onModeChange={setAutoMode}
+                  speed={autoControls.speed}
+                  onSpeedChange={setAutoSpeed}
+                  running={automationRunning}
+                  onPlay={startAutomation}
+                  onPause={pauseAutomation}
+                  uninterrupted={autoControls.uninterrupted}
+                  onUninterruptedChange={setAutoUninterrupted}
+                  onOpenScripts={() => setAutoScriptOpen(true)}
+                />
+              </div>
+              <Dialog open={autoScriptOpen} onOpenChange={setAutoScriptOpen}>
+                <DialogContent className="max-w-2xl max-h-[85dvh] overflow-y-auto">
+                  <DialogHeader><DialogTitle>Automation behaviour</DialogTitle></DialogHeader>
+                  <AutoplayRulesPanel />
+                </DialogContent>
+              </Dialog>
               {/* Keybinding reference */}
               <KeybindLegend context="overworld" monster={state.run?.currentMonster ?? null} />
             </div>

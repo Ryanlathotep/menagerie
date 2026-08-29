@@ -41,6 +41,10 @@ import { PreRunEquipment } from '@/game/PreRunEquipment';
 import { BUILDING_DEFINITIONS, createBuilding, PlayerBuildingType, PlayerBuilding, getRepairCost, getDisassembleRefund } from '@/game/buildings';
 import { DungeonBuildPanel } from '@/game/DungeonBuildPanel';
 import { KeybindLegend } from '@/game/KeybindLegend';
+import { AutomationBar } from '@/game/automation/AutomationBar';
+import { AutoplayRulesPanel } from '@/game/autoplay/AutoplayRulesPanel';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useAutomationControls, automationStepMs, AutomationMode } from '@/game/automation/controls';
 import { BuildingAssignModal } from '@/game/BuildingAssignModal';
 import { BuildingContextMenu } from '@/game/BuildingContextMenu';
 import { OverworldView } from '@/game/OverworldView';
@@ -126,6 +130,11 @@ export function DungeonView({
     dispatch
   } = useGame();
   const { settings, updateSetting } = useSettings();
+  // Automation transport controls (mode + play/pause + 1x/2x/4x/8x speed).
+  const { controls: autoControls, setMode: setAutoMode, setSpeed: setAutoSpeed, setUninterrupted: setAutoUninterrupted } = useAutomationControls();
+  const autoStepMs = automationStepMs(settings.autoRunSpeed, autoControls.speed);
+  const [automationRunning, setAutomationRunning] = useState(false);
+  const [autoScriptOpen, setAutoScriptOpen] = useState(false);
   const dungeon = state.run?.dungeon;
   const [showShop, setShowShop] = useState(false);
   const [showEquipment, setShowEquipment] = useState(false);
@@ -1011,7 +1020,7 @@ export function DungeonView({
     const tile = currentDungeon?.tiles[targetY]?.[targetX];
     if (!currentDungeon || !tile || (tile.type !== 'mineable_wall' && tile.type !== 'terrain' && tile.type !== 'nest')) return;
     autoHarvestTargetRef.current = { x: targetX, y: targetY, tileType: tile.type };
-    const stepDelay = Math.max(120, settings.autoRunSpeed || 100);
+    const stepDelay = Math.max(40, autoStepMs || 100);
     autoHarvestTimerRef.current = window.setInterval(() => {
       const target = autoHarvestTargetRef.current;
       const liveDungeon = dungeonRef.current;
@@ -1047,7 +1056,7 @@ export function DungeonView({
       }));
       setTimeout(() => { isMovingRef.current = false; }, 250);
     }, stepDelay);
-  }, [cancelAutoHarvest, settings.autoRunSpeed]);
+  }, [cancelAutoHarvest, autoStepMs]);
 
   const startDungeonAutoHarvestRef = useRef(startDungeonAutoHarvest);
   useEffect(() => { startDungeonAutoHarvestRef.current = startDungeonAutoHarvest; }, [startDungeonAutoHarvest]);
@@ -1093,7 +1102,7 @@ export function DungeonView({
       }
       
         // Only move after enough time has passed
-        if (timestamp - lastMoveTime >= settings.autoRunSpeed) {
+        if (timestamp - lastMoveTime >= autoStepMs) {
           const direction = autoRunDirection.current;
           const dx = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
           const dy = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
@@ -1148,7 +1157,7 @@ export function DungeonView({
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [isAutoRunning, settings.autoRunSpeed]);
+  }, [isAutoRunning, autoStepMs]);
 
   // Keyboard input with double-tap detection
   useEffect(() => {
@@ -1757,13 +1766,20 @@ export function DungeonView({
     lastAutoSearchFloorRef.current = cur;
     const kind = autoSearchStairsKindRef.current;
     if (!kind) return;
+    // "Run uninterrupted" keeps the stair chase going without asking.
+    if (autoControls.uninterrupted) {
+      const label = kind === 'stairs' ? 'Stairs down (deeper)' : 'Stairs up (shallower)';
+      addLog(`${kind === 'stairs' ? '⬇️' : '⬆️'} Auto-Search continuing on Floor ${cur}.`, 'info');
+      setTimeout(() => runDungeonAutoSearchRef.current(kind, label), 300);
+      return;
+    }
     setStairSearchPrompt({
       kind,
       fromFloor: prev,
       toFloor: cur,
       direction: cur > prev ? 'deeper' : 'shallower',
     });
-  }, [dungeon?.floor, dungeon]);
+  }, [dungeon?.floor, dungeon, autoControls.uninterrupted, addLog]);
 
   
   // Path walking effect — position-driven so it stays in sync with React state
@@ -1925,7 +1941,7 @@ export function DungeonView({
       }
 
       // Only move after enough time has passed
-      if (timestamp - lastMoveTime >= settings.autoRunSpeed) {
+      if (timestamp - lastMoveTime >= autoStepMs) {
         const nextPos = currentPath[0];
         const direction = getDirection(playerPos, nextPos);
 
@@ -1985,7 +2001,7 @@ export function DungeonView({
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [isPathWalking, settings.autoRunSpeed]);
+  }, [isPathWalking, autoStepMs]);
   
   // Party switch handler
   const handlePartySwitch = useCallback((index: number) => {
@@ -3577,6 +3593,52 @@ export function DungeonView({
     return () => window.removeEventListener('keydown', handleInventoryShortcut);
   }, [state.run?.inventory, handleUseItemOutOfCombat]);
 
+  // ── Automation transport (play / pause / speed / mode) ──────────────────
+  // Mirrors the state of every automation loop so the HUD bar can show whether
+  // something is running, and maps play/pause onto the matching loop.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const running = huntingModeRef.current || harvestAllModeRef.current
+        || autoplayModeRef.current || !!autoHarvestTargetRef.current;
+      setAutomationRunning(prev => (prev === running ? prev : running));
+    }, 250);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const pauseAutomation = useCallback(() => {
+    huntingModeRef.current = false;
+    harvestAllModeRef.current = false;
+    autoplayModeRef.current = false;
+    autoSearchStairsKindRef.current = null;
+    pathWalkRef.current = [];
+    pathGoalRef.current = null;
+    setIsPathWalking(false);
+    setTargetPath([]);
+    cancelAutoHarvest('⏸ Automation paused.');
+    setAutomationRunning(false);
+    addLog('⏸ Automation paused.', 'info');
+  }, [cancelAutoHarvest, addLog]);
+
+  const startAutomation = useCallback(() => {
+    pauseAutomation();
+    const mode = autoControls.mode;
+    if (mode === 'search') { setDungeonAutoSearchOpen(true); return; }
+    if (mode === 'hunt') {
+      addLog('🏹 Auto-Hunt engaged.', 'info');
+      huntingModeRef.current = true;
+      planNextHuntStepRef.current();
+    } else if (mode === 'harvest') {
+      addLog('🧺 Auto-Harvest All started.', 'info');
+      harvestAllModeRef.current = true;
+      planNextHarvestStepRef.current();
+    } else {
+      addLog('🤖 Autoplay engaged.', 'info');
+      autoplayModeRef.current = true;
+      planNextAutoplayStepRef.current();
+    }
+    setAutomationRunning(true);
+  }, [autoControls.mode, pauseAutomation, addLog]);
+
   // Early return for loading state - MUST be after all hooks
   if (!dungeon) return <div className="game-container">Loading...</div>;
 
@@ -5028,6 +5090,26 @@ export function DungeonView({
               <div className="w-12 h-1 rounded-full bg-border" />
             </div>
             <div className="flex-1 min-h-0 px-2 pb-2 flex flex-col gap-1">
+            {/* Automation transport: mode + play/pause + 1x/2x/4x/8x */}
+            <AutomationBar
+              modes={['autoplay', 'hunt', 'search', 'harvest'] as AutomationMode[]}
+              mode={autoControls.mode}
+              onModeChange={setAutoMode}
+              speed={autoControls.speed}
+              onSpeedChange={setAutoSpeed}
+              running={automationRunning}
+              onPlay={startAutomation}
+              onPause={pauseAutomation}
+              uninterrupted={autoControls.uninterrupted}
+              onUninterruptedChange={setAutoUninterrupted}
+              onOpenScripts={() => setAutoScriptOpen(true)}
+            />
+            <Dialog open={autoScriptOpen} onOpenChange={setAutoScriptOpen}>
+              <DialogContent className="max-w-2xl max-h-[85dvh] overflow-y-auto">
+                <DialogHeader><DialogTitle>Automation behaviour</DialogTitle></DialogHeader>
+                <AutoplayRulesPanel />
+              </DialogContent>
+            </Dialog>
             {/* Keybinding reference */}
             <KeybindLegend context="dungeon" monster={state.run?.currentMonster ?? null} />
             {/* Log + open menu panel always sit side-by-side, including on

@@ -47,6 +47,7 @@ import { Flag, FlagOff, DoorOpen, Hammer, Footprints, Swords, Shovel, Droplet, T
 import { findBestMatchupSwap } from './MatchupIndicator';
 import { useSettings } from './Settings';
 import { AutomationBar } from '@/game/automation/AutomationBar';
+import { AutoplayRulesPanel } from '@/game/autoplay/AutoplayRulesPanel';
 import { useAutomationControls, automationStepMs, AutomationMode } from '@/game/automation/controls';
 import { GameSidebar } from './GameSidebar';
 import { CraftingWorkshop } from './CraftingWorkshop';
@@ -118,6 +119,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const { controls: autoControls, setMode: setAutoMode, setSpeed: setAutoSpeed, setUninterrupted: setAutoUninterrupted } = useAutomationControls();
   const autoStepMs = automationStepMs(settings.autoRunSpeed, autoControls.speed);
   const [automationRunning, setAutomationRunning] = useState(false);
+  const [autoScriptOpen, setAutoScriptOpen] = useState(false);
   const rendererRef = useRef<OverworldRendererHandle>(null);
   const { saveToCloud, syncing, isAuthenticated } = useCloudSave();
   const { username: myUsername } = useMyUsername();
@@ -2815,6 +2817,28 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
                   <span>Right-click enemy to attack</span>
                 </div>
               </div>
+              {/* Automation transport: mode + play/pause + 1x/2x/4x/8x */}
+              <div className="flex justify-center">
+                <AutomationBar
+                  modes={['hunt', 'search', 'harvest'] as AutomationMode[]}
+                  mode={autoControls.mode === 'autoplay' ? 'hunt' : autoControls.mode}
+                  onModeChange={setAutoMode}
+                  speed={autoControls.speed}
+                  onSpeedChange={setAutoSpeed}
+                  running={automationRunning}
+                  onPlay={startAutomation}
+                  onPause={pauseAutomation}
+                  uninterrupted={autoControls.uninterrupted}
+                  onUninterruptedChange={setAutoUninterrupted}
+                  onOpenScripts={() => setAutoScriptOpen(true)}
+                />
+              </div>
+              <Dialog open={autoScriptOpen} onOpenChange={setAutoScriptOpen}>
+                <DialogContent className="max-w-2xl max-h-[85dvh] overflow-y-auto">
+                  <DialogHeader><DialogTitle>Automation behaviour</DialogTitle></DialogHeader>
+                  <AutoplayRulesPanel />
+                </DialogContent>
+              </Dialog>
               {/* Keybinding reference */}
               <KeybindLegend context="overworld" monster={state.run?.currentMonster ?? null} />
             </div>

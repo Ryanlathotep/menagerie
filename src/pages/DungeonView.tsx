@@ -2073,7 +2073,11 @@ export function DungeonView({
           pathGoalRef.current = null;
           if (huntingModeRef.current) {
             setTimeout(() => planNextHuntStepRef.current(), 0);
+          } else if (searchQuestRef.current) {
+            const q = searchQuestRef.current;
+            setTimeout(() => runDungeonAutoSearchRef.current(q.kind, q.label), 60);
           } else if (harvestAllModeRef.current) {
+
             setTimeout(() => planNextHarvestStepRef.current(), 60);
           } else if (autoplayModeRef.current) {
 

@@ -662,6 +662,9 @@ export interface EnemyAction {
   direction?: 'up' | 'down' | 'left' | 'right';
   target?: Position;
   move?: Move; // chosen attack move (when type === 'attack' and AI picked one)
+  /** Set on `move` actions produced by a movement skill: how many tiles the
+   *  dash may cover this turn. `move` then names the skill being spent. */
+  dashTiles?: number;
 }
 
 // Legacy helper retained — overworld and dungeon still call this to classify

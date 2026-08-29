@@ -1324,9 +1324,23 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         cancelAutoSearch('⚠️ Auto-Search stopped — enemy in attack range!');
         return;
       }
+      // Keep exploring outward until we actually find one, instead of stopping.
+      const exploreOutward = (reason: string): void => {
+        const step = findExplorationStep(ow);
+        if (!step) {
+          cancelAutoSearch(`🔎 Auto-Search stopped — ${reason} and nowhere left to explore.`);
+          return;
+        }
+        if (!searchExploringRef.current) {
+          searchExploringRef.current = true;
+          addLog(`🧭 Auto-Search: ${reason} — spiralling outward through the fog.`, 'info');
+        }
+        handleMoveRef.current(step.dx, step.dy);
+      };
+
       const target = findNearestExplored(ow, kind);
       if (!target) {
-        cancelAutoSearch(`🔎 Auto-Search stopped — no known ${kind.replace('_', ' ')} within ${SEARCH_RADIUS} tiles.`);
+        exploreOutward(`no ${kind.replace('_', ' ')} in sight`);
         return;
       }
       const px = ow.playerPosition.x, py = ow.playerPosition.y;
@@ -1345,15 +1359,17 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         if (p && p.length > 0 && (!bestPath || p.length < bestPath.length)) bestPath = p;
       }
       if (!bestPath || bestPath.length === 0) {
-        cancelAutoSearch(`⚠️ Auto-Search stopped — no path to ${kind.replace('_', ' ')}.`);
+        exploreOutward(`can't reach that ${kind.replace('_', ' ')}`);
         return;
       }
+      searchExploringRef.current = false;
       const step = bestPath[0];
       const dx = step.x - px, dy = step.y - py;
       if (Math.abs(dx) + Math.abs(dy) !== 1) { cancelAutoSearch(); return; }
       handleMoveRef.current(dx, dy);
     }, stepDelay);
-  }, [addLog, cancelAutoHunt, cancelAutoMine, cancelAutoSearch, cancelAutoWalk, findNearestExplored, autoStepMs]);
+  }, [addLog, cancelAutoHunt, cancelAutoMine, cancelAutoSearch, cancelAutoWalk, findNearestExplored, findExplorationStep, autoStepMs]);
+
 
   // ── Automation transport (play / pause / speed / mode) ──────────────────
   useEffect(() => {

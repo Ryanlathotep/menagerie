@@ -1547,6 +1547,9 @@ export function DungeonView({
   // hands control to this character's autoplay attack rules the moment an
   // enemy is in range — then resumes playing where it left off.
   const autoplayModeRef = useRef(false);
+  // Set by tryAutoAttack when living enemies exist but nothing in our moveset
+  // can reach any of them yet — autoplay closes the distance instead of halting.
+  const autoAttackUnreachableRef = useRef(false);
   const planNextAutoplayStep = useCallback(() => {
     if (!autoplayModeRef.current) return;
     const d = dungeonRef.current;

@@ -284,7 +284,16 @@ export function calculateOverworldEnemyAction(
       : 1,
     playerElement: playerMonster?.element ?? enemy.element,
   });
-  const chosen = decision.move ?? undefined;
+  // A movement skill repositions instead of attacking: step toward/away rather
+  // than firing a zero-power move.
+  if (decision.isMovement && decision.move) {
+    const dirX = Math.sign(playerPos.x - enemyPos.x);
+    const dirY = Math.sign(playerPos.y - enemyPos.y);
+    const away = hint.prefer === 'retreat' || enemyHpRatio < hint.retreatHpThreshold;
+    return tryOverworldMove(overworld, enemyPos, away ? -dirX : dirX, away ? -dirY : dirY);
+  }
+
+  const chosen = decision.move && !decision.isMovement ? decision.move : undefined;
   const attackRange = chosen ? (chosen.type === 'ranged' ? 4 : 1) : 1;
 
   if (dist <= attackRange) {

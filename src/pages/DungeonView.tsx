@@ -3380,11 +3380,28 @@ export function DungeonView({
           addLog(`👹 ${enemy.name} attacks for ${damage} damage!`, 'damage');
         }
       } else if (action.type === 'move' && action.direction) {
-        // Enemy moves — small stamina regen while not attacking
-        staminaChanges.set(enemy.id, (staminaChanges.get(enemy.id) || 0) + Math.floor(ENEMY_REST_STAMINA_REGEN / 2));
-        const result = moveEnemy(updatedDungeon, enemy.id, action.direction);
-        if (result.newPos) {
+        const dashMove = action.move;
+        const dashTiles = dashMove ? Math.max(1, action.dashTiles ?? 1) : 1;
+        const dashCost = dashMove?.staminaCost ?? 0;
+        const curSta = enemy.stats.currentStamina ?? enemy.stats.stamina ?? 0;
+        const canDash = !!dashMove && curSta >= dashCost;
+
+        if (canDash) {
+          staminaChanges.set(enemy.id, (staminaChanges.get(enemy.id) || 0) - dashCost);
+        } else {
+          // Plain step — small stamina regen while not attacking
+          staminaChanges.set(enemy.id, (staminaChanges.get(enemy.id) || 0) + Math.floor(ENEMY_REST_STAMINA_REGEN / 2));
+        }
+
+        let steps = 0;
+        for (let i = 0; i < (canDash ? dashTiles : 1); i++) {
+          const result = moveEnemy(updatedDungeon, enemy.id, action.direction);
+          if (!result.newPos) break;
           updatedDungeon = result.dungeon;
+          steps++;
+        }
+        if (canDash && steps > 1 && dashMove) {
+          addLog(`👹 ${enemy.name} dashes ${steps} tiles with ${dashMove.name}!`, 'system');
         }
       } else {
         // Idle — regen

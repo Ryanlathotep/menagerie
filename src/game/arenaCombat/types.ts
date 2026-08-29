@@ -30,6 +30,10 @@ export interface TacticInput {
   enemies: Combatant[];
   distance: (a: Position, b: Position) => number;
   grid: { width: number; height: number };
+  /** True when a tile is a prefab wall or otherwise impassable terrain. */
+  isBlocked: (p: Position) => boolean;
+  /** True when a living combatant other than `self` stands on the tile. */
+  isOccupied: (p: Position) => boolean;
   turn: number;
 }
 
@@ -37,6 +41,9 @@ export interface TacticDecision {
   move?: Move;                  // undefined => rest / pass
   targetId?: string;            // enemy id for damage moves; ally id for heals
   moveTo?: Position;            // if set, step one tile toward this (limited by move speed)
+  /** Set with both `move` and `moveTo` to spend a movement skill: the actor
+   *  relocates to `moveTo`, then (for combo moves) resolves the attack. */
+  relocate?: boolean;
 }
 
 export type TeamStrategy = (input: TacticInput) => TacticDecision;

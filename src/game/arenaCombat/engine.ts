@@ -6,6 +6,7 @@
  * changes upstream apply here too.
  */
 import { executeCombat } from '@/game/combat';
+import { getAttackConfig } from '@/game/dungeonCombat';
 import { mulberry32, withSeededRandom } from '@/game/autobattle/seeded';
 import { buildTurnOrder, chebyshev } from './turnOrder';
 import { autoStrategy } from './strategy';
@@ -103,9 +104,64 @@ export function runArenaCombat(
         const decision = strategy({
           self: actor, allies, enemies,
           distance: chebyshev, grid: { width, height }, turn: turnCounter,
+          isBlocked: (p) => blocked.has(`${p.x},${p.y}`),
+          isOccupied: (p) => occupied(p, combatants, actor),
         });
 
         const fromX = actor.pos.x, fromY = actor.pos.y;
+
+        // Movement-skill branch: pay stamina and relocate with the named move.
+        if (decision.relocate && decision.move && decision.moveTo) {
+          const mv = decision.move;
+          const dest = decision.moveTo;
+          const legal =
+            dest.x >= 0 && dest.y >= 0 && dest.x < width && dest.y < height &&
+            !blocked.has(`${dest.x},${dest.y}`) && !occupied(dest, combatants, actor);
+          if (legal) {
+            actor.monster.stats.currentStamina = Math.max(
+              0, actor.monster.stats.currentStamina - (mv.staminaCost ?? 0),
+            );
+            actor.pos = dest;
+            const mu = (perMonster[actor.monster.id].moveUses[mv.id] ??= { uses: 0, damage: 0, crits: 0 });
+            mu.uses += 1;
+
+            // Combo moves (movement + damage) resolve the attack from the new tile.
+            const comboTarget = (mv.power ?? 0) > 0
+              ? combatants.find(c => c.monster.id === decision.targetId && c.monster.stats.currentHp > 0)
+              : undefined;
+            let dmg = 0; let crit = false; let dodged = false; let fainted = false;
+            if (comboTarget && chebyshev(actor.pos, comboTarget.pos) <= Math.max(1, getAttackConfig(mv).range ?? 1)) {
+              const res = executeCombat(mv, actor.monster, comboTarget.monster, true);
+              dmg = res.hit ? res.damage : 0;
+              crit = !!res.critical; dodged = !res.hit;
+              if (dmg > 0) {
+                comboTarget.monster.stats.currentHp = Math.max(0, comboTarget.monster.stats.currentHp - dmg);
+                perMonster[actor.monster.id].dmgDealt += dmg;
+                perMonster[comboTarget.monster.id].dmgTaken += dmg;
+                mu.damage += dmg;
+                if (crit) mu.crits += 1;
+              }
+              fainted = comboTarget.monster.stats.currentHp <= 0;
+            }
+
+            log.push({
+              turn: turnCounter, actorId: actor.monster.id, actorTeam: actor.team,
+              fromX, fromY, toX: actor.pos.x, toY: actor.pos.y,
+              moveId: mv.id, moveName: mv.name,
+              targetId: comboTarget?.monster.id,
+              damage: dmg || undefined, crit, dodged, faint: fainted,
+              message: comboTarget && dmg > 0
+                ? `${actor.monster.name} dashes with ${mv.name} and hits ${comboTarget.monster.name} for ${dmg}.`
+                : `${actor.monster.name} repositions with ${mv.name}.`,
+              hpAfter: snapshotHp(),
+            });
+            if (!anyAlive('A') || !anyAlive('B')) break;
+            continue;
+          }
+          // Illegal destination — fall through to a plain step.
+          decision.moveTo = dest;
+          decision.move = undefined;
+        }
 
         // Movement branch
         if (!decision.move && decision.moveTo) {

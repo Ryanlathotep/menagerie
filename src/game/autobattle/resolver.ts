@@ -117,7 +117,9 @@ export function runAutobattle(
         };
 
         const decision = chooseEnemyMove(actor, ctx);
-        if (!decision.move) {
+        // Autobattle abstracts away positioning, so a reposition skill has no
+        // effect here — treat it as a breather instead of a 0-power attack.
+        if (!decision.move || decision.isMovement) {
           // Rest — recover a chunk of stamina.
           actor.stats.currentStamina = Math.min(
             actor.stats.stamina ?? 0,

@@ -662,6 +662,9 @@ export interface EnemyAction {
   direction?: 'up' | 'down' | 'left' | 'right';
   target?: Position;
   move?: Move; // chosen attack move (when type === 'attack' and AI picked one)
+  /** Set on `move` actions produced by a movement skill: how many tiles the
+   *  dash may cover this turn. `move` then names the skill being spent. */
+  dashTiles?: number;
 }
 
 // Legacy helper retained — overworld and dungeon still call this to classify
@@ -733,7 +736,21 @@ export function calculateEnemyAction(
         playerElement: enemy.element,
       };
   const decision = ai.chooseEnemyMove(enemy, tacticCtx);
-  const chosen = decision.move ?? undefined;
+
+  // Movement / reposition skill: dash multiple tiles toward (or away from) the
+  // player instead of resolving a zero-power "attack".
+  if (decision.isMovement && decision.move) {
+    const dash = Math.max(1, ai.movementReach(decision.move));
+    const wantsAway = hint.prefer === 'retreat' || enemyHpRatio < hint.retreatHpThreshold;
+    const base = wantsAway
+      ? getMovementAway(enemyPos, playerPos, tiles, width, height)
+      : getMovementTowards(enemyPos, playerPos, tiles, width, height);
+    if (base.type === 'move' && base.direction) {
+      return { ...base, move: decision.move, dashTiles: dash };
+    }
+  }
+
+  const chosen = decision.move && !decision.isMovement ? decision.move : undefined;
 
   // Determine effective attack range from chosen move (or archetype fallback)
   let attackRange = 1;

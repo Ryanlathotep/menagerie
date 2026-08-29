@@ -87,9 +87,24 @@ export interface TacticContext {
 export interface MoveDecision {
   move: Move | null; // null = no affordable move; caller may rest or basic-attack
   score?: number;
+  /** True when the chosen move is a relocation (movement pattern) rather than an
+   *  attack. Callers must reposition the actor instead of resolving damage. */
+  isMovement?: boolean;
 }
 
 const isDamageMove = (m: Move) => m.type === 'melee' || m.type === 'ranged';
+
+/** A move counts as movement when it has a designed pattern, or is typed
+ *  `movement` (getAttackConfig substitutes a default 4-step dash for those). */
+export const isMovementMove = (m: Move): boolean =>
+  m.type === 'movement' || !!(m.movement && m.movement.offsets && m.movement.offsets.length > 0);
+
+/** Max tiles a movement skill can cover in one use. */
+export function movementReach(m: Move): number {
+  const offsets = m.movement?.offsets;
+  if (!offsets || offsets.length === 0) return m.movement?.range ?? 4;
+  return m.movement?.range ?? Math.max(...offsets.map(o => Math.max(Math.abs(o.dx), Math.abs(o.dy))));
+}
 
 function scoreMove(move: Move, _enemy: Monster, ctx: TacticContext): number {
   let s = 0;
@@ -141,6 +156,27 @@ function scoreMove(move: Move, _enemy: Monster, ctx: TacticContext): number {
     else s -= 60; // never heal at full HP
   }
 
+  // Movement / reposition skills. Valued by how much ground the dash covers
+  // toward (or away from) the player, folded through the archetype's hint.
+  if (isMovementMove(move)) {
+    const dash = movementReach(move);
+    const hint = getMovementHint(ctx.archetype, ctx.iq);
+    const wantsAway = hint.prefer === 'retreat' || ctx.enemyHpRatio < hint.retreatHpThreshold;
+
+    if (wantsAway) {
+      // Crowded ranged/mage/support or a wounded unit — blink out.
+      if (ctx.distance <= hint.idealRange) s += 22 + Math.min(dash, 6) * 3;
+      else s -= 10; // already at a comfortable range
+    } else {
+      // Closer: worth it only when we actually need to close ground.
+      const gap = ctx.distance - 1;
+      if (gap > 0) s += Math.min(dash, gap) * 7 + (ctx.distance > reach ? 12 : 0);
+      else s -= 22; // already adjacent, don't waste the turn
+    }
+    if (move.movement?.blink) s += 6;
+    // Combo moves (movement + damage) keep the damage score computed above.
+  }
+
   // Stamina pressure: conserve when low
   if (ctx.enemyStaminaRatio < 0.3 && move.staminaCost > 10) s -= 12;
 
@@ -157,14 +193,15 @@ export function chooseEnemyMove(enemy: Monster, ctx: TacticContext): MoveDecisio
   if (ctx.iq < 0.15) {
     const damage = affordable.filter(isDamageMove);
     const pool = damage.length ? damage : affordable;
-    return { move: pool[Math.floor(Math.random() * pool.length)] };
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    return { move: pick, isMovement: isMovementMove(pick) };
   }
 
   // Score + randomness inversely proportional to IQ
   const noiseAmp = (1 - ctx.iq) * 25;
   const scored = affordable.map((m) => ({ m, s: scoreMove(m, enemy, ctx) + (Math.random() * noiseAmp) }));
   scored.sort((a, b) => b.s - a.s);
-  return { move: scored[0].m, score: scored[0].s };
+  return { move: scored[0].m, score: scored[0].s, isMovement: isMovementMove(scored[0].m) };
 }
 
 // Convenience: compute damage from a chosen enemy move against the player monster.

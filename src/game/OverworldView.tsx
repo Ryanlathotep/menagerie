@@ -1003,6 +1003,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       window.clearInterval(autoSearchTimerRef.current);
       autoSearchTimerRef.current = null;
       autoSearchKindRef.current = null;
+      searchExploringRef.current = false;
       if (reason) addLog(reason, 'info');
     }
     automationRunningRef.current = false;
@@ -1316,6 +1317,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     cancelAutoHunt();
     cancelAutoSearch();
     autoSearchKindRef.current = kind;
+    searchExploringRef.current = false;
     const stepDelay = Math.max(40, autoStepMs || 100);
     addLog(`🧭 Auto-Search started — looking for nearest ${kind.replace('_', ' ')}.`, 'info');
     automationRunningRef.current = true;

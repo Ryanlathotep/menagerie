@@ -42,6 +42,8 @@ import { BUILDING_DEFINITIONS, createBuilding, PlayerBuildingType, PlayerBuildin
 import { DungeonBuildPanel } from '@/game/DungeonBuildPanel';
 import { KeybindLegend } from '@/game/KeybindLegend';
 import { AutomationBar } from '@/game/automation/AutomationBar';
+import { AutoplayRulesPanel } from '@/game/autoplay/AutoplayRulesPanel';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAutomationControls, automationStepMs, AutomationMode } from '@/game/automation/controls';
 import { BuildingAssignModal } from '@/game/BuildingAssignModal';
 import { BuildingContextMenu } from '@/game/BuildingContextMenu';
@@ -132,6 +134,7 @@ export function DungeonView({
   const { controls: autoControls, setMode: setAutoMode, setSpeed: setAutoSpeed, setUninterrupted: setAutoUninterrupted } = useAutomationControls();
   const autoStepMs = automationStepMs(settings.autoRunSpeed, autoControls.speed);
   const [automationRunning, setAutomationRunning] = useState(false);
+  const [autoScriptOpen, setAutoScriptOpen] = useState(false);
   const dungeon = state.run?.dungeon;
   const [showShop, setShowShop] = useState(false);
   const [showEquipment, setShowEquipment] = useState(false);
@@ -5080,6 +5083,20 @@ export function DungeonView({
               <div className="w-12 h-1 rounded-full bg-border" />
             </div>
             <div className="flex-1 min-h-0 px-2 pb-2 flex flex-col gap-1">
+            {/* Automation transport: mode + play/pause + 1x/2x/4x/8x */}
+            <AutomationBar
+              modes={['autoplay', 'hunt', 'search', 'harvest'] as AutomationMode[]}
+              mode={autoControls.mode}
+              onModeChange={setAutoMode}
+              speed={autoControls.speed}
+              onSpeedChange={setAutoSpeed}
+              running={automationRunning}
+              onPlay={startAutomation}
+              onPause={pauseAutomation}
+              uninterrupted={autoControls.uninterrupted}
+              onUninterruptedChange={setAutoUninterrupted}
+              onOpenScripts={() => setAutoScriptOpen(true)}
+            />
             {/* Keybinding reference */}
             <KeybindLegend context="dungeon" monster={state.run?.currentMonster ?? null} />
             {/* Log + open menu panel always sit side-by-side, including on

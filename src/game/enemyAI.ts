@@ -193,7 +193,8 @@ export function chooseEnemyMove(enemy: Monster, ctx: TacticContext): MoveDecisio
   if (ctx.iq < 0.15) {
     const damage = affordable.filter(isDamageMove);
     const pool = damage.length ? damage : affordable;
-    return { move: pool[Math.floor(Math.random() * pool.length)] };
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    return { move: pick, isMovement: isMovementMove(pick) };
   }
 
   // Score + randomness inversely proportional to IQ

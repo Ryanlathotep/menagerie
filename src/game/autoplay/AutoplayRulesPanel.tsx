@@ -16,6 +16,7 @@ import {
   ACTION_LABELS,
   AUTOPLAY_EVENT,
   AutoplayActionKind,
+  AutoplayAoePreference,
   AutoplayConditionKind,
   AutoplayEngageMode,
   AutoplayProfile,
@@ -133,6 +134,32 @@ export function AutoplayRulesPanel({ comboId, characterName }: Props) {
           onCheckedChange={v => commit({ ...profile, switchBestMatchup: v })}
         />
       </div>
+
+      {/* AoE vs single-target preference */}
+      <div className="space-y-2">
+        <Label className="cursor-default text-xs">Attack preference</Label>
+        <p className="text-[11px] text-muted-foreground">
+          Tie-breaker applied to every attack rule. AoE / splash moves are preferred by default.
+        </p>
+        <div className="grid grid-cols-3 gap-2">
+          {([
+            { key: 'aoe', label: 'Prefer AoE' },
+            { key: 'single', label: 'Prefer single' },
+            { key: 'off', label: 'No preference' },
+          ] as { key: AutoplayAoePreference; label: string }[]).map(opt => (
+            <Button
+              key={opt.key}
+              size="sm"
+              variant={(profile.aoePreference ?? 'aoe') === opt.key ? 'default' : 'outline'}
+              onClick={() => commit({ ...profile, aoePreference: opt.key })}
+            >
+              {opt.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-col">

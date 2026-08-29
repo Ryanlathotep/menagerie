@@ -1547,6 +1547,9 @@ export function DungeonView({
   // hands control to this character's autoplay attack rules the moment an
   // enemy is in range — then resumes playing where it left off.
   const autoplayModeRef = useRef(false);
+  // Set by tryAutoAttack when living enemies exist but nothing in our moveset
+  // can reach any of them yet — autoplay closes the distance instead of halting.
+  const autoAttackUnreachableRef = useRef(false);
   const planNextAutoplayStep = useCallback(() => {
     if (!autoplayModeRef.current) return;
     const d = dungeonRef.current;
@@ -1554,11 +1557,11 @@ export function DungeonView({
 
     // 1) Combat first — follow the character's attacking behaviour.
     if (anyEnemyThreatensPlayer(d)) {
+      autoAttackUnreachableRef.current = false;
       if (tryAutoAttackRef.current(d)) {
         setTimeout(() => planNextAutoplayStepRef.current(), 400);
         return;
       }
-      autoplayModeRef.current = false;
       const px0 = d.playerPosition.x, py0 = d.playerPosition.y;
       let near: { enemy: Monster; pos: Position; dist: number } | null = null;
       for (let yy = 0; yy < d.tiles.length; yy++) {
@@ -1572,6 +1575,25 @@ export function DungeonView({
           if (!near || dist < near.dist) near = { enemy: e, pos: { x: xx, y: yy }, dist };
         }
       }
+
+      // Enemy is threatening us but nothing we own reaches it yet (e.g. it out-
+      // ranges us, or a wall blocks line of fire). Close the distance and try
+      // again next tick rather than dropping out of autoplay.
+      if (autoAttackUnreachableRef.current && near) {
+        const approach = findApproachTileRef.current(d, near.pos);
+        if (approach && !(approach.x === px0 && approach.y === py0)) {
+          const path = findPath(d, d.playerPosition, approach, { allowMineable: !!settings.autoMine });
+          if (path && path.length > 0) {
+            setTargetPath(path);
+            pathWalkRef.current = path;
+            pathGoalRef.current = approach;
+            setIsPathWalking(true);
+            return;
+          }
+        }
+      }
+
+      autoplayModeRef.current = false;
       if (near) {
         addLog('🤖 Autoplay: enemy in range — pick a move.', 'info');
         setAttackMenuTarget({ enemy: near.enemy, enemyPos: near.pos, playerPos: d.playerPosition });
@@ -3156,16 +3178,21 @@ export function DungeonView({
     const affordable = getMonsterMoves(
       monster.species, monster.element, monster.class, monster.level, comboId,
     ).filter(mv => (mv.staminaCost || 0) <= stamina);
-    const ordered = orderMovesForAction(
-      affordable,
-      rule.action,
-      rule.moveName || settings.autoAttackMoveName,
-    );
+    const pinned = rule.moveName || settings.autoAttackMoveName;
+    const ordered = orderMovesForAction(affordable, rule.action, pinned, profile.aoePreference);
+    // If the rule's preferred moves can't reach anything, fall back to *any*
+    // affordable attack (still respecting the AoE preference) so a ranged rule
+    // doesn't stall autoplay once the enemy closes to melee range and vice versa.
+    const fallback = orderMovesForAction(affordable, 'attack_strongest', undefined, profile.aoePreference);
+    const candidates = [...ordered, ...fallback.filter(m => !ordered.includes(m))];
 
-    for (const { pos } of enemies) {
-      for (const mv of ordered) {
-        const cfg = getAttackConfig(mv);
-        const valid = getValidTargets(d.playerPosition, cfg, d.tiles, d.width, d.height, true);
+    // Moves outer / enemies inner: honour the move preference first, then pick
+    // the nearest enemy that move can actually hit.
+    for (const mv of candidates) {
+      const cfg = getAttackConfig(mv);
+      const valid = getValidTargets(d.playerPosition, cfg, d.tiles, d.width, d.height, true);
+      if (valid.length === 0) continue;
+      for (const { pos } of enemies) {
         if (!valid.some(v => v.x === pos.x && v.y === pos.y)) continue;
         addLog(`⚡ Auto-attack: ${mv.name}!`, 'info');
         setTargetingMove(mv);
@@ -3174,6 +3201,8 @@ export function DungeonView({
         return true;
       }
     }
+    // Enemies exist, but nothing reaches them — let the caller close in.
+    autoAttackUnreachableRef.current = true;
     return false;
   }, [settings.autoAttackMoveName, state.run, addLog, handleTargetingClick, handlePartySwitch, handleUseItemOutOfCombat]);
   const tryAutoAttackRef = useRef(tryAutoAttack);

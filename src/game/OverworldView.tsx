@@ -1115,8 +1115,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
             addLog('🔄 Autoplay: switched to the better matchup.', 'info');
             return; // keep hunting; next tick fights with the new monster
           }
-          const ordered = orderMovesForAction(allMoves, rule.action, rule.moveName);
-          const handoff = reachable(ordered) ?? reachable(cheapestFirst);
+          const ordered = orderMovesForAction(allMoves, rule.action, rule.moveName, profile.aoePreference);
+          const anyAttack = orderMovesForAction(allMoves, 'attack_strongest', undefined, profile.aoePreference);
+          const handoff = reachable(ordered) ?? reachable(anyAttack) ?? reachable(cheapestFirst);
           if (handoff) {
             setTargetingMove(handoff.move);
             setTargetingTiles(handoff.validTargets);

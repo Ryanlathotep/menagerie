@@ -34,6 +34,8 @@ export type AutoplayActionKind =
   | 'switch_best_matchup'
   | 'attack_ranged'
   | 'attack_melee'
+  | 'attack_aoe'
+  | 'attack_single'
   | 'attack_strongest'
   | 'attack_cheapest'
   | 'attack_pinned'
@@ -53,6 +55,9 @@ export interface AutoplayRule {
 /** What automation does when it walks into an enemy it can reach. */
 export type AutoplayEngageMode = 'stop' | 'ask' | 'fight';
 
+/** Tie-breaker applied to every attack ordering. */
+export type AutoplayAoePreference = 'aoe' | 'single' | 'off';
+
 export interface AutoplayProfile {
   /** Evaluated top-to-bottom; the first matching enabled rule wins. */
   rules: AutoplayRule[];
@@ -61,6 +66,8 @@ export interface AutoplayProfile {
   stopHpPercent: number;
   /** Swap in the best-matchup party member before engaging. */
   switchBestMatchup: boolean;
+  /** Prefer splash moves (default), single-target moves, or neither. */
+  aoePreference: AutoplayAoePreference;
 }
 
 export const CONDITION_LABELS: Record<AutoplayConditionKind, string> = {
@@ -79,6 +86,8 @@ export const ACTION_LABELS: Record<AutoplayActionKind, string> = {
   switch_best_matchup: 'Switch to best matchup',
   attack_ranged: 'Attack with ranged move',
   attack_melee: 'Attack with melee move',
+  attack_aoe: 'Attack with AoE / splash move',
+  attack_single: 'Attack with single-target move',
   attack_strongest: 'Attack with strongest move',
   attack_cheapest: 'Attack with cheapest move',
   attack_pinned: 'Attack with a specific move',
@@ -155,16 +164,41 @@ export function evaluateAutoplay(
   return null;
 }
 
+/** Does this move hit more than one tile? Mirrors getAttackConfig's inputs. */
+export function isAoeMove(move: Move): boolean {
+  if ((move.aoeRadius ?? 0) > 0) return true;
+  if (move.piercing) return true;
+  if (move.customShape && (move.customShape.offsets?.length ?? 0) > 1) return true;
+  const t = move.targeting;
+  return !!t && t !== 'single' && t !== 'self';
+}
+
 /**
  * Order affordable attack moves the way the action asks. Callers then walk the
  * list and fire the first move that can actually reach the target tile.
+ *
+ * `aoePreference` is a stable tie-breaker applied on top of the action's own
+ * ordering, so "prefer AoE" keeps ranged-first / cheapest-first intact but
+ * floats splash moves up inside each group. Defaults to preferring AoE.
  */
 export function orderMovesForAction(
   moves: Move[],
   action: AutoplayActionKind,
   pinnedName?: string,
+  aoePreference: AutoplayAoePreference = 'aoe',
 ): Move[] {
   const attacks = moves.filter(m => m.type === 'melee' || m.type === 'ranged' || m.power > 0);
+
+  // Stable partition that keeps the incoming order inside each bucket.
+  const applyPreference = (list: Move[]): Move[] => {
+    if (aoePreference === 'off') return list;
+    const wantAoe = aoePreference === 'aoe';
+    const hit: Move[] = [];
+    const rest: Move[] = [];
+    for (const m of list) (isAoeMove(m) === wantAoe ? hit : rest).push(m);
+    return [...hit, ...rest];
+  };
+
   switch (action) {
     case 'attack_pinned': {
       const pinned = attacks.filter(m => m.name === pinnedName);
@@ -173,17 +207,33 @@ export function orderMovesForAction(
     case 'attack_ranged': {
       const ranged = attacks.filter(m => m.type === 'ranged');
       const rest = attacks.filter(m => m.type !== 'ranged');
-      return [...ranged.sort((a, b) => (b.power || 0) - (a.power || 0)), ...rest];
+      return [
+        ...applyPreference(ranged.sort((a, b) => (b.power || 0) - (a.power || 0))),
+        ...applyPreference(rest.sort((a, b) => (b.power || 0) - (a.power || 0))),
+      ];
     }
     case 'attack_melee': {
       const melee = attacks.filter(m => m.type === 'melee');
       const rest = attacks.filter(m => m.type !== 'melee');
-      return [...melee.sort((a, b) => (b.power || 0) - (a.power || 0)), ...rest];
+      return [
+        ...applyPreference(melee.sort((a, b) => (b.power || 0) - (a.power || 0))),
+        ...applyPreference(rest.sort((a, b) => (b.power || 0) - (a.power || 0))),
+      ];
+    }
+    case 'attack_aoe': {
+      const aoe = attacks.filter(isAoeMove).sort((a, b) => (b.power || 0) - (a.power || 0));
+      const rest = attacks.filter(m => !isAoeMove(m)).sort((a, b) => (b.power || 0) - (a.power || 0));
+      return [...aoe, ...rest];
+    }
+    case 'attack_single': {
+      const single = attacks.filter(m => !isAoeMove(m)).sort((a, b) => (b.power || 0) - (a.power || 0));
+      const rest = attacks.filter(isAoeMove).sort((a, b) => (b.power || 0) - (a.power || 0));
+      return [...single, ...rest];
     }
     case 'attack_cheapest':
-      return [...attacks].sort((a, b) => (a.staminaCost || 0) - (b.staminaCost || 0));
+      return applyPreference([...attacks].sort((a, b) => (a.staminaCost || 0) - (b.staminaCost || 0)));
     default:
-      return [...attacks].sort((a, b) => (b.power || 0) - (a.power || 0));
+      return applyPreference([...attacks].sort((a, b) => (b.power || 0) - (a.power || 0)));
   }
 }
 
@@ -242,10 +292,12 @@ export function defaultProfile(): AutoplayProfile {
     engage: 'fight',
     stopHpPercent: 30,
     switchBestMatchup: true,
+    aoePreference: 'aoe',
     rules: [
       newRule({ condition: { kind: 'hp_below', value: 50 }, action: 'heal_item' }),
       newRule({ condition: { kind: 'enemy_resists_me' }, action: 'switch_best_matchup' }),
       newRule({ condition: { kind: 'enemy_beyond', value: 1 }, action: 'attack_ranged' }),
+      newRule({ condition: { kind: 'enemy_within', value: 1 }, action: 'attack_melee' }),
       newRule({ condition: { kind: 'always' }, action: 'attack_strongest' }),
     ],
   };

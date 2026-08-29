@@ -48,6 +48,7 @@ import { findBestMatchupSwap } from './MatchupIndicator';
 import { useSettings } from './Settings';
 import { AutomationBar } from '@/game/automation/AutomationBar';
 import { AutoplayRulesPanel } from '@/game/autoplay/AutoplayRulesPanel';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAutomationControls, automationStepMs, AutomationMode } from '@/game/automation/controls';
 import { GameSidebar } from './GameSidebar';
 import { CraftingWorkshop } from './CraftingWorkshop';
@@ -1301,6 +1302,36 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       handleMoveRef.current(dx, dy);
     }, stepDelay);
   }, [addLog, cancelAutoHunt, cancelAutoMine, cancelAutoSearch, cancelAutoWalk, findNearestExplored, autoStepMs]);
+
+  // ── Automation transport (play / pause / speed / mode) ──────────────────
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const running = automationRunningRef.current;
+      setAutomationRunning(prev => (prev === running ? prev : running));
+    }, 250);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const pauseAutomation = useCallback(() => {
+    cancelAutoHunt();
+    cancelAutoSearch();
+    cancelAutoHarvestAll();
+    cancelAutoMine();
+    cancelAutoWalk();
+    automationRunningRef.current = false;
+    setAutomationRunning(false);
+    addLog('⏸ Automation paused.', 'info');
+  }, [addLog, cancelAutoHunt, cancelAutoSearch, cancelAutoHarvestAll, cancelAutoMine, cancelAutoWalk]);
+
+  const startAutomation = useCallback(() => {
+    pauseAutomation();
+    const mode = autoControls.mode === 'autoplay' ? 'hunt' : autoControls.mode;
+    if (mode === 'search') { setAutoSearchPickerOpen(true); return; }
+    if (mode === 'harvest') startAutoHarvestAll();
+    else startAutoHunt();
+    setAutomationRunning(true);
+  }, [autoControls.mode, pauseAutomation, startAutoHarvestAll, startAutoHunt]);
+
 
   useEffect(() => () => { cancelAutoHunt(); cancelAutoSearch(); }, [cancelAutoHunt, cancelAutoSearch]);
 

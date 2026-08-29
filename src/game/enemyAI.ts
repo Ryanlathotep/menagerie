@@ -87,9 +87,17 @@ export interface TacticContext {
 export interface MoveDecision {
   move: Move | null; // null = no affordable move; caller may rest or basic-attack
   score?: number;
+  /** True when the chosen move is a relocation (movement pattern) rather than an
+   *  attack. Callers must reposition the actor instead of resolving damage. */
+  isMovement?: boolean;
 }
 
 const isDamageMove = (m: Move) => m.type === 'melee' || m.type === 'ranged';
+
+/** A move counts as movement when it has a designed pattern, or is typed
+ *  `movement` (getAttackConfig substitutes a default 4-step dash for those). */
+export const isMovementMove = (m: Move): boolean =>
+  m.type === 'movement' || !!(m.movement && m.movement.offsets && m.movement.offsets.length > 0);
 
 function scoreMove(move: Move, _enemy: Monster, ctx: TacticContext): number {
   let s = 0;

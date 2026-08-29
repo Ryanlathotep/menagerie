@@ -1256,7 +1256,58 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     return best ? { x: best.x, y: best.y } : null;
   }, []);
 
+  // One step toward the nearest fog frontier — shared "keep spiralling outward"
+  // move used when a search target isn't known (or reachable) yet, so the loop
+  // explores instead of stopping.
+  const findExplorationStep = useCallback((ow: OverworldState): { dx: number; dy: number } | null => {
+    const px = ow.playerPosition.x, py = ow.playerPosition.y;
+    const blocked = new Set(['building', 'player_building', 'tree', 'rock', 'water', 'cliff', 'waterfall']);
+    const SCAN = 40;
+    const frontiers: Array<{ x: number; y: number; d: number }> = [];
+    for (let dy = -SCAN; dy <= SCAN; dy++) {
+      const rem = SCAN - Math.abs(dy);
+      for (let dx = -rem; dx <= rem; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        const x = px + dx, y = py + dy;
+        const t = getOverworldTile(ow, x, y);
+        if (!t || !t.explored || blocked.has(t.type)) continue;
+        let frontier = false;
+        for (const [ox, oy] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
+          const nt = getOverworldTile(ow, x + ox, y + oy);
+          if (!nt || !nt.explored) { frontier = true; break; }
+        }
+        if (frontier) frontiers.push({ x, y, d: Math.abs(dx) + Math.abs(dy) });
+      }
+    }
+    frontiers.sort((a, b) => a.d - b.d);
+    for (const passStructures of [true, false]) {
+      for (let i = 0; i < Math.min(frontiers.length, 24); i++) {
+        const f = frontiers[i];
+        const path = findOverworldPath(ow, ow.playerPosition, { x: f.x, y: f.y }, 8000, { avoidStructures: passStructures });
+        if (!path || path.length === 0) continue;
+        const step = path[0];
+        const dx = step.x - px, dy = step.y - py;
+        if (Math.abs(dx) + Math.abs(dy) !== 1) continue;
+        return { dx, dy };
+      }
+    }
+    // Last-ditch: shuffle one step toward the farthest frontier.
+    const far = frontiers[frontiers.length - 1];
+    if (far) {
+      const options: Array<[number, number]> = [];
+      const sx = Math.sign(far.x - px), sy = Math.sign(far.y - py);
+      if (sx !== 0) options.push([sx, 0]);
+      if (sy !== 0) options.push([0, sy]);
+      for (const [ox, oy] of options) {
+        const nt = getOverworldTile(ow, px + ox, py + oy);
+        if (nt && !blocked.has(nt.type)) return { dx: ox, dy: oy };
+      }
+    }
+    return null;
+  }, []);
+
   const startAutoSearch = useCallback((kind: SearchKind) => {
+
     cancelAutoWalk();
     cancelAutoMine();
     cancelAutoHunt();

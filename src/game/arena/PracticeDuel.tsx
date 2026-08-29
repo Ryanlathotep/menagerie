@@ -87,8 +87,10 @@ export function PracticeDuel({ arena, unlocked }: Props) {
       winner: result.winner,
       turns: result.turns,
       roomId: room.id,
-      gridWidth: 24,
-      gridHeight: 24,
+      gridWidth: layout.width,
+      gridHeight: layout.height,
+      features: layout.features,
+      layoutName: layout.name,
     };
     setReplay(r);
   };

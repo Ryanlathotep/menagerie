@@ -274,7 +274,11 @@ export function DungeonView({
     | { kind: 'stairs' | 'stairs_up'; fromFloor: number; toFloor: number; direction: 'deeper' | 'shallower' }
     | null
   >(null);
+  type DungeonSearchKind =
+    | 'stairs' | 'stairs_up' | 'treasure' | 'shop' | 'elevator'
+    | 'plant' | 'mineable_wall' | 'nest';
   // While non-null, Auto-Search is chasing this stair type across floors.
+
   const autoSearchStairsKindRef = useRef<'stairs' | 'stairs_up' | null>(null);
   // While non-null, Auto-Search is still looking for this target kind and will
   // keep spiralling outward through the fog (streaming new floor strips) until

@@ -985,6 +985,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const autoHuntTimerRef = useRef<number | null>(null);
   const autoSearchTimerRef = useRef<number | null>(null);
   const autoSearchKindRef = useRef<string | null>(null);
+  // True while Auto-Search is exploring the fog looking for its target (keeps
+  // the "spiralling outward" log from repeating every step).
+  const searchExploringRef = useRef(false);
 
   const cancelAutoHunt = useCallback((reason?: string) => {
     if (autoHuntTimerRef.current !== null) {

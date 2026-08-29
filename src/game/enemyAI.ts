@@ -149,6 +149,27 @@ function scoreMove(move: Move, _enemy: Monster, ctx: TacticContext): number {
     else s -= 60; // never heal at full HP
   }
 
+  // Movement / reposition skills. Valued by how much ground the dash covers
+  // toward (or away from) the player, folded through the archetype's hint.
+  if (isMovementMove(move)) {
+    const dash = movementReach(move);
+    const hint = getMovementHint(ctx.archetype, ctx.iq);
+    const wantsAway = hint.prefer === 'retreat' || ctx.enemyHpRatio < hint.retreatHpThreshold;
+
+    if (wantsAway) {
+      // Crowded ranged/mage/support or a wounded unit — blink out.
+      if (ctx.distance <= hint.idealRange) s += 22 + Math.min(dash, 6) * 3;
+      else s -= 10; // already at a comfortable range
+    } else {
+      // Closer: worth it only when we actually need to close ground.
+      const gap = ctx.distance - 1;
+      if (gap > 0) s += Math.min(dash, gap) * 7 + (ctx.distance > reach ? 12 : 0);
+      else s -= 22; // already adjacent, don't waste the turn
+    }
+    if (move.movement?.blink) s += 6;
+    // Combo moves (movement + damage) keep the damage score computed above.
+  }
+
   // Stamina pressure: conserve when low
   if (ctx.enemyStaminaRatio < 0.3 && move.staminaCost > 10) s -= 12;
 

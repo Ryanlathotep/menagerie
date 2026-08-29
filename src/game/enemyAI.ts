@@ -99,6 +99,13 @@ const isDamageMove = (m: Move) => m.type === 'melee' || m.type === 'ranged';
 export const isMovementMove = (m: Move): boolean =>
   m.type === 'movement' || !!(m.movement && m.movement.offsets && m.movement.offsets.length > 0);
 
+/** Max tiles a movement skill can cover in one use. */
+export function movementReach(m: Move): number {
+  const offsets = m.movement?.offsets;
+  if (!offsets || offsets.length === 0) return m.movement?.range ?? 4;
+  return m.movement?.range ?? Math.max(...offsets.map(o => Math.max(Math.abs(o.dx), Math.abs(o.dy))));
+}
+
 function scoreMove(move: Move, _enemy: Monster, ctx: TacticContext): number {
   let s = 0;
 

@@ -2,12 +2,18 @@ name: Build Lovable App
 
 on: [push]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -65,3 +71,48 @@ jobs:
             --userversion "${GITHUB_SHA::7}-$(date -u +%Y%m%d-%H%M)"
 
 #
+      - name: Generate release highlights
+        if: github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          TAG="v$(date -u +%Y.%m.%d-%H%M)"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "BUILD_LABEL=${GITHUB_SHA::7}-$(date -u +%Y%m%d-%H%M)" >> "$GITHUB_ENV"
+          PREV=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -n "$PREV" ]; then RANGE="$PREV..HEAD"; else RANGE=$(git rev-list --max-parents=0 HEAD | head -1)..HEAD; fi
+          mkdir -p docs/releases
+          NOTES="docs/releases/${TAG}.md"
+          {
+            echo "## Menagerie $TAG"
+            echo
+            echo "Build \`${GITHUB_SHA::7}\` — playable at https://maligore.itch.io/menagerie and https://menagerie.lovable.app"
+            echo
+            echo "### Changes"
+            git log --no-merges --pretty='- %s' "$RANGE" \
+              | grep -viE '^- (Changes|wip|merge|bump|lint|format)$' \
+              | head -20 || echo "- Stability and polish pass"
+            echo
+            echo "### Under the hood"
+            echo "- Internal refactors, QA fixtures, and build tuning."
+          } > "$NOTES"
+          cat "$NOTES"
+
+      - name: Publish GitHub Release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" \
+            --title "Menagerie $TAG" \
+            --notes-file "docs/releases/${TAG}.md" \
+            --target "$GITHUB_SHA" || \
+          gh release edit "$TAG" --notes-file "docs/releases/${TAG}.md"
+          echo "itch.io build label: $BUILD_LABEL"
+
+      - name: Upload release notes artifact (for itch.io devlog paste)
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: docs/releases/

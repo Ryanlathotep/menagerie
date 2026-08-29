@@ -1424,12 +1424,16 @@ export function DungeonView({
     if (!huntingModeRef.current) return;
     const d = dungeonRef.current;
     if (!d) { huntingModeRef.current = false; return; }
-    const target = findHuntTarget(d);
+    let target = findHuntTarget(d);
+    // Nothing visible and no fog border: keep spiralling by heading for the
+    // tile nearest a map edge, which streams a fresh strip of floor into view.
+    if (!target) target = findFogWaypointRef.current(d);
     if (!target) {
       huntingModeRef.current = false;
-      addLog('🔎 Auto-Hunt: no enemies visible and no unexplored ground nearby.', 'info');
+      addLog('🔎 Auto-Hunt: nowhere left to explore on this floor.', 'info');
       return;
     }
+
     const px = d.playerPosition.x, py = d.playerPosition.y;
     const t = d.tiles[target.y]?.[target.x];
     // Enemy target: if ANY move on the active monster can currently reach

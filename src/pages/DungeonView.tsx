@@ -1766,13 +1766,20 @@ export function DungeonView({
     lastAutoSearchFloorRef.current = cur;
     const kind = autoSearchStairsKindRef.current;
     if (!kind) return;
+    // "Run uninterrupted" keeps the stair chase going without asking.
+    if (autoControls.uninterrupted) {
+      const label = kind === 'stairs' ? 'Stairs down (deeper)' : 'Stairs up (shallower)';
+      addLog(`${kind === 'stairs' ? '⬇️' : '⬆️'} Auto-Search continuing on Floor ${cur}.`, 'info');
+      setTimeout(() => runDungeonAutoSearchRef.current(kind, label), 300);
+      return;
+    }
     setStairSearchPrompt({
       kind,
       fromFloor: prev,
       toFloor: cur,
       direction: cur > prev ? 'deeper' : 'shallower',
     });
-  }, [dungeon?.floor, dungeon]);
+  }, [dungeon?.floor, dungeon, autoControls.uninterrupted, addLog]);
 
   
   // Path walking effect — position-driven so it stays in sync with React state
@@ -5097,6 +5104,12 @@ export function DungeonView({
               onUninterruptedChange={setAutoUninterrupted}
               onOpenScripts={() => setAutoScriptOpen(true)}
             />
+            <Dialog open={autoScriptOpen} onOpenChange={setAutoScriptOpen}>
+              <DialogContent className="max-w-2xl max-h-[85dvh] overflow-y-auto">
+                <DialogHeader><DialogTitle>Automation behaviour</DialogTitle></DialogHeader>
+                <AutoplayRulesPanel />
+              </DialogContent>
+            </Dialog>
             {/* Keybinding reference */}
             <KeybindLegend context="dungeon" monster={state.run?.currentMonster ?? null} />
             {/* Log + open menu panel always sit side-by-side, including on

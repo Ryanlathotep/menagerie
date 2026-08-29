@@ -16,6 +16,7 @@ import { getAllRooms } from './arenaRooms';
 import { resolveStrategy } from './strategyPresets';
 import { ArenaReplayPlayer } from './ArenaReplayPlayer';
 import { STRATEGY_PRESETS } from './strategyPresets';
+import { pickLayout } from './tournament';
 
 type TeamSize = 'solo' | 'duo' | 'trio' | 'full';
 const SIZE: Record<TeamSize, number> = { solo: 1, duo: 2, trio: 3, full: 6 };
@@ -60,10 +61,15 @@ export function PracticeDuel({ arena, unlocked }: Props) {
       : hydratePlayer(bTeam, unlocked)).slice(0, cap);
 
     const seed = Math.floor(Math.random() * 0xffffffff);
+    const matchId = `practice_${seed}`;
+    const layout = pickLayout(matchId, seed);
+    const blockedCells = layout.features
+      .filter(f => f.kind === 'wall')
+      .map(f => ({ x: f.x, y: f.y }));
     const result = runArenaCombat(
       { id: teamA.id, name: teamA.name, members: membersA, strategy: resolveStrategy(strategyA as any) },
       { id: bTeam.id, name: bTeam.name, members: membersB, strategy: resolveStrategy(strategyB as any) },
-      { seed, gridWidth: 24, gridHeight: 24 },
+      { seed, gridWidth: layout.width, gridHeight: layout.height, blockedCells },
     );
 
     const rooms = getAllRooms();
@@ -81,8 +87,10 @@ export function PracticeDuel({ arena, unlocked }: Props) {
       winner: result.winner,
       turns: result.turns,
       roomId: room.id,
-      gridWidth: 24,
-      gridHeight: 24,
+      gridWidth: layout.width,
+      gridHeight: layout.height,
+      features: layout.features,
+      layoutName: layout.name,
     };
     setReplay(r);
   };

@@ -58,7 +58,7 @@ const FEATURE_KINDS = new Set<ArenaReplayFeature['kind']>([
   'wall', 'door', 'chest', 'box', 'lever', 'trap_spike', 'trap_dart', 'stairs_up', 'stairs_down',
 ]);
 
-interface ArenaLayout {
+export interface ArenaLayout {
   width: number;
   height: number;
   features: ArenaReplayFeature[];
@@ -66,7 +66,7 @@ interface ArenaLayout {
 }
 
 /** Prefer an admin-painted room prefab tagged `arena`; otherwise an open 24×24 floor. */
-function pickLayout(matchId: string, seed: number): ArenaLayout {
+export function pickLayout(matchId: string, seed: number): ArenaLayout {
   const prefabs = getCachedRoomsByTag('arena');
   if (prefabs.length === 0) {
     return { width: ARENA_GRID, height: ARENA_GRID, features: [] };

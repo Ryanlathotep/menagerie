@@ -1943,6 +1943,7 @@ export function DungeonView({
         }
         pendingBumpRef.current = null;
         autoSearchStairsKindRef.current = null;
+        searchQuestRef.current = null;
 
         return;
       }
@@ -3717,6 +3718,7 @@ export function DungeonView({
     harvestAllModeRef.current = false;
     autoplayModeRef.current = false;
     autoSearchStairsKindRef.current = null;
+    searchQuestRef.current = null;
     pathWalkRef.current = [];
     pathGoalRef.current = null;
     setIsPathWalking(false);

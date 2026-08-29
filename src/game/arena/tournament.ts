@@ -66,7 +66,7 @@ interface ArenaLayout {
 }
 
 /** Prefer an admin-painted room prefab tagged `arena`; otherwise an open 24×24 floor. */
-function pickLayout(matchId: string, seed: number): ArenaLayout {
+export function pickLayout(matchId: string, seed: number): ArenaLayout {
   const prefabs = getCachedRoomsByTag('arena');
   if (prefabs.length === 0) {
     return { width: ARENA_GRID, height: ARENA_GRID, features: [] };

@@ -276,6 +276,11 @@ export function DungeonView({
   >(null);
   // While non-null, Auto-Search is chasing this stair type across floors.
   const autoSearchStairsKindRef = useRef<'stairs' | 'stairs_up' | null>(null);
+  // While non-null, Auto-Search is still looking for this target kind and will
+  // keep spiralling outward through the fog (streaming new floor strips) until
+  // it finds one, instead of giving up when nothing is currently explored.
+  const searchQuestRef = useRef<{ kind: DungeonSearchKind; label: string } | null>(null);
+
 
   // Dungeon build mode (per-floor buildings persisted via snapshots)
   const [dungeonBuildPanelOpen, setDungeonBuildPanelOpen] = useState(false);

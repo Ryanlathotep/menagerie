@@ -3178,16 +3178,21 @@ export function DungeonView({
     const affordable = getMonsterMoves(
       monster.species, monster.element, monster.class, monster.level, comboId,
     ).filter(mv => (mv.staminaCost || 0) <= stamina);
-    const ordered = orderMovesForAction(
-      affordable,
-      rule.action,
-      rule.moveName || settings.autoAttackMoveName,
-    );
+    const pinned = rule.moveName || settings.autoAttackMoveName;
+    const ordered = orderMovesForAction(affordable, rule.action, pinned, profile.aoePreference);
+    // If the rule's preferred moves can't reach anything, fall back to *any*
+    // affordable attack (still respecting the AoE preference) so a ranged rule
+    // doesn't stall autoplay once the enemy closes to melee range and vice versa.
+    const fallback = orderMovesForAction(affordable, 'attack_strongest', undefined, profile.aoePreference);
+    const candidates = [...ordered, ...fallback.filter(m => !ordered.includes(m))];
 
-    for (const { pos } of enemies) {
-      for (const mv of ordered) {
-        const cfg = getAttackConfig(mv);
-        const valid = getValidTargets(d.playerPosition, cfg, d.tiles, d.width, d.height, true);
+    // Moves outer / enemies inner: honour the move preference first, then pick
+    // the nearest enemy that move can actually hit.
+    for (const mv of candidates) {
+      const cfg = getAttackConfig(mv);
+      const valid = getValidTargets(d.playerPosition, cfg, d.tiles, d.width, d.height, true);
+      if (valid.length === 0) continue;
+      for (const { pos } of enemies) {
         if (!valid.some(v => v.x === pos.x && v.y === pos.y)) continue;
         addLog(`⚡ Auto-attack: ${mv.name}!`, 'info');
         setTargetingMove(mv);
@@ -3196,6 +3201,8 @@ export function DungeonView({
         return true;
       }
     }
+    // Enemies exist, but nothing reaches them — let the caller close in.
+    autoAttackUnreachableRef.current = true;
     return false;
   }, [settings.autoAttackMoveName, state.run, addLog, handleTargetingClick, handlePartySwitch, handleUseItemOutOfCombat]);
   const tryAutoAttackRef = useRef(tryAutoAttack);

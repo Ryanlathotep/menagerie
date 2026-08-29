@@ -1557,11 +1557,11 @@ export function DungeonView({
 
     // 1) Combat first — follow the character's attacking behaviour.
     if (anyEnemyThreatensPlayer(d)) {
+      autoAttackUnreachableRef.current = false;
       if (tryAutoAttackRef.current(d)) {
         setTimeout(() => planNextAutoplayStepRef.current(), 400);
         return;
       }
-      autoplayModeRef.current = false;
       const px0 = d.playerPosition.x, py0 = d.playerPosition.y;
       let near: { enemy: Monster; pos: Position; dist: number } | null = null;
       for (let yy = 0; yy < d.tiles.length; yy++) {
@@ -1575,6 +1575,25 @@ export function DungeonView({
           if (!near || dist < near.dist) near = { enemy: e, pos: { x: xx, y: yy }, dist };
         }
       }
+
+      // Enemy is threatening us but nothing we own reaches it yet (e.g. it out-
+      // ranges us, or a wall blocks line of fire). Close the distance and try
+      // again next tick rather than dropping out of autoplay.
+      if (autoAttackUnreachableRef.current && near) {
+        const approach = findApproachTileRef.current(d, near.pos);
+        if (approach && !(approach.x === px0 && approach.y === py0)) {
+          const path = findPath(d, d.playerPosition, approach, { allowMineable: !!settings.autoMine });
+          if (path && path.length > 0) {
+            setTargetPath(path);
+            pathWalkRef.current = path;
+            pathGoalRef.current = approach;
+            setIsPathWalking(true);
+            return;
+          }
+        }
+      }
+
+      autoplayModeRef.current = false;
       if (near) {
         addLog('🤖 Autoplay: enemy in range — pick a move.', 'info');
         setAttackMenuTarget({ enemy: near.enemy, enemyPos: near.pos, playerPos: d.playerPosition });

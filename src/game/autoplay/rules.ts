@@ -34,6 +34,8 @@ export type AutoplayActionKind =
   | 'switch_best_matchup'
   | 'attack_ranged'
   | 'attack_melee'
+  | 'attack_aoe'
+  | 'attack_single'
   | 'attack_strongest'
   | 'attack_cheapest'
   | 'attack_pinned'
@@ -53,6 +55,9 @@ export interface AutoplayRule {
 /** What automation does when it walks into an enemy it can reach. */
 export type AutoplayEngageMode = 'stop' | 'ask' | 'fight';
 
+/** Tie-breaker applied to every attack ordering. */
+export type AutoplayAoePreference = 'aoe' | 'single' | 'off';
+
 export interface AutoplayProfile {
   /** Evaluated top-to-bottom; the first matching enabled rule wins. */
   rules: AutoplayRule[];
@@ -61,6 +66,8 @@ export interface AutoplayProfile {
   stopHpPercent: number;
   /** Swap in the best-matchup party member before engaging. */
   switchBestMatchup: boolean;
+  /** Prefer splash moves (default), single-target moves, or neither. */
+  aoePreference: AutoplayAoePreference;
 }
 
 export const CONDITION_LABELS: Record<AutoplayConditionKind, string> = {

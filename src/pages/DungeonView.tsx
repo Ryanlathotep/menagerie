@@ -1837,7 +1837,7 @@ export function DungeonView({
 
     addLog(`🧭 Auto-Search: pathing to ${label.toLowerCase()} at (${best.x}, ${best.y}).`, 'info');
     handleTileClick(best.x, best.y);
-  }, [addLog, handleTileClick, findApproachTile]);
+  }, [addLog, handleTileClick, findApproachTile, settings.autoMine, setIsPathWalking]);
   const runDungeonAutoSearchRef = useRef(runDungeonAutoSearch);
   useEffect(() => { runDungeonAutoSearchRef.current = runDungeonAutoSearch; }, [runDungeonAutoSearch]);
 

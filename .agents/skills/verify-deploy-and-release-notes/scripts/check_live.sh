@@ -20,7 +20,7 @@ check_status() {
 }
 
 check_status "itch.io page" "$ITCH_PAGE"
-if grep -qE 'html-classic\.itch\.zone|iframe_placeholder|load_iframe_btn' /tmp/live_body.html 2>/dev/null; then
+if grep -qE 'html-classic\.itch\.zone|embedded_game|game_frame|embed_game_btn|load_iframe_btn' /tmp/live_body.html 2>/dev/null; then
   echo "OK   itch.io HTML5 embed present"
 else
   echo "FAIL itch.io page has no HTML5 embed — butler may not have pushed to the html5 channel"

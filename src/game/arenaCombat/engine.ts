@@ -6,6 +6,7 @@
  * changes upstream apply here too.
  */
 import { executeCombat } from '@/game/combat';
+import { getAttackConfig } from '@/game/dungeonCombat';
 import { mulberry32, withSeededRandom } from '@/game/autobattle/seeded';
 import { buildTurnOrder, chebyshev } from './turnOrder';
 import { autoStrategy } from './strategy';
@@ -129,7 +130,7 @@ export function runArenaCombat(
               ? combatants.find(c => c.monster.id === decision.targetId && c.monster.stats.currentHp > 0)
               : undefined;
             let dmg = 0; let crit = false; let dodged = false; let fainted = false;
-            if (comboTarget && chebyshev(actor.pos, comboTarget.pos) <= Math.max(1, mv.range ?? 1)) {
+            if (comboTarget && chebyshev(actor.pos, comboTarget.pos) <= Math.max(1, getAttackConfig(mv).range ?? 1)) {
               const res = executeCombat(mv, actor.monster, comboTarget.monster, true);
               dmg = res.hit ? res.damage : 0;
               crit = !!res.critical; dodged = !res.hit;

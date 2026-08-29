@@ -1356,6 +1356,7 @@ export function DungeonView({
     // A manual click always overrides any active Auto-Hunt / Auto-Harvest.
     huntingModeRef.current = false;
     harvestAllModeRef.current = false;
+    searchQuestRef.current = null;
     autoplayModeRef.current = false;
 
     

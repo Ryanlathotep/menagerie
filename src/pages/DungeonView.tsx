@@ -1473,16 +1473,28 @@ export function DungeonView({
         return;
       }
     }
-    const path = findPath(d, d.playerPosition, target, { allowMineable: !!settings.autoMine });
+    let path = findPath(d, d.playerPosition, target, { allowMineable: !!settings.autoMine });
     if (!path || path.length === 0) {
-      huntingModeRef.current = false;
-      addLog('🔎 Auto-Hunt: no path to next target.', 'info');
-      return;
+      // Target unreachable (walled-off enemy or sealed fog pocket): fall back
+      // to another exploration waypoint rather than ending the hunt.
+      const alt = findFogWaypointRef.current(d);
+      const altPath = alt && !(alt.x === target.x && alt.y === target.y)
+        ? findPath(d, d.playerPosition, alt, { allowMineable: !!settings.autoMine })
+        : null;
+      if (alt && altPath && altPath.length > 0) {
+        target = alt;
+        path = altPath;
+      } else {
+        huntingModeRef.current = false;
+        addLog('🔎 Auto-Hunt: no path to next target.', 'info');
+        return;
+      }
     }
     setTargetPath(path);
     pathWalkRef.current = path;
     pathGoalRef.current = target;
     setIsPathWalking(true);
+
   }, [findHuntTarget, addLog, settings.autoMine, state.run]);
 
 

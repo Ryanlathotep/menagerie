@@ -58,7 +58,7 @@ const FEATURE_KINDS = new Set<ArenaReplayFeature['kind']>([
   'wall', 'door', 'chest', 'box', 'lever', 'trap_spike', 'trap_dart', 'stairs_up', 'stairs_down',
 ]);
 
-interface ArenaLayout {
+export interface ArenaLayout {
   width: number;
   height: number;
   features: ArenaReplayFeature[];

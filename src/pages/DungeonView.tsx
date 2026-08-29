@@ -274,8 +274,17 @@ export function DungeonView({
     | { kind: 'stairs' | 'stairs_up'; fromFloor: number; toFloor: number; direction: 'deeper' | 'shallower' }
     | null
   >(null);
+  type DungeonSearchKind =
+    | 'stairs' | 'stairs_up' | 'treasure' | 'shop' | 'elevator'
+    | 'plant' | 'mineable_wall' | 'nest';
   // While non-null, Auto-Search is chasing this stair type across floors.
+
   const autoSearchStairsKindRef = useRef<'stairs' | 'stairs_up' | null>(null);
+  // While non-null, Auto-Search is still looking for this target kind and will
+  // keep spiralling outward through the fog (streaming new floor strips) until
+  // it finds one, instead of giving up when nothing is currently explored.
+  const searchQuestRef = useRef<{ kind: DungeonSearchKind; label: string } | null>(null);
+
 
   // Dungeon build mode (per-floor buildings persisted via snapshots)
   const [dungeonBuildPanelOpen, setDungeonBuildPanelOpen] = useState(false);
@@ -1347,6 +1356,7 @@ export function DungeonView({
     // A manual click always overrides any active Auto-Hunt / Auto-Harvest.
     huntingModeRef.current = false;
     harvestAllModeRef.current = false;
+    searchQuestRef.current = null;
     autoplayModeRef.current = false;
 
     
@@ -1414,12 +1424,16 @@ export function DungeonView({
     if (!huntingModeRef.current) return;
     const d = dungeonRef.current;
     if (!d) { huntingModeRef.current = false; return; }
-    const target = findHuntTarget(d);
+    let target = findHuntTarget(d);
+    // Nothing visible and no fog border: keep spiralling by heading for the
+    // tile nearest a map edge, which streams a fresh strip of floor into view.
+    if (!target) target = findFogWaypointRef.current(d);
     if (!target) {
       huntingModeRef.current = false;
-      addLog('🔎 Auto-Hunt: no enemies visible and no unexplored ground nearby.', 'info');
+      addLog('🔎 Auto-Hunt: nowhere left to explore on this floor.', 'info');
       return;
     }
+
     const px = d.playerPosition.x, py = d.playerPosition.y;
     const t = d.tiles[target.y]?.[target.x];
     // Enemy target: if ANY move on the active monster can currently reach
@@ -1459,16 +1473,28 @@ export function DungeonView({
         return;
       }
     }
-    const path = findPath(d, d.playerPosition, target, { allowMineable: !!settings.autoMine });
+    let path = findPath(d, d.playerPosition, target, { allowMineable: !!settings.autoMine });
     if (!path || path.length === 0) {
-      huntingModeRef.current = false;
-      addLog('🔎 Auto-Hunt: no path to next target.', 'info');
-      return;
+      // Target unreachable (walled-off enemy or sealed fog pocket): fall back
+      // to another exploration waypoint rather than ending the hunt.
+      const alt = findFogWaypointRef.current(d);
+      const altPath = alt && !(alt.x === target.x && alt.y === target.y)
+        ? findPath(d, d.playerPosition, alt, { allowMineable: !!settings.autoMine })
+        : null;
+      if (alt && altPath && altPath.length > 0) {
+        target = alt;
+        path = altPath;
+      } else {
+        huntingModeRef.current = false;
+        addLog('🔎 Auto-Hunt: no path to next target.', 'info');
+        return;
+      }
     }
     setTargetPath(path);
     pathWalkRef.current = path;
     pathGoalRef.current = target;
     setIsPathWalking(true);
+
   }, [findHuntTarget, addLog, settings.autoMine, state.run]);
 
 
@@ -1714,11 +1740,53 @@ export function DungeonView({
   const findApproachTileRef = useRef(findApproachTile);
   useEffect(() => { findApproachTileRef.current = findApproachTile; }, [findApproachTile]);
 
+  // Nearest fog-of-war tile that borders explored walkable ground, so any
+  // automation loop can spiral outward and stream new floor strips into view.
+  // When the loaded floor is fully explored we instead aim at the walkable
+  // tile closest to a map edge — stepping there triggers dungeon expansion.
+  const findFogWaypoint = useCallback((d: DungeonState): Position | null => {
+    const px = d.playerPosition.x, py = d.playerPosition.y;
+    const walkable = new Set([
+      'floor', 'player', 'terrain', 'stairs', 'stairs_up', 'shop',
+      'elevator', 'treasure', 'plant',
+    ]);
+    let bestFog: { x: number; y: number; d: number } | null = null;
+    let bestEdge: { x: number; y: number; e: number } | null = null;
+    for (let y = 0; y < d.tiles.length; y++) {
+      const row = d.tiles[y]; if (!row) continue;
+      for (let x = 0; x < row.length; x++) {
+        const t = row[x]; if (!t) continue;
+        if (!t.explored) {
+          if (t.type === 'wall' || t.type === 'mineable_wall') continue;
+          let borders = false;
+          for (const [ox, oy] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
+            const nt = d.tiles[y + oy]?.[x + ox];
+            if (!nt || !nt.explored) continue;
+            if (walkable.has(nt.type) || (nt.type === 'trap' && nt.triggered)) { borders = true; break; }
+          }
+          if (!borders) continue;
+          const dist = Math.abs(x - px) + Math.abs(y - py);
+          if (!bestFog || dist < bestFog.d) bestFog = { x, y, d: dist };
+        } else if (walkable.has(t.type)) {
+          const edge = Math.min(x, y, d.width - 1 - x, d.height - 1 - y);
+          if (x === px && y === py) continue;
+          if (!bestEdge || edge < bestEdge.e) bestEdge = { x, y, e: edge };
+        }
+      }
+    }
+    if (bestFog) return { x: bestFog.x, y: bestFog.y };
+    return bestEdge ? { x: bestEdge.x, y: bestEdge.y } : null;
+  }, []);
+  const findFogWaypointRef = useRef(findFogWaypoint);
+  useEffect(() => { findFogWaypointRef.current = findFogWaypoint; }, [findFogWaypoint]);
+
   // ─── Dungeon Auto-Search runner ───────────────────────────────────────────
   // Extracted from the picker modal so the "continue at stairs" prompt can
   // re-invoke the same logic on a fresh floor without re-opening the picker.
+  // If nothing matching is known yet, the search does NOT stop — it spirals
+  // outward through the fog and re-checks after every leg.
   const runDungeonAutoSearch = useCallback((
-    kind: 'stairs' | 'stairs_up' | 'treasure' | 'shop' | 'elevator' | 'plant' | 'mineable_wall' | 'nest',
+    kind: DungeonSearchKind,
     label: string,
   ) => {
     const d = dungeonRef.current;
@@ -1735,11 +1803,29 @@ export function DungeonView({
       }
     }
     if (!best) {
-      addLog(`🔎 Auto-Search: no explored ${label.toLowerCase()} found on this floor.`, 'info');
-      toast.info(`No known ${label.toLowerCase()} here`);
+      // Keep exploring instead of stopping: head for the nearest fog frontier
+      // and re-run this search when the leg finishes.
+      const waypoint = findFogWaypointRef.current(d);
+      const path = waypoint
+        ? findPath(d, d.playerPosition, waypoint, { allowMineable: !!settings.autoMine })
+        : null;
+      if (waypoint && path && path.length > 0) {
+        searchQuestRef.current = { kind, label };
+        addLog(`🧭 Auto-Search: no ${label.toLowerCase()} in sight — exploring outward.`, 'info');
+        setTargetPath(path);
+        pathWalkRef.current = path;
+        pathGoalRef.current = waypoint;
+        setIsPathWalking(true);
+        return;
+      }
+      searchQuestRef.current = null;
+      addLog(`🔎 Auto-Search: no ${label.toLowerCase()} found and nowhere left to explore.`, 'info');
+      toast.info(`No reachable ${label.toLowerCase()}`);
       autoSearchStairsKindRef.current = null;
       return;
     }
+    searchQuestRef.current = null;
+
     // If chasing stairs across floors, remember the kind so the arrival prompt
     // can offer to descend/ascend and keep going. Non-stair searches clear it.
     autoSearchStairsKindRef.current = (kind === 'stairs' || kind === 'stairs_up') ? kind : null;
@@ -1768,7 +1854,7 @@ export function DungeonView({
 
     addLog(`🧭 Auto-Search: pathing to ${label.toLowerCase()} at (${best.x}, ${best.y}).`, 'info');
     handleTileClick(best.x, best.y);
-  }, [addLog, handleTileClick, findApproachTile]);
+  }, [addLog, handleTileClick, findApproachTile, settings.autoMine, setIsPathWalking]);
   const runDungeonAutoSearchRef = useRef(runDungeonAutoSearch);
   useEffect(() => { runDungeonAutoSearchRef.current = runDungeonAutoSearch; }, [runDungeonAutoSearch]);
 
@@ -1873,6 +1959,7 @@ export function DungeonView({
         }
         pendingBumpRef.current = null;
         autoSearchStairsKindRef.current = null;
+        searchQuestRef.current = null;
 
         return;
       }
@@ -1946,8 +2033,12 @@ export function DungeonView({
         // planner will either restart pathwalking or clear the mode itself.
         if (huntingModeRef.current) {
           setTimeout(() => planNextHuntStepRef.current(), 0);
+        } else if (searchQuestRef.current) {
+          const q = searchQuestRef.current;
+          setTimeout(() => runDungeonAutoSearchRef.current(q.kind, q.label), 60);
         } else if (harvestAllModeRef.current) {
           setTimeout(() => planNextHarvestStepRef.current(), 60);
+
         } else if (autoplayModeRef.current) {
 
           setTimeout(() => planNextAutoplayStepRef.current(), 60);
@@ -2000,7 +2091,11 @@ export function DungeonView({
           pathGoalRef.current = null;
           if (huntingModeRef.current) {
             setTimeout(() => planNextHuntStepRef.current(), 0);
+          } else if (searchQuestRef.current) {
+            const q = searchQuestRef.current;
+            setTimeout(() => runDungeonAutoSearchRef.current(q.kind, q.label), 60);
           } else if (harvestAllModeRef.current) {
+
             setTimeout(() => planNextHarvestStepRef.current(), 60);
           } else if (autoplayModeRef.current) {
 
@@ -3639,6 +3734,7 @@ export function DungeonView({
     harvestAllModeRef.current = false;
     autoplayModeRef.current = false;
     autoSearchStairsKindRef.current = null;
+    searchQuestRef.current = null;
     pathWalkRef.current = [];
     pathGoalRef.current = null;
     setIsPathWalking(false);

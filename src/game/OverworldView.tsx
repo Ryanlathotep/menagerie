@@ -985,6 +985,9 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
   const autoHuntTimerRef = useRef<number | null>(null);
   const autoSearchTimerRef = useRef<number | null>(null);
   const autoSearchKindRef = useRef<string | null>(null);
+  // True while Auto-Search is exploring the fog looking for its target (keeps
+  // the "spiralling outward" log from repeating every step).
+  const searchExploringRef = useRef(false);
 
   const cancelAutoHunt = useCallback((reason?: string) => {
     if (autoHuntTimerRef.current !== null) {
@@ -1000,6 +1003,7 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
       window.clearInterval(autoSearchTimerRef.current);
       autoSearchTimerRef.current = null;
       autoSearchKindRef.current = null;
+      searchExploringRef.current = false;
       if (reason) addLog(reason, 'info');
     }
     automationRunningRef.current = false;
@@ -1256,12 +1260,64 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
     return best ? { x: best.x, y: best.y } : null;
   }, []);
 
+  // One step toward the nearest fog frontier — shared "keep spiralling outward"
+  // move used when a search target isn't known (or reachable) yet, so the loop
+  // explores instead of stopping.
+  const findExplorationStep = useCallback((ow: OverworldState): { dx: number; dy: number } | null => {
+    const px = ow.playerPosition.x, py = ow.playerPosition.y;
+    const blocked = new Set(['building', 'player_building', 'tree', 'rock', 'water', 'cliff', 'waterfall']);
+    const SCAN = 40;
+    const frontiers: Array<{ x: number; y: number; d: number }> = [];
+    for (let dy = -SCAN; dy <= SCAN; dy++) {
+      const rem = SCAN - Math.abs(dy);
+      for (let dx = -rem; dx <= rem; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        const x = px + dx, y = py + dy;
+        const t = getOverworldTile(ow, x, y);
+        if (!t || !t.explored || blocked.has(t.type)) continue;
+        let frontier = false;
+        for (const [ox, oy] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
+          const nt = getOverworldTile(ow, x + ox, y + oy);
+          if (!nt || !nt.explored) { frontier = true; break; }
+        }
+        if (frontier) frontiers.push({ x, y, d: Math.abs(dx) + Math.abs(dy) });
+      }
+    }
+    frontiers.sort((a, b) => a.d - b.d);
+    for (const passStructures of [true, false]) {
+      for (let i = 0; i < Math.min(frontiers.length, 24); i++) {
+        const f = frontiers[i];
+        const path = findOverworldPath(ow, ow.playerPosition, { x: f.x, y: f.y }, 8000, { avoidStructures: passStructures });
+        if (!path || path.length === 0) continue;
+        const step = path[0];
+        const dx = step.x - px, dy = step.y - py;
+        if (Math.abs(dx) + Math.abs(dy) !== 1) continue;
+        return { dx, dy };
+      }
+    }
+    // Last-ditch: shuffle one step toward the farthest frontier.
+    const far = frontiers[frontiers.length - 1];
+    if (far) {
+      const options: Array<[number, number]> = [];
+      const sx = Math.sign(far.x - px), sy = Math.sign(far.y - py);
+      if (sx !== 0) options.push([sx, 0]);
+      if (sy !== 0) options.push([0, sy]);
+      for (const [ox, oy] of options) {
+        const nt = getOverworldTile(ow, px + ox, py + oy);
+        if (nt && !blocked.has(nt.type)) return { dx: ox, dy: oy };
+      }
+    }
+    return null;
+  }, []);
+
   const startAutoSearch = useCallback((kind: SearchKind) => {
+
     cancelAutoWalk();
     cancelAutoMine();
     cancelAutoHunt();
     cancelAutoSearch();
     autoSearchKindRef.current = kind;
+    searchExploringRef.current = false;
     const stepDelay = Math.max(40, autoStepMs || 100);
     addLog(`🧭 Auto-Search started — looking for nearest ${kind.replace('_', ' ')}.`, 'info');
     automationRunningRef.current = true;
@@ -1273,9 +1329,23 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         cancelAutoSearch('⚠️ Auto-Search stopped — enemy in attack range!');
         return;
       }
+      // Keep exploring outward until we actually find one, instead of stopping.
+      const exploreOutward = (reason: string): void => {
+        const step = findExplorationStep(ow);
+        if (!step) {
+          cancelAutoSearch(`🔎 Auto-Search stopped — ${reason} and nowhere left to explore.`);
+          return;
+        }
+        if (!searchExploringRef.current) {
+          searchExploringRef.current = true;
+          addLog(`🧭 Auto-Search: ${reason} — spiralling outward through the fog.`, 'info');
+        }
+        handleMoveRef.current(step.dx, step.dy);
+      };
+
       const target = findNearestExplored(ow, kind);
       if (!target) {
-        cancelAutoSearch(`🔎 Auto-Search stopped — no known ${kind.replace('_', ' ')} within ${SEARCH_RADIUS} tiles.`);
+        exploreOutward(`no ${kind.replace('_', ' ')} in sight`);
         return;
       }
       const px = ow.playerPosition.x, py = ow.playerPosition.y;
@@ -1294,15 +1364,17 @@ export function OverworldView({ gameLog, addLog }: OverworldViewProps) {
         if (p && p.length > 0 && (!bestPath || p.length < bestPath.length)) bestPath = p;
       }
       if (!bestPath || bestPath.length === 0) {
-        cancelAutoSearch(`⚠️ Auto-Search stopped — no path to ${kind.replace('_', ' ')}.`);
+        exploreOutward(`can't reach that ${kind.replace('_', ' ')}`);
         return;
       }
+      searchExploringRef.current = false;
       const step = bestPath[0];
       const dx = step.x - px, dy = step.y - py;
       if (Math.abs(dx) + Math.abs(dy) !== 1) { cancelAutoSearch(); return; }
       handleMoveRef.current(dx, dy);
     }, stepDelay);
-  }, [addLog, cancelAutoHunt, cancelAutoMine, cancelAutoSearch, cancelAutoWalk, findNearestExplored, autoStepMs]);
+  }, [addLog, cancelAutoHunt, cancelAutoMine, cancelAutoSearch, cancelAutoWalk, findNearestExplored, findExplorationStep, autoStepMs]);
+
 
   // ── Automation transport (play / pause / speed / mode) ──────────────────
   useEffect(() => {

@@ -16,6 +16,7 @@ import { getAllRooms } from './arenaRooms';
 import { resolveStrategy } from './strategyPresets';
 import { ArenaReplayPlayer } from './ArenaReplayPlayer';
 import { STRATEGY_PRESETS } from './strategyPresets';
+import { pickLayout } from './tournament';
 
 type TeamSize = 'solo' | 'duo' | 'trio' | 'full';
 const SIZE: Record<TeamSize, number> = { solo: 1, duo: 2, trio: 3, full: 6 };

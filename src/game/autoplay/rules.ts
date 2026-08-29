@@ -86,6 +86,8 @@ export const ACTION_LABELS: Record<AutoplayActionKind, string> = {
   switch_best_matchup: 'Switch to best matchup',
   attack_ranged: 'Attack with ranged move',
   attack_melee: 'Attack with melee move',
+  attack_aoe: 'Attack with AoE / splash move',
+  attack_single: 'Attack with single-target move',
   attack_strongest: 'Attack with strongest move',
   attack_cheapest: 'Attack with cheapest move',
   attack_pinned: 'Attack with a specific move',
